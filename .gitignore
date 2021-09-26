@@ -11595,3 +11595,17 @@ src/index.js
 src/main.scss
 tailwind.config.js
 webpack.config.js
+.DS_Store
+dist/.DS_Store
+src/img/grumpy/full/civilwar_full.png
+src/img/grumpy/full/grumping-the-delaware_full.png
+src/img/grumpy/full/grumpta_full.png
+src/img/grumpy/full/nixon_full.png
+src/img/grumpy/full/teddy_full.png
+src/img/grumpy/full/ww2_full.png
+src/img/grumpy/thumb/civilwar_thumb.png
+src/img/grumpy/thumb/grumping-the-delaware_thumb.png
+src/img/grumpy/thumb/grumpta_thumb.png
+src/img/grumpy/thumb/nixon_thumb.png
+src/img/grumpy/thumb/teddy_thumb.png
+src/img/grumpy/thumb/ww2_thumb.png
