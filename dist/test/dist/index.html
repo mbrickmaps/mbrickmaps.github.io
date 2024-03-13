@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Global Energy Tracker Single</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&amp;display=swap" crossorigin>
+<link rel="preload" as="style" href="./_observablehq/theme-air,alt,wide.css">
+<link rel="preload" as="style" href="./_observablehq/stdlib/inputs.css">
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&amp;display=swap" crossorigin>
+<link rel="stylesheet" type="text/css" href="./_observablehq/theme-air,alt,wide.css">
+<link rel="stylesheet" type="text/css" href="./_observablehq/stdlib/inputs.css">
+<link rel="modulepreload" href="./_observablehq/client.js">
+<link rel="modulepreload" href="./_observablehq/runtime.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.js">
+<link rel="modulepreload" href="./_npm/d3-dsv@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3@7.9.0/+esm.js">
+<link rel="modulepreload" href="./_observablehq/stdlib/inputs.js">
+<link rel="modulepreload" href="./_npm/@observablehq/plot@0.6.14/+esm.js">
+<link rel="modulepreload" href="./_npm/htl@0.3.1/+esm.js">
+<link rel="modulepreload" href="./_npm/isoformat@0.2.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-array@3.2.4/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-axis@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-brush@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-chord@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-color@3.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-contour@4.0.2/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-delaunay@6.0.4/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-dispatch@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-drag@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-ease@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-fetch@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-force@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-format@3.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-geo@3.1.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-hierarchy@3.1.2/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-interpolate@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-path@3.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-polygon@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-quadtree@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-random@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-scale@4.0.2/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-scale-chromatic@3.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-selection@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-shape@3.2.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-time@3.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-time-format@4.1.0/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-timer@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-transition@3.0.1/+esm.js">
+<link rel="modulepreload" href="./_npm/d3-zoom@3.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/interval-tree-1d@1.0.4/+esm.js">
+<link rel="modulepreload" href="./_npm/internmap@2.0.3/+esm.js">
+<link rel="modulepreload" href="./_npm/delaunator@5.0.0/+esm.js">
+<link rel="modulepreload" href="./_npm/binary-search-bounds@2.0.5/+esm.js">
+<link rel="modulepreload" href="./_npm/robust-predicates@3.0.2/+esm.js">
+<script type="module">
+
+import {define} from "./_observablehq/client.js";
+import {registerFile} from "./_observablehq/stdlib.js";
+
+registerFile("./data.csv", {"name":"./data.csv","mimeType":"text/csv","path":"./_file/data.3a56651f.csv"});
+
+define({id: "4d41331c", inputs: ["FileAttachment","view","Inputs","d3","Plot"], outputs: ["energy","country","category","color","scale","sortByCategoryOrder","energyPlot"], body: async (FileAttachment,view,Inputs,d3,Plot) => {
+const energy = await FileAttachment("data.csv").csv({typed: true});
+const country = view(Inputs.select(
+    energy.map((d) => d.country),
+    {label: "Country", sort: true, unique: true, value:"United States"}
+  )
+);
+
+const category = view(
+  Inputs.select(
+    new Map([
+      ["Consumption (exajoules)","consumption"],
+      ["Consumption per capita (exajoules per million people)", "per_capita"],
+      ["Share of total consumption (precent)","percent"]
+  ])
+  ,{value:"consumption", label:"Type"}
+  )
+)
+
+const color = view(Inputs.radio(["Color by low-carbon vs. high-carbon", "Color by energy source", ], {value: "Color by energy source"}));
+
+const scale = view(Inputs.radio(["Unlock scales", "Lock scales"], {value: "Unlock scales"}));
+
+function sortByCategoryOrder(data, categoryOrder) {
+  return data.sort((a, b) => {
+    return categoryOrder.indexOf(a.type) - categoryOrder.indexOf(b.type);
+  });
+}
+
+function energyPlot(data, country, category, scale, color, {width} = {}) {
+
+let sortedData = sortByCategoryOrder(data, ['Biofuels', 'Coal', 'Natural Gas', 'Oil', 'Other', 'Hydro', 'Nuclear', 'Solar', 'Wind'].reverse())
+
+let max = ""
+let colors = ["green", "purple", "orange", "yellow", "blue", "pink", "brown", "grey", "green", "lavender"]
+
+if (scale == 'Unlock scales'){
+    sortedData =  sortedData.filter(d => d.country == country)
+    max = d3.max(sortedData, (d) => +d[category])
+    } else {
+    max = d3.max(sortedData, (d) => +d[category])
+  }
+  if (color == 'Color by energy source'){
+    colors = ['#B5A06D', '#3E4C5D', '#DF6E00', '#A82E1D', '#7F7F7F', '#3B8991', '#A65583', '#F7C600', '#7AB2E5']
+  } else {
+    colors = ['#555555', '#555555', '#555555', '#555555', '#555555', '#74AB4E', '#74AB4E', '#74AB4E', '#74AB4E']
+  }
+  return Plot.plot({
+  color: {
+    type: "categorical",
+    range: colors,
+    domain:['Biofuels', 'Coal', 'Natural Gas', 'Oil', 'Other', 'Hydro', 'Nuclear', 'Solar', 'Wind'],
+    legend: true},
+  marginLeft: 50,
+  width: width,
+  y: {
+    grid: false,
+    label: category,
+    domain:[0, max]
+  },
+  x:{
+    tickFormat: ""
+  },
+  marks: [
+    Plot.areaY(
+      sortedData.filter(d => d.country == country && d[category] !== 'N/A' && d.type !== 'Total'),
+        {x: "year", y: category, fill: "type", title: "type"}
+      ),
+    Plot.axisX({tickFormat:"", tickSize: 12, tickPadding: 5, textAnchor: "middle"}),
+    Plot.ruleY([0])
+  ]
+})
+}
+/*
+
+const series = [42, 22, 0.5].map((x) =>
+  d3.cumsum(Array.from({length: 100}), d3.randomNormal.source(d3.randomLcg(x))())
+);
+or 
+for (const data of series) {
+  display(html`<div class="card">${Plot.lineY(data).plot()}</div>`);
+}
+
+*/
+return {energy,country,category,color,scale,sortByCategoryOrder,energyPlot};
+}});
+
+define({id: "a3465cbd", inline: true, inputs: ["resize","energyPlot","energy","country","category","scale","color","display"], body: async (resize,energyPlot,energy,country,category,scale,color,display) => {
+display(await(
+resize((width) => energyPlot(energy, country, category, scale, color, {width}))
+))
+}});
+
+</script>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<style>
+
+</style>
+<div id="cell-4d41331c" class="observablehq observablehq--block"></div>
+<div class="grid grid-cols-1" style="grid-auto-rows: 504px;">
+  <div class="card"><span id="cell-a3465cbd" class="observablehq--loading"></span></div>
+</div></main>
+<footer id="observablehq-footer">
+<div>Built with <a href="https://observablehq.com/" target="_blank">Observable</a> on <a title="2024-03-13T16:14:14">Mar 13, 2024</a>.</div>
+</footer>
+</div>
