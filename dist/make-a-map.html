@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="generator" content="Observable Framework v1.11.0">
+<title>🗺️ Make A Map (Mapa) | Portfolio</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="preload" as="style" href="./_import/custom-style.95d164d2.css">
+<link rel="preload" as="style" href="./_observablehq/stdlib/inputs.ea9fd553.css">
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="stylesheet" type="text/css" href="./_import/custom-style.95d164d2.css">
+<link rel="stylesheet" type="text/css" href="./_observablehq/stdlib/inputs.ea9fd553.css">
+<link rel="modulepreload" href="./_observablehq/client.f5ee32d5.js">
+<link rel="modulepreload" href="./_observablehq/runtime.3f7f73d9.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.2229c972.js">
+<link rel="modulepreload" href="./_import/components/js/mapData.63807af1.js">
+<link rel="modulepreload" href="./_npm/gsap@3.12.5/all.d47bb9de.js">
+<link rel="modulepreload" href="./_import/components/js/retro-dial.ea8f2cde.js">
+<link rel="modulepreload" href="./_npm/d3@7.9.0/7055d4c5.js">
+<link rel="modulepreload" href="./_npm/d3-geo-projection@4.0.0/4d7a0412.js">
+<link rel="modulepreload" href="./_npm/d3-geo-polygon@2.0.1/d02baae9.js">
+<link rel="modulepreload" href="./_npm/d3-geo-scale-bar@1.2.5/273332d7.js">
+<link rel="modulepreload" href="./_npm/d3-array@3.2.4/e95f898e.js">
+<link rel="modulepreload" href="./_npm/query-overpass@1.5.5/69ce1f03.js">
+<link rel="modulepreload" href="./_npm/proj4@2.7.5/034b033c.js">
+<link rel="modulepreload" href="./_npm/@turf/turf@7.2.0/430a7ea5.js">
+<link rel="modulepreload" href="./_npm/geojson-rewind@0.3.1/7d5b99d1.js">
+<link rel="modulepreload" href="./_npm/topojson-client@3.1.0/44d97fcb.js">
+<link rel="modulepreload" href="./_npm/topojson-simplify@3.0.3/fd9926cb.js">
+<link rel="modulepreload" href="./_npm/topojson-server@3.0.1/470bdfd4.js">
+<link rel="modulepreload" href="./_observablehq/stdlib/inputs.e0c0bc10.js">
+<link rel="modulepreload" href="./_npm/htl@0.3.1/063eb405.js">
+<link rel="modulepreload" href="./_npm/isoformat@0.2.1/c68fbd73.js">
+<link rel="modulepreload" href="./_npm/d3-axis@3.0.0/d44feff9.js">
+<link rel="modulepreload" href="./_npm/d3-brush@3.0.0/5830b12a.js">
+<link rel="modulepreload" href="./_npm/d3-chord@3.0.1/84d7b8e9.js">
+<link rel="modulepreload" href="./_npm/d3-color@3.1.0/2c0cdfa2.js">
+<link rel="modulepreload" href="./_npm/d3-contour@4.0.2/626bedc4.js">
+<link rel="modulepreload" href="./_npm/d3-delaunay@6.0.4/00c41b5d.js">
+<link rel="modulepreload" href="./_npm/d3-dispatch@3.0.1/b5f7cdc6.js">
+<link rel="modulepreload" href="./_npm/d3-drag@3.0.0/b22c5864.js">
+<link rel="modulepreload" href="./_npm/d3-dsv@3.0.1/407f7a1f.js">
+<link rel="modulepreload" href="./_npm/d3-ease@3.0.1/6f15f633.js">
+<link rel="modulepreload" href="./_npm/d3-fetch@3.0.1/ef1ec490.js">
+<link rel="modulepreload" href="./_npm/d3-force@3.0.0/5e1ff060.js">
+<link rel="modulepreload" href="./_npm/d3-format@3.1.0/5851d7ef.js">
+<link rel="modulepreload" href="./_npm/d3-geo@3.1.1/dcd02767.js">
+<link rel="modulepreload" href="./_npm/d3-hierarchy@3.1.2/f1db2593.js">
+<link rel="modulepreload" href="./_npm/d3-interpolate@3.0.1/034b7bcb.js">
+<link rel="modulepreload" href="./_npm/d3-path@3.1.0/4bb53638.js">
+<link rel="modulepreload" href="./_npm/d3-polygon@3.0.1/bbafde58.js">
+<link rel="modulepreload" href="./_npm/d3-quadtree@3.0.1/aa5b35a8.js">
+<link rel="modulepreload" href="./_npm/d3-random@3.0.1/32c7fec2.js">
+<link rel="modulepreload" href="./_npm/d3-scale@4.0.2/567840a0.js">
+<link rel="modulepreload" href="./_npm/d3-scale-chromatic@3.1.0/cf9b720b.js">
+<link rel="modulepreload" href="./_npm/d3-selection@3.0.0/5dcd62f4.js">
+<link rel="modulepreload" href="./_npm/d3-shape@3.2.0/f8e03c56.js">
+<link rel="modulepreload" href="./_npm/d3-time@3.1.0/5bc129e1.js">
+<link rel="modulepreload" href="./_npm/d3-time-format@4.1.0/19c92b44.js">
+<link rel="modulepreload" href="./_npm/d3-timer@3.0.1/f31b5398.js">
+<link rel="modulepreload" href="./_npm/d3-transition@3.0.1/8debb4ba.js">
+<link rel="modulepreload" href="./_npm/d3-zoom@3.0.0/4b0cc581.js">
+<link rel="modulepreload" href="./_npm/internmap@2.0.3/5eed35fd.js">
+<link rel="modulepreload" href="./_npm/osmtogeojson@2.2.12/5cbbb167.js">
+<link rel="modulepreload" href="./_npm/xhr@2.6.0/fb7c3f1a.js">
+<link rel="modulepreload" href="./_npm/concat-stream@2.0.0/dca7608e.js">
+<link rel="modulepreload" href="./_npm/wkt-parser@1.4.0/150b2a9e.js">
+<link rel="modulepreload" href="./_npm/mgrs@1.0.0/a6344d72.js">
+<link rel="modulepreload" href="./_npm/@turf/along@7.2.0/340ddb96.js">
+<link rel="modulepreload" href="./_npm/@turf/angle@7.2.0/c05203bb.js">
+<link rel="modulepreload" href="./_npm/@turf/area@7.2.0/63969d19.js">
+<link rel="modulepreload" href="./_npm/@turf/bbox@7.2.0/8d64fe90.js">
+<link rel="modulepreload" href="./_npm/@turf/bbox-clip@7.2.0/13688b55.js">
+<link rel="modulepreload" href="./_npm/@turf/bbox-polygon@7.2.0/a8f44922.js">
+<link rel="modulepreload" href="./_npm/@turf/bearing@7.2.0/1c0dd5b9.js">
+<link rel="modulepreload" href="./_npm/@turf/bezier-spline@7.2.0/cafbabd4.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-clockwise@7.2.0/a664d97e.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-concave@7.2.0/4dd037a5.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-contains@7.2.0/a3a2c1bd.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-crosses@7.2.0/54a80438.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-disjoint@7.2.0/8c36564f.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-equal@7.2.0/5d6dd729.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-intersects@7.2.0/6311cec8.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-overlap@7.2.0/280e7942.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-parallel@7.2.0/25135390.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-point-in-polygon@7.2.0/080fdfef.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-point-on-line@7.2.0/cd67869a.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-touches@7.2.0/fec9d1db.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-valid@7.2.0/43f9fe1e.js">
+<link rel="modulepreload" href="./_npm/@turf/boolean-within@7.2.0/8987ceb8.js">
+<link rel="modulepreload" href="./_npm/@turf/buffer@7.2.0/b52ad555.js">
+<link rel="modulepreload" href="./_npm/@turf/center@7.2.0/b0d2e8a2.js">
+<link rel="modulepreload" href="./_npm/@turf/center-mean@7.2.0/62da1405.js">
+<link rel="modulepreload" href="./_npm/@turf/center-median@7.2.0/5f556949.js">
+<link rel="modulepreload" href="./_npm/@turf/center-of-mass@7.2.0/a0812a96.js">
+<link rel="modulepreload" href="./_npm/@turf/centroid@7.2.0/40f66647.js">
+<link rel="modulepreload" href="./_npm/@turf/circle@7.2.0/38962922.js">
+<link rel="modulepreload" href="./_npm/@turf/clean-coords@7.2.0/50050321.js">
+<link rel="modulepreload" href="./_npm/@turf/clone@7.2.0/5b9e5666.js">
+<link rel="modulepreload" href="./_npm/@turf/clusters@7.2.0/02725e0c.js">
+<link rel="modulepreload" href="./_npm/@turf/clusters-dbscan@7.2.0/dce96948.js">
+<link rel="modulepreload" href="./_npm/@turf/clusters-kmeans@7.2.0/a1392083.js">
+<link rel="modulepreload" href="./_npm/@turf/collect@7.2.0/583740aa.js">
+<link rel="modulepreload" href="./_npm/@turf/combine@7.2.0/450e9491.js">
+<link rel="modulepreload" href="./_npm/@turf/concave@7.2.0/5456880d.js">
+<link rel="modulepreload" href="./_npm/@turf/convex@7.2.0/fcb32df7.js">
+<link rel="modulepreload" href="./_npm/@turf/destination@7.2.0/2cf8d83b.js">
+<link rel="modulepreload" href="./_npm/@turf/difference@7.2.0/b3bc271f.js">
+<link rel="modulepreload" href="./_npm/@turf/dissolve@7.2.0/92e350e1.js">
+<link rel="modulepreload" href="./_npm/@turf/distance@7.2.0/379bfd17.js">
+<link rel="modulepreload" href="./_npm/@turf/distance-weight@7.2.0/9dd80a94.js">
+<link rel="modulepreload" href="./_npm/@turf/ellipse@7.2.0/f065242d.js">
+<link rel="modulepreload" href="./_npm/@turf/envelope@7.2.0/54b97de8.js">
+<link rel="modulepreload" href="./_npm/@turf/explode@7.2.0/8f265ae0.js">
+<link rel="modulepreload" href="./_npm/@turf/flatten@7.2.0/0b0c0de3.js">
+<link rel="modulepreload" href="./_npm/@turf/flip@7.2.0/fd460e69.js">
+<link rel="modulepreload" href="./_npm/@turf/geojson-rbush@7.2.0/8d6139d6.js">
+<link rel="modulepreload" href="./_npm/@turf/great-circle@7.2.0/25d5c927.js">
+<link rel="modulepreload" href="./_npm/@turf/helpers@7.2.0/28807c9c.js">
+<link rel="modulepreload" href="./_npm/@turf/hex-grid@7.2.0/ea1231f4.js">
+<link rel="modulepreload" href="./_npm/@turf/interpolate@7.2.0/ea32f970.js">
+<link rel="modulepreload" href="./_npm/@turf/intersect@7.2.0/8e2dee51.js">
+<link rel="modulepreload" href="./_npm/@turf/invariant@7.2.0/671cab78.js">
+<link rel="modulepreload" href="./_npm/@turf/isobands@7.2.0/9fa783c5.js">
+<link rel="modulepreload" href="./_npm/@turf/isolines@7.2.0/4cded770.js">
+<link rel="modulepreload" href="./_npm/@turf/kinks@7.2.0/74d33a7b.js">
+<link rel="modulepreload" href="./_npm/@turf/length@7.2.0/7345f027.js">
+<link rel="modulepreload" href="./_npm/@turf/line-arc@7.2.0/8e0ca976.js">
+<link rel="modulepreload" href="./_npm/@turf/line-chunk@7.2.0/739150b1.js">
+<link rel="modulepreload" href="./_npm/@turf/line-intersect@7.2.0/f0a0b5a4.js">
+<link rel="modulepreload" href="./_npm/@turf/line-offset@7.2.0/fa97ca56.js">
+<link rel="modulepreload" href="./_npm/@turf/line-overlap@7.2.0/854ada2f.js">
+<link rel="modulepreload" href="./_npm/@turf/line-segment@7.2.0/b4b7acd8.js">
+<link rel="modulepreload" href="./_npm/@turf/line-slice@7.2.0/eceb9d4b.js">
+<link rel="modulepreload" href="./_npm/@turf/line-slice-along@7.2.0/b367e634.js">
+<link rel="modulepreload" href="./_npm/@turf/line-split@7.2.0/7a36a297.js">
+<link rel="modulepreload" href="./_npm/@turf/line-to-polygon@7.2.0/d0b7f9fe.js">
+<link rel="modulepreload" href="./_npm/@turf/mask@7.2.0/adbebaea.js">
+<link rel="modulepreload" href="./_npm/@turf/meta@7.2.0/c0f2fe64.js">
+<link rel="modulepreload" href="./_npm/@turf/midpoint@7.2.0/4b7d4994.js">
+<link rel="modulepreload" href="./_npm/@turf/moran-index@7.2.0/21645c75.js">
+<link rel="modulepreload" href="./_npm/@turf/nearest-neighbor-analysis@7.2.0/56d18273.js">
+<link rel="modulepreload" href="./_npm/@turf/nearest-point@7.2.0/f9d4c2de.js">
+<link rel="modulepreload" href="./_npm/@turf/nearest-point-on-line@7.2.0/84873fda.js">
+<link rel="modulepreload" href="./_npm/@turf/nearest-point-to-line@7.2.0/b3b3aed6.js">
+<link rel="modulepreload" href="./_npm/@turf/planepoint@7.2.0/ead7e5b7.js">
+<link rel="modulepreload" href="./_npm/@turf/point-grid@7.2.0/e76ef64a.js">
+<link rel="modulepreload" href="./_npm/@turf/point-on-feature@7.2.0/743222bc.js">
+<link rel="modulepreload" href="./_npm/@turf/points-within-polygon@7.2.0/885a2d62.js">
+<link rel="modulepreload" href="./_npm/@turf/point-to-line-distance@7.2.0/12dcf0a8.js">
+<link rel="modulepreload" href="./_npm/@turf/point-to-polygon-distance@7.2.0/1146de75.js">
+<link rel="modulepreload" href="./_npm/@turf/polygonize@7.2.0/49f2665b.js">
+<link rel="modulepreload" href="./_npm/@turf/polygon-smooth@7.2.0/441d6e18.js">
+<link rel="modulepreload" href="./_npm/@turf/polygon-tangents@7.2.0/16fb2ed1.js">
+<link rel="modulepreload" href="./_npm/@turf/polygon-to-line@7.2.0/f6343f87.js">
+<link rel="modulepreload" href="./_npm/@turf/projection@7.2.0/f1f9e8a4.js">
+<link rel="modulepreload" href="./_npm/@turf/quadrat-analysis@7.2.0/96c1b183.js">
+<link rel="modulepreload" href="./_npm/@turf/random@7.2.0/5f84438d.js">
+<link rel="modulepreload" href="./_npm/@turf/rectangle-grid@7.2.0/1e58cff0.js">
+<link rel="modulepreload" href="./_npm/@turf/rewind@7.2.0/32816f7a.js">
+<link rel="modulepreload" href="./_npm/@turf/rhumb-bearing@7.2.0/841df52f.js">
+<link rel="modulepreload" href="./_npm/@turf/rhumb-destination@7.2.0/3f05ec15.js">
+<link rel="modulepreload" href="./_npm/@turf/rhumb-distance@7.2.0/4567a018.js">
+<link rel="modulepreload" href="./_npm/@turf/sample@7.2.0/4a2f4237.js">
+<link rel="modulepreload" href="./_npm/@turf/sector@7.2.0/c59573e9.js">
+<link rel="modulepreload" href="./_npm/@turf/shortest-path@7.2.0/eeb0627c.js">
+<link rel="modulepreload" href="./_npm/@turf/simplify@7.2.0/9c0c4260.js">
+<link rel="modulepreload" href="./_npm/@turf/square@7.2.0/9e29a8a2.js">
+<link rel="modulepreload" href="./_npm/@turf/square-grid@7.2.0/f2d89276.js">
+<link rel="modulepreload" href="./_npm/@turf/standard-deviational-ellipse@7.2.0/d976f68a.js">
+<link rel="modulepreload" href="./_npm/@turf/tag@7.2.0/78f4cda9.js">
+<link rel="modulepreload" href="./_npm/@turf/tesselate@7.2.0/0c33df1f.js">
+<link rel="modulepreload" href="./_npm/@turf/tin@7.2.0/5b8d49a4.js">
+<link rel="modulepreload" href="./_npm/@turf/transform-rotate@7.2.0/8132c332.js">
+<link rel="modulepreload" href="./_npm/@turf/transform-scale@7.2.0/b9cef896.js">
+<link rel="modulepreload" href="./_npm/@turf/transform-translate@7.2.0/ae0121eb.js">
+<link rel="modulepreload" href="./_npm/@turf/triangle-grid@7.2.0/2d81daec.js">
+<link rel="modulepreload" href="./_npm/@turf/truncate@7.2.0/c6c7893a.js">
+<link rel="modulepreload" href="./_npm/@turf/union@7.2.0/45b09bcd.js">
+<link rel="modulepreload" href="./_npm/@turf/unkink-polygon@7.2.0/3d73ac69.js">
+<link rel="modulepreload" href="./_npm/@turf/voronoi@7.2.0/e53c31bf.js">
+<link rel="modulepreload" href="./_npm/@mapbox/geojson-area@0.2.2/97aeb2d0.js">
+<link rel="modulepreload" href="./_npm/delaunator@5.0.1/e67acb27.js">
+<link rel="modulepreload" href="./_npm/geojson-rewind@0.1.0/a5a63eca.js">
+<link rel="modulepreload" href="./_npm/osm-polygon-features@0.9.2/678a45f6.js">
+<link rel="modulepreload" href="./_npm/global@4.4.0/window.2a4f0ad7.js">
+<link rel="modulepreload" href="./_npm/is-function@1.0.2/bcdbad2b.js">
+<link rel="modulepreload" href="./_npm/parse-headers@2.0.5/23aa007f.js">
+<link rel="modulepreload" href="./_npm/xtend@4.0.2/9320bd14.js">
+<link rel="modulepreload" href="./_npm/readable-stream@3.6.2/c0767bad.js">
+<link rel="modulepreload" href="./_npm/inherits@2.0.4/0970d8fb.js">
+<link rel="modulepreload" href="./_npm/buffer-from@1.1.2/9a323838.js">
+<link rel="modulepreload" href="./_npm/typedarray@0.0.6/150d12f6.js">
+<link rel="modulepreload" href="./_npm/geojson-equality-ts@1.0.2/f892e135.js">
+<link rel="modulepreload" href="./_npm/point-in-polygon-hao@1.2.4/7fcd18e4.js">
+<link rel="modulepreload" href="./_npm/@turf/jsts@2.7.2/36804be6.js">
+<link rel="modulepreload" href="./_npm/d3-geo@1.7.1/c3d5df35.js">
+<link rel="modulepreload" href="./_npm/rbush@3.0.1/d425f52b.js">
+<link rel="modulepreload" href="./_npm/skmeans@0.9.7/98ef8a0b.js">
+<link rel="modulepreload" href="./_npm/concaveman@1.2.1/429c7c90.js">
+<link rel="modulepreload" href="./_npm/polyclip-ts@0.16.8/800c7e0e.js">
+<link rel="modulepreload" href="./_npm/marchingsquares@1.3.3/8e7df0f4.js">
+<link rel="modulepreload" href="./_npm/sweepline-intersections@1.5.0/96af2410.js">
+<link rel="modulepreload" href="./_npm/fast-deep-equal@3.1.3/f66fa298.js">
+<link rel="modulepreload" href="./_npm/earcut@2.2.4/5845decc.js">
+<link rel="modulepreload" href="./_npm/d3-voronoi@1.1.2/555fe511.js">
+<link rel="modulepreload" href="./_npm/wgs84@0.0.0/307a0e2e.js">
+<link rel="modulepreload" href="./_npm/robust-predicates@3.0.2/8ac9039b.js">
+<link rel="modulepreload" href="./_npm/geojson-area@0.1.0/be7de90b.js">
+<link rel="modulepreload" href="./_npm/util-deprecate@1.0.2/cacd7a6b.js">
+<link rel="modulepreload" href="./_npm/string_decoder@1.3.0/f202c26f.js">
+<link rel="modulepreload" href="./_npm/d3-array@1.2.4/f4e365ea.js">
+<link rel="modulepreload" href="./_npm/quickselect@2.0.0/551b5bfb.js">
+<link rel="modulepreload" href="./_npm/tinyqueue@2.0.3/904e1d39.js">
+<link rel="modulepreload" href="./_npm/point-in-polygon@1.1.0/ad8ad71d.js">
+<link rel="modulepreload" href="./_npm/robust-predicates@2.0.4/umd/orient2d.min.js.3c911427.js">
+<link rel="modulepreload" href="./_npm/bignumber.js@9.1.2/87ba5c5f.js">
+<link rel="modulepreload" href="./_npm/splaytree-ts@1.0.2/6ce28fb5.js">
+<link rel="modulepreload" href="./_npm/safe-buffer@5.2.1/200e0b31.js">
+<link rel="icon" href="./_file/observable.1af93621.png" type="image/png" sizes="32x32">
+<script type="module">
+
+import {define} from "./_observablehq/client.f5ee32d5.js";
+import {registerFile} from "./_observablehq/stdlib.2229c972.js";
+
+registerFile("./components/js/disputed_cfr.json", {"name":"./components/js/disputed_cfr.json","mimeType":"application/json","path":"./_file/components/js/disputed_cfr.6324f88d.json","lastModified":1698347860286,"size":3837});
+registerFile("./components/js/e.geojson", {"name":"./components/js/e.geojson","mimeType":"application/geo+json","path":"./_file/components/js/e.e0f2762a.geojson","lastModified":1711640294436,"size":192});
+registerFile("./components/js/ls_admin0_innerlines.json", {"name":"./components/js/ls_admin0_innerlines.json","mimeType":"application/json","path":"./_file/components/js/ls_admin0_innerlines.ad7a4a0b.json","lastModified":1711631010385,"size":384016});
+registerFile("./components/js/ls_admin0_polys.json", {"name":"./components/js/ls_admin0_polys.json","mimeType":"application/json","path":"./_file/components/js/ls_admin0_polys.3e13123f.json","lastModified":1711631010385,"size":1956368});
+registerFile("./components/js/ls_admin1_innerlines.json", {"name":"./components/js/ls_admin1_innerlines.json","mimeType":"application/json","path":"./_file/components/js/ls_admin1_innerlines.6c283302.json","lastModified":1711631010385,"size":108079});
+registerFile("./components/js/ls_admin1_polys.json", {"name":"./components/js/ls_admin1_polys.json","mimeType":"application/json","path":"./_file/components/js/ls_admin1_polys.2f76eef3.json","lastModified":1711631010385,"size":497099});
+registerFile("./components/js/ls_land.json", {"name":"./components/js/ls_land.json","mimeType":"application/json","path":"./_file/components/js/ls_land.1fd0cb98.json","lastModified":1711631010385,"size":1421562});
+registerFile("./components/js/ls_rivers.json", {"name":"./components/js/ls_rivers.json","mimeType":"application/json","path":"./_file/components/js/ls_rivers.e369acad.json","lastModified":1711631010385,"size":707230});
+registerFile("./components/js/ls_waterbodies.json", {"name":"./components/js/ls_waterbodies.json","mimeType":"application/json","path":"./_file/components/js/ls_waterbodies.94b693c8.json","lastModified":1711631010385,"size":208731});
+registerFile("./components/js/n.geojson", {"name":"./components/js/n.geojson","mimeType":"application/geo+json","path":"./_file/components/js/n.94d01417.geojson","lastModified":1711640294431,"size":198});
+registerFile("./components/js/ne_10m_admin_0_countries_usa (1) (1).json", {"name":"./components/js/ne_10m_admin_0_countries_usa (1) (1).json","mimeType":"application/json","path":"./_file/components/js/ne_10m_admin_0_countries_usa (1) (1).ac90eeaa.json","lastModified":1664292493523,"size":19759918});
+registerFile("./components/js/ne_10m_admin_1_states_provinces.json", {"name":"./components/js/ne_10m_admin_1_states_provinces.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_admin_1_states_provinces.683d5a72.json","lastModified":1663349665612,"size":18974277});
+registerFile("./components/js/ne_10m_coastline.json", {"name":"./components/js/ne_10m_coastline.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_coastline.d77ca826.json","lastModified":1663349608805,"size":4102314});
+registerFile("./components/js/ne_10m_lakes (1).json", {"name":"./components/js/ne_10m_lakes (1).json","mimeType":"application/json","path":"./_file/components/js/ne_10m_lakes (1).667c6332.json","lastModified":1663955314769,"size":2622274});
+registerFile("./components/js/ne_10m_populated_places.json", {"name":"./components/js/ne_10m_populated_places.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_populated_places.4100e12d.json","lastModified":1663349609374,"size":18219570});
+registerFile("./components/js/ocean.json", {"name":"./components/js/ocean.json","mimeType":"application/json","path":"./_file/components/js/ocean.d6bfc4b7.json","lastModified":1673630389051,"size":4045486});
+registerFile("./components/js/s.geojson", {"name":"./components/js/s.geojson","mimeType":"application/geo+json","path":"./_file/components/js/s.d935d1b2.geojson","lastModified":1711640294434,"size":199});
+registerFile("./components/js/ss_admin0_innerlines.json", {"name":"./components/js/ss_admin0_innerlines.json","mimeType":"application/json","path":"./_file/components/js/ss_admin0_innerlines.8a125046.json","lastModified":1711632105266,"size":94162});
+registerFile("./components/js/ss_admin0_polys.json", {"name":"./components/js/ss_admin0_polys.json","mimeType":"application/json","path":"./_file/components/js/ss_admin0_polys.6072c078.json","lastModified":1711632105282,"size":310520});
+registerFile("./components/js/ss_land.json", {"name":"./components/js/ss_land.json","mimeType":"application/json","path":"./_file/components/js/ss_land.5aa6cebf.json","lastModified":1711632105269,"size":169768});
+registerFile("./components/js/ss_rivers.json", {"name":"./components/js/ss_rivers.json","mimeType":"application/json","path":"./_file/components/js/ss_rivers.12aa9d55.json","lastModified":1711632105253,"size":33848});
+registerFile("./components/js/ss_waterbodies.json", {"name":"./components/js/ss_waterbodies.json","mimeType":"application/json","path":"./_file/components/js/ss_waterbodies.51c30288.json","lastModified":1711632105253,"size":10725});
+registerFile("./components/js/svg/dial.svg", {"name":"./components/js/svg/dial.svg","mimeType":"image/svg+xml","path":"./_file/components/js/svg/dial.56ade969.svg","lastModified":1730676619428,"size":8078});
+registerFile("./components/js/w.geojson", {"name":"./components/js/w.geojson","mimeType":"application/geo+json","path":"./_file/components/js/w.f9a0a591.geojson","lastModified":1711640294440,"size":197});
+
+define({id: "abf51f56", outputs: ["Mapa","defaultSettings","terrainSettings","newsletterSettingsSimple"], body: async () => {
+const {Mapa, defaultSettings, terrainSettings, newsletterSettingsSimple} = await import("./_import/components/js/mapData.63807af1.js");
+
+return {Mapa,defaultSettings,terrainSettings,newsletterSettingsSimple};
+}});
+
+define({id: "961894d9", inputs: ["FileAttachment","Inputs","newsletterSettingsSimple"], outputs: ["gsap","MotionPathPlugin","RetroDial","RetroButton","svgContent","container","slider","debug","retroDial","button1","button2","button3","buttonA","button4","button5","button6","button7","button8","button9","button1SVG","button2SVG","button3SVG","button4SVG","button5SVG","button6SVG","button7SVG","button8SVG","button9SVG","buttonASVG","params"], body: async (FileAttachment,Inputs,newsletterSettingsSimple) => {
+const [{gsap, MotionPathPlugin}, {RetroDial, RetroButton}] = await Promise.all([import("./_npm/gsap@3.12.5/all.d47bb9de.js"), import("./_import/components/js/retro-dial.ea8f2cde.js")]);
+
+const svgContent = await FileAttachment("./components/js/svg/dial.svg").text();
+const container = document.getElementById('dial-container')
+gsap.registerPlugin(MotionPathPlugin);
+container.innerHTML = svgContent;
+  
+  // Usage Example
+  // dimensions in pixels
+/*
+ minValue: 0.1,                   // Minimum value for CSS attribute
+ maxValue: 1,     
+ minValue: 0,                   // Minimum value for CSS attribute
+ maxValue: 100,  
+ minValue: 0,                   // Minimum value for CSS attribute
+ maxValue: 360,
+ cssValueTemplate: "sepia(#)",    // Template for rotate transform
+ cssValueTemplate: "transform(#deg)",    // Template for rotate transform
+*/
+
+const slider = Inputs.range([0, 360], {
+  step: 1,
+  value: 180, // Initial value
+  label: "Shift the Hue"
+})
+
+const debug = document.querySelector('details')
+
+// Append the slider to the container or desired location
+debug.appendChild(slider);
+
+// Create an instance of RetroDial
+
+/*
+const retroDial = new RetroDial(container, slider, {
+  minAngle: 0,
+  maxAngle: 360,
+  threshold: 10, 
+  cssSelector: "#observablehq-sidebar", 
+  cssTemplate: "rotate(#deg)", 
+  values: [ 
+    { min: 0, max: 1 },
+  ],
+  svgElementIds: ['group-dial']
+});
+*/
+
+const retroDial = new RetroDial(container, slider, {
+  minAngle: 0,
+  maxAngle: 360,
+  threshold: 10,
+  cssSelector: ".project",
+  cssTemplate: "hue-rotate(#deg)",
+  values: [
+    { min: 0, max: 1 }        // Scale from 1x to 2x
+  ]
+});
+
+
+/*
+new RetroButton(
+    100,                  // width
+    100,                  // height
+    'yellow',             // background color
+    'WARNING',            // text
+    false,                // isActive
+    '10px',               // border radius
+    '#ff0000',            // text color
+    'Futura_Medium',      // font family
+    '20px'                // font size
+)
+
+Futura_Medium
+Futura_Medium_Italic
+Futura_Bold
+Futura_Condensed_Medium
+Futura_Condensed_ExtraBold
+*/
+
+const button1 = new RetroButton(100, 100, 'yellow','WARNING','true', "33%",'brown',"Futura_Condensed_Medium","22px")
+const button2 = new RetroButton(50, 50, '#009e37','NOICE','true', "20%","#360000","Futura_Medium_Italic","18px")
+const button3 = new RetroButton(200, 50, '#ff0000',`HOT`,'true',undefined,'#360000','Futura_Condensed_ExtraBold','18px')
+const buttonA = new RetroButton(200, 50, 'dodgerblue',`COOL`,'true',undefined,'#061054','Futura_Medium','18px')
+
+const button4 = new RetroButton(25, 20, 'yellow','1','true',"50% 0% 0% 50%")
+const button5 = new RetroButton(25, 20, '#009e37','2','true')
+const button6 = new RetroButton(25, 20, '#ff0000','3','true')
+
+const button7 = new RetroButton(25, 20, 'white','4','true')
+const button8 = new RetroButton(25, 20, 'blue','5','true')
+const button9 = new RetroButton(20, 20, 'purple','6','true',"0% 50% 50% 0%")
+
+const button1SVG = button1.createLight();
+const button2SVG = button2.createLight();
+const button3SVG = button3.createLight();
+const button4SVG = button4.createLight();
+const button5SVG = button5.createLight();
+const button6SVG = button6.createLight();
+const button7SVG = button7.createLight();
+const button8SVG = button8.createLight();
+const button9SVG = button9.createLight();
+
+const buttonASVG = buttonA.createLight()
+
+document.querySelector(".light1").appendChild(button1SVG)
+document.querySelector(".light2").appendChild(button2SVG)
+document.querySelector(".light3").appendChild(button3SVG)
+
+document.querySelector(".lightA").appendChild(buttonASVG)
+
+document.querySelector(".light4").appendChild(button4SVG)
+document.querySelector(".light5").appendChild(button5SVG)
+document.querySelector(".light6").appendChild(button6SVG)
+
+document.querySelector(".light7").appendChild(button7SVG)
+document.querySelector(".light8").appendChild(button8SVG)
+document.querySelector(".light9").appendChild(button9SVG)
+/*
+document.body.appendChild(button2.createButton())
+document.body.appendChild(button3.createButton())
+*/
+
+button1SVG.addEventListener('click', () => {
+  button1.toggleLight();
+});
+
+button2SVG.addEventListener('click', () => {
+  button2.toggleLight();
+});
+
+button3SVG.addEventListener('click', () => {
+  button3.toggleLight();
+});
+
+buttonASVG.addEventListener('click', () => {
+  buttonA.toggleLight();
+});
+
+const params = {...newsletterSettingsSimple,
+...{ width: 800, height: 375 },
+  projection: {
+    type: "proj4",
+    proj: "+proj=aea +lon_0=11.25 +lat_1=39.383395 +lat_2=64.3667704 +lat_0=51.8750827 +datum=WGS84 +units=m +no_defs"
+  },
+  clipping: {
+    clip: true,
+    margin: 15
+  },
+  bounds: {
+    bounder: true,
+    countries: null,
+    feature: {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        //set the bounds
+        coordinates: [
+          [
+            ["-25.2000", "68.0675"],
+            ["11.5200", "68.0675"],
+            ["48.2400", "68.0675"],
+            ["48.2400", "53.6321"],
+            ["48.2400", "31.7802"],
+            ["11.5200", "31.7802"],
+            ["-25.2000", "31.7802"],
+            ["-25.2000", "53.6321"],
+            ["-25.2000", "68.0675"]
+          ]
+        ] //bounder.bounds
+      }
+    }
+  }
+}
+
+return {gsap,MotionPathPlugin,RetroDial,RetroButton,svgContent,container,slider,debug,retroDial,button1,button2,button3,buttonA,button4,button5,button6,button7,button8,button9,button1SVG,button2SVG,button3SVG,button4SVG,button5SVG,button6SVG,button7SVG,button8SVG,button9SVG,buttonASVG,params};
+}});
+
+define({id: "acd83559", inputs: ["Mapa","params"], outputs: ["showLoading","hideLoading","renderMap"], body: (Mapa,params) => {
+// Function to show loading screen
+function showLoading() {
+ console.log('show it')
+}
+
+// Function to hide loading screen
+function hideLoading() {
+  const loadingScreen = document.querySelector('.loading-screen')
+    if (loadingScreen.parentNode) {
+    loadingScreen.parentNode.removeChild(loadingScreen);
+  }
+}
+// Async function to render the map
+async function renderMap() {
+  showLoading() 
+  try {
+    const mapElement = await new Mapa(params).render;
+    mapElement.setAttribute("style", "mix-blend-mode: overlay;filter: blur(1px);");
+    document.querySelector('.project').appendChild(mapElement);
+  } catch (error) {
+    console.error('Error rendering map:', error);
+  } finally {
+    hideLoading();
+  }
+}
+renderMap();
+return {showLoading,hideLoading,renderMap};
+}});
+
+</script>
+<input id="observablehq-sidebar-toggle" type="checkbox" title="Toggle sidebar">
+<label id="observablehq-sidebar-backdrop" for="observablehq-sidebar-toggle"></label>
+<nav id="observablehq-sidebar">
+  <ol>
+    <label id="observablehq-sidebar-close" for="observablehq-sidebar-toggle"></label>
+    <li class="observablehq-link"><a href="./">Portfolio</a></li>
+  </ol>
+  <ol>
+    <li class="observablehq-link"><a href="./blend-mixer">Blend Mixer</a></li>
+    <li class="observablehq-link"><a href="./cartography">🌎🌍🌏 Cartography</a></li>
+    <li class="observablehq-link"><a href="./collage">Collage</a></li>
+    <li class="observablehq-link"><a href="./geography">Untitled</a></li>
+    <li class="observablehq-link"><a href="./make-a-house">🏠 Architecture Markup</a></li>
+    <li class="observablehq-link observablehq-link-active"><a href="./make-a-map">🗺️ Make A Map (Mapa)</a></li>
+    <li class="observablehq-link"><a href="./make-a-migration">📍 Family Migration Routes</a></li>
+    <li class="observablehq-link"><a href="./make-a-plss">🔍 PLSS Targeting</a></li>
+    <li class="observablehq-link"><a href="./make-a-tree">🌳 Customize Ancestry™️ Icons</a></li>
+    <li class="observablehq-link"><a href="./mapas">Untitled</a></li>
+    <li class="observablehq-link"><a href="./ne-10m">Natural Earth 10m</a></li>
+    <li class="observablehq-link"><a href="./photography">📷 Photography</a></li>
+    <li class="observablehq-link"><a href="./project-line-work">Project Line Work</a></li>
+    <li class="observablehq-link"><a href="./reflections">Reflections</a></li>
+    <li class="observablehq-link"><a href="./switches-dials-knobs">Switches Dials Knobs</a></li>
+    <li class="observablehq-link"><a href="./tool">Reflections Tool</a></li>
+    <li class="observablehq-link"><a href="./docs/README">Switches Dials Knobs</a></li>
+  </ol>
+</nav>
+<script>{Object.assign(document.createElement("a"),{href:""}).password&&location.replace(location.href);const e=document.querySelector("#observablehq-sidebar"),t=document.querySelector("#observablehq-sidebar-toggle"),r=sessionStorage.getItem("observablehq-sidebar");r?t.checked=r==="true":t.indeterminate=!0;for(const o of document.querySelectorAll("#observablehq-sidebar summary")){const s=o.parentElement;switch(sessionStorage.getItem(`observablehq-sidebar:${o.textContent}`)){case"true":s.open=!0;break;case"false":s.classList.contains("observablehq-section-active")||(s.open=!1);break}}addEventListener("beforeunload",()=>sessionStorage.setItem("observablehq-sidebar-scrolly",`${e.scrollTop}`));const a=sessionStorage.getItem("observablehq-sidebar-scrolly");a!=null&&(e.style.cssText="overflow: hidden;",e.scrollTop=+a,e.style.cssText="");}</script>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<div class="observablehq observablehq--block"><!--:abf51f56:--></div>
+<details><summary>Debug Controls
+</summary>
+</details>
+<div class="grid grid-cols-1 main-project" style="grid-auto-rows: 504px;">
+<div id="interactive-layer">  
+  <div id="toggle-container"></div>
+</div>
+<div class="card-container">
+    <div class="card">
+      <div class="frame"></div>
+      <div class="broken"></div>
+      <div class="project"></div>
+      <div class="loading-screen"><div class="spinner"></div>
+  <p>Loading map...</p></div>
+      <span class="light-group-1">
+        <span class="light1"></span>
+        <span class="light2"></span>
+        <span class="light3"></span>
+        <span class="lightA flicker-shortcircuit"></span>
+      </span>
+      <div class="light-group-2">
+        <div class="light4"></div>
+        <div class="light5"></div>
+        <div class="light6"></div>
+        <div class="light7"></div>
+        <div class="light8"></div>
+        <div class="light9"></div>
+      </div>
+    </div>
+</div>
+</div>
+<div id="dial-container" style="max-width:360px;right:0px;display:none"></div>
+<div class="observablehq observablehq--block"><!--:961894d9:--></div>
+<div class="observablehq observablehq--block"><!--:acd83559:--></div>
+<style>
+
+/*
+Futura_Medium
+Futura_Medium_Italic
+Futura_Bold
+Futura_Condensed_Medium
+Futura_Condensed_ExtraBold
+*/
+
+.light-group-1{
+  position:absolute;
+  left:3.25%;
+  top:65px;
+  z-index:10;
+  width: 9% !important;
+}
+
+.light-group-2{
+display: flex;
+        justify-content: center;
+    width: 50%;
+    position:absolute;
+  z-index:10;
+    right: 5%;
+    bottom: 10px;
+}
+
+.retro-text {
+    mix-blend-mode:hard-light;
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+[id^="shadow-"]{
+  pointer-events:none;
+  mix-blend-mode: multiply;
+}
+
+.project{
+  overflow: hidden;
+  /*mix-blend-mode: exclusion;*/
+}
+
+.main-project .card:nth-child(1){
+    background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 1)), url('http://127.0.0.1:3000/_file/components/static-texture.png');
+    background-size: cover; /* or 'contain' depending on how you want the image to scale */
+    background-repeat: no-repeat;
+    background-position: center;
+    background-blend-mode: hard-light;
+}
+#svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 5000;
+}
+
+#matterjs-canvas{
+    z-index: 5001;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+}
+#interactive-layer{
+    position:absolute;
+}
+
+#toggle-container{
+  z-index:5000
+}
+.card-container{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index:-1;
+}
+
+.card{
+    width:100%;
+    height:100%;
+}
+
+#dial-container{
+z-index:10;
+width:170px !important;
+    max-width: 157px;
+    position:relative;
+
+}
+
+.loading-screen{
+   position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: white;
+  z-index: 9999;
+}
+
+.retro-button .glow-effect {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.retro-button.active {
+  opacity: 0.7;
+  filter: brightness(1.3) contrast(1.2)
+}
+
+.active > .retro-button-base {
+    filter: brightness(0.6);
+    opacity: 1;
+    cursor: pointer;
+}
+
+
+/* Simple flicker - Quick blink */
+.flicker-simple {
+    animation: simpleFlicker 2s infinite;
+}
+
+@keyframes simpleFlicker {
+    0%, 100% { opacity: 1; }
+    41% { opacity: 1; }
+    42% { opacity: 0; }
+    43% { opacity: 1; }
+    45% { opacity: 0.4; }
+    46% { opacity: 1; }
+}
+
+/* Electric short circuit - More chaotic */
+.flicker-shortcircuit .retro-button-base {
+    animation: shortCircuit 4s infinite;
+    filter: brightness(1);
+}
+
+@keyframes shortCircuit {
+    0%, 100% { filter: brightness(1); }
+    35% { filter: brightness(1); }
+    36% { filter: brightness(1.2); }
+    37% { filter: brightness(0.2); }
+    38% { filter: brightness(1.2); }
+    39% { filter: brightness(0.3); }
+    40% { filter: brightness(1.2); }
+    41% { filter: brightness(1); }
+    95% { filter: brightness(1); }
+    96% { filter: brightness(0.4); }
+    97% { filter: brightness(1); }
+}
+
+/* Broken fluorescent light - Erratic */
+.flicker-broken {
+    animation: brokenLight 5s infinite;
+    opacity:0.5
+}
+
+@keyframes brokenLight {
+    0%, 100% { opacity: 1; }
+    35% { opacity: 1; }
+    36% { opacity: 0.3; }
+    37% { opacity: 1; }
+    38% { opacity: 0.7; }
+    39% { opacity: 1; }
+    40%, 55% { opacity: 0.3; }
+    56% { opacity: 1; }
+    57% { opacity: 0.7; }
+    58% { opacity: 1; }
+    85% { opacity: 1; }
+    86% { opacity: 0.5; }
+    87%, 95% { opacity: 1; }
+    96% { opacity: 0.9; }
+    97% { opacity: 0.2; }
+    98% { opacity: 0.9; }
+    99% { opacity: 1; }
+}
+
+/* Add a glow effect */
+.light-glow {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    transition: box-shadow 0.1s;
+}
+
+/* Combine with flicker */
+.flicker-with-glow {
+    animation: flickerGlow 3s infinite;
+}
+
+@keyframes flickerGlow {
+    0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    }
+    35% { 
+        opacity: 1;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+    }
+    36% { 
+        opacity: 0.3;
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+    }
+    37% { 
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 1);
+    }
+}
+
+</style></main>
+<footer id="observablehq-footer">
+<nav><a rel="prev" href="./make-a-house"><span>🏠 Architecture Markup</span></a><a rel="next" href="./make-a-migration"><span>📍 Family Migration Routes</span></a></nav>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-21T08:01:49">Jan 21, 2025</a>.</div>
+</footer>
+</div>

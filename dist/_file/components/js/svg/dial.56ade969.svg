@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 27.6.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="template" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 100 100" style="enable-background:new 0 0 100 100;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#D3D3D3;}
+	.st1{fill:#5E560A;}
+	.st2{fill:url(#shadow-dial_00000084509394449908923570000013475764168610343865_);}
+	.st3{fill:url(#shadow-dial_00000099636673268467674520000009492467704400312215_);}
+	.st4{fill:url(#shadow-dial_00000150814735495613062270000016328349607535593117_);}
+	.st5{fill:#585B1B;}
+	.st6{fill:url(#shadow-rect_00000050632899730248487950000001661897984896121248_);}
+	.st7{fill:url(#shadow-base_00000142896770159058299310000005724429244555669417_);}
+	.st8{opacity:0.6;}
+	.st9{fill:#FFFFFF;}
+	.st10{fill:#3F3F15;}
+	.st11{fill:#5B462B;}
+	.st12{fill:#3F2C15;}
+	.st13{opacity:0.47;}
+	.st14{fill:#242626;}
+	.st15{opacity:0.76;}
+	.st16{opacity:0.14;fill:#717375;}
+	.st17{fill:#B79E21;}
+	.st18{fill:#FEEA55;}
+	.st19{fill:#685C07;}
+	.st20{opacity:1.000000e-22;fill:#FEEA55;}
+</style>
+<g id="objects">
+	<rect id="object-base" class="st0" width="100" height="100"/>
+	<g id="group-dial">
+		<circle id="object-dial" class="st1" cx="50" cy="50" r="30"/>
+		
+			<linearGradient id="shadow-dial_00000053543314097575932310000006229238272268820906_" gradientUnits="userSpaceOnUse" x1="20" y1="50" x2="50" y2="50">
+			<stop  offset="0" style="stop-color:#FFFFFF"/>
+			<stop  offset="1" style="stop-color:#231F20"/>
+		</linearGradient>
+		
+			<path id="shadow-dial_00000169528620244355552410000014908616067888779652_" style="fill:url(#shadow-dial_00000053543314097575932310000006229238272268820906_);" d="
+			M20,50c0,16.6,13.4,30,30,30V20C33.4,20,20,33.4,20,50z"/>
+		
+			<linearGradient id="shadow-dial_00000160175666404440386240000000620028258023343786_" gradientUnits="userSpaceOnUse" x1="82.6388" y1="49.8511" x2="54.1603" y2="49.9812">
+			<stop  offset="0" style="stop-color:#FFFFFF"/>
+			<stop  offset="1" style="stop-color:#231F20"/>
+		</linearGradient>
+		
+			<path id="shadow-dial_00000071554568143496596450000001619843103792513708_" style="fill:url(#shadow-dial_00000160175666404440386240000000620028258023343786_);" d="
+			M50,20v60c16.6,0,30-13.4,30-30S66.6,20,50,20z"/>
+		
+			<radialGradient id="shadow-dial_00000055676934278658026970000013403276813539171254_" cx="50" cy="52" r="30" gradientTransform="matrix(1 0 0 -1 0 102)" gradientUnits="userSpaceOnUse">
+			<stop  offset="0" style="stop-color:#FFFFFF"/>
+			<stop  offset="1" style="stop-color:#231F20"/>
+		</radialGradient>
+		
+			<circle id="shadow-dial" style="fill:url(#shadow-dial_00000055676934278658026970000013403276813539171254_);" cx="50" cy="50" r="30"/>
+		<rect id="object-rect" x="46.6" y="20.3" class="st5" width="6.9" height="59.6"/>
+		
+			<radialGradient id="shadow-rect_00000013171706995207829060000004203155634958040484_" cx="50" cy="51.9" r="21.1794" gradientTransform="matrix(1 0 0 -1 0 102)" gradientUnits="userSpaceOnUse">
+			<stop  offset="0" style="stop-color:#FFFFFF"/>
+			<stop  offset="1" style="stop-color:#231F20"/>
+		</radialGradient>
+		
+			<rect id="shadow-rect" x="46.6" y="20.3" style="fill:url(#shadow-rect_00000013171706995207829060000004203155634958040484_);" width="6.9" height="59.6"/>
+	</g>
+</g>
+<g id="shadows">
+	
+		<linearGradient id="shadow-base_00000072272099412884544770000008430871927152882597_" gradientUnits="userSpaceOnUse" x1="107.5116" y1="51.8133" x2="20.5814" y2="52.0955" gradientTransform="matrix(1 0 0 -1 0 102)">
+		<stop  offset="0" style="stop-color:#FFFFFF"/>
+		<stop  offset="1" style="stop-color:#231F20"/>
+	</linearGradient>
+	<path id="shadow-base" style="fill:url(#shadow-base_00000072272099412884544770000008430871927152882597_);" d="M0,0v100h100V0H0z
+		 M50,80c-16.6,0-30-13.4-30-30s13.4-30,30-30s30,13.4,30,30S66.6,80,50,80z"/>
+	<g class="st8">
+		<line class="st9" x1="8.5" y1="50" x2="91.5" y2="50"/>
+		<g>
+			<path d="M8.5,50c1.7-1.2,3.5-2.1,5.2-2.9c0.9-0.4,1.7-0.8,2.6-1.2c0.9-0.4,1.7-0.7,2.6-1v10.2c-0.9-0.3-1.7-0.7-2.6-1
+				c-0.9-0.4-1.7-0.7-2.6-1.2C11.9,52.1,10.2,51.2,8.5,50z"/>
+			<path d="M81.2,44.9c1.7,0.7,3.5,1.4,5.2,2.2c0.9,0.4,1.7,0.9,2.6,1.3c0.9,0.5,1.7,1,2.6,1.6c-0.9,0.6-1.7,1.1-2.6,1.6
+				c-0.9,0.5-1.7,0.9-2.6,1.3c-1.7,0.8-3.5,1.5-5.2,2.2V44.9z"/>
+		</g>
+	</g>
+	<g class="st8">
+		<line class="st9" x1="20.6" y1="79.4" x2="79.4" y2="20.6"/>
+		<g>
+			<path d="M20.6,79.4c0.4-2,1-3.9,1.6-5.7c0.3-0.9,0.7-1.8,1-2.7c0.3-0.9,0.7-1.7,1.1-2.6l7.2,7.2c-0.9,0.4-1.7,0.8-2.6,1.1
+				c-0.9,0.3-1.7,0.7-2.7,1C24.5,78.4,22.7,79,20.6,79.4z"/>
+			<path d="M68.4,24.4c1.7-0.8,3.4-1.5,5.2-2.1c0.9-0.3,1.8-0.6,2.8-0.9c1-0.3,1.9-0.5,2.9-0.7c-0.2,1-0.5,2-0.7,2.9
+				c-0.3,0.9-0.6,1.9-0.9,2.8c-0.6,1.8-1.4,3.5-2.1,5.2L68.4,24.4z"/>
+		</g>
+	</g>
+	<g class="st8">
+		<line class="st9" x1="50" y1="91.5" x2="50" y2="8.5"/>
+		<g>
+			<path d="M50,91.5c-1.2-1.7-2.1-3.5-2.9-5.2c-0.4-0.9-0.8-1.7-1.2-2.6c-0.4-0.9-0.7-1.7-1-2.6h10.2c-0.3,0.9-0.7,1.7-1,2.6
+				c-0.4,0.9-0.7,1.7-1.2,2.6C52.1,88.1,51.2,89.8,50,91.5z"/>
+			<path d="M44.9,18.8c0.7-1.7,1.4-3.5,2.2-5.2c0.4-0.9,0.9-1.7,1.3-2.6c0.5-0.9,1-1.7,1.6-2.6c0.6,0.9,1.1,1.7,1.6,2.6
+				c0.5,0.9,0.9,1.7,1.3,2.6c0.8,1.7,1.5,3.5,2.2,5.2H44.9z"/>
+		</g>
+	</g>
+	<g class="st8">
+		<line class="st9" x1="79.4" y1="79.4" x2="20.6" y2="20.6"/>
+		<g>
+			<path d="M79.4,79.4c-2-0.4-3.9-1-5.7-1.6c-0.9-0.3-1.8-0.7-2.7-1c-0.9-0.3-1.7-0.7-2.6-1.1l7.2-7.2c0.4,0.9,0.8,1.7,1.1,2.6
+				c0.3,0.9,0.7,1.7,1,2.7C78.4,75.5,79,77.3,79.4,79.4z"/>
+			<path d="M24.4,31.6c-0.8-1.7-1.5-3.4-2.1-5.2c-0.3-0.9-0.6-1.8-0.9-2.8c-0.3-1-0.5-1.9-0.7-2.9c1,0.2,2,0.5,2.9,0.7
+				c0.9,0.3,1.9,0.6,2.8,0.9c1.8,0.6,3.5,1.4,5.2,2.1L24.4,31.6z"/>
+		</g>
+	</g>
+</g>
+<g>
+	<circle class="st5" cx="86.4" cy="14.4" r="8.6"/>
+	<circle class="st5" cx="11.4" cy="14.4" r="8.6"/>
+	<circle class="st5" cx="86.4" cy="89.4" r="8.6"/>
+	<circle class="st5" cx="11.4" cy="89.4" r="8.6"/>
+	<polygon class="st10" points="12.8,23 9,23 10.1,5.8 13.6,5.8 	"/>
+	<polygon class="st10" points="12.8,98 9,98 10.1,80.8 13.6,80.8 	"/>
+	<polygon class="st10" points="87.9,98 84.2,98 85.2,80.8 88.7,80.8 	"/>
+	<polygon class="st10" points="87.9,23 84.2,23 85.2,5.8 88.7,5.8 	"/>
+</g>
+<g>
+	<circle class="st11" cx="86.4" cy="14.4" r="8.6"/>
+	<circle class="st11" cx="11.4" cy="14.4" r="8.6"/>
+	<circle class="st11" cx="86.4" cy="89.4" r="8.6"/>
+	<circle class="st11" cx="11.4" cy="89.4" r="8.6"/>
+	<polygon class="st12" points="12.8,23 9,23 10.1,5.8 13.6,5.8 	"/>
+	<polygon class="st12" points="12.8,98 9,98 10.1,80.8 13.6,80.8 	"/>
+	<polygon class="st12" points="87.9,98 84.2,98 85.2,80.8 88.7,80.8 	"/>
+	<polygon class="st12" points="87.9,23 84.2,23 85.2,5.8 88.7,5.8 	"/>
+</g>
+<g class="st13">
+	<circle cx="86.4" cy="14.4" r="8.6"/>
+	<circle class="st14" cx="11.4" cy="14.4" r="8.6"/>
+	<circle cx="86.4" cy="89.4" r="8.6"/>
+	<circle class="st14" cx="11.4" cy="89.4" r="8.6"/>
+	<polygon points="12.8,23 9,23 10.1,5.8 13.6,5.8 	"/>
+	<polygon points="12.8,98 9,98 10.1,80.8 13.6,80.8 	"/>
+</g>
+<g id="object-background" class="st15">
+	<path id="shadow-base_00000067194700324798868330000016773665036501118894_" d="M0,0v100h100V0H0z M50,80c-16.6,0-30-13.4-30-30
+		s13.4-30,30-30s30,13.4,30,30S66.6,80,50,80z"/>
+</g>
+<polygon class="st16" points="87.9,23 84.2,23 85.2,5.8 88.7,5.8 "/>
+<polygon class="st16" points="87.9,98 84.2,98 85.2,80.8 88.7,80.8 "/>
+<rect x="-0.6" class="st17" width="100.6" height="1.2"/>
+<rect x="50.1" y="50.5" transform="matrix(-1.836970e-16 1 -1 -1.836970e-16 150.4889 -48.9259)" class="st18" width="99.2" height="0.6"/>
+<rect x="-0.6" y="99.4" class="st19" width="100.6" height="1.2"/>
+<rect x="-49.5" y="50.1" transform="matrix(-1.836970e-16 1 -1 -1.836970e-16 50.4509 50.7195)" class="st19" width="98.8" height="0.9"/>
+<g>
+	<path d="M50,20c17.1-1.1,30.8,13,30.5,29.9C80.7,66.6,67,81.2,50,80c16.4-0.8,29.6-13.3,29.5-30.1C79.6,32.9,66.6,20.8,50,20L50,20
+		z"/>
+</g>
+<g id="interaction-area">
+	<rect x="0.3" y="20" class="st20" width="99.1" height="60"/>
+</g>
+</svg>

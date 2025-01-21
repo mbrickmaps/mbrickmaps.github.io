@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="generator" content="Observable Framework v1.11.0">
+<title>Switches Dials Knobs | Portfolio</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="preload" as="style" href="./_import/custom-style.95d164d2.css">
+<link rel="preload" as="style" href="./_observablehq/stdlib/inputs.ea9fd553.css">
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="stylesheet" type="text/css" href="./_import/custom-style.95d164d2.css">
+<link rel="stylesheet" type="text/css" href="./_observablehq/stdlib/inputs.ea9fd553.css">
+<link rel="modulepreload" href="./_observablehq/client.f5ee32d5.js">
+<link rel="modulepreload" href="./_observablehq/runtime.3f7f73d9.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.2229c972.js">
+<link rel="modulepreload" href="./_import/utils/state.679fd113.js">
+<link rel="modulepreload" href="./_import/components/inputs/HUI.2907395b.js">
+<link rel="modulepreload" href="./_import/components/retro/RetroDial.a4681557.js">
+<link rel="modulepreload" href="./_import/components/retro/RetroLight.4d2f2375.js">
+<link rel="modulepreload" href="./_import/components/retro/RetroRadio.cc233e1d.js">
+<link rel="modulepreload" href="./_import/utils/helpers.07b30cd2.js">
+<link rel="modulepreload" href="./_import/components/js/retro-dial.ea8f2cde.js">
+<link rel="modulepreload" href="./_npm/gsap@3.12.5/all.d47bb9de.js">
+<link rel="modulepreload" href="./_node/@observablehq/inputs@0.12.0/index.4eed0a6e.js">
+<link rel="modulepreload" href="./_import/components/retro/RetroComponent.cdbcd976.js">
+<link rel="modulepreload" href="./_observablehq/stdlib/inputs.e0c0bc10.js">
+<link rel="modulepreload" href="./_npm/htl@0.3.1/063eb405.js">
+<link rel="modulepreload" href="./_npm/isoformat@0.2.1/c68fbd73.js">
+<link rel="modulepreload" href="./_node/htl@0.3.1/index.0caf36e7.js">
+<link rel="modulepreload" href="./_node/isoformat@0.2.1/index.0882e9d9.js">
+<link rel="icon" href="./_file/observable.1af93621.png" type="image/png" sizes="32x32">
+<script type="module">
+
+import {define} from "./_observablehq/client.f5ee32d5.js";
+
+define({id: "aecf7c1f", inputs: ["display","state"], body: (display,state) => {
+display(state);
+}});
+
+define({id: "57f1ca62", outputs: ["state","Slider","Toggle","Radio","RetroDial","RetroLight","RetroRadio","linkComponents","setVisibility","RetroButton","gsap","MotionPathPlugin","initValueVolume","radioOptions","customSVG","radioComponent","brightnessSlider","lightToggle","retroDial","retrolight","retroRadio"], body: async () => {
+const [{state}, {Slider, Toggle, Radio}, {RetroDial}, {RetroLight}, {RetroRadio}, {linkComponents, setVisibility}, {RetroButton}, {gsap, MotionPathPlugin}] = await Promise.all([import("./_import/utils/state.679fd113.js"), import("./_import/components/inputs/HUI.2907395b.js"), import("./_import/components/retro/RetroDial.a4681557.js"), import("./_import/components/retro/RetroLight.4d2f2375.js"), import("./_import/components/retro/RetroRadio.cc233e1d.js"), import("./_import/utils/helpers.07b30cd2.js"), import("./_import/components/js/retro-dial.ea8f2cde.js"), import("./_npm/gsap@3.12.5/all.d47bb9de.js")]);
+
+gsap.registerPlugin(MotionPathPlugin);
+
+const initValueVolume = 0
+// Define the shared property
+
+const radioOptions = [
+  { value: 'option1', label: 'Option 1' },
+  { value: 'option2', label: 'Option 2' },
+  { value: 'option3', label: 'Option 3' },
+  { value: 'option4', label: 'Option 4' }
+];
+
+const customSVG = `
+  <svg width="100" height="100">
+    <!-- Custom SVG content -->
+    <rect x="10" y="10" width="80" height="80" stroke="#00f" stroke-width="3" fill="#0f0" />
+    <line class="rotate-cw" id="indicator" x1="50" y1="50" x2="90" y2="50" stroke="#f00" stroke-width="2" />
+  </svg>
+`
+// Create components
+//(state, property, min = 0, max = 100, initialValue = 50, label = "", step = 1, options = {})
+
+/*UI components*/
+const radioComponent = new Radio(state, 'selectedOption', radioOptions, { label: "Select an Option" });
+
+const brightnessSlider = new Slider(state, 'brightness', 0, 100, 100, 'Brightness', 25, {
+  placeholder: "Adjust brightness",                 // Placeholder text
+  transform: null,                           // Default as null
+  invert: null,                              // Default as null
+  validate: null,                            // Default as null
+  width: 300,                                // Width of the input element
+  disabled: false                            // Whether the slider is disabled
+})
+
+const lightToggle = new Toggle(state,'light', 'Toggle Light',{
+  values: [false, true],
+  value: false, // Initial value
+  disabled: false
+})
+
+/*Graphic components*/
+const retroDial = new RetroDial(state,'brightness',initValueVolume,customSVG);
+const retrolight = new RetroLight(state,'light',false);
+const retroRadio = new RetroRadio(state, 'selectedOption', radioOptions,"", "horizontal");
+
+
+state.subscribe('brightness', (newValue) => {
+    //see options above
+    //not sure this is mapping correctly, 3.6 is used to match to rotation, 
+    gsap.to('[class^="rotate-"]', { rotation: newValue * 3.6, duration: 0.41, ease: 'elastic.inOut' }); // Example rotation mapping
+ 
+    gsap.to('[class^="light-"]', {
+        autoAlpha: newValue/100,
+        duration: 0.5,
+        ease: 'elastic.inOut',
+    });
+    
+    gsap.to('[class^="glow-"]', {
+        autoAlpha: newValue/100,
+        duration: 0.45,
+        ease: 'elastic.inOut',
+    })
+});
+
+
+state.subscribe('light', (newValue) => {
+    //console.log(newLight)
+    //see options above
+    gsap.to('[class^="light-"]', {
+    //autoAlpha: newValue ? 1 : 0,
+    duration: 2,
+    ease: 'power4.out',
+    });
+});
+
+// Add components to the DOM
+document.getElementById('controls').appendChild(brightnessSlider.element);
+document.getElementById('controls').appendChild(lightToggle.element)
+document.getElementById('controls').appendChild(radioComponent.element)
+
+document.getElementById('graphics').appendChild(retroDial.element);
+document.getElementById('graphics').appendChild(retrolight.element);
+document.getElementById('graphics').appendChild(retroRadio.element);
+
+// Toggle Visibility
+document.getElementById('toggle-visibility').addEventListener('click', () => {
+    const controls = document.getElementById('controls');
+    const graphics = document.getElementById('graphics');
+    const isControlsVisible = controls.style.display !== 'none';
+    
+    setVisibility(controls, !isControlsVisible);
+    //setVisibility(graphics, isControlsVisible);
+})
+/*overwrite able*/
+//state.setProperty('brightness', initValueVolume);
+state.setProperty('light', initValueVolume);
+
+state.setProperty('selectedOption', 'option2');
+
+return {state,Slider,Toggle,Radio,RetroDial,RetroLight,RetroRadio,linkComponents,setVisibility,RetroButton,gsap,MotionPathPlugin,initValueVolume,radioOptions,customSVG,radioComponent,brightnessSlider,lightToggle,retroDial,retrolight,retroRadio};
+}});
+
+</script>
+<input id="observablehq-sidebar-toggle" type="checkbox" title="Toggle sidebar">
+<label id="observablehq-sidebar-backdrop" for="observablehq-sidebar-toggle"></label>
+<nav id="observablehq-sidebar">
+  <ol>
+    <label id="observablehq-sidebar-close" for="observablehq-sidebar-toggle"></label>
+    <li class="observablehq-link"><a href="./">Portfolio</a></li>
+  </ol>
+  <ol>
+    <li class="observablehq-link"><a href="./blend-mixer">Blend Mixer</a></li>
+    <li class="observablehq-link"><a href="./cartography">🌎🌍🌏 Cartography</a></li>
+    <li class="observablehq-link"><a href="./collage">Collage</a></li>
+    <li class="observablehq-link"><a href="./geography">Untitled</a></li>
+    <li class="observablehq-link"><a href="./make-a-house">🏠 Architecture Markup</a></li>
+    <li class="observablehq-link"><a href="./make-a-map">🗺️ Make A Map (Mapa)</a></li>
+    <li class="observablehq-link"><a href="./make-a-migration">📍 Family Migration Routes</a></li>
+    <li class="observablehq-link"><a href="./make-a-plss">🔍 PLSS Targeting</a></li>
+    <li class="observablehq-link"><a href="./make-a-tree">🌳 Customize Ancestry™️ Icons</a></li>
+    <li class="observablehq-link"><a href="./mapas">Untitled</a></li>
+    <li class="observablehq-link"><a href="./ne-10m">Natural Earth 10m</a></li>
+    <li class="observablehq-link"><a href="./photography">📷 Photography</a></li>
+    <li class="observablehq-link"><a href="./project-line-work">Project Line Work</a></li>
+    <li class="observablehq-link"><a href="./reflections">Reflections</a></li>
+    <li class="observablehq-link observablehq-link-active"><a href="./switches-dials-knobs">Switches Dials Knobs</a></li>
+    <li class="observablehq-link"><a href="./tool">Reflections Tool</a></li>
+    <li class="observablehq-link"><a href="./docs/README">Switches Dials Knobs</a></li>
+  </ol>
+</nav>
+<script>{Object.assign(document.createElement("a"),{href:""}).password&&location.replace(location.href);const e=document.querySelector("#observablehq-sidebar"),t=document.querySelector("#observablehq-sidebar-toggle"),r=sessionStorage.getItem("observablehq-sidebar");r?t.checked=r==="true":t.indeterminate=!0;for(const o of document.querySelectorAll("#observablehq-sidebar summary")){const s=o.parentElement;switch(sessionStorage.getItem(`observablehq-sidebar:${o.textContent}`)){case"true":s.open=!0;break;case"false":s.classList.contains("observablehq-section-active")||(s.open=!1);break}}addEventListener("beforeunload",()=>sessionStorage.setItem("observablehq-sidebar-scrolly",`${e.scrollTop}`));const a=sessionStorage.getItem("observablehq-sidebar-scrolly");a!=null&&(e.style.cssText="overflow: hidden;",e.scrollTop=+a,e.style.cssText="");}</script>
+<aside id="observablehq-toc" data-selector="h1:not(:first-of-type)[id], h2:first-child[id], :not(h1) + h2[id]">
+<nav>
+</nav>
+</aside>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<h1 id="switches-dials-knobs" tabindex="-1"><a class="observablehq-header-anchor" href="#switches-dials-knobs">Switches Dials Knobs</a></h1>
+<style>
+[class^="shadow-"] {
+  mix-blend-mode:multiply
+}
+
+[class^="glow-"] {
+    filter: blur(8px);
+    mix-blend-mode: multiply;
+}
+</style>
+<div class="observablehq observablehq--block"><!--:aecf7c1f:--></div>
+<!-- Container for Graphical Components -->
+<div id="graphics">
+    <!-- Graphical components (dials, gauges, lights) will be appended here -->
+</div>
+<!-- Optional: Button to Toggle Visibility of Components -->
+<button id="toggle-visibility">Toggle UI Inputs</button>
+<div id="controls"></div>
+<!-- Optional: Container for Additional UI Elements or Debugging -->
+<div id="additional-ui">
+</div>
+<div class="observablehq observablehq--block"><!--:57f1ca62:--></div>
+</main>
+<footer id="observablehq-footer">
+<nav><a rel="prev" href="./reflections"><span>Reflections</span></a><a rel="next" href="./tool"><span>Reflections Tool</span></a></nav>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-21T08:01:49">Jan 21, 2025</a>.</div>
+</footer>
+</div>
