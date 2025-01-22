@@ -5,10 +5,10 @@
 <title>Portfolio</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
-<link rel="preload" as="style" href="./_import/custom-style.95d164d2.css">
+<link rel="preload" as="style" href="./_import/custom-style.2405f33f.css">
 <link rel="preload" as="style" href="./_observablehq/stdlib/inputs.ea9fd553.css">
 <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
-<link rel="stylesheet" type="text/css" href="./_import/custom-style.95d164d2.css">
+<link rel="stylesheet" type="text/css" href="./_import/custom-style.2405f33f.css">
 <link rel="stylesheet" type="text/css" href="./_observablehq/stdlib/inputs.ea9fd553.css">
 <link rel="modulepreload" href="./_observablehq/client.f5ee32d5.js">
 <link rel="modulepreload" href="./_observablehq/runtime.3f7f73d9.js">
@@ -29,19 +29,38 @@ registerFile("./components/insta2.png", {"name":"./components/insta2.png","mimeT
 registerFile("./components/insta3.png", {"name":"./components/insta3.png","mimeType":"image/png","path":"./_file/components/insta3.ce61a8a6.png","lastModified":1727649891977,"size":409729});
 registerFile("./components/insta4.png", {"name":"./components/insta4.png","mimeType":"image/png","path":"./_file/components/insta4.d925e18f.png","lastModified":1727649891983,"size":789275});
 registerFile("./components/make-a-house.png", {"name":"./components/make-a-house.png","mimeType":"image/png","path":"./_file/components/make-a-house.bd400b61.png","lastModified":1727648807639,"size":257347});
+registerFile("./components/make-a-map.png", {"name":"./components/make-a-map.png","mimeType":"image/png","path":"./_file/components/make-a-map.a4706f3b.png","lastModified":1728136200683,"size":89085});
 registerFile("./components/make-a-migration.png", {"name":"./components/make-a-migration.png","mimeType":"image/png","path":"./_file/components/make-a-migration.19b88db7.png","lastModified":1727649348829,"size":279504});
 registerFile("./components/make-a-plss.png", {"name":"./components/make-a-plss.png","mimeType":"image/png","path":"./_file/components/make-a-plss.2a46ff30.png","lastModified":1727647423498,"size":90170});
 registerFile("./components/make-a-tree.png", {"name":"./components/make-a-tree.png","mimeType":"image/png","path":"./_file/components/make-a-tree.a219a574.png","lastModified":1727648502197,"size":246658});
+registerFile("./components/plastic-texture.png", {"name":"./components/plastic-texture.png","mimeType":"image/png","path":"./_file/components/plastic-texture.d07f380f.png","lastModified":1728225212279,"size":272565});
+registerFile("./components/static-texture.png", {"name":"./components/static-texture.png","mimeType":"image/png","path":"./_file/components/static-texture.38d7a7a9.png","lastModified":1728226273516,"size":541889});
+registerFile("./components/texture.webp", {"name":"./components/texture.webp","mimeType":"image/webp","path":"./_file/components/texture.f694f1d0.webp","lastModified":1728141695695,"size":652198});
 registerFile("./components/toggle0.png", {"name":"./components/toggle0.png","mimeType":"image/png","path":"./_file/components/toggle0.93dba3e9.png","lastModified":1728215310342,"size":74176});
 registerFile("./components/toggle1.png", {"name":"./components/toggle1.png","mimeType":"image/png","path":"./_file/components/toggle1.02e3187d.png","lastModified":1728215516032,"size":72111});
 
-define({id: "56e3f54a", inputs: ["FileAttachment"], outputs: ["gsap","MotionPathPlugin","toggle0","toggle1","toggleImg"], body: async (FileAttachment) => {
+define({id: "11eb3432", inputs: ["FileAttachment"], outputs: ["gsap","MotionPathPlugin","toggle0","toggle1","texture0","texture1","texture2","b0","b1","b2","b3","b4","i0","i1","i2","i3","toggleImg"], body: async (FileAttachment) => {
 const {gsap, MotionPathPlugin} = await import("./_npm/gsap@3.12.5/all.d47bb9de.js");
 
 gsap.registerPlugin(MotionPathPlugin);
 
 const toggle0 = await FileAttachment("./components/toggle0.png").url()
 const toggle1 = await FileAttachment("./components/toggle1.png").url()
+
+const texture0 = await FileAttachment("./components/texture.webp").url()
+const texture1 = await FileAttachment("./components/plastic-texture.png").url()
+const texture2 = await FileAttachment("./components/static-texture.png").url()
+
+const b0 = await FileAttachment("./components/make-a-house.png").url()
+const b1 = await FileAttachment("./components/make-a-map.png").url()
+const b2 = await FileAttachment("./components/make-a-migration.png").url()
+const b3 = await FileAttachment("./components/make-a-plss.png").url()
+const b4 = await FileAttachment("./components/make-a-tree.png").url()
+
+const i0 = await FileAttachment("./components/insta1.png").url()
+const i1 = await FileAttachment("./components/insta2.png").url()
+const i2 = await FileAttachment("./components/insta3.png").url()
+const i3 = await FileAttachment("./components/insta4.png").url()
 
 // Get reference to the image element
 const toggleImg = document.getElementById('toggle-img');
@@ -75,10 +94,10 @@ toggleImg.onclick = function() {
   }
 };
 
-return {gsap,MotionPathPlugin,toggle0,toggle1,toggleImg};
+return {gsap,MotionPathPlugin,toggle0,toggle1,texture0,texture1,texture2,b0,b1,b2,b3,b4,i0,i1,i2,i3,toggleImg};
 }});
 
-define({id: "6d7ba2fa", inputs: ["FileAttachment","gsap"], outputs: ["RetroDial","RetroButton","frames","toggleButton","overlay","button1","button2","button3"], body: async (FileAttachment,gsap) => {
+define({id: "4ed3b49f", inputs: ["FileAttachment","gsap","b1","texture0","b0","b2","b3","b4","i0"], outputs: ["RetroDial","RetroButton","frames","toggleButton","overlay","button1","button2","button3"], body: async (FileAttachment,gsap,b1,texture0,b0,b2,b3,b4,i0) => {
 const {RetroDial, RetroButton} = await import("./_import/components/js/retro-dial.ea8f2cde.js");
 
 const frames = [
@@ -130,9 +149,37 @@ const button1 = new RetroButton(100, 100, 'yellow','WARNING','true').createLight
 const button2 = new RetroButton(50, 50, '#009e37',' ','true').createLight()
 const button3 = new RetroButton(200, 100, '#ff0000',' ','true').createLight()
 
-document.querySelector(".light1").appendChild(button1)
-document.querySelector(".light2").appendChild(button2)
-document.querySelector(".light3").appendChild(button3)
+//document.querySelector(".light1").appendChild(button1)
+//document.querySelector(".light2").appendChild(button2)
+//document.querySelector(".light3").appendChild(button3)
+
+
+
+// Then use it
+//.frame
+document.querySelector(".main-project .card:nth-child(1)").style.background = `url(${b1})`
+
+document.querySelectorAll(".frame").forEach((card, index) => {
+    card.style.background = `url(${texture0})`
+})
+
+document.querySelectorAll(".projects .card").forEach((card, index) => {
+  if (index === 0) {  // First card
+    card.style.background = `url(${b0})`
+  }
+  if (index === 1) {  // First card
+    card.style.background = `url(${b2})`
+  }
+  if (index === 2) {  // First card
+    card.style.background = `url(${b3})`
+  }
+  if (index === 3) {  // First card
+    card.style.background = `url(${b4})`
+  }
+    if (index === 4) {  // First card
+    card.style.background = `url(${i0})`
+  }
+})
 
 return {RetroDial,RetroButton,frames,toggleButton,overlay,button1,button2,button3};
 }});
@@ -159,7 +206,7 @@ return {RetroDial,RetroButton,frames,toggleButton,overlay,button1,button2,button
 </aside>
 <div id="observablehq-center">
 <main id="observablehq-main" class="observablehq">
-<div class="observablehq observablehq--block"><!--:56e3f54a:--></div>
+<div class="observablehq observablehq--block"><!--:11eb3432:--></div>
 <div id="overlay" class="filter-on">
 <div class="spotlight"></div>
 <div class="hero">
@@ -186,7 +233,7 @@ return {RetroDial,RetroButton,frames,toggleButton,overlay,button1,button2,button
     <img src="./_file/components/toggle0.93dba3e9.png" alt="Toggle Off" id="toggle-img">
   </div>
 </div>
-<div class="observablehq observablehq--block"><!--:6d7ba2fa:--></div>
+<div class="observablehq observablehq--block"><!--:4ed3b49f:--></div>
 <style>
 .toggle-button {
       top: 20px;
@@ -215,10 +262,9 @@ body {
 } 
 
 .main-project .card:nth-child(1){
-  background-image: url('./components/make-a-map.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: contain !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 
 .card p{
@@ -236,66 +282,61 @@ body {
 
 .projects .card:nth-child(1){
   background-image: url('./components/make-a-house.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 
 .projects .card:nth-child(2){
   background-image: url('./components/make-a-plss.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 
 .card:nth-child(3){
   background-image: url('./components/make-a-tree.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 
 .card:nth-child(4){
   background-image: url('./components/make-a-migration.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
-.card:nth-child(4){
-  background-image: url('./components/make-a-migration.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
-}
+
 .card:nth-child(5){
   background-image: url('./components/insta1.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 .card:nth-child(6){
   background-image: url('./components/insta2.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 .card:nth-child(7){
   background-image: url('./components/insta3.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 
 .card:nth-child(8){
   background-image: url('./components/insta4.png');
-  background-size: cover; /* or 'contain' depending on how you want the image to scale */
-  background-repeat: no-repeat;
-  background-position: center;
+  background-size: cover !important; 
+  background-repeat: no-repeat !important; 
+  background-position: center !important; 
 }
 </style>
 </div></main>
 <footer id="observablehq-footer">
 <nav><a rel="next" href="./make-a-map"><span>🗺️ Make A Map (Mapa)</span></a></nav>
-<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-22T06:32:34">Jan 22, 2025</a>.</div>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-22T07:42:37">Jan 22, 2025</a>.</div>
 </footer>
 </div>
