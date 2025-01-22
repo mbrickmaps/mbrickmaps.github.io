@@ -219,11 +219,11 @@ import {define} from "./_observablehq/client.f5ee32d5.js";
 import {registerFile} from "./_observablehq/stdlib.2229c972.js";
 
 registerFile("./@mbrickmaps/ne-10m/10m_coastline.json", {"name":"./@mbrickmaps/ne-10m/10m_coastline.json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/10m_coastline.json"});
-registerFile("./@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).json", {"name":"./@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).json"});
-registerFile("./@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.json", {"name":"./@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.json"});
-registerFile("./@mbrickmaps/ne-10m/ne_10m_lakes (1).json", {"name":"./@mbrickmaps/ne-10m/ne_10m_lakes (1).json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/ne_10m_lakes (1).json"});
-registerFile("./@mbrickmaps/ne-10m/ne_10m_populated_places.json", {"name":"./@mbrickmaps/ne-10m/ne_10m_populated_places.json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/ne_10m_populated_places.json"});
-registerFile("./@mbrickmaps/ne-10m/ocean.json", {"name":"./@mbrickmaps/ne-10m/ocean.json","mimeType":"application/json","path":"./@mbrickmaps/ne-10m/ocean.json"});
+registerFile("./@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).json", {"name":"./@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).json","mimeType":"application/json","path":"./_file/@mbrickmaps/ne-10m/ne_10m_admin_0_countries_usa (1) (1).ac90eeaa.json","lastModified":1664292493523,"size":19759918});
+registerFile("./@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.json", {"name":"./@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.json","mimeType":"application/json","path":"./_file/@mbrickmaps/ne-10m/ne_10m_admin_1_states_provinces.76c23f73.json","lastModified":1681830880595,"size":1946371});
+registerFile("./@mbrickmaps/ne-10m/ne_10m_lakes (1).json", {"name":"./@mbrickmaps/ne-10m/ne_10m_lakes (1).json","mimeType":"application/json","path":"./_file/@mbrickmaps/ne-10m/ne_10m_lakes (1).667c6332.json","lastModified":1663955314769,"size":2622274});
+registerFile("./@mbrickmaps/ne-10m/ne_10m_populated_places.json", {"name":"./@mbrickmaps/ne-10m/ne_10m_populated_places.json","mimeType":"application/json","path":"./_file/@mbrickmaps/ne-10m/ne_10m_populated_places.4100e12d.json","lastModified":1663349609374,"size":18219570});
+registerFile("./@mbrickmaps/ne-10m/ocean.json", {"name":"./@mbrickmaps/ne-10m/ocean.json","mimeType":"application/json","path":"./_file/@mbrickmaps/ne-10m/ocean.d6bfc4b7.json","lastModified":1673630389051,"size":4045486});
 
 define({id: "264cc6da", inputs: ["FileAttachment"], outputs: ["c","p","pr","lakes","oceans","coastlines","queryOverpass","DOM","d3Base","d3GeoProjection","d3GeoPolygon","d3GeoScaleBar","d3Array","proj4","turf","geojsonrewind","topoClient","topoSimplify","topoSever","polylabel","d3","topojson"], body: async (FileAttachment) => {
 const [{default: queryOverpass}, {DOM}, d3Base, d3GeoProjection, d3GeoPolygon, d3GeoScaleBar, d3Array, proj4, turf, geojsonrewind, topoClient, topoSimplify, topoSever, polylabel] = await Promise.all([import("./_npm/query-overpass@1.5.5/69ce1f03.js"), import("./_observablehq/stdlib.2229c972.js"), import("./_npm/d3@7.9.0/7055d4c5.js"), import("./_npm/d3-geo-projection@2.9.0/ef1109a2.js"), import("./_npm/d3-geo-polygon@2.0.1/d02baae9.js"), import("./_npm/d3-geo-scale-bar@1.2.5/273332d7.js"), import("./_npm/d3-array@3.2.4/e95f898e.js"), import("./_npm/proj4@2.7.5/034b033c.js"), import("./_npm/@turf/turf@7.2.0/430a7ea5.js"), import("./_npm/geojson-rewind@0.3.1/7d5b99d1.js"), import("./_npm/topojson-client@3.1.0/44d97fcb.js"), import("./_npm/topojson-simplify@3.0.3/fd9926cb.js"), import("./_npm/topojson-server@3.0.1/470bdfd4.js"), import("./_npm/polylabel@1.1.0/03ffa5c3.js")]);
@@ -3235,25 +3235,12 @@ return {overPass};
     <label id="observablehq-sidebar-close" for="observablehq-sidebar-toggle"></label>
     <li class="observablehq-link"><a href="./">Portfolio</a></li>
   </ol>
-  <ol>
-    <li class="observablehq-link"><a href="./blend-mixer">Blend Mixer</a></li>
-    <li class="observablehq-link"><a href="./cartography">🌎🌍🌏 Cartography</a></li>
-    <li class="observablehq-link"><a href="./collage">Collage</a></li>
-    <li class="observablehq-link"><a href="./geography">Untitled</a></li>
-    <li class="observablehq-link"><a href="./make-a-house">🏠 Architecture Markup</a></li>
+  <section>
+    <summary>Examples</summary>
+    <ol>
     <li class="observablehq-link"><a href="./make-a-map">🗺️ Make A Map (Mapa)</a></li>
-    <li class="observablehq-link"><a href="./make-a-migration">📍 Family Migration Routes</a></li>
-    <li class="observablehq-link"><a href="./make-a-plss">🔍 PLSS Targeting</a></li>
-    <li class="observablehq-link"><a href="./make-a-tree">🌳 Customize Ancestry™️ Icons</a></li>
-    <li class="observablehq-link observablehq-link-active"><a href="./mapas">Untitled</a></li>
-    <li class="observablehq-link"><a href="./ne-10m">Natural Earth 10m</a></li>
-    <li class="observablehq-link"><a href="./photography">📷 Photography</a></li>
-    <li class="observablehq-link"><a href="./project-line-work">Project Line Work</a></li>
-    <li class="observablehq-link"><a href="./reflections">Reflections</a></li>
-    <li class="observablehq-link"><a href="./switches-dials-knobs">Switches Dials Knobs</a></li>
-    <li class="observablehq-link"><a href="./tool">Reflections Tool</a></li>
-    <li class="observablehq-link"><a href="./docs/README">Switches Dials Knobs</a></li>
-  </ol>
+    </ol>
+  </section>
 </nav>
 <script>{Object.assign(document.createElement("a"),{href:""}).password&&location.replace(location.href);const e=document.querySelector("#observablehq-sidebar"),t=document.querySelector("#observablehq-sidebar-toggle"),r=sessionStorage.getItem("observablehq-sidebar");r?t.checked=r==="true":t.indeterminate=!0;for(const o of document.querySelectorAll("#observablehq-sidebar summary")){const s=o.parentElement;switch(sessionStorage.getItem(`observablehq-sidebar:${o.textContent}`)){case"true":s.open=!0;break;case"false":s.classList.contains("observablehq-section-active")||(s.open=!1);break}}addEventListener("beforeunload",()=>sessionStorage.setItem("observablehq-sidebar-scrolly",`${e.scrollTop}`));const a=sessionStorage.getItem("observablehq-sidebar-scrolly");a!=null&&(e.style.cssText="overflow: hidden;",e.scrollTop=+a,e.style.cssText="");}</script>
 <aside id="observablehq-toc" data-selector="h1:not(:first-of-type)[id], h2:first-child[id], :not(h1) + h2[id]">
@@ -5163,7 +5150,6 @@ return {overPass};
 <div class="observablehq observablehq--block"><!--:4ed27055:--></div>
 </main>
 <footer id="observablehq-footer">
-<nav><a rel="prev" href="./make-a-tree"><span>🌳 Customize Ancestry™️ Icons</span></a><a rel="next" href="./ne-10m"><span>Natural Earth 10m</span></a></nav>
-<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-21T08:01:49">Jan 21, 2025</a>.</div>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-22T06:32:34">Jan 22, 2025</a>.</div>
 </footer>
 </div>

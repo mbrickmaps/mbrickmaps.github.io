@@ -13,7 +13,7 @@
 <link rel="modulepreload" href="./_observablehq/client.f5ee32d5.js">
 <link rel="modulepreload" href="./_observablehq/runtime.3f7f73d9.js">
 <link rel="modulepreload" href="./_observablehq/stdlib.2229c972.js">
-<link rel="modulepreload" href="./_import/components/js/mapData.63807af1.js">
+<link rel="modulepreload" href="./_import/components/js/mapData.47c5fe90.js">
 <link rel="modulepreload" href="./_npm/gsap@3.12.5/all.d47bb9de.js">
 <link rel="modulepreload" href="./_import/components/js/retro-dial.ea8f2cde.js">
 <link rel="modulepreload" href="./_npm/d3@7.9.0/7055d4c5.js">
@@ -234,7 +234,7 @@ registerFile("./components/js/ls_rivers.json", {"name":"./components/js/ls_river
 registerFile("./components/js/ls_waterbodies.json", {"name":"./components/js/ls_waterbodies.json","mimeType":"application/json","path":"./_file/components/js/ls_waterbodies.94b693c8.json","lastModified":1711631010385,"size":208731});
 registerFile("./components/js/n.geojson", {"name":"./components/js/n.geojson","mimeType":"application/geo+json","path":"./_file/components/js/n.94d01417.geojson","lastModified":1711640294431,"size":198});
 registerFile("./components/js/ne_10m_admin_0_countries_usa (1) (1).json", {"name":"./components/js/ne_10m_admin_0_countries_usa (1) (1).json","mimeType":"application/json","path":"./_file/components/js/ne_10m_admin_0_countries_usa (1) (1).ac90eeaa.json","lastModified":1664292493523,"size":19759918});
-registerFile("./components/js/ne_10m_admin_1_states_provinces.json", {"name":"./components/js/ne_10m_admin_1_states_provinces.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_admin_1_states_provinces.683d5a72.json","lastModified":1663349665612,"size":18974277});
+registerFile("./components/js/ne_10m_admin_1_states_provinces.json", {"name":"./components/js/ne_10m_admin_1_states_provinces.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_admin_1_states_provinces.76c23f73.json","lastModified":1681830880595,"size":1946371});
 registerFile("./components/js/ne_10m_coastline.json", {"name":"./components/js/ne_10m_coastline.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_coastline.d77ca826.json","lastModified":1663349608805,"size":4102314});
 registerFile("./components/js/ne_10m_lakes (1).json", {"name":"./components/js/ne_10m_lakes (1).json","mimeType":"application/json","path":"./_file/components/js/ne_10m_lakes (1).667c6332.json","lastModified":1663955314769,"size":2622274});
 registerFile("./components/js/ne_10m_populated_places.json", {"name":"./components/js/ne_10m_populated_places.json","mimeType":"application/json","path":"./_file/components/js/ne_10m_populated_places.4100e12d.json","lastModified":1663349609374,"size":18219570});
@@ -249,7 +249,7 @@ registerFile("./components/js/svg/dial.svg", {"name":"./components/js/svg/dial.s
 registerFile("./components/js/w.geojson", {"name":"./components/js/w.geojson","mimeType":"application/geo+json","path":"./_file/components/js/w.f9a0a591.geojson","lastModified":1711640294440,"size":197});
 
 define({id: "abf51f56", outputs: ["Mapa","defaultSettings","terrainSettings","newsletterSettingsSimple"], body: async () => {
-const {Mapa, defaultSettings, terrainSettings, newsletterSettingsSimple} = await import("./_import/components/js/mapData.63807af1.js");
+const {Mapa, defaultSettings, terrainSettings, newsletterSettingsSimple} = await import("./_import/components/js/mapData.47c5fe90.js");
 
 return {Mapa,defaultSettings,terrainSettings,newsletterSettingsSimple};
 }});
@@ -470,25 +470,12 @@ return {showLoading,hideLoading,renderMap};
     <label id="observablehq-sidebar-close" for="observablehq-sidebar-toggle"></label>
     <li class="observablehq-link"><a href="./">Portfolio</a></li>
   </ol>
-  <ol>
-    <li class="observablehq-link"><a href="./blend-mixer">Blend Mixer</a></li>
-    <li class="observablehq-link"><a href="./cartography">🌎🌍🌏 Cartography</a></li>
-    <li class="observablehq-link"><a href="./collage">Collage</a></li>
-    <li class="observablehq-link"><a href="./geography">Untitled</a></li>
-    <li class="observablehq-link"><a href="./make-a-house">🏠 Architecture Markup</a></li>
+  <section class="observablehq-section-active">
+    <summary>Examples</summary>
+    <ol>
     <li class="observablehq-link observablehq-link-active"><a href="./make-a-map">🗺️ Make A Map (Mapa)</a></li>
-    <li class="observablehq-link"><a href="./make-a-migration">📍 Family Migration Routes</a></li>
-    <li class="observablehq-link"><a href="./make-a-plss">🔍 PLSS Targeting</a></li>
-    <li class="observablehq-link"><a href="./make-a-tree">🌳 Customize Ancestry™️ Icons</a></li>
-    <li class="observablehq-link"><a href="./mapas">Untitled</a></li>
-    <li class="observablehq-link"><a href="./ne-10m">Natural Earth 10m</a></li>
-    <li class="observablehq-link"><a href="./photography">📷 Photography</a></li>
-    <li class="observablehq-link"><a href="./project-line-work">Project Line Work</a></li>
-    <li class="observablehq-link"><a href="./reflections">Reflections</a></li>
-    <li class="observablehq-link"><a href="./switches-dials-knobs">Switches Dials Knobs</a></li>
-    <li class="observablehq-link"><a href="./tool">Reflections Tool</a></li>
-    <li class="observablehq-link"><a href="./docs/README">Switches Dials Knobs</a></li>
-  </ol>
+    </ol>
+  </section>
 </nav>
 <script>{Object.assign(document.createElement("a"),{href:""}).password&&location.replace(location.href);const e=document.querySelector("#observablehq-sidebar"),t=document.querySelector("#observablehq-sidebar-toggle"),r=sessionStorage.getItem("observablehq-sidebar");r?t.checked=r==="true":t.indeterminate=!0;for(const o of document.querySelectorAll("#observablehq-sidebar summary")){const s=o.parentElement;switch(sessionStorage.getItem(`observablehq-sidebar:${o.textContent}`)){case"true":s.open=!0;break;case"false":s.classList.contains("observablehq-section-active")||(s.open=!1);break}}addEventListener("beforeunload",()=>sessionStorage.setItem("observablehq-sidebar-scrolly",`${e.scrollTop}`));const a=sessionStorage.getItem("observablehq-sidebar-scrolly");a!=null&&(e.style.cssText="overflow: hidden;",e.scrollTop=+a,e.style.cssText="");}</script>
 <div id="observablehq-center">
@@ -748,7 +735,7 @@ width:170px !important;
 
 </style></main>
 <footer id="observablehq-footer">
-<nav><a rel="prev" href="./make-a-house"><span>🏠 Architecture Markup</span></a><a rel="next" href="./make-a-migration"><span>📍 Family Migration Routes</span></a></nav>
-<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-21T08:01:49">Jan 21, 2025</a>.</div>
+<nav><a rel="prev" href="./"><span>Portfolio</span></a></nav>
+<div>Built with <a href="https://observablehq.com/" target="_blank" rel="noopener noreferrer">Observable</a> on <a title="2025-01-22T06:32:34">Jan 22, 2025</a>.</div>
 </footer>
 </div>
