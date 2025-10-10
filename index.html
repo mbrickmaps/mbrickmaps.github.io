@@ -41,7 +41,8 @@
             document.getElementById('page').innerHTML = '';
             
             const m = await import(`https://api.observablehq.com/@mbrickmaps/content@${v}.js?v=4`);
-            rt = new Runtime().module(m.default, n => {
+            rt = new Runtime();
+            rt.module(m.default, n => {
                 if (n === "style") return new Inspector(document.getElementById('style'));
                 if (n === "page") return new Inspector(document.getElementById('page'));
             });
