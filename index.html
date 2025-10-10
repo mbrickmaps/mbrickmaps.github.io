@@ -6,14 +6,43 @@
     <title>My Site</title>
 </head>
 <body style="margin:0;padding:0;">
-    <div id="observablehq-2b852a9b"></div>
+    
+    <!-- Version dropdown -->
+    <div style="position:fixed;top:10px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;">
+        <select id="versionSelect" onchange="loadVersion(this.value)">
+            <option value="119">v119</option>
+            <option value="118">v118</option>
+            <option value="117">v117</option>
+        </select>
+    </div>
 
+    <div id="app"></div>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
     <script type="module">
-    import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
-    import define from "https://api.observablehq.com/@mbrickmaps/mbricknell@119.js?";
-    new Runtime().module(define, Inspector.into("#observablehq-2b852a9b"));
-    </script>ß
+        import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
+        
+        let currentRuntime = null;
+        
+        async function loadVersion(version) {
+            // Clear previous
+            if (currentRuntime) currentRuntime.dispose();
+            document.getElementById('app').innerHTML = '';
+            
+            // Load new version
+            const module = await import(`https://api.observablehq.com/@mbrickmaps/mbricknell@${version}.js?v=4`);
+            currentRuntime = new Runtime();
+            currentRuntime.module(module.default, name => {
+                const div = document.createElement('div');
+                document.getElementById('app').appendChild(div);
+                return new Inspector(div);
+            });
+        }
+        
+        // Make it global so dropdown can call it
+        window.loadVersion = loadVersion;
+        
+        // Load initial version
+        loadVersion(119);
+    </script>
 </body>
 </html>
