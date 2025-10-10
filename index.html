@@ -10,12 +10,15 @@
     
     <!-- Version dropdown -->
     <div style="position:fixed;top:10px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
-        <select id="versionSelect" onchange="loadVersion(this.value)">
-            <option value="124" selected>v124</option>
-            <option value="123">v123</option>
-            <option value="122">v122</option>
-            <option value="121">v121</option>
-        </select>
+        <select id="versionSelect" onchange="loadVersion(this.value)"></select>
+
+        <script>
+            const versions = [124, 123, 122, 121, 120, 117];
+            
+            document.getElementById('versionSelect').innerHTML = versions.map(v => 
+                `<option value="${v}" ${v === 117 ? 'selected' : ''}>v${v}</option>`
+            ).join('');
+        </script>
     </div>
 
     <div id="observablehq-page-a73ebe89"></div>
