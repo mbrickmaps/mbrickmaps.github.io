@@ -4,45 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Michael Bricknell</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
 </head>
 <body style="margin:0;padding:0;">
     
-    <!-- Version dropdown -->
     <div style="position:fixed;top:10px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;">
-        <select id="versionSelect" onchange="loadVersion(this.value)">
-            <option value="119">v119</option>
-            <option value="118">v118</option>
-            <option value="117" selected>v117</option>
-        </select>
+        Min: <input type="number" id="min" value="3" style="width:50px;" onchange="updateRange()">
+        Max: <input type="number" id="max" value="9" style="width:50px;" onchange="updateRange()">
+        <br>
+        <select id="versions" onchange="loadVersion(this.value)" style="margin-top:10px;"></select>
     </div>
 
-    <div id="app"></div>
+    <div id="style"></div>
+    <div id="page"></div>
 
     <script type="module">
         import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
         
-        let currentRuntime = null;
+        let rt = null;
         
-        async function loadVersion(version) {
-            // Clear previous
-            if (currentRuntime) currentRuntime.dispose();
-            document.getElementById('app').innerHTML = '';
+        window.updateRange = () => {
+            const min = +document.getElementById('min').value;
+            const max = +document.getElementById('max').value;
+            const versionList = Array.from({length: max - min + 1}, (_, i) => max - i);
             
-            // Load new version
-            const module = await import(`https://api.observablehq.com/@mbrickmaps/mbricknell@${version}.js?v=4`);
-            currentRuntime = new Runtime();
-            currentRuntime.module(module.default, name => {
-                const div = document.createElement('div');
-                document.getElementById('app').appendChild(div);
-                return new Inspector(div);
+            document.getElementById('versions').innerHTML = versionList
+                .map(v => `<option value="${v}">v${v}</option>`)
+                .join('');
+            
+            loadVersion(versionList[0]);
+        }
+        
+        window.loadVersion = async (v) => {
+            if (rt) rt.dispose();
+            document.getElementById('style').innerHTML = '';
+            document.getElementById('page').innerHTML = '';
+            
+            const m = await import(`https://api.observablehq.com/@mbrickmaps/content@${v}.js?v=4`);
+            rt = new Runtime().module(m.default, n => {
+                if (n === "style") return new Inspector(document.getElementById('style'));
+                if (n === "page") return new Inspector(document.getElementById('page'));
             });
         }
         
-        // Make it global so dropdown can call it
-        window.loadVersion = loadVersion;
-        
-        // Load initial version
-        loadVersion(117);
+        updateRange();
     </script>
 </body>
 </html>
