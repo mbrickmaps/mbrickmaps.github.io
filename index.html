@@ -5,22 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Michael Bricknell</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Force Observable content to fill viewport */
+        #page > div {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Make images/canvas/svg fill like cover */
+        #page img,
+        #page canvas,
+        #page svg {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
+        
+        /* Remove Observable default margins */
+        .observablehq--block,
+        .observablehq--cell,
+        .observablehq--cell-output {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        /* Controls styling */
+        #toggleBtn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: none;
+        }
+        
+        #controls input {
+            width: 50px;
+        }
+        
+        #controls select {
+            margin-top: 10px;
+        }
+    </style>
 </head>
-<body style="margin:0;padding:0;">
+<body>
     
-    <button id="toggleBtn" style="position:fixed;top:10px;right:10px;z-index:1001;background:white;border:1px solid #ccc;padding:8px 12px;border-radius:4px;cursor:pointer;">
-        >
-    </button>
+    <button id="toggleBtn">></button>
     
-    <div id="controls" style="position:fixed;top:50px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;">
-        Min: <input type="number" id="min" style="width:50px;" onchange="updateRange()">
-        Max: <input type="number" id="max" style="width:50px;" onchange="updateRange()">
+    <div id="controls">
+        Min: <input type="number" id="min" onchange="updateRange()">
+        Max: <input type="number" id="max" onchange="updateRange()">
         <br>
-        <select id="versions" onchange="loadVersion(this.value)" style="margin-top:10px;"></select>
+        <select id="versions" onchange="loadVersion(this.value)"></select>
     </div>
 
     <div id="page"></div>
-
 
     <script type="module">
         import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
@@ -29,7 +105,7 @@
         const DEFAULT_NOTEBOOK = 'content';
         const DEFAULT_CELL = 'page';
         const DEFAULT_MIN = 3;
-        const DEFAULT_MAX = 100;
+        const DEFAULT_MAX = 9;
         const DEFAULT_VERSION = 55;  // Starting version
         // ==================================
         
