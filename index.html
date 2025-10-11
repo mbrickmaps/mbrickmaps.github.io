@@ -8,20 +8,48 @@
 </head>
 <body style="margin:0;padding:0;">
     
-    <div style="position:fixed;top:10px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;">
-        Min: <input type="number" id="min" value="3" style="width:50px;" onchange="updateRange()">
-        Max: <input type="number" id="max" value="9" style="width:50px;" onchange="updateRange()">
+    <button id="toggleBtn" style="position:fixed;top:10px;right:10px;z-index:1001;background:white;border:1px solid #ccc;padding:8px 12px;border-radius:4px;cursor:pointer;">
+        >
+    </button>
+    
+    <div id="controls" style="position:fixed;top:50px;right:10px;z-index:1000;background:white;padding:10px;border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:none;">
+        Min: <input type="number" id="min" style="width:50px;" onchange="updateRange()">
+        Max: <input type="number" id="max" style="width:50px;" onchange="updateRange()">
         <br>
         <select id="versions" onchange="loadVersion(this.value)" style="margin-top:10px;"></select>
     </div>
 
-    <div id="style"></div>
     <div id="page"></div>
-    <p>Credit: <a href="https://observablehq.com/@mbrickmaps/content@19">Content by Michael Bricknell</a></p>
 
 
     <script type="module">
         import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
+        
+        // ===== CONFIGURE THESE VALUES =====
+        const DEFAULT_NOTEBOOK = 'content';
+        const DEFAULT_CELL = 'page';
+        const DEFAULT_MIN = 3;
+        const DEFAULT_MAX = 100;
+        const DEFAULT_VERSION = 55;  // Starting version
+        // ==================================
+        
+        // Get URL parameters (override defaults if provided)
+        const params = new URLSearchParams(window.location.search);
+        const notebook = params.get('notebook') || DEFAULT_NOTEBOOK;
+        const cell = params.get('cell') || DEFAULT_CELL;
+        const minVersion = parseInt(params.get('min')) || DEFAULT_MIN;
+        const maxVersion = parseInt(params.get('max')) || DEFAULT_MAX;
+        const startVersion = parseInt(params.get('version')) || DEFAULT_VERSION;
+        
+        // Set initial values
+        document.getElementById('min').value = minVersion;
+        document.getElementById('max').value = maxVersion;
+        
+        // Toggle controls visibility
+        document.getElementById('toggleBtn').addEventListener('click', () => {
+            const controls = document.getElementById('controls');
+            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+        });
         
         let rt = null;
         
@@ -34,19 +62,21 @@
                 .map(v => `<option value="${v}">v${v}</option>`)
                 .join('');
             
-            loadVersion(versionList[0]);
+            // Set the starting version if it's in range
+            const currentVersion = startVersion >= min && startVersion <= max ? startVersion : versionList[0];
+            document.getElementById('versions').value = currentVersion;
+            
+            loadVersion(currentVersion);
         }
         
         window.loadVersion = async (v) => {
             if (rt) rt.dispose();
-            document.getElementById('style').innerHTML = '';
             document.getElementById('page').innerHTML = '';
             
-            const m = await import(`https://api.observablehq.com/@mbrickmaps/content@${v}.js?v=4`);
+            const m = await import(`https://api.observablehq.com/@mbrickmaps/${notebook}@${v}.js?v=4`);
             rt = new Runtime();
             rt.module(m.default, n => {
-                if (n === "style") return new Inspector(document.getElementById('style'));
-                if (n === "page") return new Inspector(document.getElementById('page'));
+                if (n === cell) return new Inspector(document.getElementById('page'));
             });
         }
         
