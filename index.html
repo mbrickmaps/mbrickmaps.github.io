@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Michael Bricknell</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
     <style>
         * {
             margin: 0;
@@ -14,111 +15,27 @@
         body, html {
             width: 100%;
             height: 100%;
-            overflow: hidden;
         }
 
         #page {
             width: 100%;
             height: 100%;
         }
-
-        #page iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        #controls {
-            position: fixed;
-            top: 10px;
-            left: 50px;
-            background: white;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            z-index: 1000;
-            display: none;
-        }
-
-        #toggleBtn {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1001;
-            padding: 5px 10px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
-    
-    <button id="toggleBtn">></button>
-    
-    <div id="controls">
-        Min: <input type="number" id="min" onchange="updateRange()">
-        Max: <input type="number" id="max" onchange="updateRange()">
-        <br>
-        <select id="versions" onchange="loadVersion(this.value)"></select>
-    </div>
-
     <div id="page"></div>
 
-    <script>
-        // ===== CONFIGURE THESE VALUES =====
-        const DEFAULT_NOTEBOOK = 'content';
-        const DEFAULT_CELL = 'page';
-        const DEFAULT_MIN = 200;
-        const DEFAULT_MAX = 300;
-        const DEFAULT_VERSION = 290;  // Starting version
-        // ==================================
+    <script type="module">
+        import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
+        import notebook from "https://api.observablehq.com/@mbrickmaps/content@290.js?v=4";
         
-        // Get URL parameters (override defaults if provided)
-        const params = new URLSearchParams(window.location.search);
-        const notebook = params.get('notebook') || DEFAULT_NOTEBOOK;
-        const cell = params.get('cell') || DEFAULT_CELL;
-        const minVersion = parseInt(params.get('min')) || DEFAULT_MIN;
-        const maxVersion = parseInt(params.get('max')) || DEFAULT_MAX;
-        const startVersion = parseInt(params.get('v')) || DEFAULT_VERSION;
-        
-        // Set initial values
-        document.getElementById('min').value = minVersion;
-        document.getElementById('max').value = maxVersion;
-        
-        // Toggle controls visibility
-        document.getElementById('toggleBtn').addEventListener('click', () => {
-            const controls = document.getElementById('controls');
-            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+        const runtime = new Runtime();
+        const main = runtime.module(notebook, name => {
+            if (name === "page") {
+                return new Inspector(document.getElementById("page"));
+            }
         });
-        
-        window.updateRange = () => {
-            const min = +document.getElementById('min').value;
-            const max = +document.getElementById('max').value;
-            const versionList = Array.from({length: max - min + 1}, (_, i) => max - i);
-            
-            document.getElementById('versions').innerHTML = versionList
-                .map(v => `<option value="${v}">v${v}</option>`)
-                .join('');
-            
-            // Set the starting version if it's in range
-            const currentVersion = startVersion >= min && startVersion <= max ? startVersion : versionList[0];
-            document.getElementById('versions').value = currentVersion;
-            
-            loadVersion(currentVersion);
-        }
-        
-        window.loadVersion = (v) => {
-            const pageDiv = document.getElementById('page');
-            pageDiv.innerHTML = '';
-            
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://observablehq.com/embed/@mbrickmaps/${notebook}@${v}?cells=${cell}`;
-            iframe.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
-            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups');
-            
-            pageDiv.appendChild(iframe);
-        }
-        
-        updateRange();
     </script>
 </body>
 </html>
