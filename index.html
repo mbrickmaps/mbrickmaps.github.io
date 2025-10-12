@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*, geolocation=*, autoplay=*, encrypted-media=*, fullscreen=*, midi=*, accelerometer=*, gyroscope=*, magnetometer=*, clipboard-write=*">
     <title>Michael Bricknell</title>
  
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
@@ -95,5 +94,35 @@
         
         updateRange();
     </script>
+
+<script>
+    // Intercept iframe creation and add permissions
+    const originalCreateElement = document.createElement;
+    document.createElement = function(tagName) {
+        const element = originalCreateElement.call(document, tagName);
+        if (tagName.toLowerCase() === 'iframe') {
+            element.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
+        }
+        return element;
+    };
+
+    // Also use MutationObserver to catch iframes added to DOM
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.tagName === 'IFRAME') {
+                    node.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
+                }
+                if (node.querySelectorAll) {
+                    node.querySelectorAll('iframe').forEach(iframe => {
+                        iframe.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
+                    });
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
 </body>
 </html>
