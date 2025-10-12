@@ -6,6 +6,14 @@
     <title>Michael Bricknell</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
     <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
         #page {
             position: fixed;
             top: 0;
@@ -23,6 +31,33 @@
             padding: 0 !important;
         }
         
+        /* Force createLayout container to fill */
+        #page .container {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        #page .row {
+            flex: 1 !important;
+            min-height: 0 !important;
+        }
+        
+        #page .cell {
+            flex: 1 !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            position: relative !important;
+        }
+        
+        #page .cell iframe {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+        }
+        
         /* Make images/canvas/svg fill like cover */
         #page img,
         #page canvas,
@@ -32,31 +67,7 @@
             object-fit: cover !important;
             display: block !important;
         }
-
-        #page .container {
-        width: 100% !important;
-        height: 100% !important;
-    }
-    
-    #page .row {
-        flex: 1 !important;
-        min-height: 0 !important;
-    }
-    
-    #page .cell {
-        flex: 1 !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-    }
-    
-    #page .cell iframe {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-    }
-              
+        
         /* Controls styling */
         #toggleBtn {
             position: fixed;
@@ -110,9 +121,9 @@
         // ===== CONFIGURE THESE VALUES =====
         const DEFAULT_NOTEBOOK = 'content';
         const DEFAULT_CELL = 'page';
-        const DEFAULT_MIN = 3;
-        const DEFAULT_MAX = 150;
-        const DEFAULT_VERSION = 114;  // Starting version
+        const DEFAULT_MIN = 200;
+        const DEFAULT_MAX = 300;
+        const DEFAULT_VERSION = 270;  // Starting version
         // ==================================
         
         // Get URL parameters (override defaults if provided)
