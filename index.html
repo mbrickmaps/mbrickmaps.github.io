@@ -12,33 +12,46 @@
             box-sizing: border-box;
         }
         
-        body, html, #page {
+        body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
         }
         
-        #page .container {
-            display: flex;
-            flex-direction: column;
+        #page {
+            width: 100%;
             height: 100%;
+        }
+        
+        #page > div {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        #page .container {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
         
         #page .row {
-            display: flex;
-            flex: 1;
+            display: flex !important;
+            flex: 1 1 0% !important;
         }
         
         #page .cell {
-            flex: 1;
-            position: relative;
+            flex: 1 !important;
+            position: relative !important;
         }
         
         #page iframe {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: none;
+            position: absolute !important;
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
         }
         
         #toggleBtn {
@@ -73,6 +86,7 @@
             margin-top: 10px;
         }
     </style>
+    
 </head>
 <body>
     
