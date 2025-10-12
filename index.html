@@ -86,7 +86,7 @@
             margin-top: 10px;
         }
     </style>
-    
+
 </head>
 <body>
     
@@ -160,6 +160,25 @@
         }
         
         updateRange();
+
+        const observer = new MutationObserver(() => {
+  const container = document.querySelector('.container');
+  if (container) {
+    container.style.height = '100vh';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    
+    document.querySelectorAll('.row').forEach(row => {
+      row.style.flex = '1';
+      row.style.display = 'flex';
+    });
+  }
+});
+
+observer.observe(document.getElementById('page'), { 
+  childList: true, 
+  subtree: true 
+});
     </script>
 </body>
 </html>
