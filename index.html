@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Michael Bricknell</title>
- 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
     <style>
         * {
             margin: 0;
@@ -13,13 +11,44 @@
             box-sizing: border-box;
         }
 
-        body, html, #page {
+        body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
         }
-    </style>
 
+        #page {
+            width: 100%;
+            height: 100%;
+        }
+
+        #page iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #controls {
+            position: fixed;
+            top: 10px;
+            left: 50px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            z-index: 1000;
+            display: none;
+        }
+
+        #toggleBtn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     
@@ -34,9 +63,7 @@
 
     <div id="page"></div>
 
-    <script type="module">
-        import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
-        
+    <script>
         // ===== CONFIGURE THESE VALUES =====
         const DEFAULT_NOTEBOOK = 'content';
         const DEFAULT_CELL = 'page';
@@ -63,8 +90,6 @@
             controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
         });
         
-        let rt = null;
-        
         window.updateRange = () => {
             const min = +document.getElementById('min').value;
             const max = +document.getElementById('max').value;
@@ -81,48 +106,19 @@
             loadVersion(currentVersion);
         }
         
-        window.loadVersion = async (v) => {
-            if (rt) rt.dispose();
-            document.getElementById('page').innerHTML = '';
+        window.loadVersion = (v) => {
+            const pageDiv = document.getElementById('page');
+            pageDiv.innerHTML = '';
             
-            const m = await import(`https://api.observablehq.com/@mbrickmaps/${notebook}@${v}.js?v=4`);
-            rt = new Runtime();
-            rt.module(m.default, n => {
-                if (n === cell) return new Inspector(document.getElementById('page'));
-            });
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://observablehq.com/embed/@mbrickmaps/${notebook}@${v}?cells=${cell}`;
+            iframe.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups');
+            
+            pageDiv.appendChild(iframe);
         }
         
         updateRange();
     </script>
-
-<script>
-    // Intercept iframe creation and add permissions
-    const originalCreateElement = document.createElement;
-    document.createElement = function(tagName) {
-        const element = originalCreateElement.call(document, tagName);
-        if (tagName.toLowerCase() === 'iframe') {
-            element.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
-        }
-        return element;
-    };
-
-    // Also use MutationObserver to catch iframes added to DOM
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.tagName === 'IFRAME') {
-                    node.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
-                }
-                if (node.querySelectorAll) {
-                    node.querySelectorAll('iframe').forEach(iframe => {
-                        iframe.setAttribute('allow', 'camera *; microphone *; geolocation *; autoplay *; encrypted-media *; fullscreen *; midi *; accelerometer *; gyroscope *; magnetometer *; clipboard-write *');
-                    });
-                }
-            });
-        });
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-</script>
 </body>
 </html>
