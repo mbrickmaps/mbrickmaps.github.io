@@ -42,7 +42,7 @@
         const DEFAULT_CELL = 'page';
         const DEFAULT_MIN = 200;
         const DEFAULT_MAX = 300;
-        const DEFAULT_VERSION = 270;  // Starting version
+        const DEFAULT_VERSION = 290;  // Starting version
         // ==================================
         
         // Get URL parameters (override defaults if provided)
@@ -51,7 +51,7 @@
         const cell = params.get('cell') || DEFAULT_CELL;
         const minVersion = parseInt(params.get('min')) || DEFAULT_MIN;
         const maxVersion = parseInt(params.get('max')) || DEFAULT_MAX;
-        const startVersion = parseInt(params.get('version')) || DEFAULT_VERSION;
+        const startVersion = parseInt(params.get('v')) || DEFAULT_VERSION;
         
         // Set initial values
         document.getElementById('min').value = minVersion;
