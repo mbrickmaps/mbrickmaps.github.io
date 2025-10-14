@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Michael Bricknell</title>
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@observablehq/inspector@5/dist/inspector.css">
     
     <style>
@@ -41,6 +38,14 @@
                 return new Inspector(document.getElementById("page"));
             }
         });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+    
+      gtag('config', 'G-1J5XCP3RRH');
     </script>
 </body>
 </html>
