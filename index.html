@@ -46,6 +46,14 @@
       gtag('js', new Date());
     
       gtag('config', 'G-1J5XCP3RRH');
+          window.addEventListener("message", (e) => {
+        if (e.data.event === "card_click") {
+            gtag("event", "card_click", {
+                link_url: e.data.link_url,
+                link_text: e.data.link_text
+            });
+        }
+      });
     </script>
 </body>
 </html>
