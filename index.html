@@ -57,9 +57,35 @@
   }
 
   .hero h1 {
-    font-size: clamp(1.8rem, 8vw, 3rem) !important;
+    font-size: 1.75rem !important;
+    line-height: 1.15 !important;
     margin: 0 0 0.75rem 0 !important;
     padding: 0.5rem 0 !important;
+  }
+
+  #page h2 {
+    font-size: 1.1rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .hero-emoji-fixed {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+
+  .hero-emoji {
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .hero-text {
+    display: inline-block;
+  }
+
+  #page p,
+  #page li {
+    line-height: 1.5 !important;
   }
 
   .hero .tagline {
@@ -500,6 +526,30 @@
       }
     });
 
+    function fixHeroEmoji() {
+      const EMOJI = '\u{1F468}‍\u{1F9B0}'; // 👨‍🦰
+      const walker = document.createTreeWalker(document.getElementById('page'), NodeFilter.SHOW_TEXT);
+      let node;
+      while (node = walker.nextNode()) {
+        if (node.nodeValue.includes(EMOJI)) {
+          const parent = node.parentElement;
+          if (!parent || parent.dataset.emojiFixed) continue;
+          const idx = node.nodeValue.indexOf(EMOJI);
+          const before = node.nodeValue.slice(0, idx);
+          const rest = node.nodeValue.slice(idx + EMOJI.length);
+          const emojiSpan = document.createElement('span');
+          emojiSpan.className = 'hero-emoji';
+          emojiSpan.textContent = EMOJI;
+          const textSpan = document.createElement('span');
+          textSpan.className = 'hero-text';
+          textSpan.textContent = (before + rest).trim();
+          node.replaceWith(emojiSpan, textSpan);
+          parent.dataset.emojiFixed = 'true';
+          parent.classList.add('hero-emoji-fixed');
+        }
+      }
+    }
+
     function dismissLoadingScreen() {
       showStage('on');
       triggerRandomFlash(document.querySelector('[data-stage="on"]'));
@@ -512,6 +562,7 @@
     }
 
     main.value("page").then(() => {
+      fixHeroEmoji();
       dismissLoadingScreen();
     }).catch(err => {
       console.error("Observable content failed to load:", err);
