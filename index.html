@@ -41,6 +41,25 @@
     width: 100%;
     height: 100%;
     background: #010101;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 480px) {
+    #page header h1 {
+      font-size: 1.1rem !important;
+    }
+  }
+
+  h1#top {
+    font-size: 1rem !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.8rem, 8vw, 3rem) !important;
+    margin: 0 0 0.75rem 0 !important;
+    padding: 0.5rem 0 !important;
   }
 
   .link-cols {
@@ -295,7 +314,7 @@
 
   <div id="page" class="main">
     <header style="padding:2rem;color:#eee;font-family:system-ui;">
-      <h1 style="font-size:clamp(1.1rem, 5vw, 1.8rem);">Michael Bricknell</h1>
+      <h1 style="font-size:clamp(0.9rem, 4vw, 1.5rem);">Michael Bricknell</h1>
       <p>Cartographer and data visualization designer. Maps, spatial data tools, and design-driven graphics.</p>
       <p><a href="https://observablehq.com/@mbrickmaps" style="color:#e29742;">@mbrickmaps on Observable</a></p>
     </header>
