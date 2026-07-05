@@ -82,7 +82,7 @@
     z-index: 9999;
     background: black;
     pointer-events: none;
-    opacity: 0.4;
+    opacity: 0.3;
     mix-blend-mode: hard-light;
     transition: opacity 0.5s ease;
   }
@@ -176,7 +176,7 @@
     pointer-events: none;
     opacity: 0;
     text-shadow: 0 0 4px #ff5500, 0 0 12px #ff5500, 0 0 24px #ff3d00, 0 0 45px #ff3d00, 0 0 70px #ff2200;
-    mix-blend-mode: hard-light;
+    mix-blend-mode: screen;
   }
 
   .loading-text.blink .char {
@@ -471,6 +471,22 @@
       setTimeout(randomFlash, 1500 + Math.random() * 4000);
     }
     randomFlash();
+
+    function selectText(element) {
+  if (!element) return;
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  const target = document.querySelector('.select');
+  selectText(target);
+});
   </script>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
