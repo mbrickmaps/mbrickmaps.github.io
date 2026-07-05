@@ -239,20 +239,34 @@
     cursor: pointer;
   }
 
-  @media (max-width: 600px) {
-    #hue-dial {
+  @media (max-width: 768px) {
+    #effects-toggle {
       bottom: 66px !important;
-    }
-
-    #effects-toggle,
-    #about-toggle {
+      right: 12px !important;
+      left: auto !important;
       font-size: 0.85rem !important;
       padding: 10px 14px !important;
       min-height: 44px !important;
     }
 
+    #about-toggle {
+      bottom: 12px !important;
+      left: 12px !important;
+      right: auto !important;
+      font-size: 0.85rem !important;
+      padding: 10px 14px !important;
+      min-height: 44px !important;
+    }
+
+    #hue-dial {
+      bottom: 12px !important;
+      right: 12px !important;
+      left: auto !important;
+      transform: none !important;
+    }
+
     #page {
-      padding-bottom: 220px !important;
+      padding-bottom: 260px !important;
     }
   }
 
