@@ -43,6 +43,23 @@
     background: #010101;
   }
 
+  .link-cols {
+    column-count: 1 !important;
+  }
+
+  .project-card,
+  .project-card * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .project-card img,
+  .project-thumb {
+    max-width: 100%;
+    height: auto;
+  }
+
   body.plain-text, body.plain-text * {
     font-family: Arial, Helvetica, sans-serif !important;
   }
@@ -150,9 +167,9 @@
     justify-content: center;
     font-family: "Sixtyfour Convergence", sans-serif;
     font-variation-settings: "BLED" 0, "SCAN" 0;
-    font-size: 8vw;
+    font-size: clamp(1.5rem, 9vw, 5rem);
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     color: #ff5500;
     text-align: center;
     pointer-events: none;
@@ -182,7 +199,8 @@
     bottom: 12px;
     right: 12px;
     z-index: 99999;
-    padding: 8px 14px;
+    padding: 12px 18px;
+    min-height: 44px;
     background: #000;
     color: #33ff33;
     border: 1px solid #33ff33;
@@ -276,13 +294,13 @@
 
   <div id="page" class="main">
     <header style="padding:2rem;color:#eee;font-family:system-ui;">
-      <h1 style="font-size:1.8rem;">Michael Bricknell</h1>
+      <h1 style="font-size:clamp(1.1rem, 5vw, 1.8rem);">Michael Bricknell</h1>
       <p>Cartographer and data visualization designer. Maps, spatial data tools, and design-driven graphics.</p>
       <p><a href="https://observablehq.com/@mbrickmaps" style="color:#e29742;">@mbrickmaps on Observable</a></p>
     </header>
   </div>
 
-  <button id="about-toggle" style="position:fixed;bottom:12px;left:12px;z-index:99999;padding:8px 14px;background:#000;color:#33ff33;border:1px solid #33ff33;border-radius:4px;font-family:'Courier New', monospace;font-weight:700;transition:color 0.15s ease, box-shadow 0.15s ease;">about</button>
+  <button id="about-toggle" style="position:fixed;bottom:12px;left:12px;z-index:99999;padding:12px 18px;min-height:44px;background:#000;color:#33ff33;border:1px solid #33ff33;border-radius:4px;font-family:'Courier New', monospace;font-weight:700;transition:color 0.15s ease, box-shadow 0.15s ease;">about</button>
 
   <div id="about-panel" style="display:none;position:fixed;bottom:52px;left:12px;z-index:100000;padding:1rem 1.25rem;background:rgba(0,0,0,0.85);color:#aaa;font-family:system-ui, sans-serif;font-size:0.8rem;border:1px solid #33ff33;border-radius:4px;max-width:280px;">
     "Sixtyfour Convergence" font by <a href="https://fonts.google.com/?query=Simon%20Cozens" style="color:#e29742;">Simon Cozens</a>, <a href="https://fonts.google.com/?query=Jens%20Kut%C3%ADlek" style="color:#e29742;">Jens Kutílek</a>
@@ -309,9 +327,9 @@
       tick.type = 'button';
       tick.className = 'hue-tick';
       tick.textContent = i + 1;
-      tick.style.cssText = 'width:32px;height:32px;border-radius:50%;padding:0;cursor:pointer;' +
+      tick.style.cssText = 'width:44px;height:44px;border-radius:50%;padding:0;cursor:pointer;' +
         'display:flex;align-items:center;justify-content:center;' +
-        'background:#000;color:#33ff33;font-family:"Courier New",monospace;font-size:18px;font-weight:700;' +
+        'background:#000;color:#33ff33;font-family:"Courier New",monospace;font-size:20px;font-weight:700;' +
         'transition:color 0.15s ease, box-shadow 0.15s ease;' +
         'border:2px solid ' + (angle === currentHue ? '#fff' : '#33ff33') + ';';
       tick.dataset.angle = angle;
@@ -331,6 +349,8 @@
     function applyEffectsState() {
       const overlay = document.querySelector('.flash-overlay');
       const vignette = document.getElementById('vignette-overlay');
+      const aboutToggle = document.getElementById('about-toggle');
+      const aboutPanel = document.getElementById('about-panel');
       applyHue();
       document.body.classList.toggle('plain-text', !effectsOn);
       document.body.classList.toggle('effects-off', !effectsOn);
@@ -343,10 +363,13 @@
         loadingScreen.style.display = 'none';
         dial.style.display = 'none';
         vignette.style.display = 'none';
+        aboutToggle.style.display = 'none';
+        aboutPanel.style.display = 'none';
       } else {
         loadingScreen.style.display = '';
         dial.style.display = 'flex';
         vignette.style.display = '';
+        aboutToggle.style.display = '';
       }
     }
 
