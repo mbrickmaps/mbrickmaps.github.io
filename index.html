@@ -13,65 +13,329 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://api.observablehq.com">
     <link rel="preconnect" href="https://static.observableusercontent.com">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sixtyfour+Convergence&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-        body, html {
-            width: 100%;
-            height: 100%;
-            background:#010101;
-        }
+  body, html {
+    width: 100%;
+    height: 100%;
+    background: #010101;
+  }
 
-        #page {
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+  body.plain-text, body.plain-text * {
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  #page.hue-shift {
+    filter: hue-rotate(90deg);
+  }
+
+  #page {
+    width: 100%;
+    height: 100%;
+  }
+
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: black;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: hard-light;
+    transition: opacity 0.5s ease;
+  }
+
+  .loading-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-repeat: repeat;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .loading-img.active { opacity: 1; }
+
+  .loading-img[data-stage="off"] {
+    background-image: url('/img/off.svg');
+    background-size: 150px 150px;
+  }
+  .loading-img[data-stage="init"] {
+    background-image: url('/img/init.svg');
+    background-size: 150px 150px;
+  }
+  .loading-img[data-stage="on"] {
+    background-image: url('/img/on.svg');
+    background-size: 150px 150px;
+  }
+
+  @keyframes flash-brightness {
+    0%   { filter: brightness(1); }
+    20%  { filter: brightness(2.5); }
+    100% { filter: brightness(1); }
+  }
+
+  @keyframes flash-blur {
+    0%   { filter: blur(0px); }
+    20%  { filter: blur(3px); }
+    100% { filter: blur(0px); }
+  }
+
+  @keyframes flash-saturate {
+    0%   { filter: saturate(1); }
+    20%  { filter: saturate(2.5); }
+    100% { filter: saturate(1); }
+  }
+
+  @keyframes flash-contrast {
+    0%   { filter: contrast(1); }
+    20%  { filter: contrast(2); }
+    100% { filter: contrast(1); }
+  }
+
+  @keyframes flash-hue {
+    0%   { filter: hue-rotate(0deg); }
+    20%  { filter: hue-rotate(40deg); }
+    100% { filter: hue-rotate(0deg); }
+  }
+
+  .flash-anim {
+    animation-duration: 0.6s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: forwards;
+  }
+
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgb(0, 209, 7);
+    opacity: 0;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    transition: opacity 0.08s ease-out;
+  }
+
+  .loading-text {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Sixtyfour Convergence", sans-serif;
+    font-size: 8vw;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #f1e9cd;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .loading-text.blink .char {
+    animation: char-blink 0.6s steps(1, end) infinite;
+    animation-delay: calc(var(--i) * 0.15s);
+  }
+
+  @keyframes char-blink {
+    0%, 50%  { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  #page.main {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  #page.main.loaded { opacity: 1; }
+
+  #effects-toggle {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 99999;
+    padding: 8px 14px;
+    background: #000;
+    color: #33ff33;
+    border: 1px solid #33ff33;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+  }
+</style>
 </head>
 <body>
-    <div id="page">
-  <header style="padding:2rem;color:#eee;font-family:system-ui;">
-    <h1>Michael Bricknell</h1>
-    <p>Cartographer and data visualization designer. Maps, spatial data tools, and design-driven graphics.</p>
-    <p><a href="https://observablehq.com/@mbrickmaps" style="color:#e29742;">@mbrickmaps on Observable</a></p>
-  </header>
-</div>
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-img" data-stage="off"></div>
+    <div class="loading-img" data-stage="init"></div>
+    <div class="loading-img" data-stage="on"></div>
+    <div class="loading-text">LOADING...</div>
+  </div>
 
-    <script type="module">
-        import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
-        import notebook from "https://api.observablehq.com/@mbrickmaps/content.js?v=4";
-        
-        const runtime = new Runtime();
-        const main = runtime.module(notebook, name => {
-            if (name === "page") {
-                return new Inspector(document.getElementById("page"));
-            }
+  <div class="flash-overlay"></div>
+
+  <button id="effects-toggle">turn effects off</button>
+
+  <div id="page" class="main">
+    <header style="padding:2rem;color:#eee;font-family:system-ui;">
+      <h1>Michael Bricknell</h1>
+      <p>Cartographer and data visualization designer. Maps, spatial data tools, and design-driven graphics.</p>
+      <p><a href="https://observablehq.com/@mbrickmaps" style="color:#e29742;">@mbrickmaps on Observable</a></p>
+    </header>
+  </div>
+
+  <script type="module">
+    import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
+    import notebook from "https://api.observablehq.com/@mbrickmaps/content.js?v=4";
+
+    let effectsOn = true;
+    const loadingScreen = document.getElementById('loading-screen');
+
+    function applyEffectsState() {
+      const overlay = document.querySelector('.flash-overlay');
+      document.getElementById('page').classList.toggle('hue-shift', effectsOn);
+      document.body.classList.toggle('plain-text', !effectsOn);
+      if (!effectsOn) {
+        overlay.style.opacity = '0';
+        document.querySelectorAll('.flash-anim').forEach(el => {
+          el.classList.remove('flash-anim');
+          el.style.animationName = '';
         });
-    </script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-    
-      gtag('config', 'G-1J5XCP3RRH');
-          window.addEventListener("message", (e) => {
-        if (e.data.event === "card_click") {
-            gtag("event", "card_click", {
-                link_url: e.data.link_url,
-                link_text: e.data.link_text
-            });
-        }
-              if (e.data.event === "swatch_click") {
-    gtag("event", "swatch_click", {
-      color_value: e.data.color_value
+        loadingScreen.style.display = 'none';
+      } else {
+        loadingScreen.style.display = '';
+      }
+    }
+
+    document.getElementById('effects-toggle').addEventListener('click', function () {
+      effectsOn = !effectsOn;
+      this.textContent = 'turn effects ' + (effectsOn ? 'off' : 'on');
+      applyEffectsState();
     });
-  }
+
+    applyEffectsState();
+
+    const stages = document.querySelectorAll('.loading-img');
+    const page = document.getElementById('page');
+    const loadingText = document.querySelector('.loading-text');
+
+    const flashAnimations = [
+      'flash-brightness',
+      'flash-blur',
+      'flash-saturate',
+      'flash-contrast',
+      'flash-hue'
+    ];
+
+    function triggerRandomFlash(el) {
+      if (!effectsOn) return;
+      const chosen = flashAnimations[Math.floor(Math.random() * flashAnimations.length)];
+      el.classList.add('flash-anim');
+      el.style.animationName = chosen;
+
+      el.addEventListener('animationend', function handler() {
+        el.classList.remove('flash-anim');
+        el.style.animationName = '';
+        el.removeEventListener('animationend', handler);
       });
-    </script>
+    }
+
+    function showStage(name) {
+      stages.forEach(img => img.classList.toggle('active', img.dataset.stage === name));
+    }
+
+    function splitIntoChars(el) {
+      const text = el.textContent;
+      el.textContent = '';
+      [...text].forEach((char, i) => {
+        const span = document.createElement('span');
+        span.textContent = char === ' ' ? '\u00A0' : char;
+        span.style.setProperty('--i', i);
+        span.classList.add('char');
+        el.appendChild(span);
+      });
+    }
+    splitIntoChars(loadingText);
+
+    showStage('off');
+
+    setTimeout(() => {
+      showStage('init');
+      loadingText.style.opacity = '1';
+      loadingText.classList.add('blink');
+    }, 300);
+
+    const runtime = new Runtime();
+    const main = runtime.module(notebook, name => {
+      if (name === "page") {
+        return new Inspector(document.getElementById("page"));
+      }
+    });
+
+    function dismissLoadingScreen() {
+      showStage('on');
+      triggerRandomFlash(document.querySelector('[data-stage="on"]'));
+      loadingText.classList.remove('blink');
+      loadingText.style.display = 'none';
+      page.classList.add('loaded');
+    }
+
+    main.value("page").then(() => {
+      dismissLoadingScreen();
+    }).catch(err => {
+      console.error("Observable content failed to load:", err);
+      dismissLoadingScreen();
+    });
+
+    function randomFlash() {
+      if (effectsOn) {
+        const overlay = document.querySelector('.flash-overlay');
+        overlay.style.opacity = '0.3';
+        setTimeout(() => { overlay.style.opacity = '0'; }, 80 + Math.random() * 100);
+      }
+      setTimeout(randomFlash, 1500 + Math.random() * 4000);
+    }
+    randomFlash();
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-1J5XCP3RRH');
+
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest("a");
+      if (link && link.href) {
+        gtag("event", "link_click", {
+          link_url: link.href,
+          link_text: link.textContent.trim()
+        });
+      }
+    });
+
+    window.addEventListener("message", (e) => {
+      if (e.data.event === "card_click") {
+        gtag("event", "card_click", {
+          link_url: e.data.link_url,
+          link_text: e.data.link_text
+        });
+      }
+      if (e.data.event === "swatch_click") {
+        gtag("event", "swatch_click", {
+          color_value: e.data.color_value
+        });
+      }
+    });
+  </script>
 </body>
 </html>
