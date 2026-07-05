@@ -311,7 +311,8 @@
     import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
     import notebook from "https://api.observablehq.com/@mbrickmaps/content.js?v=4";
 
-    let effectsOn = true;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let effectsOn = !isMobile;
     const loadingScreen = document.getElementById('loading-screen');
 
     // --- hue picker ---
@@ -352,6 +353,7 @@
       const vignette = document.getElementById('vignette-overlay');
       const aboutToggle = document.getElementById('about-toggle');
       const aboutPanel = document.getElementById('about-panel');
+      document.getElementById('effects-toggle').textContent = 'turn effects ' + (effectsOn ? 'off' : 'on');
       applyHue();
       document.body.classList.toggle('plain-text', !effectsOn);
       document.body.classList.toggle('effects-off', !effectsOn);
