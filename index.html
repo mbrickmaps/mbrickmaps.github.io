@@ -640,10 +640,11 @@
     function randomFlash() {
       if (effectsOn) {
         const overlay = document.querySelector('.flash-overlay');
-        overlay.style.opacity = '0.3';
-        setTimeout(() => { overlay.style.opacity = '0'; }, 80 + Math.random() * 100);
+        const peak = 0.08 + Math.random() * 0.14;
+        overlay.style.opacity = String(peak);
+        setTimeout(() => { overlay.style.opacity = '0'; }, 60 + Math.random() * 140);
       }
-      setTimeout(randomFlash, 1500 + Math.random() * 4000);
+      setTimeout(randomFlash, 2500 + Math.random() * 8000);
     }
     randomFlash();
 
