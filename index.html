@@ -17,12 +17,39 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sixtyfour+Convergence&display=swap" rel="stylesheet">
 <style>
+  /* ============================================================
+     CUSTOM PROPERTIES
+     ============================================================ */
+  :root {
+    --terminal-green: #33ff33;
+    --terminal-bg: #000;
+    --page-bg: #010101;
+    --space-1: 0.5rem;
+    --space-2: 0.75rem;
+    --space-3: 1rem;
+    --tray-gap: var(--space-2);
+    --tray-inset: var(--space-3);
+  }
+
+  /* ============================================================
+     RESET
+     ============================================================ */
   * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
 
+  body, html {
+    width: 100%;
+    height: 100%;
+    background: var(--page-bg);
+    overflow-x: hidden;
+  }
+
+  /* ============================================================
+     LINKS
+     ============================================================ */
   a {
     transition: filter 0.15s ease, text-shadow 0.15s ease;
   }
@@ -33,32 +60,12 @@
   }
 
   body.effects-off a:hover {
-    filter: none !important;
-    text-shadow: none !important;
-  }
-
-  body, html {
-    width: 100%;
-    height: 100%;
-    background: #010101;
-    overflow-x: hidden;
-  }
-
-  .project-card,
-  .project-card * {
-    max-width: 100%;
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
-
-  .project-card img,
-  .project-thumb {
-    max-width: 100%;
-    height: auto;
+    filter: none;
+    text-shadow: none;
   }
 
   body.plain-text, body.plain-text * {
-    font-family: Arial, Helvetica, sans-serif !important;
+    font-family: Arial, Helvetica, sans-serif;
   }
 
   a[href^="http"]:not([href*="mbricknell.com"])::after {
@@ -67,12 +74,35 @@
     filter: grayscale(1) sepia(1) hue-rotate(90deg) saturate(4);
   }
 
+  /* ============================================================
+     PAGE CONTENT (shell only — the notebook owns its own styling
+     once injected into #page)
+     ============================================================ */
   #page {
     width: 100%;
     min-height: 100%;
-    padding-bottom: 160px;
+    padding-bottom: 12rem;
   }
 
+  #page.main {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  #page.main.loaded { opacity: 1; }
+
+  .site-header {
+    padding: var(--space-3);
+    color: #eee;
+    font-family: system-ui, sans-serif;
+  }
+
+  .site-header h1 {
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+  }
+
+  /* ============================================================
+     LOADING SCREEN / FX LAYERS
+     ============================================================ */
   .loading-screen {
     position: fixed;
     inset: 0;
@@ -84,29 +114,69 @@
     transition: opacity 0.5s ease;
   }
 
-
   .loading-img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     background-repeat: repeat;
+    background-size: 150px 150px;
     opacity: 0;
     transition: opacity 0.5s ease;
   }
   .loading-img.active { opacity: 1; }
 
-  .loading-img[data-stage="off"] {
-    background-image: url('/img/off.svg');
-    background-size: 150px 150px;
+  .loading-img[data-stage="off"] { background-image: url('/img/off.svg'); }
+  .loading-img[data-stage="init"] { background-image: url('/img/init.svg'); }
+  .loading-img[data-stage="on"] { background-image: url('/img/on.svg'); }
+
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgb(0, 209, 7);
+    opacity: 0;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    transition: opacity 0.08s ease-out;
   }
-  .loading-img[data-stage="init"] {
-    background-image: url('/img/init.svg');
-    background-size: 150px 150px;
+
+  .vignette-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9990;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 15%, rgba(0,0,0,0.95) 100%);
   }
-  .loading-img[data-stage="on"] {
-    background-image: url('/img/on.svg');
-    background-size: 150px 150px;
+
+  .loading-text {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Sixtyfour Convergence", sans-serif;
+    font-variation-settings: "BLED" 0, "SCAN" 0;
+    font-size: clamp(1.5rem, 9vw, 5rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #ff5500;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    text-shadow: 0 0 4px #ff5500, 0 0 12px #ff5500, 0 0 24px #ff3d00, 0 0 45px #ff3d00, 0 0 70px #ff2200;
+    mix-blend-mode: screen;
+  }
+
+  .loading-text.blink .char {
+    animation: char-blink 0.6s steps(1, end) infinite;
+    animation-delay: calc(var(--i) * 0.15s);
+  }
+
+  @keyframes char-blink {
+    0%, 50%  { opacity: 1; }
+    51%, 100% { opacity: 0; }
   }
 
   @keyframes flash-brightness {
@@ -145,161 +215,241 @@
     animation-fill-mode: forwards;
   }
 
-  .flash-overlay {
+  /* Fixed position + mix-blend-mode is a documented WebKit/iOS bug:
+     fixed elements get their own compositing layer and silently fail
+     to blend with content behind them. Rather than chase that, make
+     the blend inert on touch/mobile so effects degrade to flat tints
+     instead of glitching. No !important needed: these are plain class
+     selectors with nothing else competing for them. */
+  @media (max-width: 768px), (pointer: coarse) {
+    .loading-screen,
+    .flash-overlay,
+    .loading-text {
+      mix-blend-mode: normal;
+    }
+  }
+
+  /* ============================================================
+     CONTROL TRAY (effects toggle, hue dial, about toggle/panel)
+     Mobile-first: a single flex container handles spacing so the
+     widgets can never overlap, instead of three independently
+     positioned fixed elements with hand-picked offsets.
+     ============================================================ */
+  .control-tray {
     position: fixed;
-    inset: 0;
-    z-index: 9998;
-    background: rgb(0, 209, 7);
-    opacity: 0;
-    mix-blend-mode: overlay;
-    pointer-events: none;
-    transition: opacity 0.08s ease-out;
-  }
-
-  .loading-text {
-    position: fixed;
-    inset: 0;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: "Sixtyfour Convergence", sans-serif;
-    font-variation-settings: "BLED" 0, "SCAN" 0;
-    font-size: clamp(1.5rem, 9vw, 5rem);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: #ff5500;
-    text-align: center;
-    pointer-events: none;
-    opacity: 0;
-    text-shadow: 0 0 4px #ff5500, 0 0 12px #ff5500, 0 0 24px #ff3d00, 0 0 45px #ff3d00, 0 0 70px #ff2200;
-    mix-blend-mode: screen;
-  }
-
-  .loading-text.blink .char {
-    animation: char-blink 0.6s steps(1, end) infinite;
-    animation-delay: calc(var(--i) * 0.15s);
-  }
-
-  @keyframes char-blink {
-    0%, 50%  { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-
-  #page.main {
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  #page.main.loaded { opacity: 1; }
-
-  #effects-toggle {
-    position: fixed;
-    bottom: 12px;
-    right: 12px;
+    inset: auto var(--tray-inset) var(--tray-inset) var(--tray-inset);
     z-index: 99999;
-    padding: 12px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: var(--tray-gap);
+    pointer-events: none;
+  }
+
+  .control-tray > * {
+    pointer-events: auto;
+  }
+
+  .tray-btn {
+    padding: 0.65rem 1rem;
     min-height: 44px;
-    background: #000;
-    color: #33ff33;
-    border: 1px solid #33ff33;
+    background: var(--terminal-bg);
+    color: var(--terminal-green);
+    border: 1px solid var(--terminal-green);
     border-radius: 4px;
     font-family: "Courier New", monospace;
     font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
     transition: color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .hue-dial {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    background: var(--terminal-bg);
+    border: 1px solid var(--terminal-green);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .hue-dial-label {
+    color: var(--terminal-green);
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+  }
+
+  .hue-tick {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    padding: 0;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--terminal-bg);
+    color: var(--terminal-green);
+    font-family: "Courier New", monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: 2px solid var(--terminal-green);
+    transition: color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   }
 
-  #about-toggle {
-    cursor: pointer;
+  .hue-tick--active {
+    border-color: #fff;
   }
 
-  @media (max-width: 768px) {
-    #effects-toggle {
-      bottom: 66px !important;
-      right: 12px !important;
-      left: auto !important;
-      font-size: 0.85rem !important;
-      padding: 10px 14px !important;
-      min-height: 44px !important;
-    }
-
-    #about-toggle {
-      bottom: 12px !important;
-      left: 12px !important;
-      right: auto !important;
-      font-size: 0.85rem !important;
-      padding: 10px 14px !important;
-      min-height: 44px !important;
-    }
-
-    #hue-dial {
-      bottom: 12px !important;
-      right: 12px !important;
-      left: auto !important;
-      transform: none !important;
-    }
-
-    #page {
-      padding-bottom: 260px !important;
-    }
+  .about-panel {
+    display: none;
+    position: fixed;
+    left: var(--tray-inset);
+    bottom: calc(44px + var(--tray-inset) + var(--space-2));
+    z-index: 100000;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.85);
+    color: #aaa;
+    font-family: system-ui, sans-serif;
+    font-size: 0.8rem;
+    border: 1px solid var(--terminal-green);
+    border-radius: 4px;
+    max-width: 280px;
   }
 
-
-  @media print {
-    #loading-screen,
-    .flash-overlay,
-    #effects-toggle,
-    #hue-dial,
-    #about-toggle,
-    #about-panel {
-      display: none !important;
-    }
-
-    body, html {
-      background: #fff !important;
-    }
-
-    #page, body, html {
-      height: auto !important;
-      filter: none !important;
-      opacity: 1 !important;
-      padding-bottom: 0 !important;
-    }
-
-    header, header *, #page, #page * {
-      color: #000 !important;
-      font-family: Arial, Helvetica, sans-serif !important;
-    }
-
-    a[href^="http"]:not([href*="mbricknell.com"])::after {
-      filter: none !important;
-    }
+  .about-panel.is-open {
+    display: block;
   }
 
-  #effects-toggle,
-  #hue-dial,
-  #about-toggle {
+  .about-panel a { color: #e29742; }
+
+  .control-tray,
+  .tray-btn,
+  .hue-dial {
     opacity: 0.6;
     transition: opacity 0.6s ease;
   }
 
-  #effects-toggle:hover,
-  #hue-dial:hover,
-  #about-toggle:hover {
+  .control-tray:hover,
+  .tray-btn:hover,
+  .hue-dial:hover {
     opacity: 1;
   }
 
-  body.effects-off #effects-toggle,
-  body.effects-off #about-toggle {
-    opacity: 1 !important;
-    transition: none !important;
+  body.effects-off .tray-btn {
+    opacity: 1;
+    transition: none;
   }
 
-  body.pre-load #effects-toggle,
-  body.pre-load #hue-dial,
-  body.pre-load #about-toggle {
-    opacity: 0 !important;
-    pointer-events: none !important;
+  body.pre-load .control-tray {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     PROGRESSIVE ENHANCEMENT — larger screens
+     ============================================================ */
+  @media (min-width: 600px) {
+    .control-tray {
+      align-items: center;
+    }
+  }
+
+  /* ============================================================
+     FX UTILITIES — special effects (kept for any inline markup
+     that references these classes)
+     ============================================================ */
+  [class*="fx-shadow-"] {
+    mix-blend-mode: multiply;
+    opacity: 1;
+    filter: drop-shadow(8px 8px 10px black);
+  }
+
+  [class*="fx-dropshadow-"] {
+    opacity: 1;
+    filter: drop-shadow(0 0 0.5px black);
+  }
+
+  [class*="fx-highlight-"] {
+    mix-blend-mode: screen;
+    opacity: 0.7;
+  }
+
+  [class*="fx-glow-"] {
+    mix-blend-mode: plus-lighter;
+    filter: blur(5px);
+  }
+
+  [class*="fx-texture-"] {
+    mix-blend-mode: color-burn;
+  }
+
+  [class*="fx-wizard-"] {
+    mix-blend-mode: color-dodge;
+    filter: blur(3px);
+    opacity: 0.5;
+  }
+
+  [class*="fx-blur-"] {
+    filter: blur(3px);
+  }
+
+  [class*="fx-blur-screen"] {
+    filter: blur(0.45px);
+    mix-blend-mode: screen;
+  }
+
+  [class*="fx-normal-"]     { mix-blend-mode: normal; }
+  [class*="fx-multiply-"]   { mix-blend-mode: multiply; }
+  [class*="fx-screen-"]     { mix-blend-mode: screen; }
+  [class*="fx-overlay-"]    { mix-blend-mode: overlay; }
+  [class*="fx-darken-"]     { mix-blend-mode: darken; }
+  [class*="fx-lighten-"]    { mix-blend-mode: lighten; }
+  [class^="fx-colordodge-"] { mix-blend-mode: color-dodge; }
+  [class^="fx-colorburn-"]  { mix-blend-mode: color-burn; }
+  [class*="fx-hardlight-"]  { mix-blend-mode: hard-light; }
+  [class*="fx-softlight-"]  { mix-blend-mode: soft-light; }
+  [class*="fx-difference-"] { mix-blend-mode: difference; }
+  [class*="fx-exclusion-"]  { mix-blend-mode: exclusion; }
+  [class*="fx-hue-"]        { mix-blend-mode: hue; }
+  [class*="fx-saturation-"] { mix-blend-mode: saturation; }
+  [class^="fx-color-"]      { mix-blend-mode: color; }
+
+  /* ============================================================
+     PRINT
+     ============================================================ */
+  @media print {
+    .loading-screen,
+    .flash-overlay,
+    .vignette-overlay,
+    .control-tray,
+    .about-panel {
+      display: none;
+    }
+
+    body, html {
+      background: #fff;
+    }
+
+    #page, body, html {
+      height: auto;
+      filter: none;
+      opacity: 1;
+      padding-bottom: 0;
+    }
+
+    .site-header, .site-header *, #page, #page * {
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    a[href^="http"]:not([href*="mbricknell.com"])::after {
+      filter: none;
+    }
   }
 </style>
 </head>
@@ -313,26 +463,26 @@
 
   <div class="flash-overlay"></div>
 
-  <div id="vignette-overlay" style="position:fixed;inset:0;z-index:9990;pointer-events:none;background:radial-gradient(ellipse at center, rgba(0,0,0,0) 15%, rgba(0,0,0,0.95) 100%);"></div>
+  <div class="vignette-overlay"></div>
 
-  <button id="effects-toggle">turn effects off</button>
-
-  <div id="hue-dial" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:8px;background:#000;border:1px solid #33ff33;border-radius:4px;padding:6px 10px;">
-    <span style="color:#33ff33;font-family:'Courier New',monospace;font-weight:700;font-size:0.75rem;">colors:</span>
+  <div class="control-tray">
+    <button id="about-toggle" class="tray-btn">about</button>
+    <div id="hue-dial" class="hue-dial">
+      <span class="hue-dial-label">colors:</span>
+    </div>
+    <button id="effects-toggle" class="tray-btn">turn effects off</button>
   </div>
 
   <div id="page" class="main">
-    <header style="padding:2rem;color:#eee;font-family:system-ui;">
-      <h1 style="font-size:clamp(0.9rem, 4vw, 1.5rem);">Michael Bricknell</h1>
+    <header class="site-header">
+      <h1>Michael Bricknell</h1>
       <p>Cartographer and data visualization designer. Maps, spatial data tools, and design-driven graphics.</p>
       <p><a href="https://observablehq.com/@mbrickmaps" style="color:#e29742;">@mbrickmaps on Observable</a></p>
     </header>
   </div>
 
-  <button id="about-toggle" style="position:fixed;bottom:12px;left:12px;z-index:99999;padding:12px 18px;min-height:44px;background:#000;color:#33ff33;border:1px solid #33ff33;border-radius:4px;font-family:'Courier New', monospace;font-weight:700;transition:color 0.15s ease, box-shadow 0.15s ease;">about</button>
-
-  <div id="about-panel" style="display:none;position:fixed;bottom:52px;left:12px;z-index:100000;padding:1rem 1.25rem;background:rgba(0,0,0,0.85);color:#aaa;font-family:system-ui, sans-serif;font-size:0.8rem;border:1px solid #33ff33;border-radius:4px;max-width:280px;">
-    "Sixtyfour Convergence" font by <a href="https://fonts.google.com/?query=Simon%20Cozens" style="color:#e29742;">Simon Cozens</a>, <a href="https://fonts.google.com/?query=Jens%20Kut%C3%ADlek" style="color:#e29742;">Jens Kutílek</a>
+  <div id="about-panel" class="about-panel">
+    "Sixtyfour Convergence" font by <a href="https://fonts.google.com/?query=Simon%20Cozens">Simon Cozens</a>, <a href="https://fonts.google.com/?query=Jens%20Kut%C3%ADlek">Jens Kutílek</a>
   </div>
 
   <script type="module">
@@ -357,15 +507,11 @@
       tick.type = 'button';
       tick.className = 'hue-tick';
       tick.textContent = i + 1;
-      tick.style.cssText = 'width:44px;height:44px;border-radius:50%;padding:0;cursor:pointer;' +
-        'display:flex;align-items:center;justify-content:center;' +
-        'background:#000;color:#33ff33;font-family:"Courier New",monospace;font-size:20px;font-weight:700;' +
-        'transition:color 0.15s ease, box-shadow 0.15s ease;' +
-        'border:2px solid ' + (angle === currentHue ? '#fff' : '#33ff33') + ';';
       tick.dataset.angle = angle;
+      tick.classList.toggle('hue-tick--active', angle === currentHue);
       tick.addEventListener('click', () => {
         currentHue = angle;
-        hueTicks.forEach(t => { t.style.borderColor = (Number(t.dataset.angle) === currentHue) ? '#fff' : '#33ff33'; });
+        hueTicks.forEach(t => t.classList.toggle('hue-tick--active', Number(t.dataset.angle) === currentHue));
         applyHue();
       });
       dial.appendChild(tick);
@@ -378,7 +524,7 @@
 
     function applyEffectsState() {
       const overlay = document.querySelector('.flash-overlay');
-      const vignette = document.getElementById('vignette-overlay');
+      const vignette = document.querySelector('.vignette-overlay');
       const aboutToggle = document.getElementById('about-toggle');
       const aboutPanel = document.getElementById('about-panel');
       document.getElementById('effects-toggle').textContent = 'turn effects ' + (effectsOn ? 'off' : 'on');
@@ -395,7 +541,7 @@
         dial.style.display = 'none';
         vignette.style.display = 'none';
         aboutToggle.style.display = 'none';
-        aboutPanel.style.display = 'none';
+        aboutPanel.classList.remove('is-open');
       } else {
         loadingScreen.style.display = '';
         dial.style.display = 'flex';
@@ -413,8 +559,7 @@
     applyEffectsState();
 
     document.getElementById('about-toggle').addEventListener('click', function () {
-      const panel = document.getElementById('about-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      document.getElementById('about-panel').classList.toggle('is-open');
     });
 
     const stages = document.querySelectorAll('.loading-img');
@@ -451,7 +596,7 @@
       el.textContent = '';
       [...text].forEach((char, i) => {
         const span = document.createElement('span');
-        span.textContent = char === ' ' ? ' ' : char;
+        span.textContent = char === ' ' ? ' ' : char;
         span.style.setProperty('--i', i);
         span.classList.add('char');
         el.appendChild(span);
