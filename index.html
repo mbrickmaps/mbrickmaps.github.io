@@ -451,7 +451,6 @@
   </div>
 
   <div class="flash-overlay"></div>
-
   <div class="vignette-overlay"></div>
 
   <div class="control-tray">
@@ -601,13 +600,13 @@
       loadingText.classList.add('blink');
     }, 300);
 
-const runtime = new Runtime();
-const main = runtime.module(notebook, name => {
-  if (name === "page") {
-    return new Inspector(document.getElementById("page"));
-  }
-});
-
+    const runtime = new Runtime();
+    const targetName = location.pathname.replace(/\/$/, "") === "/home" ? "portfolioPage" : "page";
+    const main = runtime.module(notebook, name => {
+      if (name === targetName) {
+        return new Inspector(document.getElementById("page"));
+      }
+    });
 
     function dismissLoadingScreen() {
       showStage('on');
@@ -639,20 +638,18 @@ const main = runtime.module(notebook, name => {
     randomFlash();
 
     function selectText(element) {
-  if (!element) return;
+      if (!element) return;
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
 
-  const range = document.createRange();
-  range.selectNodeContents(element);
-
-  const selection = window.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-window.addEventListener('DOMContentLoaded', function () {
-  const target = document.querySelector('.select');
-  selectText(target);
-});
+    window.addEventListener('DOMContentLoaded', function () {
+      const target = document.querySelector('.select');
+      selectText(target);
+    });
   </script>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1J5XCP3RRH"></script>
