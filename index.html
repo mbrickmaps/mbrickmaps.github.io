@@ -601,12 +601,12 @@
     }, 300);
 
     const runtime = new Runtime();
-    const targetName = location.pathname.replace(/\/$/, "") === "/home" ? "portfolioPage" : "page";
-    const main = runtime.module(notebook, name => {
-      if (name === targetName) {
-        return new Inspector(document.getElementById("page"));
-      }
-    });
+const targetName = location.pathname.replace(/\/$/, "") === "/media" ? "mediaRoomPage" : "page";
+const main = runtime.module(notebook, name => {
+  if (name === targetName) {
+    return new Inspector(document.getElementById("page"));
+  }
+});
 
     function dismissLoadingScreen() {
       showStage('on');
