@@ -602,13 +602,11 @@
     }, 300);
 
 const runtime = new Runtime();
-const targetName = location.pathname.replace(/\/$/, "") === "/portfolio" ? "portfolioPage" : "page";
 const main = runtime.module(notebook, name => {
-  if (name === targetName) {
+  if (name === "page") {
     return new Inspector(document.getElementById("page"));
   }
 });
-
 
 
     function dismissLoadingScreen() {
