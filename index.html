@@ -601,7 +601,7 @@
     }, 300);
 
     const runtime = new Runtime();
-const targetName = location.pathname.replace(/\/$/, "") === "/media" ? "mediaRoomPage" : "page";
+const targetName = location.pathname.replace(/\/$/, "") === "/home" ? "mediaRoomPage" : "page";
 const main = runtime.module(notebook, name => {
   if (name === targetName) {
     return new Inspector(document.getElementById("page"));
@@ -619,12 +619,12 @@ const main = runtime.module(notebook, name => {
       }, 700);
     }
 
-    main.value("page").then(() => {
-      dismissLoadingScreen();
-    }).catch(err => {
-      console.error("Observable content failed to load:", err);
-      dismissLoadingScreen();
-    });
+main.value(targetName).then(() => {
+  dismissLoadingScreen();
+}).catch(err => {
+  console.error("Observable content failed to load:", err);
+  dismissLoadingScreen();
+});
 
     function randomFlash() {
       if (effectsOn) {
