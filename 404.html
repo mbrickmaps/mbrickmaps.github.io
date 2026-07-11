@@ -14,12 +14,37 @@
 <link rel="preconnect" href="https://static.observableusercontent.com">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body, html { width: 100%; min-height: 100%; background: #010101; overflow-x: hidden; }
-  #page { width: 100%; min-height: 100%; padding-bottom: 12rem; }
+  body, html { width: 100%; height: 100%; background: #010101; overflow: hidden; }
+
+  /* full-viewport room: walls behind, content centered on top */
+  #room {
+    position: fixed;
+    inset: 0;
+  }
+
+  #walls {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;   /* never intercepts clicks */
+  }
+
+  #page {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(960px, 90vw);
+    aspect-ratio: 960 / 540;
+  }
 </style>
 </head>
 <body>
-  <div id="page"></div>
+  <div id="room">
+    <svg id="walls"></svg>
+    <div id="page"></div>
+  </div>
 
   <script type="module">
     import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@5/dist/runtime.js";
@@ -31,6 +56,89 @@
       if (name === targetName) {
         return new Inspector(document.getElementById("page"));
       }
+    });
+
+    // ---- faux one-point perspective walls ----
+    const wallsSvg = document.getElementById("walls");
+    const page = document.getElementById("page");
+
+    // surface fills — tune to taste
+    const SURFACES = {
+      left:  "#161310",
+      right: "#12100e",
+      floor: "#0c0a08",
+      ceil:  "#0a0a0c"
+    };
+
+    function poly(points, fill) {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      p.setAttribute("points", points.map(pt => pt.join(",")).join(" "));
+      p.setAttribute("fill", fill);
+      return p;
+    }
+
+    // One row per surface. Each value can be:
+    //   a number (opacity), or
+    //   { opacity, fill } if the surface should also change color per level.
+    // Add a new surface (e.g. a fourth wall, a rug, a window) by giving it
+    // its own row here and its own id in drawWalls().
+    const WALL_TREATMENTS = {
+      ceiling: { room: 1,   object: 1,   screen: 0 },
+      left:    { room: 1,   object: 0.6, screen: 0 },
+      right:   { room: 1,   object: 0.6, screen: 0 },
+      floor:   { room: 1,   object: 0,   screen: 0 }
+    };
+
+    function applyWallVisibility(level = "room") {
+      for (const [name, byLevel] of Object.entries(WALL_TREATMENTS)) {
+        const el = wallsSvg.querySelector(`#wall-${name}`);
+        if (!el) continue;
+        const spec = byLevel[level] ?? byLevel.room;
+        const { opacity, fill } =
+          typeof spec === "number" ? { opacity: spec, fill: null } : spec;
+
+        el.style.transition = "opacity 0.4s ease, fill 0.4s ease";
+        el.style.opacity = opacity;
+        if (fill) el.setAttribute("fill", fill);
+      }
+    }
+
+    function drawWalls() {
+      const W = window.innerWidth, H = window.innerHeight;
+      const r = page.getBoundingClientRect();
+      const TL = [r.left, r.top],     TR = [r.right, r.top];
+      const BL = [r.left, r.bottom],  BR = [r.right, r.bottom];
+      const vTL = [0, 0], vTR = [W, 0], vBL = [0, H], vBR = [W, H];
+
+      wallsSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+      const ceiling = poly([vTL, vTR, TR, TL], SURFACES.ceil);
+      ceiling.id = "wall-ceiling";
+
+      const left = poly([vTL, TL, BL, vBL], SURFACES.left);
+      left.id = "wall-left";
+
+      const right = poly([vTR, TR, BR, vBR], SURFACES.right);
+      right.id = "wall-right";
+
+      const floor = poly([vBL, BL, BR, vBR], SURFACES.floor);
+      floor.id = "wall-floor";
+
+      wallsSvg.replaceChildren(ceiling, left, right, floor);
+      applyWallVisibility(window.room?.currentLevel ?? "room");
+    }
+
+    drawWalls();
+    window.addEventListener("resize", drawWalls);
+    new ResizeObserver(drawWalls).observe(page);
+
+    // expose for other scripts / other cells
+    window.room = { wallsSvg, page, drawWalls, applyWallVisibility, currentLevel: "room" };
+
+    // track state changes broadcast from the mediaRoom cell
+    window.addEventListener("mediaroom:state", (e) => {
+      window.room.currentLevel = e.detail.level;
+      applyWallVisibility(e.detail.level);
     });
   </script>
 
@@ -53,15 +161,10 @@
 
     window.addEventListener("message", (e) => {
       if (e.data.event === "card_click") {
-        gtag("event", "card_click", {
-          link_url: e.data.link_url,
-          link_text: e.data.link_text
-        });
+        gtag("event", "card_click", { link_url: e.data.link_url, link_text: e.data.link_text });
       }
       if (e.data.event === "swatch_click") {
-        gtag("event", "swatch_click", {
-          color_value: e.data.color_value
-        });
+        gtag("event", "swatch_click", { color_value: e.data.color_value });
       }
     });
   </script>
