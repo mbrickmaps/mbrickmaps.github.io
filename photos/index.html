@@ -137,7 +137,7 @@
     }
 
     const allNames = rows
-      .filter((row) => row.exclude !== "yes")
+      .filter((row) => !row.exclude)
       .map((row) => row.name);
 
     const allTags = [...new Set(
