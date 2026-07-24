@@ -1,38 +1,51 @@
+
+Gallery · HTML
 <!DOCTYPE html>
 <html>
-
 <head>
-  <style>
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, 200px);
-      gap: 10px;
-    }
-
-    .gallery img {
-      cursor: pointer;
-    }
-
-    [popover] {
-      margin: auto;
-      border: none;
-      background: transparent;
-      max-width: 90vw;
-      max-height: 90vh;
-    }
-
-    [popover] img {
-      max-width: 90vw;
-      max-height: 90vh;
-    }
-
-    [popover]::backdrop {
-      background: rgba(0, 0, 0, 0.8);
-    }
-  </style>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #111111;
+  }
+  html[data-theme="dark"] {
+    --bg: #111111;
+    --fg: #eeeeee;
+  }
+ 
+  body { background: var(--bg); color: var(--fg); }
+ 
+  .toggle-btn {
+    margin: 10px;
+    padding: 6px 12px;
+    background: var(--fg);
+    color: var(--bg);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+ 
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 10px; }
+  .gallery img { cursor: pointer; }
+ 
+  [popover] {
+    margin: auto;
+    border: none;
+    background: transparent;
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+  [popover] img { max-width: 90vw; max-height: 90vh; }
+  [popover]::backdrop { background: rgba(0,0,0,0.8); }
+</style>
 </head>
-
 <body>
+ 
+<button class="toggle-btn" onclick="
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+">Toggle dark mode</button>
+ 
 
   <div class="gallery" id="gallery"></div>
 
