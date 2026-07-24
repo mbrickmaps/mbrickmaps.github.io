@@ -1,54 +1,97 @@
 <!DOCTYPE html>
 <html>
-<head>
-<style>
-  .gallery { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 10px; }
-  .gallery img { cursor: pointer; }
 
-  [popover] {
-    margin: auto;
-    border: none;
-    background: transparent;
-    max-width: 90vw;
-    max-height: 90vh;
-  }
-  [popover] img { max-width: 90vw; max-height: 90vh; }
-  [popover]::backdrop { background: rgba(0,0,0,0.8); }
-</style>
+<head>
+  <style>
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 200px);
+      gap: 10px;
+    }
+
+    .gallery img {
+      cursor: pointer;
+    }
+
+    [popover] {
+      margin: auto;
+      border: none;
+      background: transparent;
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+
+    [popover] img {
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+
+    [popover]::backdrop {
+      background: rgba(0, 0, 0, 0.8);
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="gallery" id="gallery"></div>
+  <div class="gallery" id="gallery"></div>
 
-<script>
-  // Add or remove names here to control what shows up on the page
-  const photos = [
-    "sunset",
-    "beach",
-    "mountain"
-  ];
+  <script>
+    // Add or remove names here to control what shows up on the page
+    const photos = [
+      "7372",
+      "7012",
+      "7029",
+      "7049",
+      "7085",
+      "7093",
+      "7147",
+      "7152",
+      "7158",
+      "7184",
+      "7195",
+      "7234",
+      "7240",
+      "7243",
+      "7252",
+      "7258",
+      "7260",
+      "7275",
+      "7277",
+      "7281",
+      "7302",
+      "7319",
+      "7324",
+      "7326",
+      "7329",
+      "7334",
+      "7345",
+      "7352",
+      "7366"
+    ];
 
-  function photoBlock(name) {
-    return `
+    function photoBlock(name) {
+      return `
       <button popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
         <picture>
-          <source srcset="derived/${name}-web.avif" type="image/avif">
-          <source srcset="derived/${name}-web.webp" type="image/webp">
-          <img src="derived/${name}-web.jpg" width="200" alt="${name}">
+          <source srcset="edits/${name}-web.avif" type="image/avif">
+          <source srcset="edits/${name}-web.webp" type="image/webp">
+          <img src="edits/${name}-web.jpg" width="200" alt="${name}">
         </picture>
       </button>
       <div popover id="${name}-pop">
         <picture>
-          <source srcset="derived/${name}-web.avif" type="image/avif">
-          <source srcset="derived/${name}-web.webp" type="image/webp">
-          <img src="derived/${name}-web.jpg" alt="${name}">
+          <source srcset="edits/${name}-web.avif" type="image/avif">
+          <source srcset="edits/${name}-web.webp" type="image/webp">
+          <img src="edits/${name}-web.jpg" alt="${name}">
         </picture>
       </div>
     `;
-  }
+    }
 
-  document.getElementById("gallery").innerHTML = photos.map(photoBlock).join("");
-</script>
+    document.getElementById("gallery").innerHTML = photos.map(photoBlock).join("");
+  </script>
 
 </body>
+
 </html>
