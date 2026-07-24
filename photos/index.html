@@ -24,7 +24,26 @@
   }
 
   .gallery { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 10px; }
-  .gallery img { cursor: pointer; }
+  .thumb-wrap { position: relative; display: inline-block; }
+  .thumb-wrap img { cursor: pointer; display: block; }
+
+  .thumb-wrap .hover-caption {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    margin-left: 8px;
+    white-space: nowrap;
+    background: var(--bg);
+    color: var(--fg);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 1;
+  }
+  .thumb-wrap:hover .hover-caption { opacity: 1; }
 
   [popover] {
     margin: auto;
@@ -33,9 +52,19 @@
     max-width: 90vw;
     max-height: 90vh;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
-  [popover] img { max-width: 90vw; max-height: 90vh; display: block; }
-  [popover] .caption { color: var(--fg); font-size: 0.9rem; margin-top: 8px; }
+  [popover] img { max-width: 80vw; max-height: 90vh; display: block; cursor: pointer; }
+  [popover] .caption {
+    color: var(--fg);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  [popover]:hover .caption { opacity: 1; }
   [popover]::backdrop { background: rgba(0,0,0,0.8); }
 </style>
 </head>
@@ -56,21 +85,24 @@
 <script>
   function photoBlock(name, meta) {
     const { caption, date } = meta[name] || {};
+    const label = `${caption || ""}${date ? " — " + date : ""}`;
     return `
-      <button popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
+      <button class="thumb-wrap" popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
         <picture>
           <source srcset="edits/${name}-web.avif" type="image/avif">
           <source srcset="edits/${name}-web.webp" type="image/webp">
           <img src="edits/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
         </picture>
+        <span class="hover-caption">${label}</span>
       </button>
       <div popover id="${name}-pop">
         <picture>
           <source srcset="edits/${name}-web.avif" type="image/avif">
           <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" alt="${caption || name}" loading="lazy">
+          <img src="edits/${name}-web.jpg" alt="${caption || name}" loading="lazy"
+               onclick="this.closest('[popover]').hidePopover()">
         </picture>
-        <div class="caption">${caption || ""}${date ? " — " + date : ""}</div>
+        <div class="caption">${label}</div>
       </div>
     `;
   }
