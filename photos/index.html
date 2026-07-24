@@ -89,17 +89,17 @@
     return `
       <button class="thumb-wrap" popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
         </picture>
         <span class="hover-caption">${label}</span>
       </button>
       <div popover id="${name}-pop">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" alt="${caption || name}" loading="lazy"
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" alt="${caption || name}" loading="lazy"
                onclick="this.closest('[popover]').hidePopover()">
         </picture>
         <div class="caption">${label}</div>
