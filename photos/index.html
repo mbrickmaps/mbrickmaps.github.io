@@ -3,16 +3,16 @@
 <head>
 <style>
   :root {
-    --bg: #ffffff;
-    --fg: #111111;
-  }
-  html[data-theme="dark"] {
     --bg: #111111;
     --fg: #eeeeee;
   }
- 
+  html[data-theme="light"] {
+    --bg: #ffffff;
+    --fg: #111111;
+  }
+
   body { background: var(--bg); color: var(--fg); }
- 
+
   .toggle-btn {
     margin: 10px;
     padding: 6px 12px;
@@ -22,87 +22,73 @@
     border-radius: 4px;
     cursor: pointer;
   }
- 
+
   .gallery { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 10px; }
   .gallery img { cursor: pointer; }
- 
+
   [popover] {
     margin: auto;
     border: none;
     background: transparent;
     max-width: 90vw;
     max-height: 90vh;
+    overflow: hidden;
   }
-  [popover] img { max-width: 90vw; max-height: 90vh; }
+  [popover] img { max-width: 90vw; max-height: 90vh; display: block; }
+  [popover] .caption { color: var(--fg); font-size: 0.9rem; margin-top: 8px; }
   [popover]::backdrop { background: rgba(0,0,0,0.8); }
 </style>
 </head>
 <body>
- 
+
 <button class="toggle-btn" onclick="
   const html = document.documentElement;
-  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  html.dataset.theme = html.dataset.theme === 'light' ? 'dark' : 'light';
 ">Toggle dark mode</button>
- 
 
-  <div class="gallery" id="gallery"></div>
+<script>
+  document.documentElement.dataset.theme = 'dark';
+</script>
 
-  <script>
-    // Add or remove names here to control what shows up on the page
-    const photos = [
-      "7372",
-      "7012",
-      "7029",
-      "7049",
-      "7085",
-      "7093",
-      "7147",
-      "7152",
-      "7158",
-      "7184",
-      "7195",
-      "7234",
-      "7240",
-      "7243",
-      "7252",
-      "7258",
-      "7260",
-      "7275",
-      "7277",
-      "7281",
-      "7302",
-      "7319",
-      "7324",
-      "7326",
-      "7329",
-      "7334",
-      "7345",
-      "7352",
-      "7366"
-    ];
+<div class="gallery" id="gallery"></div>
 
-    function photoBlock(name) {
-      return `
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+  function photoBlock(name, meta) {
+    const { caption, date } = meta[name] || {};
+    return `
       <button popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" width="200" alt="${name}">
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
         </picture>
       </button>
       <div popover id="${name}-pop">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" alt="${name}" loading="lazy">
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" alt="${caption || name}" loading="lazy">
         </picture>
+        <div class="caption">${caption || ""}${date ? " — " + date : ""}</div>
       </div>
     `;
+  }
+
+  d3.csv("meta.csv").then((rows) => {
+    const meta = {};
+    for (const row of rows) {
+      if (row.name) meta[row.name] = row;
     }
 
-    document.getElementById("gallery").innerHTML = photos.map(photoBlock).join("");
-  </script>
+    const photos = rows
+      .filter((row) => row.exclude !== "yes")
+      .map((row) => row.name);
+
+    document.getElementById("gallery").innerHTML =
+      photos.map((name) => photoBlock(name, meta)).join("");
+  });
+</script>
 
 </body>
-
 </html>
