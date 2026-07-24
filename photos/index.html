@@ -23,20 +23,35 @@
     cursor: pointer;
   }
 
+  .filter-bar { margin: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filter-bar input {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .tag-btn {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .tag-btn.active { background: var(--fg); color: var(--bg); }
+
   .gallery { display: grid; grid-template-columns: repeat(auto-fill, 200px); gap: 10px; }
   .thumb-wrap { position: relative; display: inline-block; }
   .thumb-wrap img { cursor: pointer; display: block; }
 
   .thumb-wrap .hover-caption {
     position: absolute;
-    top: 0;
-    left: 100%;
-    margin-left: 8px;
-    white-space: nowrap;
-    background: var(--bg);
-    color: var(--fg);
+    inset: auto 0 0 0;
+    background: rgba(0,0,0,0.6);
+    color: #eee;
     padding: 4px 8px;
-    border-radius: 4px;
     font-size: 0.85rem;
     opacity: 0;
     pointer-events: none;
@@ -64,10 +79,7 @@
     color: var(--fg);
     font-size: 0.9rem;
     white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.15s;
   }
-  [popover]:hover .caption { opacity: 1; }
   [popover]::backdrop { background: rgba(0,0,0,0.8); }
 </style>
 </head>
@@ -82,6 +94,11 @@
   document.documentElement.dataset.theme = 'dark';
 </script>
 
+<div class="filter-bar">
+  <input type="text" id="search" placeholder="Search caption or tags...">
+  <div id="tag-filters"></div>
+</div>
+
 <div class="gallery" id="gallery"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -92,17 +109,17 @@
     return `
       <button class="thumb-wrap" popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
         </picture>
         <span class="hover-caption">${label}</span>
       </button>
       <div popover id="${name}-pop">
         <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" alt="${caption || name}" loading="lazy"
+          <source srcset="derived/${name}-web.avif" type="image/avif">
+          <source srcset="derived/${name}-web.webp" type="image/webp">
+          <img src="derived/${name}-web.jpg" alt="${caption || name}" loading="lazy"
                onclick="this.closest('[popover]').hidePopover()">
         </picture>
         <div class="caption">${label}</div>
@@ -116,12 +133,73 @@
       if (row.name) meta[row.name] = row;
     }
 
-    const photos = rows
+    const allNames = rows
       .filter((row) => row.exclude !== "yes")
       .map((row) => row.name);
 
-    document.getElementById("gallery").innerHTML =
-      photos.map((name) => photoBlock(name, meta)).join("");
+    const allTags = [...new Set(
+      rows.flatMap((row) => (row.tags || "").split(";").map((t) => t.trim()).filter(Boolean))
+    )].sort();
+
+    let activeTag = null;
+
+    function render() {
+      const query = document.getElementById("search").value.trim().toLowerCase();
+
+      const visible = allNames.filter((name) => {
+        const row = meta[name] || {};
+        const tags = (row.tags || "").split(";").map((t) => t.trim());
+
+        if (activeTag && !tags.includes(activeTag)) return false;
+
+        if (query) {
+          const haystack = `${row.caption || ""} ${row.tags || ""} ${name}`.toLowerCase();
+          if (!haystack.includes(query)) return false;
+        }
+
+        return true;
+      });
+
+      document.getElementById("gallery").innerHTML =
+        visible.map((name) => photoBlock(name, meta)).join("");
+    }
+
+    document.getElementById("tag-filters").innerHTML = allTags.map((tag) => `
+      <button class="tag-btn" data-tag="${tag}">${tag}</button>
+    `).join("");
+
+    document.getElementById("tag-filters").addEventListener("click", (e) => {
+      const btn = e.target.closest(".tag-btn");
+      if (!btn) return;
+      const tag = btn.dataset.tag;
+      activeTag = activeTag === tag ? null : tag;
+      document.querySelectorAll(".tag-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.tag === activeTag)
+      );
+      render();
+    });
+
+    document.getElementById("search").addEventListener("input", render);
+
+    render();
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const open = document.querySelector("[popover]:popover-open");
+      if (!open) return;
+
+      const currentName = open.id.replace(/-pop$/, "");
+      const visibleNow = [...document.querySelectorAll("[popover]")].map((el) => el.id.replace(/-pop$/, ""));
+      const i = visibleNow.indexOf(currentName);
+      if (i === -1) return;
+
+      const nextI = e.key === "ArrowRight"
+        ? (i + 1) % visibleNow.length
+        : (i - 1 + visibleNow.length) % visibleNow.length;
+
+      open.hidePopover();
+      document.getElementById(`${visibleNow[nextI]}-pop`).showPopover();
+    });
   });
 </script>
 
