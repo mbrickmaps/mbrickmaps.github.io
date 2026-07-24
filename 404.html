@@ -22,12 +22,71 @@
     inset: 0;
   }
 
-  #walls {
+  #walls-back, #walls-front {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;   /* never intercepts clicks */
+  }
+
+  #walls-back  { z-index: 3; }  /* ceiling/floor — topmost, over everything */
+  #walls-front { z-index: 2; }  /* left/right walls — in front of #page */
+
+  /* keep the wall/trim layers on their own GPU layers so the mediaRoom's
+     per-frame zoom repaint of #page doesn't force the big wall textures to
+     re-rasterize alongside it. */
+  #walls-back, #walls-front, #trim {
+    will-change: transform;
+    contain: layout paint;
+  }
+
+  #trim {                        /* molding drawn over every wall seam */
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;                  /* above all walls */
+  }
+
+  #prop-table {                  /* static furniture, pinned to the viewport */
+    position: absolute;
+    left: 50%;
+    bottom: 6%;                  /* sit it down on the floor */
+    width: 220px;
+    transform: translateX(-50%);
+    z-index: 5;                  /* in front of the floor and trim */
+    pointer-events: none;
+  }
+
+  /* perspective lives HERE, not on the group: clip-path forces an element
+     to transform-style:flat, so it can't also relay a parent's perspective.
+     But perspective always applies to an element's own direct children, so
+     the rotated .wall inside still gets true 3D while clip-path trims it. */
+  .wall-clip {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    perspective: 1000px;
+  }
+
+  .wall {
+    position: absolute;
+    background-repeat: repeat;
+  }
+
+  .wall-side {
+    background-color: #000;  /* opaque backing since these sit in front */
+  }
+
+  /* depth-shading wash: sits flat (screen-space) over each panel, clipped
+     to the same trapezoid by the wall-clip parent. Position + gradient set
+     in JS so the gradient spans exactly the panel's depth band (viewport
+     edge -> #page edge), reaching full strength right at #page. */
+  .wall-overlay {
+    position: absolute;
+    pointer-events: none;
   }
 
   #page {
@@ -37,13 +96,119 @@
     transform: translate(-50%, -50%);
     width: min(960px, 90vw);
     aspect-ratio: 960 / 540;
+    max-height: min(540px, 50.625vw); /* = width * 540/960, both branches of the width min() */
+    overflow-y: auto;   /* long content scrolls inside the frame instead of growing it */
+    z-index: 1;
   }
+
+  /* graphical content (icon scenes, etc.) must fill #page exactly so its
+     edges meet the wall panels — otherwise it floats at its own natural
+     size and leaves a gap between the art and the frame. */
+  #page > svg, #page > canvas, #page > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+   /* ============================================================
+     FX UTILITIES — special effects (kept for any inline markup
+     that references these classes)
+     ============================================================ */
+  [class*="fx-shadow-"] {
+    mix-blend-mode: multiply;
+    opacity: 1;
+    filter: drop-shadow(8px 8px 10px black);
+  }
+
+  [class*="fx-dropshadow-"] {
+    opacity: 1;
+     filter: drop-shadow(8px 8px 10px black);
+  }
+
+  [class*="fx-highlight-"] {
+    mix-blend-mode: screen;
+    opacity: 0.7;
+  }
+
+  [class*="fx-glow-"] {
+    mix-blend-mode: plus-lighter;
+    filter: blur(5px);
+  }
+
+  [class*="fx-texture-"] {
+    mix-blend-mode: color-burn;
+  }
+
+  [class*="fx-wizard-"] {
+    mix-blend-mode: color-dodge;
+    filter: blur(3px);
+    opacity: 0.5;
+  }
+
+  [class*="fx-blur-"] {
+    filter: blur(3px);
+  }
+
+  [class*="fx-blur-screen"] {
+    filter: blur(0.45px);
+    mix-blend-mode: screen;
+  }
+
+  [class*="fx-normal-"]     { mix-blend-mode: normal; }
+  [class*="fx-multiply-"]   { mix-blend-mode: multiply; }
+  [class*="fx-screen-"]     { mix-blend-mode: screen; }
+  [class*="fx-overlay-"]    { mix-blend-mode: overlay; }
+  [class*="fx-darken-"]     { mix-blend-mode: darken; }
+  [class*="fx-lighten-"]    { mix-blend-mode: lighten; }
+  [class^="fx-colordodge-"] { mix-blend-mode: color-dodge; }
+  [class^="fx-colorburn-"]  { mix-blend-mode: color-burn; }
+  [class*="fx-hardlight-"]  { mix-blend-mode: hard-light; }
+  [class*="fx-softlight-"]  { mix-blend-mode: soft-light; }
+  [class*="fx-difference-"] { mix-blend-mode: difference; }
+  [class*="fx-exclusion-"]  { mix-blend-mode: exclusion; }
+  [class*="fx-hue-"]        { mix-blend-mode: hue; }
+  [class*="fx-saturation-"] { mix-blend-mode: saturation; }
+  [class^="fx-color-"]      { mix-blend-mode: color; }
+.record-platter {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.record-platter.spinning {
+  animation: platter-spin 1.8s linear infinite;
+}
+@keyframes platter-spin {
+  to { transform: rotate(360deg); }
+}
+.record-tonearm {
+  transform: rotate(-18deg); /* resting off the record */
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.record-tonearm.engaged {
+  transform: rotate(0deg);   /* drawn geometry = playing position */
+}
+
 </style>
 </head>
 <body>
   <div id="room">
-    <svg id="walls"></svg>
+    <div id="walls-back"></div>
     <div id="page"></div>
+    <div id="walls-front"></div>
+    <svg id="trim"></svg>
+
+    <!-- static furniture prop: a simple table sitting on the floor.
+         Pure CSS placement (see #prop-table) — pinned to the viewport,
+         no perspective/resize logic. Colors match the trim wood tones. -->
+<!--
+    <svg id="prop-table" viewBox="0 0 200 150" aria-hidden="true">
+      <rect x="54"  y="38" width="8"  height="72" fill="#2f2113"/>
+      <rect x="138" y="38" width="8"  height="72" fill="#2f2113"/>
+      <polygon points="45,26 155,26 178,46 22,46" fill="#5a4128"/>
+      <polygon points="22,46 178,46 176,49 24,49" fill="#b8905a"/>
+      <rect x="24" y="49" width="152" height="12" fill="#3a2a19"/>
+      <rect x="34"  y="61" width="11" height="74" fill="#4a3620"/>
+      <rect x="155" y="61" width="11" height="74" fill="#4a3620"/>
+    </svg>
+  -->
   </div>
 
   <script type="module">
@@ -58,87 +223,370 @@
       }
     });
 
-    // ---- faux one-point perspective walls ----
-    const wallsSvg = document.getElementById("walls");
+    // ---- faux one-point perspective walls (real CSS 3D) ----
+    // ceiling/floor live behind #page, left/right ("the walls") live in
+    // front of it — two separate 3D groups sharing the same perspective
+    // origin so the vanishing point still lines up between them.
+    const wallsBackEl = document.getElementById("walls-back");
+    const wallsFrontEl = document.getElementById("walls-front");
+    const trimSvg = document.getElementById("trim");
     const page = document.getElementById("page");
 
-    // surface fills — tune to taste
-    const SURFACES = {
-      left:  "#161310",
-      right: "#12100e",
-      floor: "#0c0a08",
-      ceil:  "#0a0a0c"
+    // Trim/molding drawn over every wall seam. Each seam gets these strokes
+    // painted widest-first, so the narrower ones stack on top and read as a
+    // beveled wood molding (dark base -> mid -> light highlight). Tune the
+    // widths/colors here; add or remove layers freely.
+    const TRIM_LAYERS = [
+      { width: 8,   color: "#140d07" },  // outer shadow lip
+      { width: 5,   color: "#5a4128" },  // main wood body
+      { width: 2,   color: "#b8905a" }   // top highlight bead
+    ];
+    // the visible miter cut at each #page corner — the diagonal seam where the
+    // back-wall trim piece butts against the side-wall trim piece.
+    const TRIM_CUT = { color: "#0b0704", width: 1 };
+
+    // The table is furniture ON the back wall, under the TV. Because the back
+    // wall (#page) is static/centered, the table is anchored to #page — its
+    // position/size are fractions of #page, so it moves and scales WITH the
+    // back wall (no realtime broadcast needed). cx = horizontal center, top =
+    // top edge, width = table width; all as fractions of #page.
+    // Defaults put it under the mediaRoom TV zone at the room-level view.
+    const TABLE_ON_WALL = { cx: 0.16, top: 0.74, width: 0.26 };
+
+    // one texture per surface, applied as a plain tiled CSS background —
+    // real 3D rotation (below) gives it correct, continuous perspective
+    // foreshortening, so no manual skew/scale hacks are needed here.
+    // width/height must match each source SVG's own viewBox size so tiles
+    // repeat at their native size (pattern2.svg is 300x260).
+    // insertion order = paint order: ceil/floor last so they paint over
+    // left/right's corners and reach the true viewport edges.
+    const WALL_TEXTURES = {
+      left:  { src: "/img/pattern1.svg", width: 150, height: 150 },
+      right: { src: "/img/pattern1.svg", width: 150, height: 150 },
+      ceil:  { src: "/img/pattern2.svg", width: 300, height: 260 },
+      floor: { src: "/img/pattern2.svg", width: 300, height: 260 }
     };
 
-    function poly(points, fill) {
-      const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      p.setAttribute("points", points.map(pt => pt.join(",")).join(" "));
-      p.setAttribute("fill", fill);
-      return p;
+    // Depth-shading overlay per surface: a black->transparent gradient wash
+    // laid over each panel to fake atmospheric depth. `dir` points toward
+    // the DEEP edge (the one touching #page) — shade builds up there and
+    // fades to clear at the near/viewport edge. Flip `dir` to darken the
+    // near edge instead (vignette framing). `strength` = max opacity at the
+    // dark end (0 = off), `color` = "r,g,b".
+    const WALL_OVERLAY = {
+      ceil:  { dir: "to bottom", color: "0,0,0", strength: 0.65 },
+      floor: { dir: "to top",    color: "0,0,0", strength: 0.65 },
+      left:  { dir: "to right",  color: "0,0,0", strength: 0.65 },
+      right: { dir: "to left",   color: "0,0,0", strength: 0.65 }
+    };
+
+    // The only tunables: PERSPECTIVE (bigger = subtler depth, smaller =
+    // more dramatic wide-angle convergence) and TILT (how steeply each
+    // pair of panels leans away from the viewer). Everything else below
+    // is solved from these plus #page's live rect on every resize.
+    const PERSPECTIVE = 1000; // px
+    const TILT_V_DEG = 60;    // ceiling/floor lean angle
+    const TILT_H_DEG = 60;    // left/right lean angle
+    const TILT_V = TILT_V_DEG * Math.PI / 180;
+    const TILT_H = TILT_H_DEG * Math.PI / 180;
+
+    // A panel is hinged along its near (viewport) edge and leaned back by
+    // a fixed tilt angle. Given the perspective distance P and where the
+    // vanishing point sits (centerGap, measured from that same near edge),
+    // this solves the panel's un-rotated length so its far edge projects
+    // exactly onto targetGap — i.e. onto #page's matching edge.
+    function solveDepth(P, angle, targetGap, centerGap) {
+      const c = Math.cos(angle), s = Math.sin(angle);
+      return P * targetGap / (P * c + s * (centerGap - targetGap));
+    }
+
+    // Each wall is a rotated (real 3D) texture div nested inside an
+    // un-rotated clip wrapper. The wrapper's clip-path is set in plain
+    // screen coordinates each resize, using the exact same corner points
+    // the old SVG polygons used (viewport corner <-> #page corner), so
+    // adjacent panels' seams meet exactly instead of drifting apart.
+    function makeWall(name, { src, width, height }) {
+      const clip = document.createElement("div");
+      clip.className = "wall-clip";
+      clip.id = `clip-${name}`;
+
+      const el = document.createElement("div");
+      el.id = `wall-${name}`;
+      el.className = (name === "left" || name === "right") ? "wall wall-side" : "wall";
+      el.style.backgroundImage = `url(${src})`;
+      el.style.backgroundSize = `${width}px ${height}px`;
+      clip.appendChild(el);
+
+      // depth wash on top of the texture, clipped to the same trapezoid
+      const overlay = document.createElement("div");
+      overlay.id = `overlay-${name}`;
+      overlay.className = "wall-overlay";
+      const o = WALL_OVERLAY[name];
+      if (o && o.strength > 0) {
+        overlay.style.backgroundImage =
+          `linear-gradient(${o.dir}, rgba(${o.color},0) 0%, rgba(${o.color},${o.strength}) 100%)`;
+      }
+      clip.appendChild(overlay);
+
+      return { clip, el, overlay };
+    }
+
+    const walls = {};
+    const clips = {};
+    const overlays = {};
+    for (const [name, tex] of Object.entries(WALL_TEXTURES)) {
+      const { clip, el, overlay } = makeWall(name, tex);
+      walls[name] = el;
+      clips[name] = clip;
+      overlays[name] = overlay;
+    }
+    wallsBackEl.replaceChildren(clips.ceil, clips.floor);
+    wallsFrontEl.replaceChildren(clips.left, clips.right);
+
+    function poly(points) {
+      return `polygon(${points.map(([x, y]) => `${x}px ${y}px`).join(", ")})`;
     }
 
     // One row per surface. Each value can be:
     //   a number (opacity), or
-    //   { opacity, fill } if the surface should also change color per level.
-    // Add a new surface (e.g. a fourth wall, a rug, a window) by giving it
-    // its own row here and its own id in drawWalls().
+    //   { opacity, fill } if the surface should also change background color per level
     const WALL_TREATMENTS = {
-      ceiling: { room: 1,   object: 1,   screen: 0 },
-      left:    { room: 1,   object: 0.6, screen: 0 },
-      right:   { room: 1,   object: 0.6, screen: 0 },
-      floor:   { room: 1,   object: 0,   screen: 0 }
+      ceil:  { room: 1,   object: 0,   screen: 0 },
+      left:  { room: 1,   object: 0.6, screen: 0 },
+      right: { room: 1,   object: 0.6, screen: 0 },
+      floor: { room: 1,   object: 0,   screen: 0 }
     };
 
     function applyWallVisibility(level = "room") {
       for (const [name, byLevel] of Object.entries(WALL_TREATMENTS)) {
-        const el = wallsSvg.querySelector(`#wall-${name}`);
+        const el = walls[name];
         if (!el) continue;
         const spec = byLevel[level] ?? byLevel.room;
         const { opacity, fill } =
           typeof spec === "number" ? { opacity: spec, fill: null } : spec;
 
-        el.style.transition = "opacity 0.4s ease, fill 0.4s ease";
+        el.style.transition = "opacity 0.4s ease, background-color 0.4s ease";
         el.style.opacity = opacity;
-        if (fill) el.setAttribute("fill", fill);
+        if (fill) el.style.backgroundColor = fill;
       }
     }
 
     function drawWalls() {
       const W = window.innerWidth, H = window.innerHeight;
       const r = page.getBoundingClientRect();
-      const TL = [r.left, r.top],     TR = [r.right, r.top];
-      const BL = [r.left, r.bottom],  BR = [r.right, r.bottom];
+      // shared vanishing point: #page's own center — set on every clip
+      // element (each now owns its perspective) so all four panels share
+      // one consistent vanishing point.
+      const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+      const origin = `${cx}px ${cy}px`;
+      for (const c of Object.values(clips)) c.style.perspectiveOrigin = origin;
+
+      const Lc = solveDepth(PERSPECTIVE, TILT_V, r.top, cy);
+      const Lf = solveDepth(PERSPECTIVE, TILT_V, H - r.bottom, H - cy);
+      const Ld = solveDepth(PERSPECTIVE, TILT_H, r.left, cx);
+      const Lr = solveDepth(PERSPECTIVE, TILT_H, W - r.right, W - cx);
+
+      Object.assign(walls.ceil.style, {
+        left: `${-W / 2}px`, top: "0", width: `${2 * W}px`, height: `${Lc}px`,
+        transformOrigin: "0 0",
+        transform: `rotateX(${-TILT_V_DEG}deg)`
+      });
+      Object.assign(walls.floor.style, {
+        left: `${-W / 2}px`, top: `${H - Lf}px`, width: `${2 * W}px`, height: `${Lf}px`,
+        transformOrigin: "0 100%",
+        transform: `rotateX(${TILT_V_DEG}deg)`
+      });
+      Object.assign(walls.left.style, {
+        left: "0", top: `${-H / 2}px`, width: `${Ld}px`, height: `${2 * H}px`,
+        transformOrigin: "0 0",
+        transform: `rotateY(${TILT_H_DEG}deg)`
+      });
+      Object.assign(walls.right.style, {
+        left: `${W - Lr}px`, top: `${-H / 2}px`, width: `${Lr}px`, height: `${2 * H}px`,
+        transformOrigin: "100% 0",
+        transform: `rotateY(${-TILT_H_DEG}deg)`
+      });
+
+      // clip each panel to the shared corner points — same vertices the old
+      // SVG polygons used — so adjacent seams meet exactly regardless of
+      // how each rotated texture div is internally sized/positioned.
+      // The edge touching #page is pushed OVERLAP px past it (into the
+      // content) so independent anti-aliasing on each clipped shape can't
+      // leave a hairline gap against #page's boundary.
+      const OVERLAP = 1.5;
+      clips.ceil.style.clipPath  = poly([[0, 0], [W, 0], [r.right, r.top + OVERLAP], [r.left, r.top + OVERLAP]]);
+      clips.floor.style.clipPath = poly([[0, H], [r.left, r.bottom - OVERLAP], [r.right, r.bottom - OVERLAP], [W, H]]);
+      clips.left.style.clipPath  = poly([[0, 0], [r.left + OVERLAP, r.top], [r.left + OVERLAP, r.bottom], [0, H]]);
+      clips.right.style.clipPath = poly([[W, 0], [r.right - OVERLAP, r.top], [r.right - OVERLAP, r.bottom], [W, H]]);
+
+      // size each overlay to exactly its panel's depth band (near viewport
+      // edge -> #page edge) so its gradient reaches full strength right at
+      // #page instead of being diluted across the whole viewport. Clipping
+      // to the trapezoid is still done by the parent clip-path above.
+      Object.assign(overlays.ceil.style,  { left: "0",             top: "0",             width: `${W}px`,        height: `${r.top}px` });
+      Object.assign(overlays.floor.style, { left: "0",             top: `${r.bottom}px`, width: `${W}px`,        height: `${H - r.bottom}px` });
+      Object.assign(overlays.left.style,  { left: "0",             top: "0",             width: `${r.left}px`,   height: `${H}px` });
+      Object.assign(overlays.right.style, { left: `${r.right}px`,  top: "0",             width: `${W - r.right}px`, height: `${H}px` });
+
+      drawTrim(r, W, H);
+      positionTable(r);
+      applyWallVisibility(window.room?.currentLevel ?? "room");
+    }
+
+    // Anchor the table to the back wall (#page): position/size are fractions
+    // of #page's live rect, so it tracks the back wall through resize. The
+    // table SVG is 200x150, so height = width * 150/200.
+    const tableEl = document.getElementById("prop-table");
+    function positionTable(r) {
+      if (!tableEl) return;   // table prop is optional — never break drawWalls
+      const w = TABLE_ON_WALL.width * r.width;
+      const h = w * (150 / 200);
+      Object.assign(tableEl.style, {
+        left: `${r.left + TABLE_ON_WALL.cx * r.width - w / 2}px`,
+        top: `${r.top + TABLE_ON_WALL.top * r.height}px`,
+        width: `${w}px`,
+        height: `${h}px`,
+        bottom: "auto",
+        transform: "none"
+      });
+    }
+
+    // Draw beveled molding along the box seams as real mitered trim. Each
+    // "run" is one continuous polyline that turns the corner at a #page
+    // corner, so stroking it with stroke-linejoin:miter makes the browser
+    // cut the corner at the true miter angle (like a picture frame):
+    //   top run:    viewport-TL -> page-TL -> page-TR -> viewport-TR
+    //   bottom run: viewport-BL -> page-BL -> page-BR -> viewport-BR
+    // i.e. each run is [ diagonal, back-wall edge, diagonal ] joined. Then a
+    // thin cut line is drawn along the angle bisector at each #page corner to
+    // show the actual seam between the back-wall piece and the side-wall piece.
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const norm = ([x, y]) => { const m = Math.hypot(x, y) || 1; return [x / m, y / m]; };
+    function drawTrim(r, W, H) {
+      trimSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const TL = [r.left, r.top],    TR = [r.right, r.top];
+      const BL = [r.left, r.bottom], BR = [r.right, r.bottom];
       const vTL = [0, 0], vTR = [W, 0], vBL = [0, H], vBR = [W, H];
 
-      wallsSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const runs = [
+        [vTL, TL, TR, vTR],   // ceiling: left diagonal | back edge | right diagonal
+        [vBL, BL, BR, vBR]    // floor:   left diagonal | back edge | right diagonal
+      ];
 
-      const ceiling = poly([vTL, vTR, TR, TL], SURFACES.ceil);
-      ceiling.id = "wall-ceiling";
+      const frag = document.createDocumentFragment();
+      for (const layer of TRIM_LAYERS) {          // widest first -> stacks up
+        for (const run of runs) {
+          const pl = document.createElementNS(SVGNS, "polyline");
+          pl.setAttribute("points", run.map(p => p.join(",")).join(" "));
+          pl.setAttribute("fill", "none");
+          pl.setAttribute("stroke", layer.color);
+          pl.setAttribute("stroke-width", layer.width);
+          pl.setAttribute("stroke-linejoin", "miter");
+          pl.setAttribute("stroke-miterlimit", "12");
+          frag.appendChild(pl);
+        }
+      }
 
-      const left = poly([vTL, TL, BL, vBL], SURFACES.left);
-      left.id = "wall-left";
+      // visible miter cut at each #page corner: a short line through the corner
+      // along the bisector of the two trim pieces meeting there, spanning the
+      // molding's full width at that joint.
+      const widest = Math.max(...TRIM_LAYERS.map(l => l.width));
+      const corners = [
+        { P: TL, a: TR, b: vTL },   // back edge -> ceiling|left diagonal
+        { P: TR, a: TL, b: vTR },   // back edge -> ceiling|right diagonal
+        { P: BL, a: BR, b: vBL },   // back edge -> floor|left diagonal
+        { P: BR, a: BL, b: vBR }    // back edge -> floor|right diagonal
+      ];
+      for (const { P, a, b } of corners) {
+        const d1 = norm([a[0] - P[0], a[1] - P[1]]);
+        const d2 = norm([b[0] - P[0], b[1] - P[1]]);
+        const bis = norm([d1[0] + d2[0], d1[1] + d2[1]]);
+        const cosA = d1[0] * bis[0] + d1[1] * bis[1];
+        const sinA = Math.max(0.2, Math.sqrt(Math.max(0, 1 - cosA * cosA)));
+        const half = (widest / 2) / sinA;
+        const cut = document.createElementNS(SVGNS, "line");
+        cut.setAttribute("x1", P[0] + bis[0] * half); cut.setAttribute("y1", P[1] + bis[1] * half);
+        cut.setAttribute("x2", P[0] - bis[0] * half); cut.setAttribute("y2", P[1] - bis[1] * half);
+        cut.setAttribute("stroke", TRIM_CUT.color);
+        cut.setAttribute("stroke-width", TRIM_CUT.width);
+        frag.appendChild(cut);
+      }
 
-      const right = poly([vTR, TR, BR, vBR], SURFACES.right);
-      right.id = "wall-right";
-
-      const floor = poly([vBL, BL, BR, vBR], SURFACES.floor);
-      floor.id = "wall-floor";
-
-      wallsSvg.replaceChildren(ceiling, left, right, floor);
-      applyWallVisibility(window.room?.currentLevel ?? "room");
+      trimSvg.replaceChildren(frag);
     }
 
     drawWalls();
     window.addEventListener("resize", drawWalls);
     new ResizeObserver(drawWalls).observe(page);
 
-    // expose for other scripts / other cells
-    window.room = { wallsSvg, page, drawWalls, applyWallVisibility, currentLevel: "room" };
+    // ---- attach props to mediaRoom object positions ----
+    // Positions come from the mediaRoom cell's own broadcast: the
+    // "mediaroom:state" event now carries e.detail.rect = the focused zone's
+    // on-screen rect (viewport px). We cache the latest rect per zone and
+    // place any element attached to that zone id there.
+    const roomEl = document.getElementById("room");
+    const attachments = [];
+    const zoneRects = {};              // zoneId -> { left, top, width, height }
+    // opts:
+    //   place "fill" (default) — match the zone's rect exactly
+    //   place "under"          — sit below the zone, centered, keeping aspect
+    //   scale                  — for "under": width = zone.width * scale
+    //   aspect                 — for "under": height / width of the prop
+    //   dx, dy                 — screen-px nudge applied last
+    function attachToZone(el, zoneId, opts = {}) {
+      el.style.position = "absolute";
+      const rec = { el, zoneId, opts };
+      attachments.push(rec);
+      if (el.parentElement !== roomEl) roomEl.appendChild(el);
+      positionAttachments();
+      return () => {
+        const i = attachments.indexOf(rec);
+        if (i >= 0) attachments.splice(i, 1);
+      };
+    }
+    function positionAttachments() {
+      for (const { el, zoneId, opts } of attachments) {
+        const r = zoneRects[zoneId];
+        if (!r) {
+          // no known position yet — clear inline layout so any CSS fallback
+          // (e.g. #prop-table's floor position) takes over instead of hiding.
+          el.style.left = el.style.top = el.style.width = el.style.height = "";
+          el.style.bottom = el.style.transform = "";
+          continue;
+        }
+        const dx = opts.dx ?? 0, dy = opts.dy ?? 0;
+        el.style.bottom = "auto";
+        el.style.transform = "none";
+        if (opts.place === "under") {
+          const w = r.width * (opts.scale ?? 1);
+          const h = w * (opts.aspect ?? 1);
+          el.style.width  = `${w}px`;
+          el.style.height = `${h}px`;
+          el.style.left   = `${r.left + r.width / 2 - w / 2 + dx}px`;
+          el.style.top    = `${r.top + r.height + dy}px`;   // just below the zone
+        } else {
+          el.style.left   = `${r.left + dx}px`;
+          el.style.top    = `${r.top + dy}px`;
+          el.style.width  = `${r.width}px`;
+          el.style.height = `${r.height}px`;
+        }
+      }
+    }
 
-    // track state changes broadcast from the mediaRoom cell
+    // expose for other scripts / other cells
+    window.room = { wallsBackEl, wallsFrontEl, page, walls, clips, overlays, drawWalls, applyWallVisibility, attachToZone, zoneRects, currentLevel: "room" };
+
+    // track state changes broadcast from the mediaRoom cell.
+    // detail.rects = { zoneName: rect, ... } for ALL zones (sent on load and
+    // every view change) is preferred; detail.rect (single focused zone) is
+    // still honored as a fallback.
     window.addEventListener("mediaroom:state", (e) => {
-      window.room.currentLevel = e.detail.level;
-      applyWallVisibility(e.detail.level);
+      const { level, zone, rect, rects } = e.detail;
+      window.room.currentLevel = level;
+      applyWallVisibility(level);
+      if (rects) Object.assign(zoneRects, rects);       // all zones
+      else if (zone && rect) zoneRects[zone] = rect;    // single focused zone
+      positionAttachments();
     });
   </script>
 
