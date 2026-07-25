@@ -9,6 +9,54 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Auto-loads ?photo=<name> into the app's own "Enter URL" form,
+      // since the bundle has no source to hook into directly.
+      (function () {
+        const name = new URLSearchParams(location.search).get("photo");
+        if (!name) return;
+        const imageUrl = `../photos/edits/${name}-web.jpg`;
+
+        function findByText(selector, text) {
+          return [...document.querySelectorAll(selector)]
+            .find((el) => el.textContent.trim() === text);
+        }
+
+        function waitFor(fn, timeout = 8000, interval = 100) {
+          return new Promise((resolve, reject) => {
+            const start = Date.now();
+            (function poll() {
+              const result = fn();
+              if (result) return resolve(result);
+              if (Date.now() - start > timeout) return reject(new Error("timed out"));
+              setTimeout(poll, interval);
+            })();
+          });
+        }
+
+        function setNativeValue(input, value) {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
+            .set.call(input, value);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        (async function autoLoad() {
+          const enterUrlLink = await waitFor(() => findByText("span", "Enter URL"));
+          enterUrlLink.click();
+
+          const input = await waitFor(() =>
+            document.querySelector('input[placeholder="Enter image URL..."]')
+          );
+          setNativeValue(input, imageUrl);
+
+          input.closest("form").dispatchEvent(
+            new Event("submit", { bubbles: true, cancelable: true })
+          );
+        })().catch((err) =>
+          console.error("mirror-mirror: auto-load from ?photo failed", err)
+        );
+      })();
+    </script>
   </body>
 </html>
 

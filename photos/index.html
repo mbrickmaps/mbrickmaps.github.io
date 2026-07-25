@@ -63,6 +63,51 @@
   }
   .thumb-wrap:hover .hover-caption { opacity: 1; }
 
+  .thumb-wrap .mm-link {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .thumb-wrap:hover .mm-link { opacity: 1; }
+
+  .thumb-wrap .thumb-name {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    z-index: 1;
+    background: rgba(0,0,0,0.6);
+    color: #eee;
+    padding: 1px 5px;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
+  .thumb-wrap .copyright-tag {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    z-index: 1;
+    background: rgba(0,0,0,0.6);
+    color: #eee;
+    padding: 1px 5px;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    pointer-events: none;
+  }
+
   [popover] {
     display: none;
     margin: auto;
@@ -110,14 +155,19 @@
     const { caption, date } = meta[name] || {};
     const label = `${caption || ""}${date ? " — " + date : ""}`;
     return `
-      <button class="thumb-wrap" popovertarget="${name}-pop" style="border:none; background:none; padding:0;">
-        <picture>
-          <source srcset="edits/${name}-web.avif" type="image/avif">
-          <source srcset="edits/${name}-web.webp" type="image/webp">
-          <img src="edits/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
-        </picture>
+      <div class="thumb-wrap">
+        <button popovertarget="${name}-pop" style="border:none; background:none; padding:0; display:block;">
+          <picture>
+            <source srcset="edits/${name}-web.avif" type="image/avif">
+            <source srcset="edits/${name}-web.webp" type="image/webp">
+            <img src="edits/${name}-web.jpg" width="200" alt="${caption || name}" loading="lazy">
+          </picture>
+        </button>
         <span class="hover-caption">${label}</span>
-      </button>
+        <span class="copyright-tag">© mbricknell</span>
+        <span class="thumb-name">${name}</span>
+        <a class="mm-link" href="../mirror-mirror/?photo=${name}" target="_blank" rel="noopener" title="Open in mirror mirror">🪞</a>
+      </div>
       <div popover id="${name}-pop">
         <picture>
           <source srcset="edits/${name}-web.avif" type="image/avif">
