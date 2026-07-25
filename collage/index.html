@@ -51,7 +51,18 @@
     width: 100vw; height: 100vh; object-fit: contain; background: #000; transform: none;
   }
   #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
-  #overviewCanvas { border: 1px solid var(--border); cursor: pointer; }
+  #overviewCanvas {
+    position: absolute; right: 8px; bottom: 8px; z-index: 15;
+    border: 1px solid var(--border); cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.7);
+  }
+  .quick-actions {
+    position: absolute; z-index: 30; display: flex; gap: 2px;
+    background: #000; border: 1px solid var(--accent2); border-radius: 4px; padding: 2px;
+    transform: translate(-50%, 0);
+  }
+  .quick-actions button { padding: 2px 6px; font-size: 0.85rem; }
+  input[type="range"] { width: 140px; vertical-align: middle; }
+  #clipScaleValue { font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px; }
   #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 260px; max-height: 300px; overflow-y: auto; }
   #layerList li {
     display: flex; justify-content: space-between; align-items: center;
@@ -103,9 +114,6 @@
   <section class="panel" id="collagePanel">
     <h2>Collage</h2>
     <div class="row">
-      <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
-    </div>
-    <div class="row">
       <select id="sizePreset">
         <option value="">Custom&hellip;</option>
         <option value="1080x1080">Square 1080&times;1080 (1:1)</option>
@@ -125,13 +133,21 @@
       <button id="zoomInBtn">+</button>
       <button id="fitViewBtn">Fit</button>
       <button id="fullscreenBtn">Fullscreen preview</button>
+      <button id="previewToggleBtn">Hide outlines</button>
     </div>
     <div class="row" id="clipProps" style="display:none;">
-      <label>Scale <input type="number" id="clipScale" step="0.05" min="0.05"></label>
+      <label>Scale <input type="range" id="clipScale" min="0.05" max="8" step="0.01"> <span id="clipScaleValue">1.00</span></label>
       <label>Rotation&deg; <input type="number" id="clipRotation" step="1"></label>
     </div>
     <div id="collageViewport">
       <canvas id="collageCanvas" width="1000" height="700"></canvas>
+      <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
+      <div class="quick-actions" id="clipQuickActions" hidden>
+        <button data-qa="flipx" title="flip horizontal">&#8596;</button>
+        <button data-qa="flipy" title="flip vertical">&#8597;</button>
+        <button data-qa="duplicate" title="duplicate">&#10697;</button>
+        <button data-qa="delete" title="delete">&#10005;</button>
+      </div>
     </div>
     <h2 style="margin-top:10px;">Layers</h2>
     <ul id="layerList"></ul>
@@ -487,6 +503,7 @@
     collageCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${viewZoom})`;
     document.getElementById("zoomLabel").textContent = Math.round(viewZoom * 100) + "%";
     renderOverview();
+    updateQuickActions();
   }
 
   // ---------- overview / navigator thumbnail ----------
@@ -560,6 +577,7 @@
       if (clip) {
         clip.scale = Math.max(0.05, clip.scale * (e.deltaY < 0 ? 1.05 : 0.95));
         document.getElementById("clipScale").value = clip.scale.toFixed(2);
+        document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
         renderCollage(); syncTextarea();
       }
       return;
@@ -568,12 +586,20 @@
     zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - rect.left, e.clientY - rect.top);
   }, { passive: false });
 
+  let previewMode = false;
+  document.getElementById("previewToggleBtn").addEventListener("click", (e) => {
+    previewMode = !previewMode;
+    e.target.textContent = previewMode ? "Show outlines" : "Hide outlines";
+    renderCollage();
+  });
+
   function updateClipProps() {
     const panel = document.getElementById("clipProps");
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) { panel.style.display = "none"; return; }
     panel.style.display = "";
     document.getElementById("clipScale").value = clip.scale.toFixed(2);
+    document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
     document.getElementById("clipRotation").value = Math.round(clip.rotation);
   }
 
@@ -581,6 +607,7 @@
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) return;
     clip.scale = Math.max(0.05, parseFloat(e.target.value) || clip.scale);
+    document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
     renderCollage(); syncTextarea();
   });
   document.getElementById("clipRotation").addEventListener("input", (e) => {
@@ -682,8 +709,24 @@
       drawClip(ctx, clip, stamp);
     }
     const sel = collage.clips.find((c) => c.id === selectedId);
-    if (sel) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
+    if (sel && !previewMode) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
     renderOverview();
+    updateQuickActions();
+  }
+
+  function updateQuickActions() {
+    const qa = document.getElementById("clipQuickActions");
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    const stamp = clip && stampCache.get(clip.id);
+    if (!clip || !stamp || previewMode) { qa.hidden = true; return; }
+    const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
+    const topMidX = (corners[0][0] + corners[1][0]) / 2;
+    const topMidY = (corners[0][1] + corners[1][1]) / 2;
+    const screenX = panX + topMidX * viewZoom;
+    const screenY = panY + topMidY * viewZoom;
+    qa.hidden = false;
+    qa.style.left = Math.min(Math.max(screenX, 44), collageViewport.clientWidth - 44) + "px";
+    qa.style.top = Math.max(4, screenY - 32) + "px";
   }
 
   let dragMode = null;
@@ -765,6 +808,19 @@
     `).join("");
   }
 
+  function duplicateClip(clip) {
+    const newId = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const z = Math.max(...collage.clips.map((c) => c.z)) + 1;
+    collage.clips.push({ ...clip, id: newId, polygon: clip.polygon.map((p) => p.slice()), x: clip.x + 20, y: clip.y + 20, z });
+    selectedId = newId;
+  }
+
+  function deleteClip(id) {
+    collage.clips = collage.clips.filter((c) => c.id !== id);
+    stampCache.delete(id);
+    if (selectedId === id) selectedId = null;
+  }
+
   document.getElementById("layerList").addEventListener("click", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
@@ -773,9 +829,7 @@
     const clip = collage.clips.find((c) => c.id === id);
     if (!clip) return;
     if (action === "delete") {
-      collage.clips = collage.clips.filter((c) => c.id !== id);
-      stampCache.delete(id);
-      if (selectedId === id) selectedId = null;
+      deleteClip(id);
     } else if (action === "up" || action === "down") {
       const sorted = [...collage.clips].sort((a, b) => a.z - b.z);
       const idx = sorted.findIndex((c) => c.id === id);
@@ -786,10 +840,7 @@
     } else if (action === "edit") {
       editClipMask(clip);
     } else if (action === "duplicate") {
-      const newId = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const z = Math.max(...collage.clips.map((c) => c.z)) + 1;
-      collage.clips.push({ ...clip, id: newId, polygon: clip.polygon.map((p) => p.slice()), x: clip.x + 20, y: clip.y + 20, z });
-      selectedId = newId;
+      duplicateClip(clip);
     } else if (action === "flipx") {
       clip.flipX = !clip.flipX;
     } else if (action === "flipy") {
@@ -797,6 +848,19 @@
     } else {
       selectedId = id;
     }
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  });
+
+  document.getElementById("clipQuickActions").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip) return;
+    const action = btn.dataset.qa;
+    if (action === "flipx") clip.flipX = !clip.flipX;
+    else if (action === "flipy") clip.flipY = !clip.flipY;
+    else if (action === "duplicate") duplicateClip(clip);
+    else if (action === "delete") deleteClip(clip.id);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
