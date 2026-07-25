@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noimageindex">
+<title>Collage</title>
+<style>
+  :root { --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333; --accent: #ff5500; --accent2: #33ff33; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+  h1 { font-size: 1.2rem; margin: 0 0 12px; }
+  h2 { font-size: 0.95rem; margin: 0 0 8px; opacity: 0.85; }
+  .layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  select, input[type="text"], input[type="number"], button {
+    background: #000; color: var(--fg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; font-size: 0.85rem;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input[type="number"] { width: 70px; }
+  .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+  .canvas-wrap { display: flex; gap: 12px; align-items: flex-start; }
+  canvas { background: #000; display: block; }
+  #sourceCanvas { cursor: crosshair; border: 1px solid var(--border); }
+  #magnifier { border: 1px solid var(--border); }
+  #collageCanvas { border: 1px solid var(--border); max-width: 100%; }
+  #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 260px; max-height: 300px; overflow-y: auto; }
+  #layerList li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
+    margin-bottom: 4px; cursor: pointer; font-size: 0.8rem;
+  }
+  #layerList li.selected { border-color: var(--accent2); }
+  #layerList .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+  #layerList button { padding: 1px 5px; font-size: 0.75rem; }
+  #configText { width: 360px; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
+    background: #000; color: #7CFC7C; border: 1px solid var(--border); border-radius: 4px; resize: vertical; }
+</style>
+</head>
+<body>
+
+<h1>Collage</h1>
+
+<div class="layout">
+
+  <section class="panel" id="editorPanel">
+    <h2>Clip source</h2>
+    <div class="row">
+      <select id="sourcePicker"><option value="">Loading photos&hellip;</option></select>
+      <input type="text" id="sourceUrl" placeholder="https://... image URL" style="display:none">
+      <button id="loadUrlBtn" style="display:none">Load</button>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="sourceCanvas" width="480" height="360"></canvas>
+      <canvas id="magnifier" width="150" height="150"></canvas>
+    </div>
+    <div class="row">
+      <button id="closePathBtn">Close path</button>
+      <button id="addPointModeBtn">Add point mode: off</button>
+      <button id="clearPolyBtn">Clear</button>
+      <button id="addToCollageBtn" disabled>Add to collage</button>
+    </div>
+    <p class="hint">
+      Click to place polygon points. Click near the first point (or hit "Close path") to finish.
+      Once closed, drag any point to move it, double-click a point to remove it (min 3 points),
+      or turn on "Add point mode" and click an edge to insert a new point there.
+    </p>
+  </section>
+
+  <section class="panel" id="collagePanel">
+    <h2>Collage</h2>
+    <div class="row">
+      <label>W <input type="number" id="canvasW" value="1000"></label>
+      <label>H <input type="number" id="canvasH" value="700"></label>
+    </div>
+    <canvas id="collageCanvas" width="1000" height="700"></canvas>
+    <h2 style="margin-top:10px;">Layers</h2>
+    <ul id="layerList"></ul>
+    <p class="hint">Drag a clip to move it, its bottom-right handle to scale, its top handle to rotate.</p>
+  </section>
+
+  <section class="panel" id="configPanel">
+    <h2>Config</h2>
+    <textarea id="configText" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:8px;">
+      <button id="applyBtn">Apply</button>
+      <button id="downloadBtn">Download</button>
+      <button id="uploadBtn">Upload</button>
+      <input type="file" id="uploadInput" accept="application/json" style="display:none">
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // ---------- CSV (photos meta.csv) ----------
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+        else field += c;
+      } else if (c === '"') inQuotes = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+    const header = rows.shift() || [];
+    return rows.map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ""])));
+  }
+
+  // ---------- image loading / source resolution ----------
+  const imageCache = new Map();
+  function loadImage(url) {
+    if (imageCache.has(url)) return imageCache.get(url);
+    const p = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+    imageCache.set(url, p);
+    return p;
+  }
+
+  const photoNames = new Set();
+  function resolveSourceUrl(source) {
+    if (/^https?:\/\//i.test(source) || source.startsWith("../") || source.startsWith("/")) return source;
+    return `../photos/edits/${source}-web.jpg`;
+  }
+
+  // ---------- clip editor (left panel) ----------
+  const sourceCanvas = document.getElementById("sourceCanvas");
+  const sctx = sourceCanvas.getContext("2d");
+  const editor = {
+    image: null, naturalW: 0, naturalH: 0, displayScale: 1,
+    points: [], closed: false, addPointMode: false, dragIndex: -1, editingClipId: null
+  };
+
+  function toDisplay([x, y]) { return [x * editor.displayScale, y * editor.displayScale]; }
+  function toNatural([x, y]) { return [x / editor.displayScale, y / editor.displayScale]; }
+
+  function setEditorImage(img, presetPoints) {
+    editor.image = img;
+    editor.naturalW = img.naturalWidth || img.width;
+    editor.naturalH = img.naturalHeight || img.height;
+    const maxSize = 480;
+    editor.displayScale = Math.min(maxSize / editor.naturalW, maxSize / editor.naturalH, 1);
+    sourceCanvas.width = Math.round(editor.naturalW * editor.displayScale);
+    sourceCanvas.height = Math.round(editor.naturalH * editor.displayScale);
+    if (presetPoints) {
+      editor.points = presetPoints.map((p) => p.slice());
+      editor.closed = true;
+    } else if (!editor.editingClipId) {
+      editor.points = [];
+      editor.closed = false;
+    }
+    renderEditor();
+  }
+
+  function renderEditor() {
+    if (!editor.image) return;
+    sctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+    sctx.drawImage(editor.image, 0, 0, sourceCanvas.width, sourceCanvas.height);
+    if (editor.points.length) {
+      sctx.beginPath();
+      editor.points.forEach((p, i) => {
+        const [x, y] = toDisplay(p);
+        i === 0 ? sctx.moveTo(x, y) : sctx.lineTo(x, y);
+      });
+      if (editor.closed) sctx.closePath();
+      sctx.strokeStyle = "#ff5500";
+      sctx.lineWidth = 2;
+      sctx.stroke();
+      if (editor.closed) { sctx.fillStyle = "rgba(255,85,0,0.2)"; sctx.fill(); }
+      editor.points.forEach((p, i) => {
+        const [x, y] = toDisplay(p);
+        sctx.beginPath();
+        sctx.arc(x, y, 5, 0, Math.PI * 2);
+        sctx.fillStyle = i === 0 && !editor.closed ? "#33ff33" : "#fff";
+        sctx.fill();
+        sctx.strokeStyle = "#000";
+        sctx.stroke();
+      });
+    }
+    document.getElementById("addToCollageBtn").disabled = !(editor.closed && editor.points.length >= 3);
+  }
+
+  function distToSegment(p, a, b) {
+    const [px, py] = p, [ax, ay] = a, [bx, by] = b;
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy || 1;
+    let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
+  function insertPointOnNearestEdge(pt) {
+    let bestIdx = 0, bestDist = Infinity;
+    for (let i = 0; i < editor.points.length; i++) {
+      const a = editor.points[i], b = editor.points[(i + 1) % editor.points.length];
+      const d = distToSegment(pt, a, b);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    }
+    editor.points.splice(bestIdx + 1, 0, pt);
+  }
+
+  function getSourceCanvasPos(e) {
+    const rect = sourceCanvas.getBoundingClientRect();
+    return [e.clientX - rect.left, e.clientY - rect.top];
+  }
+
+  sourceCanvas.addEventListener("mousedown", (e) => {
+    if (!editor.image) return;
+    const [dx, dy] = getSourceCanvasPos(e);
+    if (editor.closed) {
+      const hitIndex = editor.points.findIndex((p) => {
+        const [x, y] = toDisplay(p);
+        return Math.hypot(x - dx, y - dy) < 8;
+      });
+      if (hitIndex !== -1) { editor.dragIndex = hitIndex; return; }
+      if (editor.addPointMode) { insertPointOnNearestEdge(toNatural([dx, dy])); renderEditor(); }
+      return;
+    }
+    if (editor.points.length >= 3) {
+      const [fx, fy] = toDisplay(editor.points[0]);
+      if (Math.hypot(fx - dx, fy - dy) < 8) { editor.closed = true; renderEditor(); return; }
+    }
+    editor.points.push(toNatural([dx, dy]));
+    renderEditor();
+  });
+
+  sourceCanvas.addEventListener("mousemove", (e) => {
+    const [dx, dy] = getSourceCanvasPos(e);
+    updateMagnifier(dx, dy);
+    if (editor.dragIndex !== -1) {
+      editor.points[editor.dragIndex] = toNatural([dx, dy]);
+      renderEditor();
+    }
+  });
+
+  sourceCanvas.addEventListener("dblclick", (e) => {
+    if (!editor.closed || editor.points.length <= 3) return;
+    const [dx, dy] = getSourceCanvasPos(e);
+    const hitIndex = editor.points.findIndex((p) => {
+      const [x, y] = toDisplay(p);
+      return Math.hypot(x - dx, y - dy) < 8;
+    });
+    if (hitIndex !== -1) { editor.points.splice(hitIndex, 1); renderEditor(); }
+  });
+
+  window.addEventListener("mouseup", () => { editor.dragIndex = -1; });
+
+  const magCanvas = document.getElementById("magnifier");
+  const mctx = magCanvas.getContext("2d");
+  const MAG_ZOOM = 4, MAG_SIZE = 150;
+  function updateMagnifier(dx, dy) {
+    if (!editor.image) return;
+    const [nx, ny] = toNatural([dx, dy]);
+    const half = (MAG_SIZE / 2) / MAG_ZOOM;
+    mctx.clearRect(0, 0, MAG_SIZE, MAG_SIZE);
+    mctx.drawImage(editor.image, nx - half, ny - half, half * 2, half * 2, 0, 0, MAG_SIZE, MAG_SIZE);
+    mctx.strokeStyle = "#ff5500";
+    mctx.beginPath();
+    mctx.moveTo(MAG_SIZE / 2, 0); mctx.lineTo(MAG_SIZE / 2, MAG_SIZE);
+    mctx.moveTo(0, MAG_SIZE / 2); mctx.lineTo(MAG_SIZE, MAG_SIZE / 2);
+    mctx.stroke();
+  }
+
+  document.getElementById("closePathBtn").addEventListener("click", () => {
+    if (editor.points.length >= 3) { editor.closed = true; renderEditor(); }
+  });
+  document.getElementById("addPointModeBtn").addEventListener("click", (e) => {
+    editor.addPointMode = !editor.addPointMode;
+    e.target.textContent = `Add point mode: ${editor.addPointMode ? "on" : "off"}`;
+  });
+  document.getElementById("clearPolyBtn").addEventListener("click", () => {
+    editor.points = []; editor.closed = false; editor.editingClipId = null;
+    document.getElementById("addToCollageBtn").textContent = "Add to collage";
+    renderEditor();
+  });
+  document.getElementById("addToCollageBtn").addEventListener("click", () => {
+    const polygon = editor.points.map((p) => p.slice());
+    if (editor.editingClipId) {
+      const clip = collage.clips.find((c) => c.id === editor.editingClipId);
+      if (clip) { clip.polygon = polygon; clip.source = currentSourceName(); stampCache.delete(clip.id); }
+    } else {
+      const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
+      collage.clips.push({
+        id: "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        source: currentSourceName(), polygon,
+        x: collage.canvas.width / 2, y: collage.canvas.height / 2,
+        scale: 1, rotation: 0, z
+      });
+    }
+    editor.editingClipId = null;
+    document.getElementById("addToCollageBtn").textContent = "Add to collage";
+    renderCollage(); renderLayerList(); syncTextarea();
+  });
+
+  // ---------- source picker ----------
+  const sourcePicker = document.getElementById("sourcePicker");
+  const sourceUrlInput = document.getElementById("sourceUrl");
+  const loadUrlBtn = document.getElementById("loadUrlBtn");
+
+  function currentSourceName() {
+    if (sourcePicker.value === "__url__") return sourceUrlInput.value.trim();
+    return sourcePicker.value;
+  }
+
+  function loadSelectedSource() {
+    const isUrl = sourcePicker.value === "__url__";
+    sourceUrlInput.style.display = isUrl ? "" : "none";
+    loadUrlBtn.style.display = isUrl ? "" : "none";
+    const name = currentSourceName();
+    if (!name) return;
+    loadImage(resolveSourceUrl(name)).then((img) => setEditorImage(img))
+      .catch((err) => console.error("failed to load source image", err));
+  }
+
+  sourcePicker.addEventListener("change", loadSelectedSource);
+  loadUrlBtn.addEventListener("click", loadSelectedSource);
+  sourceUrlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadSelectedSource(); });
+
+  fetch("../photos/meta.csv").then((r) => r.text()).then((text) => {
+    const rows = parseCSV(text);
+    sourcePicker.innerHTML = "";
+    rows.filter((r) => r.name && !r.exclude).forEach((r) => {
+      photoNames.add(r.name);
+      const opt = document.createElement("option");
+      opt.value = r.name;
+      opt.textContent = r.caption ? `${r.name} — ${r.caption}` : r.name;
+      sourcePicker.appendChild(opt);
+    });
+    const customOpt = document.createElement("option");
+    customOpt.value = "__url__";
+    customOpt.textContent = "— custom URL —";
+    sourcePicker.appendChild(customOpt);
+    if (sourcePicker.options.length) loadSelectedSource();
+  }).catch((err) => console.error("failed to load ../photos/meta.csv", err));
+
+  function editClipMask(clip) {
+    editor.editingClipId = clip.id;
+    document.getElementById("addToCollageBtn").textContent = "Update clip";
+    if (photoNames.has(clip.source)) {
+      sourcePicker.value = clip.source;
+      sourceUrlInput.style.display = "none";
+      loadUrlBtn.style.display = "none";
+    } else {
+      sourcePicker.value = "__url__";
+      sourceUrlInput.style.display = "";
+      loadUrlBtn.style.display = "";
+      sourceUrlInput.value = clip.source;
+    }
+    loadImage(resolveSourceUrl(clip.source)).then((img) => setEditorImage(img, clip.polygon));
+  }
+
+  // ---------- collage (right panel) ----------
+  const collageCanvas = document.getElementById("collageCanvas");
+  const collage = { canvas: { width: 1000, height: 700 }, clips: [] };
+  let selectedId = null;
+  const stampCache = new Map();
+
+  function buildStamp(polygon, img) {
+    const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
+    const minX = Math.min(...xs), minY = Math.min(...ys);
+    const w = Math.max(1, Math.ceil(Math.max(...xs) - minX));
+    const h = Math.max(1, Math.ceil(Math.max(...ys) - minY));
+    const off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    const octx = off.getContext("2d");
+    octx.beginPath();
+    polygon.forEach(([x, y], i) => i === 0 ? octx.moveTo(x - minX, y - minY) : octx.lineTo(x - minX, y - minY));
+    octx.closePath();
+    octx.clip();
+    octx.drawImage(img, -minX, -minY);
+    return { canvas: off, w, h };
+  }
+
+  function localCorners(stamp) {
+    const w = stamp.w, h = stamp.h;
+    return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]];
+  }
+
+  function transformPoint(clip, [lx, ly]) {
+    const rad = clip.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const sx = lx * clip.scale, sy = ly * clip.scale;
+    return [clip.x + (sx * cos - sy * sin), clip.y + (sx * sin + sy * cos)];
+  }
+
+  function pointInPolygon(pt, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      const intersect = ((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function hitTestClip(clip, stamp, pt) {
+    return pointInPolygon(pt, localCorners(stamp).map((c) => transformPoint(clip, c)));
+  }
+
+  function getHandles(clip, stamp) {
+    const d = stamp.h / 2 + 20 / clip.scale;
+    return { rotate: transformPoint(clip, [0, -d]), scale: transformPoint(clip, [stamp.w / 2, stamp.h / 2]) };
+  }
+
+  function drawClip(ctx, clip, stamp) {
+    ctx.save();
+    ctx.translate(clip.x, clip.y);
+    ctx.rotate(clip.rotation * Math.PI / 180);
+    ctx.scale(clip.scale, clip.scale);
+    ctx.drawImage(stamp.canvas, -stamp.w / 2, -stamp.h / 2);
+    ctx.restore();
+  }
+
+  function drawSelectionOverlay(ctx, clip, stamp) {
+    const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
+    ctx.save();
+    ctx.strokeStyle = "#33ff33";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+    ctx.closePath();
+    ctx.stroke();
+    const handles = getHandles(clip, stamp);
+    ctx.beginPath();
+    ctx.moveTo((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2);
+    ctx.lineTo(handles.rotate[0], handles.rotate[1]);
+    ctx.stroke();
+    ctx.fillStyle = "#33ff33";
+    [handles.rotate, handles.scale].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+  }
+
+  async function renderCollage() {
+    collageCanvas.width = collage.canvas.width;
+    collageCanvas.height = collage.canvas.height;
+    const ctx = collageCanvas.getContext("2d");
+    ctx.clearRect(0, 0, collageCanvas.width, collageCanvas.height);
+    const sorted = [...collage.clips].sort((a, b) => a.z - b.z);
+    for (const clip of sorted) {
+      const url = resolveSourceUrl(clip.source);
+      let img;
+      try { img = await loadImage(url); } catch { continue; }
+      const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
+      let stamp = stampCache.get(clip.id);
+      if (!stamp || stamp.key !== key) { stamp = buildStamp(clip.polygon, img); stamp.key = key; stampCache.set(clip.id, stamp); }
+      drawClip(ctx, clip, stamp);
+    }
+    const sel = collage.clips.find((c) => c.id === selectedId);
+    if (sel) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
+  }
+
+  let dragMode = null;
+  let lastMouse = null;
+
+  function getCollagePos(e) {
+    const rect = collageCanvas.getBoundingClientRect();
+    return [(e.clientX - rect.left) * (collageCanvas.width / rect.width), (e.clientY - rect.top) * (collageCanvas.height / rect.height)];
+  }
+
+  collageCanvas.addEventListener("mousedown", (e) => {
+    const pt = getCollagePos(e);
+    const sel = collage.clips.find((c) => c.id === selectedId);
+    if (sel) {
+      const stamp = stampCache.get(sel.id);
+      if (stamp) {
+        const handles = getHandles(sel, stamp);
+        if (Math.hypot(pt[0] - handles.rotate[0], pt[1] - handles.rotate[1]) < 10) { dragMode = "rotate"; lastMouse = pt; return; }
+        if (Math.hypot(pt[0] - handles.scale[0], pt[1] - handles.scale[1]) < 10) { dragMode = "scale"; lastMouse = pt; return; }
+      }
+    }
+    const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
+    for (const clip of sorted) {
+      const stamp = stampCache.get(clip.id);
+      if (stamp && hitTestClip(clip, stamp, pt)) {
+        selectedId = clip.id; dragMode = "move"; lastMouse = pt;
+        renderCollage(); renderLayerList();
+        return;
+      }
+    }
+    selectedId = null; dragMode = null;
+    renderCollage(); renderLayerList();
+  });
+
+  collageCanvas.addEventListener("mousemove", (e) => {
+    if (!dragMode) return;
+    const pt = getCollagePos(e);
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip) return;
+    if (dragMode === "move") {
+      clip.x += pt[0] - lastMouse[0];
+      clip.y += pt[1] - lastMouse[1];
+    } else if (dragMode === "rotate") {
+      clip.rotation = Math.atan2(pt[0] - clip.x, clip.y - pt[1]) * 180 / Math.PI;
+    } else if (dragMode === "scale") {
+      const stamp = stampCache.get(clip.id);
+      const base = Math.hypot(stamp.w / 2, stamp.h / 2) || 1;
+      clip.scale = Math.max(0.05, Math.hypot(pt[0] - clip.x, pt[1] - clip.y) / base);
+    }
+    lastMouse = pt;
+    renderCollage(); syncTextarea();
+  });
+
+  window.addEventListener("mouseup", () => { dragMode = null; });
+
+  function renderLayerList() {
+    const list = document.getElementById("layerList");
+    const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
+    list.innerHTML = sorted.map((c) => `
+      <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}">
+        <span class="layer-name">${c.source} (z${c.z})</span>
+        <span class="layer-actions">
+          <button data-action="up" title="bring forward">&#9650;</button>
+          <button data-action="down" title="send back">&#9660;</button>
+          <button data-action="edit" title="edit mask">&#9998;</button>
+          <button data-action="delete" title="delete">&#10005;</button>
+        </span>
+      </li>
+    `).join("");
+  }
+
+  document.getElementById("layerList").addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    const id = li.dataset.id;
+    const action = e.target.dataset.action;
+    const clip = collage.clips.find((c) => c.id === id);
+    if (!clip) return;
+    if (action === "delete") {
+      collage.clips = collage.clips.filter((c) => c.id !== id);
+      stampCache.delete(id);
+      if (selectedId === id) selectedId = null;
+    } else if (action === "up" || action === "down") {
+      const sorted = [...collage.clips].sort((a, b) => a.z - b.z);
+      const idx = sorted.findIndex((c) => c.id === id);
+      const swapIdx = action === "up" ? idx + 1 : idx - 1;
+      if (swapIdx >= 0 && swapIdx < sorted.length) {
+        const tmp = sorted[idx].z; sorted[idx].z = sorted[swapIdx].z; sorted[swapIdx].z = tmp;
+      }
+    } else if (action === "edit") {
+      editClipMask(clip);
+    } else {
+      selectedId = id;
+    }
+    renderCollage(); renderLayerList(); syncTextarea();
+  });
+
+  document.getElementById("canvasW").addEventListener("change", (e) => {
+    collage.canvas.width = parseInt(e.target.value) || 1000;
+    renderCollage(); syncTextarea();
+  });
+  document.getElementById("canvasH").addEventListener("change", (e) => {
+    collage.canvas.height = parseInt(e.target.value) || 700;
+    renderCollage(); syncTextarea();
+  });
+
+  // ---------- config textarea ----------
+  function syncTextarea() {
+    document.getElementById("configText").value = JSON.stringify({ canvas: collage.canvas, clips: collage.clips }, null, 2);
+  }
+
+  document.getElementById("applyBtn").addEventListener("click", () => {
+    try {
+      const parsed = JSON.parse(document.getElementById("configText").value);
+      collage.canvas = parsed.canvas || collage.canvas;
+      collage.clips = parsed.clips || [];
+      stampCache.clear();
+      selectedId = null;
+      document.getElementById("canvasW").value = collage.canvas.width;
+      document.getElementById("canvasH").value = collage.canvas.height;
+      renderCollage(); renderLayerList();
+    } catch (err) {
+      alert("Invalid JSON: " + err.message);
+    }
+  });
+
+  document.getElementById("downloadBtn").addEventListener("click", () => {
+    const blob = new Blob([document.getElementById("configText").value], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "collage-config.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("uploadBtn").addEventListener("click", () => document.getElementById("uploadInput").click());
+  document.getElementById("uploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { document.getElementById("configText").value = reader.result; document.getElementById("applyBtn").click(); };
+    reader.readAsText(file);
+  });
+
+  renderCollage();
+  renderLayerList();
+  syncTextarea();
+</script>
+
+</body>
+</html>
