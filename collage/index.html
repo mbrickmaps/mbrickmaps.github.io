@@ -23,11 +23,35 @@
   button:disabled { opacity: 0.4; cursor: not-allowed; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+  .dropdown { position: relative; }
+  .dropdown-btn { min-width: 200px; text-align: left; }
+  .dropdown-list {
+    position: absolute; top: 100%; left: 0; margin-top: 2px; z-index: 20;
+    background: #000; border: 1px solid var(--border); border-radius: 4px;
+    max-height: 260px; overflow-y: auto; width: 260px;
+  }
+  .dropdown-item { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dropdown-item:hover { background: #222; }
+  .dropdown-item.url-item { border-bottom: 1px solid var(--border); opacity: 0.85; }
+  .source-preview {
+    position: fixed; z-index: 1000; border: 1px solid var(--accent); background: #000; padding: 2px; border-radius: 4px;
+  }
+  .source-preview img { display: block; max-width: 220px; max-height: 220px; }
   .canvas-wrap { display: flex; gap: 12px; align-items: flex-start; }
   canvas { background: #000; display: block; }
   #sourceCanvas { cursor: crosshair; border: 1px solid var(--border); }
   #magnifier { border: 1px solid var(--border); }
-  #collageCanvas { border: 1px solid var(--border); max-width: 100%; }
+  #collageViewport {
+    width: 640px; max-width: 100%; height: 480px; overflow: hidden; position: relative;
+    border: 1px solid var(--border); background: #000; cursor: grab;
+  }
+  #collageViewport.panning { cursor: grabbing; }
+  #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  #collageCanvas:fullscreen, #collageCanvas:-webkit-full-screen {
+    width: 100vw; height: 100vh; object-fit: contain; background: #000; transform: none;
+  }
+  #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
+  #overviewCanvas { border: 1px solid var(--border); cursor: pointer; }
   #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 260px; max-height: 300px; overflow-y: auto; }
   #layerList li {
     display: flex; justify-content: space-between; align-items: center;
@@ -37,6 +61,7 @@
   #layerList li.selected { border-color: var(--accent2); }
   #layerList .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
   #layerList button { padding: 1px 5px; font-size: 0.75rem; }
+  #layerList button.active { border-color: var(--accent2); color: var(--accent2); }
   #configText { width: 360px; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
     background: #000; color: #7CFC7C; border: 1px solid var(--border); border-radius: 4px; resize: vertical; }
 </style>
@@ -50,10 +75,14 @@
   <section class="panel" id="editorPanel">
     <h2>Clip source</h2>
     <div class="row">
-      <select id="sourcePicker"><option value="">Loading photos&hellip;</option></select>
+      <div class="dropdown" id="sourceDropdown">
+        <button type="button" id="sourceDropdownBtn" class="dropdown-btn">Loading photos&hellip;</button>
+        <div class="dropdown-list" id="sourceDropdownList" hidden></div>
+      </div>
       <input type="text" id="sourceUrl" placeholder="https://... image URL" style="display:none">
       <button id="loadUrlBtn" style="display:none">Load</button>
     </div>
+    <div class="source-preview" id="sourcePreview" hidden><img id="sourcePreviewImg" alt=""></div>
     <div class="canvas-wrap">
       <canvas id="sourceCanvas" width="480" height="360"></canvas>
       <canvas id="magnifier" width="150" height="150"></canvas>
@@ -74,13 +103,42 @@
   <section class="panel" id="collagePanel">
     <h2>Collage</h2>
     <div class="row">
+      <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
+    </div>
+    <div class="row">
+      <select id="sizePreset">
+        <option value="">Custom&hellip;</option>
+        <option value="1080x1080">Square 1080&times;1080 (1:1)</option>
+        <option value="1080x1350">Portrait 1080&times;1350 (4:5)</option>
+        <option value="1080x1920">Story 1080&times;1920 (9:16)</option>
+        <option value="1920x1080">Landscape 1920&times;1080 (16:9)</option>
+        <option value="2000x3000">Print 2000&times;3000 (2:3)</option>
+        <option value="2480x3508">A4 Portrait 2480&times;3508 (300dpi)</option>
+        <option value="3508x2480">A4 Landscape 3508&times;2480 (300dpi)</option>
+      </select>
       <label>W <input type="number" id="canvasW" value="1000"></label>
       <label>H <input type="number" id="canvasH" value="700"></label>
     </div>
-    <canvas id="collageCanvas" width="1000" height="700"></canvas>
+    <div class="row">
+      <button id="zoomOutBtn">&minus;</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomInBtn">+</button>
+      <button id="fitViewBtn">Fit</button>
+      <button id="fullscreenBtn">Fullscreen preview</button>
+    </div>
+    <div class="row" id="clipProps" style="display:none;">
+      <label>Scale <input type="number" id="clipScale" step="0.05" min="0.05"></label>
+      <label>Rotation&deg; <input type="number" id="clipRotation" step="1"></label>
+    </div>
+    <div id="collageViewport">
+      <canvas id="collageCanvas" width="1000" height="700"></canvas>
+    </div>
     <h2 style="margin-top:10px;">Layers</h2>
     <ul id="layerList"></ul>
-    <p class="hint">Drag a clip to move it, its bottom-right handle to scale, its top handle to rotate.</p>
+    <p class="hint">
+      Drag a clip to move it, its bottom-right handle to scale (or Scale field above), its top handle to rotate.
+      Drag empty canvas space to pan the view, scroll to zoom the view, shift+scroll over a selected clip to scale it.
+    </p>
   </section>
 
   <section class="panel" id="configPanel">
@@ -295,75 +353,123 @@
     const polygon = editor.points.map((p) => p.slice());
     if (editor.editingClipId) {
       const clip = collage.clips.find((c) => c.id === editor.editingClipId);
-      if (clip) { clip.polygon = polygon; clip.source = currentSourceName(); stampCache.delete(clip.id); }
+      if (clip) { clip.polygon = polygon; clip.source = currentSourceName(); stampCache.delete(clip.id); selectedId = clip.id; }
     } else {
       const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
+      const id = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       collage.clips.push({
-        id: "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        source: currentSourceName(), polygon,
+        id, source: currentSourceName(), polygon,
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
-        scale: 1, rotation: 0, z
+        scale: 1, rotation: 0, flipX: false, flipY: false, z
       });
+      selectedId = id;
     }
     editor.editingClipId = null;
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
-    renderCollage(); renderLayerList(); syncTextarea();
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
-  // ---------- source picker ----------
-  const sourcePicker = document.getElementById("sourcePicker");
+  // ---------- source picker (custom dropdown w/ hover preview) ----------
   const sourceUrlInput = document.getElementById("sourceUrl");
   const loadUrlBtn = document.getElementById("loadUrlBtn");
+  const dropdownBtn = document.getElementById("sourceDropdownBtn");
+  const dropdownList = document.getElementById("sourceDropdownList");
+  const sourcePreview = document.getElementById("sourcePreview");
+  const sourcePreviewImg = document.getElementById("sourcePreviewImg");
 
-  function currentSourceName() {
-    if (sourcePicker.value === "__url__") return sourceUrlInput.value.trim();
-    return sourcePicker.value;
+  let photoOptions = [];
+  let currentSource = { type: "url", value: "" };
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  function loadSelectedSource() {
-    const isUrl = sourcePicker.value === "__url__";
-    sourceUrlInput.style.display = isUrl ? "" : "none";
-    loadUrlBtn.style.display = isUrl ? "" : "none";
-    const name = currentSourceName();
-    if (!name) return;
+  function currentSourceName() {
+    return currentSource.type === "url" ? sourceUrlInput.value.trim() : currentSource.value;
+  }
+
+  function renderDropdownList() {
+    const urlItem = `<div class="dropdown-item url-item" data-type="url" data-name="">&mdash; custom URL &mdash;</div>`;
+    const photoItems = photoOptions.map((p) =>
+      `<div class="dropdown-item" data-type="photo" data-name="${escapeHtml(p.name)}">${escapeHtml(p.label)}</div>`
+    ).join("");
+    dropdownList.innerHTML = urlItem + photoItems;
+  }
+
+  function setCurrentSourceUI(type, name) {
+    if (type === "url") {
+      currentSource = { type: "url", value: name || "" };
+      sourceUrlInput.style.display = "";
+      loadUrlBtn.style.display = "";
+      dropdownBtn.textContent = "— custom URL —";
+      if (name) sourceUrlInput.value = name;
+    } else {
+      currentSource = { type: "photo", value: name };
+      sourceUrlInput.style.display = "none";
+      loadUrlBtn.style.display = "none";
+      const opt = photoOptions.find((p) => p.name === name);
+      dropdownBtn.textContent = opt ? opt.label : name;
+    }
+  }
+
+  function selectSource(type, name) {
+    setCurrentSourceUI(type, name);
+    dropdownList.hidden = true;
+    if (type === "url") { sourceUrlInput.focus(); return; }
     loadImage(resolveSourceUrl(name)).then((img) => setEditorImage(img))
       .catch((err) => console.error("failed to load source image", err));
   }
 
-  sourcePicker.addEventListener("change", loadSelectedSource);
-  loadUrlBtn.addEventListener("click", loadSelectedSource);
-  sourceUrlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadSelectedSource(); });
+  function loadTypedUrl() {
+    currentSource.value = sourceUrlInput.value.trim();
+    if (!currentSource.value) return;
+    loadImage(resolveSourceUrl(currentSource.value)).then((img) => setEditorImage(img))
+      .catch((err) => console.error("failed to load source image", err));
+  }
+
+  dropdownBtn.addEventListener("click", () => { dropdownList.hidden = !dropdownList.hidden; });
+  document.addEventListener("click", (e) => {
+    if (!document.getElementById("sourceDropdown").contains(e.target)) dropdownList.hidden = true;
+  });
+  dropdownList.addEventListener("click", (e) => {
+    const item = e.target.closest(".dropdown-item");
+    if (!item) return;
+    selectSource(item.dataset.type, item.dataset.name);
+  });
+  dropdownList.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".dropdown-item");
+    if (!item || item.dataset.type !== "photo") { sourcePreview.hidden = true; return; }
+    sourcePreviewImg.src = resolveSourceUrl(item.dataset.name);
+    sourcePreview.hidden = false;
+    const rect = item.getBoundingClientRect();
+    sourcePreview.style.left = rect.right + 8 + "px";
+    sourcePreview.style.top = rect.top + "px";
+  });
+  dropdownList.addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
+
+  loadUrlBtn.addEventListener("click", loadTypedUrl);
+  sourceUrlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadTypedUrl(); });
 
   fetch("../photos/meta.csv").then((r) => r.text()).then((text) => {
     const rows = parseCSV(text);
-    sourcePicker.innerHTML = "";
-    rows.filter((r) => r.name && !r.exclude).forEach((r) => {
+    photoOptions = rows.filter((r) => r.name && !r.exclude).map((r) => {
       photoNames.add(r.name);
-      const opt = document.createElement("option");
-      opt.value = r.name;
-      opt.textContent = r.caption ? `${r.name} — ${r.caption}` : r.name;
-      sourcePicker.appendChild(opt);
+      return { name: r.name, label: r.caption ? `${r.name} — ${r.caption}` : r.name };
     });
-    const customOpt = document.createElement("option");
-    customOpt.value = "__url__";
-    customOpt.textContent = "— custom URL —";
-    sourcePicker.appendChild(customOpt);
-    if (sourcePicker.options.length) loadSelectedSource();
-  }).catch((err) => console.error("failed to load ../photos/meta.csv", err));
+    renderDropdownList();
+    if (photoOptions.length) selectSource("photo", photoOptions[0].name);
+    else setCurrentSourceUI("url", "");
+  }).catch((err) => {
+    console.error("failed to load ../photos/meta.csv", err);
+    setCurrentSourceUI("url", "");
+    renderDropdownList();
+  });
 
   function editClipMask(clip) {
     editor.editingClipId = clip.id;
     document.getElementById("addToCollageBtn").textContent = "Update clip";
-    if (photoNames.has(clip.source)) {
-      sourcePicker.value = clip.source;
-      sourceUrlInput.style.display = "none";
-      loadUrlBtn.style.display = "none";
-    } else {
-      sourcePicker.value = "__url__";
-      sourceUrlInput.style.display = "";
-      loadUrlBtn.style.display = "";
-      sourceUrlInput.value = clip.source;
-    }
+    if (photoNames.has(clip.source)) setCurrentSourceUI("photo", clip.source);
+    else setCurrentSourceUI("url", clip.source);
     loadImage(resolveSourceUrl(clip.source)).then((img) => setEditorImage(img, clip.polygon));
   }
 
@@ -372,6 +478,117 @@
   const collage = { canvas: { width: 1000, height: 700 }, clips: [] };
   let selectedId = null;
   const stampCache = new Map();
+
+  // ---------- viewport pan/zoom ----------
+  const collageViewport = document.getElementById("collageViewport");
+  let viewZoom = 1, panX = 0, panY = 0;
+
+  function applyView() {
+    collageCanvas.style.transform = `translate(${panX}px, ${panY}px) scale(${viewZoom})`;
+    document.getElementById("zoomLabel").textContent = Math.round(viewZoom * 100) + "%";
+    renderOverview();
+  }
+
+  // ---------- overview / navigator thumbnail ----------
+  const overviewCanvas = document.getElementById("overviewCanvas");
+  const ovctx = overviewCanvas.getContext("2d");
+  const OVERVIEW_MAX = 160;
+
+  function renderOverview() {
+    const scale = Math.min(OVERVIEW_MAX / collage.canvas.width, (OVERVIEW_MAX * 0.75) / collage.canvas.height);
+    overviewCanvas.width = Math.max(1, Math.round(collage.canvas.width * scale));
+    overviewCanvas.height = Math.max(1, Math.round(collage.canvas.height * scale));
+    ovctx.clearRect(0, 0, overviewCanvas.width, overviewCanvas.height);
+    ovctx.drawImage(collageCanvas, 0, 0, collage.canvas.width, collage.canvas.height, 0, 0, overviewCanvas.width, overviewCanvas.height);
+
+    const s = overviewCanvas.width / collage.canvas.width;
+    const visLeft = (-panX / viewZoom) * s;
+    const visTop = (-panY / viewZoom) * s;
+    const visW = (collageViewport.clientWidth / viewZoom) * s;
+    const visH = (collageViewport.clientHeight / viewZoom) * s;
+    ovctx.strokeStyle = "#33ff33";
+    ovctx.lineWidth = 1.5;
+    ovctx.strokeRect(visLeft, visTop, visW, visH);
+  }
+
+  overviewCanvas.addEventListener("click", (e) => {
+    const rect = overviewCanvas.getBoundingClientRect();
+    const s = collage.canvas.width / overviewCanvas.width;
+    const cx = (e.clientX - rect.left) * s;
+    const cy = (e.clientY - rect.top) * s;
+    panX = collageViewport.clientWidth / 2 - cx * viewZoom;
+    panY = collageViewport.clientHeight / 2 - cy * viewZoom;
+    applyView();
+  });
+
+  function fitView() {
+    const scale = Math.min(
+      collageViewport.clientWidth / collage.canvas.width,
+      collageViewport.clientHeight / collage.canvas.height,
+      1
+    );
+    viewZoom = scale || 1;
+    panX = (collageViewport.clientWidth - collage.canvas.width * viewZoom) / 2;
+    panY = (collageViewport.clientHeight - collage.canvas.height * viewZoom) / 2;
+    applyView();
+  }
+
+  function zoomBy(factor, originX, originY) {
+    const cx = originX ?? collageViewport.clientWidth / 2;
+    const cy = originY ?? collageViewport.clientHeight / 2;
+    const z0 = viewZoom;
+    const z1 = Math.min(5, Math.max(0.05, z0 * factor));
+    panX = cx - (z1 / z0) * (cx - panX);
+    panY = cy - (z1 / z0) * (cy - panY);
+    viewZoom = z1;
+    applyView();
+  }
+
+  document.getElementById("zoomInBtn").addEventListener("click", () => zoomBy(1.2));
+  document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(1 / 1.2));
+  document.getElementById("fitViewBtn").addEventListener("click", fitView);
+
+  document.getElementById("fullscreenBtn").addEventListener("click", () => {
+    if (collageCanvas.requestFullscreen) collageCanvas.requestFullscreen();
+    else if (collageCanvas.webkitRequestFullscreen) collageCanvas.webkitRequestFullscreen();
+  });
+
+  collageViewport.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    if (e.shiftKey && selectedId) {
+      const clip = collage.clips.find((c) => c.id === selectedId);
+      if (clip) {
+        clip.scale = Math.max(0.05, clip.scale * (e.deltaY < 0 ? 1.05 : 0.95));
+        document.getElementById("clipScale").value = clip.scale.toFixed(2);
+        renderCollage(); syncTextarea();
+      }
+      return;
+    }
+    const rect = collageViewport.getBoundingClientRect();
+    zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  function updateClipProps() {
+    const panel = document.getElementById("clipProps");
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip) { panel.style.display = "none"; return; }
+    panel.style.display = "";
+    document.getElementById("clipScale").value = clip.scale.toFixed(2);
+    document.getElementById("clipRotation").value = Math.round(clip.rotation);
+  }
+
+  document.getElementById("clipScale").addEventListener("input", (e) => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip) return;
+    clip.scale = Math.max(0.05, parseFloat(e.target.value) || clip.scale);
+    renderCollage(); syncTextarea();
+  });
+  document.getElementById("clipRotation").addEventListener("input", (e) => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip) return;
+    clip.rotation = parseFloat(e.target.value) || 0;
+    renderCollage(); syncTextarea();
+  });
 
   function buildStamp(polygon, img) {
     const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
@@ -397,7 +614,8 @@
   function transformPoint(clip, [lx, ly]) {
     const rad = clip.rotation * Math.PI / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
-    const sx = lx * clip.scale, sy = ly * clip.scale;
+    const sx = lx * clip.scale * (clip.flipX ? -1 : 1);
+    const sy = ly * clip.scale * (clip.flipY ? -1 : 1);
     return [clip.x + (sx * cos - sy * sin), clip.y + (sx * sin + sy * cos)];
   }
 
@@ -424,7 +642,7 @@
     ctx.save();
     ctx.translate(clip.x, clip.y);
     ctx.rotate(clip.rotation * Math.PI / 180);
-    ctx.scale(clip.scale, clip.scale);
+    ctx.scale(clip.scale * (clip.flipX ? -1 : 1), clip.scale * (clip.flipY ? -1 : 1));
     ctx.drawImage(stamp.canvas, -stamp.w / 2, -stamp.h / 2);
     ctx.restore();
   }
@@ -465,6 +683,7 @@
     }
     const sel = collage.clips.find((c) => c.id === selectedId);
     if (sel) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
+    renderOverview();
   }
 
   let dragMode = null;
@@ -491,16 +710,23 @@
       const stamp = stampCache.get(clip.id);
       if (stamp && hitTestClip(clip, stamp, pt)) {
         selectedId = clip.id; dragMode = "move"; lastMouse = pt;
-        renderCollage(); renderLayerList();
+        renderCollage(); renderLayerList(); updateClipProps();
         return;
       }
     }
-    selectedId = null; dragMode = null;
-    renderCollage(); renderLayerList();
+    selectedId = null; dragMode = "pan";
+    collageViewport.classList.add("panning");
+    renderCollage(); renderLayerList(); updateClipProps();
   });
 
   collageCanvas.addEventListener("mousemove", (e) => {
     if (!dragMode) return;
+    if (dragMode === "pan") {
+      panX += e.movementX;
+      panY += e.movementY;
+      applyView();
+      return;
+    }
     const pt = getCollagePos(e);
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) return;
@@ -515,10 +741,10 @@
       clip.scale = Math.max(0.05, Math.hypot(pt[0] - clip.x, pt[1] - clip.y) / base);
     }
     lastMouse = pt;
-    renderCollage(); syncTextarea();
+    renderCollage(); syncTextarea(); updateClipProps();
   });
 
-  window.addEventListener("mouseup", () => { dragMode = null; });
+  window.addEventListener("mouseup", () => { dragMode = null; collageViewport.classList.remove("panning"); });
 
   function renderLayerList() {
     const list = document.getElementById("layerList");
@@ -529,7 +755,10 @@
         <span class="layer-actions">
           <button data-action="up" title="bring forward">&#9650;</button>
           <button data-action="down" title="send back">&#9660;</button>
+          <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
+          <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
+          <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
         </span>
       </li>
@@ -556,19 +785,38 @@
       }
     } else if (action === "edit") {
       editClipMask(clip);
+    } else if (action === "duplicate") {
+      const newId = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const z = Math.max(...collage.clips.map((c) => c.z)) + 1;
+      collage.clips.push({ ...clip, id: newId, polygon: clip.polygon.map((p) => p.slice()), x: clip.x + 20, y: clip.y + 20, z });
+      selectedId = newId;
+    } else if (action === "flipx") {
+      clip.flipX = !clip.flipX;
+    } else if (action === "flipy") {
+      clip.flipY = !clip.flipY;
     } else {
       selectedId = id;
     }
-    renderCollage(); renderLayerList(); syncTextarea();
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
+  document.getElementById("sizePreset").addEventListener("change", (e) => {
+    if (!e.target.value) return;
+    const [w, h] = e.target.value.split("x").map(Number);
+    collage.canvas.width = w; collage.canvas.height = h;
+    document.getElementById("canvasW").value = w;
+    document.getElementById("canvasH").value = h;
+    renderCollage(); fitView(); syncTextarea();
+  });
   document.getElementById("canvasW").addEventListener("change", (e) => {
     collage.canvas.width = parseInt(e.target.value) || 1000;
-    renderCollage(); syncTextarea();
+    document.getElementById("sizePreset").value = "";
+    renderCollage(); fitView(); syncTextarea();
   });
   document.getElementById("canvasH").addEventListener("change", (e) => {
     collage.canvas.height = parseInt(e.target.value) || 700;
-    renderCollage(); syncTextarea();
+    document.getElementById("sizePreset").value = "";
+    renderCollage(); fitView(); syncTextarea();
   });
 
   // ---------- config textarea ----------
@@ -585,7 +833,8 @@
       selectedId = null;
       document.getElementById("canvasW").value = collage.canvas.width;
       document.getElementById("canvasH").value = collage.canvas.height;
-      renderCollage(); renderLayerList();
+      document.getElementById("sizePreset").value = "";
+      renderCollage(); renderLayerList(); fitView(); updateClipProps();
     } catch (err) {
       alert("Invalid JSON: " + err.message);
     }
@@ -612,6 +861,8 @@
   renderCollage();
   renderLayerList();
   syncTextarea();
+  fitView();
+  updateClipProps();
 </script>
 
 </body>
