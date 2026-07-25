@@ -4,6 +4,8 @@
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="googlebot" content="noindex, nofollow, noimageindex">
 <meta name="robots" content="noai, noimageai">
+<link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 <style>
   :root {
     --bg: #111111;
@@ -84,7 +86,7 @@
 
   .thumb-wrap .thumb-name {
     position: absolute;
-    bottom: 4px;
+    top: 4px;
     left: 4px;
     z-index: 1;
     background: rgba(0,0,0,0.6);
@@ -97,8 +99,8 @@
 
   .thumb-wrap .copyright-tag {
     position: absolute;
-    top: 4px;
-    left: 4px;
+    bottom: 4px;
+    right: 4px;
     z-index: 1;
     background: rgba(0,0,0,0.6);
     color: #eee;
@@ -123,10 +125,56 @@
     align-items: center;
   }
   [popover] img { max-width: 80vw; max-height: 90vh; display: block; cursor: pointer; }
-  [popover] .caption {
+  [popover] .meta-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     color: var(--fg);
     font-size: 0.9rem;
     white-space: nowrap;
+    min-width: 140px;
+  }
+  [popover] .meta-name {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+  [popover] .meta-row .meta-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.6;
+    letter-spacing: 0.03em;
+  }
+  [popover] .meta-copyright {
+    margin-top: 12px;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .minimap {
+    width: 160px;
+    height: 160px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .minimap-marker {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff5500;
+    border: 2px solid white;
+  }
+  .minimap-arrow {
+    position: absolute;
+    top: -14px;
+    left: 2px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 12px solid #ff5500;
+    transform-origin: 50% 26px;
   }
   [popover]::backdrop { background: rgba(0,0,0,0.8); }
 </style>
@@ -152,8 +200,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
   function photoBlock(name, meta) {
-    const { caption, date } = meta[name] || {};
-    const label = `${caption || ""}${date ? " — " + date : ""}`;
+    const { caption, date, lat, lng, bearing, tags } = meta[name] || {};
+    const label = `${caption || ""}`;
     return `
       <div class="thumb-wrap">
         <button popovertarget="${name}-pop" style="border:none; background:none; padding:0; display:block;">
@@ -165,7 +213,7 @@
         </button>
         <span class="hover-caption">${label}</span>
         <span class="copyright-tag">© mbricknell</span>
-        <span class="thumb-name">${name}</span>
+        <span class="thumb-name">${name}${date ? "-" + date : ""}</span>
         <a class="mm-link" href="../mirror-mirror/?photo=${name}" target="_blank" rel="noopener" title="Open in mirror mirror">🪞</a>
       </div>
       <div popover id="${name}-pop">
@@ -175,7 +223,17 @@
           <img src="edits/${name}-web.jpg" alt="${caption || name}" loading="lazy"
                onclick="this.closest('[popover]').hidePopover()">
         </picture>
-        <div class="caption">${label}</div>
+        <div class="meta-panel">
+          <div class="meta-name">${name}${date ? "-" + date : ""}</div>
+          ${caption ? `<div class="meta-row"><span class="meta-label">Caption</span>${caption}</div>` : ""}
+          ${tags ? `<div class="meta-row"><span class="meta-label">Tags</span>${tags}</div>` : ""}
+          ${lat && lng ? `
+            <div class="meta-row"><span class="meta-label">Location</span>${lat}, ${lng}</div>
+            <div class="minimap" data-lat="${lat}" data-lng="${lng}" data-bearing="${bearing || ""}"></div>
+          ` : ""}
+          ${bearing ? `<div class="meta-row"><span class="meta-label">Bearing</span>${bearing}°</div>` : ""}
+          <div class="meta-copyright">© mbricknell</div>
+        </div>
       </div>
     `;
   }
@@ -254,6 +312,57 @@
       document.getElementById(`${visibleNow[nextI]}-pop`).showPopover();
     });
   });
+
+  // "toggle" fires on the popover element itself and doesn't bubble,
+  // so it's caught here via the capture phase.
+  document.addEventListener("toggle", (e) => {
+    if (!e.target.matches("[popover]")) return;
+
+    // Popover API's backdrop doesn't block pointer events like a <dialog>'s
+    // does, so the gallery behind stays clickable unless made inert.
+    document.getElementById("gallery").inert = e.newState === "open";
+
+    if (e.newState !== "open") return;
+    const mapEl = e.target.querySelector(".minimap");
+    if (!mapEl || mapEl.dataset.initialized) return;
+    mapEl.dataset.initialized = "true";
+
+    const lat = parseFloat(mapEl.dataset.lat);
+    const lng = parseFloat(mapEl.dataset.lng);
+    const bearing = mapEl.dataset.bearing ? parseFloat(mapEl.dataset.bearing) : null;
+
+    requestAnimationFrame(() => {
+      const map = new maplibregl.Map({
+        container: mapEl,
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: "&copy; OpenStreetMap contributors"
+            }
+          },
+          layers: [{ id: "osm", type: "raster", source: "osm" }]
+        },
+        center: [lng, lat],
+        zoom: 14,
+        interactive: false,
+        attributionControl: { compact: true }
+      });
+
+      const markerEl = document.createElement("div");
+      markerEl.className = "minimap-marker";
+      if (bearing !== null && !Number.isNaN(bearing)) {
+        const arrow = document.createElement("div");
+        arrow.className = "minimap-arrow";
+        arrow.style.transform = `rotate(${bearing}deg)`;
+        markerEl.appendChild(arrow);
+      }
+      new maplibregl.Marker({ element: markerEl }).setLngLat([lng, lat]).addTo(map);
+    });
+  }, true);
 </script>
 
 </body>
