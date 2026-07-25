@@ -11610,6 +11610,5 @@ src/img/grumpy/thumb/nixon_thumb.png
 src/img/grumpy/thumb/teddy_thumb.png
 src/img/grumpy/thumb/ww2_thumb.png
 *.sh
-/photos/originals
 /photos/node_modules
 photos/process-images.js
