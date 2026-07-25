@@ -62,7 +62,9 @@
   .size-mini #sourceViewport { height: 240px; }
   .size-full #sourceViewport { height: 640px; }
   #sourceViewport.panning { cursor: grabbing; }
-  #sourceCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; cursor: crosshair; }
+  /* Buffer is sized to the viewport, not the image — pan/zoom is a context
+     transform, so nodes and outlines rasterise sharp at every zoom level. */
+  #sourceCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
   #srcZoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
   #magnifier { border: 1px solid var(--border); flex-shrink: 0; }
   #collageViewport {
@@ -78,12 +80,11 @@
     position: absolute; right: 8px; bottom: 8px; z-index: 15;
     border: 1px solid var(--border); cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.7);
   }
-  /* Anchored by its lower-left corner to the clip's top-left, so it sits
-     above the image instead of over it, and clear of the centre rotate handle. */
+  /* Sits below the clip's bottom-left corner — fully outside the bounding box,
+     and at the opposite end from the rotate handle so it can't cover it. */
   .quick-actions {
     position: absolute; z-index: 30; display: flex; gap: 2px;
     background: #000; border: 1px solid var(--accent2); border-radius: 4px; padding: 2px;
-    transform: translate(0, -100%);
   }
   .quick-actions button { padding: 2px 6px; font-size: 0.85rem; }
   input[type="range"] { width: 140px; vertical-align: middle; }
@@ -224,6 +225,26 @@
     <div class="row" id="clipProps" style="display:none;">
       <label>Scale <input type="range" id="clipScale" min="0.05" max="8" step="0.01"> <span id="clipScaleValue">1.00</span></label>
       <label>Rotation&deg; <input type="number" id="clipRotation" step="1"></label>
+      <label>Blend
+        <select id="clipBlend">
+          <option value="source-over">normal</option>
+          <option value="multiply">multiply</option>
+          <option value="screen">screen</option>
+          <option value="overlay">overlay</option>
+          <option value="darken">darken</option>
+          <option value="lighten">lighten</option>
+          <option value="color-dodge">color-dodge</option>
+          <option value="color-burn">color-burn</option>
+          <option value="hard-light">hard-light</option>
+          <option value="soft-light">soft-light</option>
+          <option value="difference">difference</option>
+          <option value="exclusion">exclusion</option>
+          <option value="hue">hue</option>
+          <option value="saturation">saturation</option>
+          <option value="color">color</option>
+          <option value="luminosity">luminosity</option>
+        </select>
+      </label>
     </div>
     <div id="collageViewport">
       <canvas id="collageCanvas" width="1000" height="700"></canvas>
@@ -260,6 +281,10 @@
       <button id="downloadBtn">Download</button>
       <button id="uploadBtn">Upload</button>
       <input type="file" id="uploadInput" accept="application/json" style="display:none">
+    </div>
+    <div class="row">
+      <button id="convertOriginalsBtn">Convert to originals</button>
+      <span id="convertStatus" class="hint" style="margin:0;"></span>
     </div>
   </section>
 
@@ -320,40 +345,66 @@
   }
 
   const photoNames = new Set();
-  function resolveSourceUrl(source) {
-    if (/^https?:\/\//i.test(source) || source.startsWith("../") || source.startsWith("/")) return source;
-    return `../photos/edits/${source}-web.jpg`;
+
+  function isLibraryPhoto(source) {
+    return !(/^https?:\/\//i.test(source) || source.startsWith("../") || source.startsWith("/"));
+  }
+
+  function originalUrl(name) { return `../photos/originals/${name}.jpg`; }
+
+  function resolveSourceUrl(source, useOriginal) {
+    if (!isLibraryPhoto(source)) return source;
+    return useOriginal ? originalUrl(source) : `../photos/edits/${source}-web.jpg`;
+  }
+
+  // Probes once per name and caches the answer; loadImage caches the image
+  // itself, so a successful probe also warms it for the conversion.
+  const originalProbe = new Map();
+  function hasOriginal(name) {
+    if (!isLibraryPhoto(name)) return Promise.resolve(false);
+    if (!originalProbe.has(name)) {
+      originalProbe.set(name, loadImage(originalUrl(name)).then(() => true).catch(() => false));
+    }
+    return originalProbe.get(name);
   }
 
   // ---------- clip editor (left panel) ----------
   const sourceCanvas = document.getElementById("sourceCanvas");
   const sctx = sourceCanvas.getContext("2d");
   const editor = {
-    image: null, naturalW: 0, naturalH: 0, displayScale: 1,
-    points: [], closed: false, addPointMode: false, dragIndex: -1, editingClipId: null
+    image: null, naturalW: 0, naturalH: 0,
+    points: [], closed: false, addPointMode: false, dragIndex: -1,
+    editingClipId: null, editingUseOriginal: false
   };
 
   const sourceViewport = document.getElementById("sourceViewport");
   let srcZoom = 1, srcPanX = 0, srcPanY = 0, srcPanning = false, spaceHeld = false;
 
-  function toDisplay([x, y]) { return [x * editor.displayScale, y * editor.displayScale]; }
-  function toNatural([x, y]) { return [x / editor.displayScale, y / editor.displayScale]; }
-
-  // Overlay strokes and grab targets are specified in screen pixels and
-  // converted to canvas pixels, so they stay usable at any zoom.
+  // Overlay strokes and grab targets are given in screen pixels; dividing by
+  // zoom expresses them in the image coordinates the context is scaled to.
   function srcPx(screenPx) { return screenPx / srcZoom; }
 
+  // Buffer tracks the viewport at device resolution so nothing is ever a
+  // scaled-up bitmap.
+  function resizeSourceCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = sourceViewport.clientWidth, h = sourceViewport.clientHeight;
+    if (!w || !h) return;
+    sourceCanvas.width = Math.round(w * dpr);
+    sourceCanvas.height = Math.round(h * dpr);
+  }
+
   function applySourceView() {
-    sourceCanvas.style.transform = `translate(${srcPanX}px, ${srcPanY}px) scale(${srcZoom})`;
     document.getElementById("srcZoomLabel").textContent = Math.round(srcZoom * 100) + "%";
     renderEditor();
   }
 
   function fitSourceView() {
     const vw = sourceViewport.clientWidth, vh = sourceViewport.clientHeight;
-    srcZoom = Math.min(vw / sourceCanvas.width, vh / sourceCanvas.height, 1) || 1;
-    srcPanX = (vw - sourceCanvas.width * srcZoom) / 2;
-    srcPanY = (vh - sourceCanvas.height * srcZoom) / 2;
+    if (!editor.image) { srcZoom = 1; srcPanX = srcPanY = 0; applySourceView(); return; }
+    srcZoom = Math.min(vw / editor.naturalW, vh / editor.naturalH, 1) || 1;
+    srcPanX = (vw - editor.naturalW * srcZoom) / 2;
+    srcPanY = (vh - editor.naturalH * srcZoom) / 2;
     applySourceView();
   }
 
@@ -372,13 +423,7 @@
     editor.image = img;
     editor.naturalW = img.naturalWidth || img.width;
     editor.naturalH = img.naturalHeight || img.height;
-    // Hold the image at its own resolution (up to a sane buffer cap) rather
-    // than downscaling to fit the panel — the view transform handles display
-    // size, so point precision is limited only by how far you zoom in.
-    const bufferCap = 4000;
-    editor.displayScale = Math.min(bufferCap / editor.naturalW, bufferCap / editor.naturalH, 1);
-    sourceCanvas.width = Math.round(editor.naturalW * editor.displayScale);
-    sourceCanvas.height = Math.round(editor.naturalH * editor.displayScale);
+    resizeSourceCanvas();
     if (presetPoints) {
       editor.points = presetPoints.map((p) => p.slice());
       editor.closed = true;
@@ -390,13 +435,20 @@
   }
 
   function renderEditor() {
-    if (!editor.image) return;
+    const dpr = window.devicePixelRatio || 1;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
     sctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-    sctx.drawImage(editor.image, 0, 0, sourceCanvas.width, sourceCanvas.height);
+    if (!editor.image) return;
+    // Everything below is drawn in image coordinates; the transform maps them
+    // to device pixels, so strokes rasterise fresh at the current zoom.
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.translate(srcPanX, srcPanY);
+    sctx.scale(srcZoom, srcZoom);
+    sctx.imageSmoothingQuality = "high";
+    sctx.drawImage(editor.image, 0, 0, editor.naturalW, editor.naturalH);
     if (editor.points.length) {
       sctx.beginPath();
-      editor.points.forEach((p, i) => {
-        const [x, y] = toDisplay(p);
+      editor.points.forEach(([x, y], i) => {
         i === 0 ? sctx.moveTo(x, y) : sctx.lineTo(x, y);
       });
       if (editor.closed) sctx.closePath();
@@ -404,8 +456,7 @@
       sctx.lineWidth = srcPx(2);
       sctx.stroke();
       if (editor.closed) { sctx.fillStyle = "rgba(255,85,0,0.2)"; sctx.fill(); }
-      editor.points.forEach((p, i) => {
-        const [x, y] = toDisplay(p);
+      editor.points.forEach(([x, y], i) => {
         sctx.beginPath();
         sctx.arc(x, y, srcPx(5), 0, Math.PI * 2);
         sctx.fillStyle = i === 0 && !editor.closed ? "#33ff33" : "#fff";
@@ -437,21 +488,18 @@
     editor.points.splice(bestIdx + 1, 0, pt);
   }
 
+  // Returns image coordinates — the same space points are stored in.
   function getSourceCanvasPos(e) {
-    const rect = sourceCanvas.getBoundingClientRect();
-    // The canvas is CSS-scaled to fit its panel, so map back to canvas pixels.
+    const rect = sourceViewport.getBoundingClientRect();
     return [
-      (e.clientX - rect.left) * (sourceCanvas.width / rect.width),
-      (e.clientY - rect.top) * (sourceCanvas.height / rect.height)
+      (e.clientX - rect.left - srcPanX) / srcZoom,
+      (e.clientY - rect.top - srcPanY) / srcZoom
     ];
   }
 
   function findPointNear(dx, dy) {
     const grab = srcPx(9);
-    return editor.points.findIndex((p) => {
-      const [x, y] = toDisplay(p);
-      return Math.hypot(x - dx, y - dy) < grab;
-    });
+    return editor.points.findIndex(([x, y]) => Math.hypot(x - dx, y - dy) < grab);
   }
 
   sourceCanvas.addEventListener("mousedown", (e) => {
@@ -468,13 +516,13 @@
     if (editor.closed) {
       const hitIndex = findPointNear(dx, dy);
       if (hitIndex !== -1) { editor.dragIndex = hitIndex; return; }
-      if (editor.addPointMode) { insertPointOnNearestEdge(toNatural([dx, dy])); renderEditor(); }
+      if (editor.addPointMode) { insertPointOnNearestEdge([dx, dy]); renderEditor(); }
       return;
     }
     if (editor.points.length >= 3 && findPointNear(dx, dy) === 0) {
       editor.closed = true; renderEditor(); return;
     }
-    editor.points.push(toNatural([dx, dy]));
+    editor.points.push([dx, dy]);
     renderEditor();
   });
 
@@ -487,8 +535,7 @@
       return;
     }
     if (editor.dragIndex === -1) return;
-    const [dx, dy] = getSourceCanvasPos(e);
-    editor.points[editor.dragIndex] = toNatural([dx, dy]);
+    editor.points[editor.dragIndex] = getSourceCanvasPos(e);
     renderEditor();
   });
 
@@ -528,18 +575,16 @@
   document.getElementById("srcZoomIn").addEventListener("click", () => srcZoomBy(1.25));
   document.getElementById("srcZoomOut").addEventListener("click", () => srcZoomBy(1 / 1.25));
   document.getElementById("srcFitBtn").addEventListener("click", fitSourceView);
-  document.getElementById("src100Btn").addEventListener("click", () => {
-    // One source pixel per screen pixel. displayScale is 1 unless the image
-    // exceeded the buffer cap, in which case zoom past 1 to compensate.
-    srcZoomBy(1 / (editor.displayScale * srcZoom));
-  });
+  // One source pixel per CSS pixel.
+  document.getElementById("src100Btn").addEventListener("click", () => srcZoomBy(1 / srcZoom));
+
+  new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); }).observe(sourceViewport);
 
   const magCanvas = document.getElementById("magnifier");
   const mctx = magCanvas.getContext("2d");
   const MAG_ZOOM = 4, MAG_SIZE = 150;
-  function updateMagnifier(dx, dy) {
+  function updateMagnifier(nx, ny) {
     if (!editor.image) return;
-    const [nx, ny] = toNatural([dx, dy]);
     const half = (MAG_SIZE / 2) / MAG_ZOOM;
     mctx.clearRect(0, 0, MAG_SIZE, MAG_SIZE);
     mctx.drawImage(editor.image, nx - half, ny - half, half * 2, half * 2, 0, 0, MAG_SIZE, MAG_SIZE);
@@ -559,6 +604,7 @@
   });
   document.getElementById("clearPolyBtn").addEventListener("click", () => {
     editor.points = []; editor.closed = false; editor.editingClipId = null;
+    editor.editingUseOriginal = false;
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderEditor();
   });
@@ -566,18 +612,31 @@
     const polygon = editor.points.map((p) => p.slice());
     if (editor.editingClipId) {
       const clip = collage.clips.find((c) => c.id === editor.editingClipId);
-      if (clip) { clip.polygon = polygon; clip.source = currentSourceName(); stampCache.delete(clip.id); selectedId = clip.id; }
+      if (clip) {
+        clip.polygon = polygon;
+        clip.source = currentSourceName();
+        // Re-authored against whatever the editor currently has open.
+        clip.baseW = editor.naturalW;
+        clip.baseH = editor.naturalH;
+        clip.useOriginal = !!editor.editingUseOriginal;
+        stampCache.delete(clip.id);
+        selectedId = clip.id;
+      }
     } else {
       const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
       const id = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       collage.clips.push({
         id, source: currentSourceName(), polygon,
+        // Resolution the polygon was drawn against — the reference point for
+        // converting these coordinates to a different-sized source later.
+        baseW: editor.naturalW, baseH: editor.naturalH, useOriginal: false,
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
-        scale: 1, rotation: 0, flipX: false, flipY: false, z
+        scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
       });
       selectedId = id;
     }
     editor.editingClipId = null;
+    editor.editingUseOriginal = false;
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
@@ -628,12 +687,16 @@
   function selectSource(type, name) {
     setCurrentSourceUI(type, name);
     dropdownList.hidden = true;
+    // Picking a new source drops any "editing at original resolution" state,
+    // otherwise baseW and useOriginal would disagree.
+    editor.editingUseOriginal = false;
     if (type === "url") { sourceUrlInput.focus(); return; }
     loadImage(resolveSourceUrl(name)).then((img) => setEditorImage(img))
       .catch((err) => console.error("failed to load source image", err));
   }
 
   function loadTypedUrl() {
+    editor.editingUseOriginal = false;
     currentSource.value = sourceUrlInput.value.trim();
     if (!currentSource.value) return;
     loadImage(resolveSourceUrl(currentSource.value)).then((img) => setEditorImage(img))
@@ -683,7 +746,11 @@
     document.getElementById("addToCollageBtn").textContent = "Update clip";
     if (photoNames.has(clip.source)) setCurrentSourceUI("photo", clip.source);
     else setCurrentSourceUI("url", clip.source);
-    loadImage(resolveSourceUrl(clip.source)).then((img) => setEditorImage(img, clip.polygon));
+    // A converted clip's polygon is in original-resolution coordinates, so the
+    // editor has to open the original or every point would land wrong.
+    editor.editingUseOriginal = !!clip.useOriginal;
+    loadImage(resolveSourceUrl(clip.source, clip.useOriginal))
+      .then((img) => setEditorImage(img, clip.polygon));
   }
 
   // ---------- collage (right panel) ----------
@@ -809,11 +876,20 @@
     panel.style.display = "";
     const scaleInput = document.getElementById("clipScale");
     const rotInput = document.getElementById("clipRotation");
+    const blendInput = document.getElementById("clipBlend");
     scaleInput.value = clip.scale.toFixed(2);
     document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
     rotInput.value = Math.round(clip.rotation);
-    scaleInput.disabled = rotInput.disabled = !!clip.locked;
+    blendInput.value = clip.blend || "source-over";
+    scaleInput.disabled = rotInput.disabled = blendInput.disabled = !!clip.locked;
   }
+
+  document.getElementById("clipBlend").addEventListener("change", (e) => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    clip.blend = e.target.value;
+    renderCollage(); syncTextarea();
+  });
 
   document.getElementById("clipScale").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
@@ -882,6 +958,8 @@
 
   function drawClip(ctx, clip, stamp) {
     ctx.save();
+    // Blends against everything already drawn beneath, background included.
+    ctx.globalCompositeOperation = clip.blend || "source-over";
     ctx.translate(clip.x, clip.y);
     ctx.rotate(clip.rotation * Math.PI / 180);
     ctx.scale(clip.scale * (clip.flipX ? -1 : 1), clip.scale * (clip.flipY ? -1 : 1));
@@ -909,7 +987,7 @@
   }
 
   async function ensureStamp(clip) {
-    const url = resolveSourceUrl(clip.source);
+    const url = resolveSourceUrl(clip.source, clip.useOriginal);
     let img;
     try { img = await loadImage(url); } catch { return null; }
     const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
@@ -976,15 +1054,15 @@
     const clip = collage.clips.find((c) => c.id === selectedId);
     const stamp = clip && stampCache.get(clip.id);
     if (!clip || !stamp || hideOutlines || clip.locked) { qa.hidden = true; return; }
-    // Anchor to the clip's top-left corner. CSS translates the bar up by its
-    // own height, so its bottom edge rests just above the clip's top edge.
-    const [cornerX, cornerY] = transformPoint(clip, localCorners(stamp)[0]);
+    // Anchored below the bottom-left corner: outside the bounding box, and at
+    // the far end from the rotate handle (which sits above the top edge).
+    const [cornerX, cornerY] = transformPoint(clip, localCorners(stamp)[3]);
     qa.hidden = false;
     const w = qa.offsetWidth, h = qa.offsetHeight;
     const left = panX + cornerX * viewZoom;
-    const top = panY + cornerY * viewZoom - 6;
+    const top = panY + cornerY * viewZoom + 8;
     qa.style.left = Math.min(Math.max(left, 2), Math.max(2, collageViewport.clientWidth - w - 2)) + "px";
-    qa.style.top = Math.min(Math.max(top, h + 2), collageViewport.clientHeight - 2) + "px";
+    qa.style.top = Math.min(Math.max(top, 2), Math.max(2, collageViewport.clientHeight - h - 2)) + "px";
   }
 
   let dragMode = null;
@@ -1274,6 +1352,46 @@
     a.download = "collage-config.json";
     a.click();
     URL.revokeObjectURL(a.href);
+  });
+
+  /* One-time upgrade: re-authors each clip's mask against the full-resolution
+     original. polygon x k puts the mask back on the right pixels; scale / k
+     keeps the canvas footprint identical, so the composite looks unchanged but
+     carries k times the real detail. Clips with no original are left alone. */
+  document.getElementById("convertOriginalsBtn").addEventListener("click", async (e) => {
+    const status = document.getElementById("convertStatus");
+    e.target.disabled = true;
+    status.textContent = "checking…";
+    let converted = 0, already = 0, missing = 0;
+
+    for (const clip of collage.clips) {
+      if (clip.useOriginal) { already++; continue; }
+      if (!isLibraryPhoto(clip.source)) { missing++; continue; }
+      if (!(await hasOriginal(clip.source))) { missing++; continue; }
+
+      const orig = await loadImage(originalUrl(clip.source));
+      let base = clip.baseW;
+      if (!base) {
+        // Older clip with no recorded authoring size: fall back to measuring
+        // the web derivative it must have been drawn against.
+        try { base = (await loadImage(resolveSourceUrl(clip.source, false))).naturalWidth; }
+        catch { missing++; continue; }
+      }
+      const k = orig.naturalWidth / base;
+      if (!isFinite(k) || k <= 0) { missing++; continue; }
+
+      clip.polygon = clip.polygon.map(([x, y]) => [x * k, y * k]);
+      clip.scale = clip.scale / k;
+      clip.baseW = orig.naturalWidth;
+      clip.baseH = orig.naturalHeight;
+      clip.useOriginal = true;
+      stampCache.delete(clip.id);
+      converted++;
+    }
+
+    status.textContent = `${converted} converted, ${already} already, ${missing} no original`;
+    e.target.disabled = false;
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
   document.getElementById("uploadBtn").addEventListener("click", () => document.getElementById("uploadInput").click());
