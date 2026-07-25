@@ -12,7 +12,19 @@
   h1 { font-size: 1.2rem; margin: 0 0 12px; }
   h2 { font-size: 0.95rem; margin: 0 0 8px; opacity: 0.85; }
   .layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex: 0 0 auto; }
+
+  /* Panel sizing — mini / half / full. Widths are flex-basis so panels
+     reflow onto their own rows as they grow. */
+  .panel.size-mini { flex-basis: 280px; }
+  .panel.size-half { flex-basis: calc(50% - 8px); }
+  .panel.size-full { flex-basis: 100%; }
+
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .panel-head h2 { margin: 0; }
+  .size-toggle { display: flex; gap: 2px; flex-shrink: 0; }
+  .size-toggle button { padding: 1px 6px; font-size: 0.75rem; }
+  .size-toggle button.active { border-color: var(--accent2); color: var(--accent2); }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
   select, input[type="text"], input[type="number"], button {
     background: #000; color: var(--fg); border: 1px solid var(--border); border-radius: 4px;
@@ -37,44 +49,84 @@
     position: fixed; z-index: 1000; border: 1px solid var(--accent); background: #000; padding: 2px; border-radius: 4px;
   }
   .source-preview img { display: block; max-width: 220px; max-height: 220px; }
-  .canvas-wrap { display: flex; gap: 12px; align-items: flex-start; }
+  .canvas-wrap { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
   canvas { background: #000; display: block; }
-  #sourceCanvas { cursor: crosshair; border: 1px solid var(--border); }
-  #magnifier { border: 1px solid var(--border); }
+  /* Source canvas scales with the panel; getSourceCanvasPos() converts
+     CSS pixels back to canvas pixels, so CSS scaling is safe here. */
+  #sourceCanvas { cursor: crosshair; border: 1px solid var(--border); max-width: 100%; height: auto; }
+  #magnifier { border: 1px solid var(--border); flex-shrink: 0; }
   #collageViewport {
-    width: 640px; max-width: 100%; height: 480px; overflow: hidden; position: relative;
-    border: 1px solid var(--border); background: #000; cursor: grab;
+    width: 100%; height: 480px; overflow: hidden; position: relative;
+    border: 1px solid var(--border); background: #0a0a0a; cursor: grab;
   }
+  .size-mini #collageViewport { height: 220px; }
+  .size-full #collageViewport { height: 620px; }
   #collageViewport.panning { cursor: grabbing; }
-  #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
-  #collageCanvas:fullscreen, #collageCanvas:-webkit-full-screen {
-    width: 100vw; height: 100vh; object-fit: contain; background: #000; transform: none;
-  }
+  #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; outline: 1px solid #555; }
   #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
   #overviewCanvas {
     position: absolute; right: 8px; bottom: 8px; z-index: 15;
     border: 1px solid var(--border); cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.7);
   }
+  /* Anchored by its lower-left corner to the clip's top-left, so it sits
+     above the image instead of over it, and clear of the centre rotate handle. */
   .quick-actions {
     position: absolute; z-index: 30; display: flex; gap: 2px;
     background: #000; border: 1px solid var(--accent2); border-radius: 4px; padding: 2px;
-    transform: translate(-50%, 0);
+    transform: translate(0, -100%);
   }
   .quick-actions button { padding: 2px 6px; font-size: 0.85rem; }
   input[type="range"] { width: 140px; vertical-align: middle; }
   #clipScaleValue { font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px; }
-  #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 260px; max-height: 300px; overflow-y: auto; }
+  #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 100%; max-height: 300px; overflow-y: auto; }
   #layerList li {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; flex-direction: column; align-items: stretch; gap: 4px;
     padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
     margin-bottom: 4px; cursor: pointer; font-size: 0.8rem;
   }
   #layerList li.selected { border-color: var(--accent2); }
-  #layerList .layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+  #layerList .layer-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  #layerList .layer-name {
+    flex: 1 1 auto; min-width: 0; background: transparent; color: var(--fg);
+    border: 1px solid transparent; border-radius: 3px; padding: 1px 3px; font-size: 0.8rem;
+  }
+  #layerList .layer-name:hover { border-color: var(--border); }
+  #layerList .layer-name:focus { border-color: var(--accent2); background: #000; outline: none; }
+  #layerList .layer-z { font-size: 0.7rem; opacity: 0.55; flex-shrink: 0; }
+  #layerList .layer-actions { display: flex; gap: 2px; flex-wrap: wrap; }
+  #layerList .layer-link { padding: 0 2px; font-size: 0.7rem; flex-shrink: 0; }
   #layerList button { padding: 1px 5px; font-size: 0.75rem; }
   #layerList button.active { border-color: var(--accent2); color: var(--accent2); }
-  #configText { width: 360px; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
+
+  /* Floating thumbnail of a clip's masked shape, shown on layer hover. */
+  .layer-preview {
+    position: fixed; z-index: 1000; background: #000; padding: 3px;
+    border: 1px solid var(--accent2); border-radius: 4px;
+  }
+  #configText { width: 100%; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
     background: #000; color: #7CFC7C; border: 1px solid var(--border); border-radius: 4px; resize: vertical; }
+  .size-mini #configText { height: 260px; }
+  input[type="color"] { width: 40px; height: 26px; padding: 1px; background: #000;
+    border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+
+  /* ---------- distraction-free preview ---------- */
+  #previewOverlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #000; overflow: hidden; cursor: grab;
+  }
+  #previewOverlay.panning { cursor: grabbing; }
+  #previewCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  /* Controls must live inside the fullscreen element to be visible at all.
+     Kept faint until hovered so they stay out of the way. */
+  .preview-controls {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; align-items: center;
+    background: rgba(0, 0, 0, 0.65); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px;
+    opacity: 0.2; transition: opacity 0.2s ease;
+  }
+  .preview-controls:hover { opacity: 1; }
+  #pvZoomLabel { font-size: 0.8rem; opacity: 0.8; width: 42px; text-align: center; }
 </style>
 </head>
 <body>
@@ -83,8 +135,15 @@
 
 <div class="layout">
 
-  <section class="panel" id="editorPanel">
-    <h2>Clip source</h2>
+  <section class="panel size-half" id="editorPanel">
+    <div class="panel-head">
+      <h2>Clip source</h2>
+      <span class="size-toggle">
+        <button type="button" data-size="mini" title="mini">&#9643;</button>
+        <button type="button" data-size="half" class="active" title="half">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+      </span>
+    </div>
     <div class="row">
       <div class="dropdown" id="sourceDropdown">
         <button type="button" id="sourceDropdownBtn" class="dropdown-btn">Loading photos&hellip;</button>
@@ -111,8 +170,15 @@
     </p>
   </section>
 
-  <section class="panel" id="collagePanel">
-    <h2>Collage</h2>
+  <section class="panel size-half" id="collagePanel">
+    <div class="panel-head">
+      <h2>Collage</h2>
+      <span class="size-toggle">
+        <button type="button" data-size="mini" title="mini">&#9643;</button>
+        <button type="button" data-size="half" class="active" title="half">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+      </span>
+    </div>
     <div class="row">
       <select id="sizePreset">
         <option value="">Custom&hellip;</option>
@@ -126,14 +192,15 @@
       </select>
       <label>W <input type="number" id="canvasW" value="1000"></label>
       <label>H <input type="number" id="canvasH" value="700"></label>
+      <label>BG <input type="color" id="canvasBg" value="#111111"></label>
     </div>
     <div class="row">
       <button id="zoomOutBtn">&minus;</button>
       <span id="zoomLabel">100%</span>
       <button id="zoomInBtn">+</button>
       <button id="fitViewBtn">Fit</button>
-      <button id="fullscreenBtn">Fullscreen preview</button>
-      <button id="previewToggleBtn">Hide outlines</button>
+      <button id="outlinesToggleBtn">Hide outlines</button>
+      <button id="previewBtn">Preview</button>
     </div>
     <div class="row" id="clipProps" style="display:none;">
       <label>Scale <input type="range" id="clipScale" min="0.05" max="8" step="0.01"> <span id="clipScaleValue">1.00</span></label>
@@ -152,13 +219,22 @@
     <h2 style="margin-top:10px;">Layers</h2>
     <ul id="layerList"></ul>
     <p class="hint">
-      Drag a clip to move it, its bottom-right handle to scale (or Scale field above), its top handle to rotate.
+      Drag a clip to move it, its bottom-right handle to scale (or the Scale slider above), its top handle to rotate.
       Drag empty canvas space to pan the view, scroll to zoom the view, shift+scroll over a selected clip to scale it.
+      "Hide outlines" clears the overlays in place; "Preview" opens the composite fullscreen,
+      pan and zoom only, Esc to exit.
     </p>
   </section>
 
-  <section class="panel" id="configPanel">
-    <h2>Config</h2>
+  <section class="panel size-mini" id="configPanel">
+    <div class="panel-head">
+      <h2>Config</h2>
+      <span class="size-toggle">
+        <button type="button" data-size="mini" class="active" title="mini">&#9643;</button>
+        <button type="button" data-size="half" title="half">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+      </span>
+    </div>
     <textarea id="configText" spellcheck="false"></textarea>
     <div class="row" style="margin-top:8px;">
       <button id="applyBtn">Apply</button>
@@ -168,6 +244,21 @@
     </div>
   </section>
 
+</div>
+
+<div class="layer-preview" id="layerPreview" hidden><canvas id="layerPreviewCanvas"></canvas></div>
+
+<!-- Distraction-free preview. Lives outside .layout so panel sizing and the
+     size-toggle click delegation can't reach it. Pan/zoom only, no editing. -->
+<div id="previewOverlay" hidden>
+  <canvas id="previewCanvas"></canvas>
+  <div class="preview-controls">
+    <button type="button" id="pvZoomOut">&minus;</button>
+    <span id="pvZoomLabel">100%</span>
+    <button type="button" id="pvZoomIn">+</button>
+    <button type="button" id="pvFitBtn">Fit</button>
+    <button type="button" id="pvCloseBtn">&#10005;</button>
+  </div>
 </div>
 
 <script>
@@ -293,7 +384,11 @@
 
   function getSourceCanvasPos(e) {
     const rect = sourceCanvas.getBoundingClientRect();
-    return [e.clientX - rect.left, e.clientY - rect.top];
+    // The canvas is CSS-scaled to fit its panel, so map back to canvas pixels.
+    return [
+      (e.clientX - rect.left) * (sourceCanvas.width / rect.width),
+      (e.clientY - rect.top) * (sourceCanvas.height / rect.height)
+    ];
   }
 
   sourceCanvas.addEventListener("mousedown", (e) => {
@@ -491,7 +586,7 @@
 
   // ---------- collage (right panel) ----------
   const collageCanvas = document.getElementById("collageCanvas");
-  const collage = { canvas: { width: 1000, height: 700 }, clips: [] };
+  const collage = { canvas: { width: 1000, height: 700, background: "#111111" }, clips: [] };
   let selectedId = null;
   const stampCache = new Map();
 
@@ -565,16 +660,26 @@
   document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(1 / 1.2));
   document.getElementById("fitViewBtn").addEventListener("click", fitView);
 
-  document.getElementById("fullscreenBtn").addEventListener("click", () => {
-    if (collageCanvas.requestFullscreen) collageCanvas.requestFullscreen();
-    else if (collageCanvas.webkitRequestFullscreen) collageCanvas.webkitRequestFullscreen();
+  // ---------- panel sizing ----------
+  document.querySelector(".layout").addEventListener("click", (e) => {
+    const btn = e.target.closest(".size-toggle button");
+    if (!btn) return;
+    const panel = btn.closest(".panel");
+    panel.classList.remove("size-mini", "size-half", "size-full");
+    panel.classList.add("size-" + btn.dataset.size);
+    btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === btn));
+    // Wait for layout to settle before re-measuring the viewport.
+    requestAnimationFrame(fitView);
   });
+
+  // Keeps the overview rect and quick-actions honest when the viewport resizes.
+  new ResizeObserver(() => applyView()).observe(collageViewport);
 
   collageViewport.addEventListener("wheel", (e) => {
     e.preventDefault();
     if (e.shiftKey && selectedId) {
       const clip = collage.clips.find((c) => c.id === selectedId);
-      if (clip) {
+      if (clip && !clip.locked) {
         clip.scale = Math.max(0.05, clip.scale * (e.deltaY < 0 ? 1.05 : 0.95));
         document.getElementById("clipScale").value = clip.scale.toFixed(2);
         document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
@@ -586,10 +691,12 @@
     zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - rect.left, e.clientY - rect.top);
   }, { passive: false });
 
-  let previewMode = false;
-  document.getElementById("previewToggleBtn").addEventListener("click", (e) => {
-    previewMode = !previewMode;
-    e.target.textContent = previewMode ? "Show outlines" : "Hide outlines";
+  let hideOutlines = false;
+  document.getElementById("outlinesToggleBtn").addEventListener("click", (e) => {
+    hideOutlines = !hideOutlines;
+    e.target.textContent = hideOutlines ? "Show outlines" : "Hide outlines";
+    // The minimap sits on top of the composite, so it goes too.
+    overviewCanvas.hidden = hideOutlines;
     renderCollage();
   });
 
@@ -598,21 +705,24 @@
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) { panel.style.display = "none"; return; }
     panel.style.display = "";
-    document.getElementById("clipScale").value = clip.scale.toFixed(2);
+    const scaleInput = document.getElementById("clipScale");
+    const rotInput = document.getElementById("clipRotation");
+    scaleInput.value = clip.scale.toFixed(2);
     document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
-    document.getElementById("clipRotation").value = Math.round(clip.rotation);
+    rotInput.value = Math.round(clip.rotation);
+    scaleInput.disabled = rotInput.disabled = !!clip.locked;
   }
 
   document.getElementById("clipScale").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
-    if (!clip) return;
+    if (!clip || clip.locked) return;
     clip.scale = Math.max(0.05, parseFloat(e.target.value) || clip.scale);
     document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
     renderCollage(); syncTextarea();
   });
   document.getElementById("clipRotation").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
-    if (!clip) return;
+    if (!clip || clip.locked) return;
     clip.rotation = parseFloat(e.target.value) || 0;
     renderCollage(); syncTextarea();
   });
@@ -638,11 +748,14 @@
     return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]];
   }
 
+  // Deliberately ignores flipX/flipY: mirroring a rectangle about its own
+  // centre yields the same four corners, so the bounding geometry is
+  // flip-invariant. Keeping flip out of it means "top edge" stays the top
+  // edge, so handles and the quick-actions bar don't jump when you flip.
   function transformPoint(clip, [lx, ly]) {
     const rad = clip.rotation * Math.PI / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
-    const sx = lx * clip.scale * (clip.flipX ? -1 : 1);
-    const sy = ly * clip.scale * (clip.flipY ? -1 : 1);
+    const sx = lx * clip.scale, sy = ly * clip.scale;
     return [clip.x + (sx * cos - sy * sin), clip.y + (sx * sin + sy * cos)];
   }
 
@@ -693,23 +806,65 @@
     ctx.restore();
   }
 
+  async function ensureStamp(clip) {
+    const url = resolveSourceUrl(clip.source);
+    let img;
+    try { img = await loadImage(url); } catch { return null; }
+    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
+    let stamp = stampCache.get(clip.id);
+    if (!stamp || stamp.key !== key) {
+      stamp = buildStamp(clip.polygon, img);
+      stamp.key = key;
+      stampCache.set(clip.id, stamp);
+    }
+    return stamp;
+  }
+
+  /* The composite alone — background plus clips, never any overlay. Shared by
+     the editor canvas and the preview, so the preview can't inherit chrome. */
+  async function drawComposite(ctx, w, h) {
+    ctx.clearRect(0, 0, w, h);
+    if (collage.canvas.background) {
+      ctx.fillStyle = collage.canvas.background;
+      ctx.fillRect(0, 0, w, h);
+    }
+    for (const clip of [...collage.clips].sort((a, b) => a.z - b.z)) {
+      const stamp = await ensureStamp(clip);
+      if (stamp) drawClip(ctx, clip, stamp);
+    }
+  }
+
+  /* Per-clip alignment guides: dashed lines through each edge and the centre
+     of the clip's bounding box, extended across the canvas. Overlay only —
+     drawn after the composite, so they never reach the preview or an export. */
+  function drawGuides(ctx) {
+    const w = collage.canvas.width, h = collage.canvas.height;
+    ctx.save();
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255, 170, 0, 0.8)";
+    for (const clip of collage.clips) {
+      if (!clip.guides) continue;
+      const stamp = stampCache.get(clip.id);
+      if (!stamp) continue;
+      const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
+      const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
+      ctx.beginPath();
+      for (const x of [Math.min(...xs), clip.x, Math.max(...xs)]) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+      for (const y of [Math.min(...ys), clip.y, Math.max(...ys)]) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   async function renderCollage() {
     collageCanvas.width = collage.canvas.width;
     collageCanvas.height = collage.canvas.height;
     const ctx = collageCanvas.getContext("2d");
-    ctx.clearRect(0, 0, collageCanvas.width, collageCanvas.height);
-    const sorted = [...collage.clips].sort((a, b) => a.z - b.z);
-    for (const clip of sorted) {
-      const url = resolveSourceUrl(clip.source);
-      let img;
-      try { img = await loadImage(url); } catch { continue; }
-      const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
-      let stamp = stampCache.get(clip.id);
-      if (!stamp || stamp.key !== key) { stamp = buildStamp(clip.polygon, img); stamp.key = key; stampCache.set(clip.id, stamp); }
-      drawClip(ctx, clip, stamp);
-    }
+    await drawComposite(ctx, collageCanvas.width, collageCanvas.height);
+    if (!hideOutlines) drawGuides(ctx);
     const sel = collage.clips.find((c) => c.id === selectedId);
-    if (sel && !previewMode) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
+    if (sel && !hideOutlines) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
     renderOverview();
     updateQuickActions();
   }
@@ -718,15 +873,16 @@
     const qa = document.getElementById("clipQuickActions");
     const clip = collage.clips.find((c) => c.id === selectedId);
     const stamp = clip && stampCache.get(clip.id);
-    if (!clip || !stamp || previewMode) { qa.hidden = true; return; }
-    const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
-    const topMidX = (corners[0][0] + corners[1][0]) / 2;
-    const topMidY = (corners[0][1] + corners[1][1]) / 2;
-    const screenX = panX + topMidX * viewZoom;
-    const screenY = panY + topMidY * viewZoom;
+    if (!clip || !stamp || hideOutlines || clip.locked) { qa.hidden = true; return; }
+    // Anchor to the clip's top-left corner. CSS translates the bar up by its
+    // own height, so its bottom edge rests just above the clip's top edge.
+    const [cornerX, cornerY] = transformPoint(clip, localCorners(stamp)[0]);
     qa.hidden = false;
-    qa.style.left = Math.min(Math.max(screenX, 44), collageViewport.clientWidth - 44) + "px";
-    qa.style.top = Math.max(4, screenY - 32) + "px";
+    const w = qa.offsetWidth, h = qa.offsetHeight;
+    const left = panX + cornerX * viewZoom;
+    const top = panY + cornerY * viewZoom - 6;
+    qa.style.left = Math.min(Math.max(left, 2), Math.max(2, collageViewport.clientWidth - w - 2)) + "px";
+    qa.style.top = Math.min(Math.max(top, h + 2), collageViewport.clientHeight - 2) + "px";
   }
 
   let dragMode = null;
@@ -740,7 +896,7 @@
   collageCanvas.addEventListener("mousedown", (e) => {
     const pt = getCollagePos(e);
     const sel = collage.clips.find((c) => c.id === selectedId);
-    if (sel) {
+    if (sel && !sel.locked) {
       const stamp = stampCache.get(sel.id);
       if (stamp) {
         const handles = getHandles(sel, stamp);
@@ -750,6 +906,7 @@
     }
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     for (const clip of sorted) {
+      if (clip.locked) continue; // locked clips aren't grabbable on canvas
       const stamp = stampCache.get(clip.id);
       if (stamp && hitTestClip(clip, stamp, pt)) {
         selectedId = clip.id; dragMode = "move"; lastMouse = pt;
@@ -773,9 +930,11 @@
     const pt = getCollagePos(e);
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) return;
+    if (clip.locked) return;
     if (dragMode === "move") {
-      clip.x += pt[0] - lastMouse[0];
-      clip.y += pt[1] - lastMouse[1];
+      // Linked clips translate together; locked members stay put.
+      const dx = pt[0] - lastMouse[0], dy = pt[1] - lastMouse[1];
+      for (const c of linkedClips(clip)) { if (!c.locked) { c.x += dx; c.y += dy; } }
     } else if (dragMode === "rotate") {
       clip.rotation = Math.atan2(pt[0] - clip.x, clip.y - pt[1]) * 180 / Math.PI;
     } else if (dragMode === "scale") {
@@ -789,21 +948,35 @@
 
   window.addEventListener("mouseup", () => { dragMode = null; collageViewport.classList.remove("panning"); });
 
+  const LINK_GROUPS = ["A", "B", "C", "D", "E", "F"];
+
   function renderLayerList() {
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     list.innerHTML = sorted.map((c) => `
       <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}">
-        <span class="layer-name">${c.source} (z${c.z})</span>
-        <span class="layer-actions">
+        <div class="layer-top">
+          <input type="text" class="layer-name" spellcheck="false"
+                 value="${escapeHtml(c.name || c.source)}" title="source: ${escapeHtml(c.source)}">
+          <span class="layer-z">z${c.z}</span>
+          <select class="layer-link" title="link group — linked clips move together">
+            <option value="">&#8212;</option>
+            ${LINK_GROUPS.map((g) => `<option value="${g}"${c.link === g ? " selected" : ""}>&#128279;${g}</option>`).join("")}
+          </select>
+        </div>
+        <div class="layer-actions">
+          <button data-action="lock" class="${c.locked ? "active" : ""}" title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#128274;" : "&#128275;"}</button>
           <button data-action="up" title="bring forward">&#9650;</button>
           <button data-action="down" title="send back">&#9660;</button>
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
           <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
+          <button data-action="guides" class="${c.guides ? "active" : ""}" title="alignment guides">&#128208;</button>
+          <button data-action="copy" title="copy settings (scale, rotation, flips)">&#128203;</button>
+          <button data-action="paste" title="apply copied settings">&#8681;</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
           <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
-        </span>
+        </div>
       </li>
     `).join("");
   }
@@ -811,7 +984,16 @@
   function duplicateClip(clip) {
     const newId = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const z = Math.max(...collage.clips.map((c) => c.z)) + 1;
-    collage.clips.push({ ...clip, id: newId, polygon: clip.polygon.map((p) => p.slice()), x: clip.x + 20, y: clip.y + 20, z });
+    collage.clips.push({
+      ...clip,
+      id: newId,
+      // Deep copy: the copy owns its mask, so editing either one's polygon
+      // later never touches the other.
+      polygon: clip.polygon.map((p) => p.slice()),
+      name: (clip.name || clip.source) + " copy",
+      locked: false,
+      x: clip.x + 20, y: clip.y + 20, z
+    });
     selectedId = newId;
   }
 
@@ -821,9 +1003,20 @@
     if (selectedId === id) selectedId = null;
   }
 
+  // Everything sharing this clip's link group, or just the clip if unlinked.
+  function linkedClips(clip) {
+    return clip.link ? collage.clips.filter((c) => c.link === clip.link) : [clip];
+  }
+
+  // Transform settings copied from one clip, ready to apply to others.
+  let settingsClipboard = null;
+
   document.getElementById("layerList").addEventListener("click", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
+    // A re-render would close an open dropdown or steal focus from the name
+    // field mid-edit, so those two handle themselves.
+    if (e.target.closest(".layer-link") || e.target.closest(".layer-name")) return;
     const id = li.dataset.id;
     const action = e.target.dataset.action;
     const clip = collage.clips.find((c) => c.id === id);
@@ -845,10 +1038,73 @@
       clip.flipX = !clip.flipX;
     } else if (action === "flipy") {
       clip.flipY = !clip.flipY;
+    } else if (action === "guides") {
+      clip.guides = !clip.guides;
+    } else if (action === "lock") {
+      clip.locked = !clip.locked;
+      if (clip.locked && selectedId === clip.id) selectedId = null;
+    } else if (action === "copy") {
+      // Transform only — never the mask, source or position.
+      settingsClipboard = {
+        scale: clip.scale, rotation: clip.rotation,
+        flipX: !!clip.flipX, flipY: !!clip.flipY
+      };
+    } else if (action === "paste") {
+      if (settingsClipboard) Object.assign(clip, settingsClipboard);
     } else {
       selectedId = id;
     }
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  });
+
+  // ---------- layer hover preview ----------
+  const layerPreview = document.getElementById("layerPreview");
+  const layerPreviewCanvas = document.getElementById("layerPreviewCanvas");
+
+  document.getElementById("layerList").addEventListener("mouseover", (e) => {
+    const li = e.target.closest("li");
+    const clip = li && collage.clips.find((c) => c.id === li.dataset.id);
+    const stamp = clip && stampCache.get(clip.id);
+    if (!stamp) { layerPreview.hidden = true; return; }
+
+    const fit = Math.min(180 / stamp.w, 180 / stamp.h, 1);
+    const w = layerPreviewCanvas.width = Math.max(1, Math.round(stamp.w * fit));
+    const h = layerPreviewCanvas.height = Math.max(1, Math.round(stamp.h * fit));
+    const ctx = layerPreviewCanvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    // Flips applied so the thumbnail matches the canvas; rotation left off so
+    // the shape stays a stable, un-cropped preview of the mask.
+    ctx.save();
+    ctx.translate(clip.flipX ? w : 0, clip.flipY ? h : 0);
+    ctx.scale(clip.flipX ? -1 : 1, clip.flipY ? -1 : 1);
+    ctx.drawImage(stamp.canvas, 0, 0, w, h);
+    ctx.restore();
+
+    layerPreview.hidden = false;
+    const rect = li.getBoundingClientRect();
+    layerPreview.style.left = Math.max(4, Math.min(rect.left - w - 14, window.innerWidth - w - 14)) + "px";
+    layerPreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - h - 14)) + "px";
+  });
+  document.getElementById("layerList").addEventListener("mouseleave", () => { layerPreview.hidden = true; });
+
+  // Deliberately does not re-render the list — that would drop focus mid-typing.
+  document.getElementById("layerList").addEventListener("input", (e) => {
+    const inp = e.target.closest(".layer-name");
+    if (!inp) return;
+    const clip = collage.clips.find((c) => c.id === e.target.closest("li").dataset.id);
+    if (!clip) return;
+    clip.name = inp.value;
+    syncTextarea();
+  });
+
+  document.getElementById("layerList").addEventListener("change", (e) => {
+    const sel = e.target.closest(".layer-link");
+    if (!sel) return;
+    const clip = collage.clips.find((c) => c.id === e.target.closest("li").dataset.id);
+    if (!clip) return;
+    if (sel.value) clip.link = sel.value;
+    else delete clip.link;
+    renderLayerList(); syncTextarea();
   });
 
   document.getElementById("clipQuickActions").addEventListener("click", (e) => {
@@ -882,6 +1138,10 @@
     document.getElementById("sizePreset").value = "";
     renderCollage(); fitView(); syncTextarea();
   });
+  document.getElementById("canvasBg").addEventListener("input", (e) => {
+    collage.canvas.background = e.target.value;
+    renderCollage(); syncTextarea();
+  });
 
   // ---------- config textarea ----------
   function syncTextarea() {
@@ -897,6 +1157,7 @@
       selectedId = null;
       document.getElementById("canvasW").value = collage.canvas.width;
       document.getElementById("canvasH").value = collage.canvas.height;
+      if (collage.canvas.background) document.getElementById("canvasBg").value = collage.canvas.background;
       document.getElementById("sizePreset").value = "";
       renderCollage(); renderLayerList(); fitView(); updateClipProps();
     } catch (err) {
@@ -920,6 +1181,92 @@
     const reader = new FileReader();
     reader.onload = () => { document.getElementById("configText").value = reader.result; document.getElementById("applyBtn").click(); };
     reader.readAsText(file);
+  });
+
+  // ---------- distraction-free preview ----------
+  const previewOverlay = document.getElementById("previewOverlay");
+  const previewCanvas = document.getElementById("previewCanvas");
+  let pvZoom = 1, pvPanX = 0, pvPanY = 0, pvDragging = false;
+
+  function pvApply() {
+    previewCanvas.style.transform = `translate(${pvPanX}px, ${pvPanY}px) scale(${pvZoom})`;
+    document.getElementById("pvZoomLabel").textContent = Math.round(pvZoom * 100) + "%";
+  }
+
+  function pvFit() {
+    const vw = previewOverlay.clientWidth, vh = previewOverlay.clientHeight;
+    pvZoom = Math.min(vw / collage.canvas.width, vh / collage.canvas.height) || 1;
+    pvPanX = (vw - collage.canvas.width * pvZoom) / 2;
+    pvPanY = (vh - collage.canvas.height * pvZoom) / 2;
+    pvApply();
+  }
+
+  function pvZoomBy(factor, originX, originY) {
+    const cx = originX ?? previewOverlay.clientWidth / 2;
+    const cy = originY ?? previewOverlay.clientHeight / 2;
+    const z0 = pvZoom;
+    const z1 = Math.min(8, Math.max(0.02, z0 * factor));
+    pvPanX = cx - (z1 / z0) * (cx - pvPanX);
+    pvPanY = cy - (z1 / z0) * (cy - pvPanY);
+    pvZoom = z1;
+    pvApply();
+  }
+
+  document.getElementById("previewBtn").addEventListener("click", () => {
+    previewCanvas.width = collage.canvas.width;
+    previewCanvas.height = collage.canvas.height;
+    previewOverlay.hidden = false;
+    // Must be requested synchronously from the gesture, before any await.
+    // If it's refused the overlay still covers the window, which is fine.
+    if (previewOverlay.requestFullscreen) {
+      Promise.resolve(previewOverlay.requestFullscreen()).catch(() => {});
+    }
+    drawComposite(previewCanvas.getContext("2d"), previewCanvas.width, previewCanvas.height).then(pvFit);
+  });
+
+  function closePreview() {
+    previewOverlay.hidden = true;
+    // Don't hold on to a full-resolution buffer while the preview is closed.
+    previewCanvas.width = previewCanvas.height = 0;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
+  document.getElementById("pvCloseBtn").addEventListener("click", closePreview);
+  document.getElementById("pvFitBtn").addEventListener("click", pvFit);
+  document.getElementById("pvZoomIn").addEventListener("click", () => pvZoomBy(1.2));
+  document.getElementById("pvZoomOut").addEventListener("click", () => pvZoomBy(1 / 1.2));
+
+  // Entering fullscreen resizes the overlay, so re-fit once it's settled.
+  // Esc exits fullscreen natively, which is our cue to close the overlay too.
+  document.addEventListener("fullscreenchange", () => {
+    if (document.fullscreenElement === previewOverlay) pvFit();
+    else if (!previewOverlay.hidden) closePreview();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !previewOverlay.hidden) closePreview();
+  });
+
+  previewOverlay.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = previewOverlay.getBoundingClientRect();
+    pvZoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  previewOverlay.addEventListener("mousedown", (e) => {
+    if (e.target.closest(".preview-controls")) return;
+    pvDragging = true;
+    previewOverlay.classList.add("panning");
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!pvDragging) return;
+    pvPanX += e.movementX;
+    pvPanY += e.movementY;
+    pvApply();
+  });
+  window.addEventListener("mouseup", () => {
+    pvDragging = false;
+    previewOverlay.classList.remove("panning");
   });
 
   renderCollage();
