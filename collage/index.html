@@ -53,7 +53,17 @@
   canvas { background: #000; display: block; }
   /* Source canvas scales with the panel; getSourceCanvasPos() converts
      CSS pixels back to canvas pixels, so CSS scaling is safe here. */
-  #sourceCanvas { cursor: crosshair; border: 1px solid var(--border); max-width: 100%; height: auto; }
+  /* The source canvas holds the image at its own resolution and is scaled for
+     display by a transform, so mask precision isn't capped by the buffer. */
+  #sourceViewport {
+    position: relative; overflow: hidden; flex: 1 1 320px; min-width: 220px;
+    height: 420px; border: 1px solid var(--border); background: #000;
+  }
+  .size-mini #sourceViewport { height: 240px; }
+  .size-full #sourceViewport { height: 640px; }
+  #sourceViewport.panning { cursor: grabbing; }
+  #sourceCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; cursor: crosshair; }
+  #srcZoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
   #magnifier { border: 1px solid var(--border); flex-shrink: 0; }
   #collageViewport {
     width: 100%; height: 480px; overflow: hidden; position: relative;
@@ -154,8 +164,15 @@
     </div>
     <div class="source-preview" id="sourcePreview" hidden><img id="sourcePreviewImg" alt=""></div>
     <div class="canvas-wrap">
-      <canvas id="sourceCanvas" width="480" height="360"></canvas>
+      <div id="sourceViewport"><canvas id="sourceCanvas" width="480" height="360"></canvas></div>
       <canvas id="magnifier" width="150" height="150"></canvas>
+    </div>
+    <div class="row">
+      <button id="srcZoomOut">&minus;</button>
+      <span id="srcZoomLabel">100%</span>
+      <button id="srcZoomIn">+</button>
+      <button id="srcFitBtn">Fit</button>
+      <button id="src100Btn">1:1</button>
     </div>
     <div class="row">
       <button id="closePathBtn">Close path</button>
@@ -167,6 +184,8 @@
       Click to place polygon points. Click near the first point (or hit "Close path") to finish.
       Once closed, drag any point to move it, double-click a point to remove it (min 3 points),
       or turn on "Add point mode" and click an edge to insert a new point there.
+      Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are
+      stored at source resolution, so accuracy is limited only by how far in you go.
     </p>
   </section>
 
@@ -314,15 +333,50 @@
     points: [], closed: false, addPointMode: false, dragIndex: -1, editingClipId: null
   };
 
+  const sourceViewport = document.getElementById("sourceViewport");
+  let srcZoom = 1, srcPanX = 0, srcPanY = 0, srcPanning = false, spaceHeld = false;
+
   function toDisplay([x, y]) { return [x * editor.displayScale, y * editor.displayScale]; }
   function toNatural([x, y]) { return [x / editor.displayScale, y / editor.displayScale]; }
+
+  // Overlay strokes and grab targets are specified in screen pixels and
+  // converted to canvas pixels, so they stay usable at any zoom.
+  function srcPx(screenPx) { return screenPx / srcZoom; }
+
+  function applySourceView() {
+    sourceCanvas.style.transform = `translate(${srcPanX}px, ${srcPanY}px) scale(${srcZoom})`;
+    document.getElementById("srcZoomLabel").textContent = Math.round(srcZoom * 100) + "%";
+    renderEditor();
+  }
+
+  function fitSourceView() {
+    const vw = sourceViewport.clientWidth, vh = sourceViewport.clientHeight;
+    srcZoom = Math.min(vw / sourceCanvas.width, vh / sourceCanvas.height, 1) || 1;
+    srcPanX = (vw - sourceCanvas.width * srcZoom) / 2;
+    srcPanY = (vh - sourceCanvas.height * srcZoom) / 2;
+    applySourceView();
+  }
+
+  function srcZoomBy(factor, originX, originY) {
+    const cx = originX ?? sourceViewport.clientWidth / 2;
+    const cy = originY ?? sourceViewport.clientHeight / 2;
+    const z0 = srcZoom;
+    const z1 = Math.min(16, Math.max(0.05, z0 * factor));
+    srcPanX = cx - (z1 / z0) * (cx - srcPanX);
+    srcPanY = cy - (z1 / z0) * (cy - srcPanY);
+    srcZoom = z1;
+    applySourceView();
+  }
 
   function setEditorImage(img, presetPoints) {
     editor.image = img;
     editor.naturalW = img.naturalWidth || img.width;
     editor.naturalH = img.naturalHeight || img.height;
-    const maxSize = 480;
-    editor.displayScale = Math.min(maxSize / editor.naturalW, maxSize / editor.naturalH, 1);
+    // Hold the image at its own resolution (up to a sane buffer cap) rather
+    // than downscaling to fit the panel — the view transform handles display
+    // size, so point precision is limited only by how far you zoom in.
+    const bufferCap = 4000;
+    editor.displayScale = Math.min(bufferCap / editor.naturalW, bufferCap / editor.naturalH, 1);
     sourceCanvas.width = Math.round(editor.naturalW * editor.displayScale);
     sourceCanvas.height = Math.round(editor.naturalH * editor.displayScale);
     if (presetPoints) {
@@ -332,7 +386,7 @@
       editor.points = [];
       editor.closed = false;
     }
-    renderEditor();
+    fitSourceView();
   }
 
   function renderEditor() {
@@ -347,16 +401,17 @@
       });
       if (editor.closed) sctx.closePath();
       sctx.strokeStyle = "#ff5500";
-      sctx.lineWidth = 2;
+      sctx.lineWidth = srcPx(2);
       sctx.stroke();
       if (editor.closed) { sctx.fillStyle = "rgba(255,85,0,0.2)"; sctx.fill(); }
       editor.points.forEach((p, i) => {
         const [x, y] = toDisplay(p);
         sctx.beginPath();
-        sctx.arc(x, y, 5, 0, Math.PI * 2);
+        sctx.arc(x, y, srcPx(5), 0, Math.PI * 2);
         sctx.fillStyle = i === 0 && !editor.closed ? "#33ff33" : "#fff";
         sctx.fill();
         sctx.strokeStyle = "#000";
+        sctx.lineWidth = srcPx(1);
         sctx.stroke();
       });
     }
@@ -391,46 +446,93 @@
     ];
   }
 
+  function findPointNear(dx, dy) {
+    const grab = srcPx(9);
+    return editor.points.findIndex((p) => {
+      const [x, y] = toDisplay(p);
+      return Math.hypot(x - dx, y - dy) < grab;
+    });
+  }
+
   sourceCanvas.addEventListener("mousedown", (e) => {
     if (!editor.image) return;
+    // Space-drag or middle-drag pans; plain left-click stays polygon editing.
+    if (spaceHeld || e.button === 1) {
+      srcPanning = true;
+      sourceViewport.classList.add("panning");
+      e.preventDefault();
+      return;
+    }
+    if (e.button !== 0) return;
     const [dx, dy] = getSourceCanvasPos(e);
     if (editor.closed) {
-      const hitIndex = editor.points.findIndex((p) => {
-        const [x, y] = toDisplay(p);
-        return Math.hypot(x - dx, y - dy) < 8;
-      });
+      const hitIndex = findPointNear(dx, dy);
       if (hitIndex !== -1) { editor.dragIndex = hitIndex; return; }
       if (editor.addPointMode) { insertPointOnNearestEdge(toNatural([dx, dy])); renderEditor(); }
       return;
     }
-    if (editor.points.length >= 3) {
-      const [fx, fy] = toDisplay(editor.points[0]);
-      if (Math.hypot(fx - dx, fy - dy) < 8) { editor.closed = true; renderEditor(); return; }
+    if (editor.points.length >= 3 && findPointNear(dx, dy) === 0) {
+      editor.closed = true; renderEditor(); return;
     }
     editor.points.push(toNatural([dx, dy]));
+    renderEditor();
+  });
+
+  // On window so a drag that leaves the viewport keeps tracking.
+  window.addEventListener("mousemove", (e) => {
+    if (srcPanning) {
+      srcPanX += e.movementX;
+      srcPanY += e.movementY;
+      applySourceView();
+      return;
+    }
+    if (editor.dragIndex === -1) return;
+    const [dx, dy] = getSourceCanvasPos(e);
+    editor.points[editor.dragIndex] = toNatural([dx, dy]);
     renderEditor();
   });
 
   sourceCanvas.addEventListener("mousemove", (e) => {
     const [dx, dy] = getSourceCanvasPos(e);
     updateMagnifier(dx, dy);
-    if (editor.dragIndex !== -1) {
-      editor.points[editor.dragIndex] = toNatural([dx, dy]);
-      renderEditor();
-    }
   });
 
   sourceCanvas.addEventListener("dblclick", (e) => {
     if (!editor.closed || editor.points.length <= 3) return;
     const [dx, dy] = getSourceCanvasPos(e);
-    const hitIndex = editor.points.findIndex((p) => {
-      const [x, y] = toDisplay(p);
-      return Math.hypot(x - dx, y - dy) < 8;
-    });
+    const hitIndex = findPointNear(dx, dy);
     if (hitIndex !== -1) { editor.points.splice(hitIndex, 1); renderEditor(); }
   });
 
-  window.addEventListener("mouseup", () => { editor.dragIndex = -1; });
+  window.addEventListener("mouseup", () => {
+    editor.dragIndex = -1;
+    srcPanning = false;
+    sourceViewport.classList.remove("panning");
+  });
+
+  sourceViewport.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = sourceViewport.getBoundingClientRect();
+    srcZoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  // Space = pan modifier, but never while typing in a field.
+  window.addEventListener("keydown", (e) => {
+    if (e.code !== "Space") return;
+    if (e.target instanceof Element && e.target.closest("input, textarea, select")) return;
+    spaceHeld = true;
+    e.preventDefault();
+  });
+  window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; });
+
+  document.getElementById("srcZoomIn").addEventListener("click", () => srcZoomBy(1.25));
+  document.getElementById("srcZoomOut").addEventListener("click", () => srcZoomBy(1 / 1.25));
+  document.getElementById("srcFitBtn").addEventListener("click", fitSourceView);
+  document.getElementById("src100Btn").addEventListener("click", () => {
+    // One source pixel per screen pixel. displayScale is 1 unless the image
+    // exceeded the buffer cap, in which case zoom past 1 to compensate.
+    srcZoomBy(1 / (editor.displayScale * srcZoom));
+  });
 
   const magCanvas = document.getElementById("magnifier");
   const mctx = magCanvas.getContext("2d");
@@ -668,8 +770,8 @@
     panel.classList.remove("size-mini", "size-half", "size-full");
     panel.classList.add("size-" + btn.dataset.size);
     btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === btn));
-    // Wait for layout to settle before re-measuring the viewport.
-    requestAnimationFrame(fitView);
+    // Wait for layout to settle before re-measuring the viewports.
+    requestAnimationFrame(() => { fitView(); fitSourceView(); });
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
