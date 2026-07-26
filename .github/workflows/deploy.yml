@@ -5,18 +5,44 @@ on:
     branches: ["master"]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Prepare site folder and resolve symlinks
+        run: |
+          mkdir -p _site
+          cp -r img mirror-mirror collage photos _site/
+          
+          # Replace the broken symlinks with actual physical files in the staging folder
+          rm -rf _site/photos/originals
+          mkdir -p _site/photos/originals
+          cp -L photos/originals/* _site/photos/originals/ 2>/dev/null || true
+
+          cp index.html .nojekyll _redirect CNAME 404.html meta.csv _site/ 2>/dev/null || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
-          exclude_assets: '.github,.git'
+          path: '_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
