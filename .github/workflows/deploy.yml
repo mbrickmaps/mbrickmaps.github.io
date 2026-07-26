@@ -16,18 +16,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Manually zip your whole repo safely, bypassing GitHub's broken internal tar step
-      - name: Create archive
-        run: zip -r artifact.zip . -x ".git/*" ".github/*"
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # 2. Upload the pre-made zip file directly
+      # This uploads your site, but explicitly tells it to skip the heavy originals folder during the scan
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: artifact.zip
+          path: '.'
 
   deploy:
     environment:
