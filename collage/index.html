@@ -14,11 +14,17 @@
   .layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex: 0 0 auto; }
 
-  /* Panel sizing — mini / half / full. Widths are flex-basis so panels
-     reflow onto their own rows as they grow. */
-  .panel.size-mini { flex-basis: 280px; }
+  /* Panel sizing — small 1/3, medium 1/2, full. Widths are flex-basis so
+     panels reflow onto their own rows as they grow. The gap is subtracted so
+     three (or two) sit on one row without wrapping. */
+  .panel.size-mini { flex-basis: calc(33.333% - 11px); }
   .panel.size-half { flex-basis: calc(50% - 8px); }
   .panel.size-full { flex-basis: 100%; }
+
+  /* Minimized: header only, shrunk to its own width. */
+  .panel.minimized { flex-basis: auto; }
+  .panel.minimized > *:not(.panel-head) { display: none; }
+  .panel.minimized .panel-head { margin-bottom: 0; }
 
   .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
   .panel-head h2 { margin: 0; }
@@ -33,6 +39,7 @@
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .row button.active { border-color: var(--accent2); color: var(--accent2); }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
   .dropdown { position: relative; }
@@ -58,6 +65,7 @@
   #sourceViewport {
     position: relative; overflow: hidden; flex: 1 1 320px; min-width: 220px;
     height: 420px; border: 1px solid var(--border); background: #000;
+    resize: both; min-height: 160px; max-width: 100%;
   }
   .size-mini #sourceViewport { height: 240px; }
   .size-full #sourceViewport { height: 640px; }
@@ -67,12 +75,45 @@
   #sourceCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
   #srcZoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
   #magnifier { border: 1px solid var(--border); flex-shrink: 0; }
+  /* Canvas on the left, layers docked as a column on the right. */
+  .viewport-wrap { display: flex; gap: 12px; align-items: flex-start; }
+  /* resize:both gives a native drag corner; it needs a non-visible overflow,
+     which this already has. min-* stop it being dragged into uselessness. */
   #collageViewport {
-    width: 100%; height: 480px; overflow: hidden; position: relative;
+    flex: 1 1 400px; height: 480px; overflow: hidden; position: relative;
     border: 1px solid var(--border); background: #0a0a0a; cursor: grab;
+    resize: both; min-width: 200px; min-height: 160px; max-width: 100%;
   }
   .size-mini #collageViewport { height: 220px; }
   .size-full #collageViewport { height: 620px; }
+
+  .layers-panel {
+    flex: 0 0 300px; align-self: stretch; max-height: 620px; overflow-y: auto;
+    background: #151515; border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+    transition: flex-basis 0.15s ease;
+  }
+  .layers-panel h2 { margin: 0 0 6px; }
+
+  /* The handle is the divider: a full-height strip between canvas and layers,
+     with the arrow centred on it. */
+  .divider-handle {
+    align-self: stretch; flex: 0 0 14px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; font-size: 0.7rem; line-height: 1;
+  }
+
+  /* Collapsed to a spine on the right — only the re-open arrow remains. */
+  .layers-panel.collapsed { flex-basis: 32px; padding: 8px 4px; overflow: hidden; }
+  .layers-panel.collapsed h2,
+  .layers-panel.collapsed #layerList { display: none; }
+  /* Below the panel's own breakpoint the column would be uselessly narrow,
+     so it drops under the canvas instead. */
+  @media (max-width: 900px) {
+    .viewport-wrap { flex-wrap: wrap; }
+    .layers-panel { flex: 1 1 100%; max-height: 300px; }
+    /* Stacked, so there's no vertical divider to sit on. */
+    .divider-handle { display: none; }
+  }
   #collageViewport.panning { cursor: grabbing; }
   #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; outline: 1px solid #555; }
   #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
@@ -86,10 +127,17 @@
     position: absolute; z-index: 30; display: flex; gap: 2px;
     background: #000; border: 1px solid var(--accent2); border-radius: 4px; padding: 2px;
   }
+  /* display:flex above would otherwise beat the UA's [hidden] rule, leaving
+     the bar on screen with nothing selected. */
+  .quick-actions[hidden] { display: none; }
   .quick-actions button { padding: 2px 6px; font-size: 0.85rem; }
   input[type="range"] { width: 140px; vertical-align: middle; }
-  #clipScaleValue { font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px; }
-  #layerList { list-style: none; margin: 8px 0 0; padding: 0; width: 100%; max-height: 300px; overflow-y: auto; }
+  input[type="range"].mini-range { width: 90px; }
+  #clipScaleValue, #clipOpacityValue, #clipTintValue {
+    font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px;
+  }
+  /* The flyout scrolls, so the list itself must not — nested scrollbars. */
+  #layerList { list-style: none; margin: 0; padding: 0; width: 100%; }
   #layerList li {
     display: flex; flex-direction: column; align-items: stretch; gap: 4px;
     padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
@@ -150,9 +198,12 @@
     <div class="panel-head">
       <h2>Clip source</h2>
       <span class="size-toggle">
-        <button type="button" data-size="mini" title="mini">&#9643;</button>
-        <button type="button" data-size="half" class="active" title="half">&#9703;</button>
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
     <div class="row">
@@ -165,7 +216,13 @@
     </div>
     <div class="source-preview" id="sourcePreview" hidden><img id="sourcePreviewImg" alt=""></div>
     <div class="canvas-wrap">
-      <div id="sourceViewport"><canvas id="sourceCanvas" width="480" height="360"></canvas></div>
+      <div id="sourceViewport">
+        <canvas id="sourceCanvas" width="480" height="360"></canvas>
+        <div class="quick-actions" id="editorQuickActions" hidden>
+          <button id="closePathBtn">Close path</button>
+          <button id="addToCollageBtn" disabled>Add to collage</button>
+        </div>
+      </div>
       <canvas id="magnifier" width="150" height="150"></canvas>
     </div>
     <div class="row">
@@ -176,10 +233,8 @@
       <button id="src100Btn">1:1</button>
     </div>
     <div class="row">
-      <button id="closePathBtn">Close path</button>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="clearPolyBtn">Clear</button>
-      <button id="addToCollageBtn" disabled>Add to collage</button>
     </div>
     <p class="hint">
       Click to place polygon points. Click near the first point (or hit "Close path") to finish.
@@ -194,9 +249,12 @@
     <div class="panel-head">
       <h2>Collage</h2>
       <span class="size-toggle">
-        <button type="button" data-size="mini" title="mini">&#9643;</button>
-        <button type="button" data-size="half" class="active" title="half">&#9703;</button>
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
     <div class="row">
@@ -211,6 +269,7 @@
         <option value="3508x2480">A4 Landscape 3508&times;2480 (300dpi)</option>
       </select>
       <label>W <input type="number" id="canvasW" value="1000"></label>
+      <button id="swapDimsBtn" title="swap width and height">&#8646;</button>
       <label>H <input type="number" id="canvasH" value="700"></label>
       <label>BG <input type="color" id="canvasBg" value="#111111"></label>
     </div>
@@ -225,39 +284,58 @@
     <div class="row" id="clipProps" style="display:none;">
       <label>Scale <input type="range" id="clipScale" min="0.05" max="8" step="0.01"> <span id="clipScaleValue">1.00</span></label>
       <label>Rotation&deg; <input type="number" id="clipRotation" step="1"></label>
+      <label>Opacity <input type="range" class="mini-range" id="clipOpacity" min="0" max="1" step="0.01" value="1"> <span id="clipOpacityValue">100%</span></label>
+      <label>Tint <input type="color" id="clipTint" value="#ff5500">
+        <input type="range" class="mini-range" id="clipTintAmt" min="0" max="1" step="0.01" value="0"> <span id="clipTintValue">0%</span></label>
       <label>Blend
         <select id="clipBlend">
           <option value="source-over">normal</option>
-          <option value="multiply">multiply</option>
-          <option value="screen">screen</option>
-          <option value="overlay">overlay</option>
-          <option value="darken">darken</option>
-          <option value="lighten">lighten</option>
-          <option value="color-dodge">color-dodge</option>
-          <option value="color-burn">color-burn</option>
-          <option value="hard-light">hard-light</option>
-          <option value="soft-light">soft-light</option>
-          <option value="difference">difference</option>
-          <option value="exclusion">exclusion</option>
-          <option value="hue">hue</option>
-          <option value="saturation">saturation</option>
-          <option value="color">color</option>
-          <option value="luminosity">luminosity</option>
+          <optgroup label="Darken">
+            <option value="darken">darken</option>
+            <option value="multiply">multiply</option>
+            <option value="color-burn">color-burn</option>
+          </optgroup>
+          <optgroup label="Lighten">
+            <option value="lighten">lighten</option>
+            <option value="screen">screen</option>
+            <option value="color-dodge">color-dodge</option>
+          </optgroup>
+          <optgroup label="Contrast">
+            <option value="overlay">overlay</option>
+            <option value="hard-light">hard-light</option>
+            <option value="soft-light">soft-light</option>
+          </optgroup>
+          <optgroup label="Comparative">
+            <option value="difference">difference</option>
+            <option value="exclusion">exclusion</option>
+          </optgroup>
+          <optgroup label="Component">
+            <option value="hue">hue</option>
+            <option value="saturation">saturation</option>
+            <option value="color">color</option>
+            <option value="luminosity">luminosity</option>
+          </optgroup>
         </select>
       </label>
     </div>
-    <div id="collageViewport">
-      <canvas id="collageCanvas" width="1000" height="700"></canvas>
-      <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
-      <div class="quick-actions" id="clipQuickActions" hidden>
-        <button data-qa="flipx" title="flip horizontal">&#8596;</button>
-        <button data-qa="flipy" title="flip vertical">&#8597;</button>
-        <button data-qa="duplicate" title="duplicate">&#10697;</button>
-        <button data-qa="delete" title="delete">&#10005;</button>
+    <div class="viewport-wrap">
+      <div id="collageViewport">
+        <canvas id="collageCanvas" width="1000" height="700"></canvas>
+        <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
+        <div class="quick-actions" id="clipQuickActions" hidden>
+          <button data-qa="flipx" title="flip horizontal">&#8596;</button>
+          <button data-qa="flipy" title="flip vertical">&#8597;</button>
+          <button data-qa="duplicate" title="duplicate">&#10697;</button>
+          <button data-qa="delete" title="delete">&#10005;</button>
+        </div>
+      </div>
+      <button type="button" id="layersCollapseBtn" class="divider-handle" title="collapse layers">&#9654;</button>
+      <div class="layers-panel" id="layersPanel">
+        <h2>Layers</h2>
+        <datalist id="linkGroups"></datalist>
+        <ul id="layerList"></ul>
       </div>
     </div>
-    <h2 style="margin-top:10px;">Layers</h2>
-    <ul id="layerList"></ul>
     <p class="hint">
       Drag a clip to move it, its bottom-right handle to scale (or the Scale slider above), its top handle to rotate.
       Drag empty canvas space to pan the view, scroll to zoom the view, shift+scroll over a selected clip to scale it.
@@ -270,17 +348,32 @@
     <div class="panel-head">
       <h2>Config</h2>
       <span class="size-toggle">
-        <button type="button" data-size="mini" class="active" title="mini">&#9643;</button>
-        <button type="button" data-size="half" title="half">&#9703;</button>
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
     <textarea id="configText" spellcheck="false"></textarea>
     <div class="row" style="margin-top:8px;">
       <button id="applyBtn">Apply</button>
+      <button id="saveBtn">Save</button>
+      <button id="loadBtn">Load</button>
       <button id="downloadBtn">Download</button>
       <button id="uploadBtn">Upload</button>
       <input type="file" id="uploadInput" accept="application/json" style="display:none">
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="autoSaveChk"> auto-save</label>
+      <select id="autoSaveInterval">
+        <option value="30">30s</option>
+        <option value="60" selected>1m</option>
+        <option value="300">5m</option>
+        <option value="600">10m</option>
+      </select>
+      <span id="saveStatus" class="hint" style="margin:0;"></span>
     </div>
     <div class="row">
       <button id="convertOriginalsBtn">Convert to originals</button>
@@ -434,11 +527,28 @@
     fitSourceView();
   }
 
+  /* Floats below the polygon: "Close path" while it's open, "Add to collage"
+     once it's closed. Only ever one of the two is relevant. */
+  function updateEditorQuickActions() {
+    const qa = document.getElementById("editorQuickActions");
+    if (!editor.image || editor.points.length < 3) { qa.hidden = true; return; }
+    document.getElementById("closePathBtn").hidden = editor.closed;
+    document.getElementById("addToCollageBtn").hidden = !editor.closed;
+    qa.hidden = false;
+
+    const xs = editor.points.map((p) => p[0]), ys = editor.points.map((p) => p[1]);
+    const w = qa.offsetWidth, h = qa.offsetHeight;
+    const left = srcPanX + Math.min(...xs) * srcZoom;
+    const top = srcPanY + Math.max(...ys) * srcZoom + 8;
+    qa.style.left = Math.min(Math.max(left, 2), Math.max(2, sourceViewport.clientWidth - w - 2)) + "px";
+    qa.style.top = Math.min(Math.max(top, 2), Math.max(2, sourceViewport.clientHeight - h - 2)) + "px";
+  }
+
   function renderEditor() {
     const dpr = window.devicePixelRatio || 1;
     sctx.setTransform(1, 0, 0, 1, 0, 0);
     sctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-    if (!editor.image) return;
+    if (!editor.image) { updateEditorQuickActions(); return; }
     // Everything below is drawn in image coordinates; the transform maps them
     // to device pixels, so strokes rasterise fresh at the current zoom.
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -467,6 +577,7 @@
       });
     }
     document.getElementById("addToCollageBtn").disabled = !(editor.closed && editor.points.length >= 3);
+    updateEditorQuickActions();
   }
 
   function distToSegment(p, a, b) {
@@ -578,7 +689,7 @@
   // One source pixel per CSS pixel.
   document.getElementById("src100Btn").addEventListener("click", () => srcZoomBy(1 / srcZoom));
 
-  new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); }).observe(sourceViewport);
+  new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); saveLayoutSoon(); }).observe(sourceViewport);
 
   const magCanvas = document.getElementById("magnifier");
   const mctx = magCanvas.getContext("2d");
@@ -829,20 +940,110 @@
   document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(1 / 1.2));
   document.getElementById("fitViewBtn").addEventListener("click", fitView);
 
-  // ---------- panel sizing ----------
+  // ---------- panel sizing & ordering ----------
+  /* Reordering uses the flex `order` property rather than moving nodes, so the
+     canvases keep their buffers and every listener stays attached. */
+  const layoutPanels = () => [...document.querySelectorAll(".layout > .panel")];
+  layoutPanels().forEach((p, i) => { p.style.order = i; });
+
+  function movePanel(panel, dir) {
+    const byOrder = layoutPanels().sort((a, b) => Number(a.style.order) - Number(b.style.order));
+    const i = byOrder.indexOf(panel);
+    const j = i + dir;
+    if (j < 0 || j >= byOrder.length) return;
+    const tmp = byOrder[i].style.order;
+    byOrder[i].style.order = byOrder[j].style.order;
+    byOrder[j].style.order = tmp;
+    saveLayout();
+    requestAnimationFrame(() => { fitView(); fitSourceView(); });
+  }
+
+  // ---------- layout persistence ----------
+  const LAYOUT_KEY = "collage.layout.v1";
+  const SIZE_CLASSES = ["size-mini", "size-half", "size-full"];
+
+  function saveLayout() {
+    const state = {
+      panels: layoutPanels().map((p) => ({
+        id: p.id,
+        size: SIZE_CLASSES.find((c) => p.classList.contains(c)) || "size-half",
+        minimized: p.classList.contains("minimized"),
+        order: Number(p.style.order) || 0
+      })),
+      layersCollapsed: document.getElementById("layersPanel").classList.contains("collapsed"),
+      autoSave: {
+        on: document.getElementById("autoSaveChk").checked,
+        secs: document.getElementById("autoSaveInterval").value
+      },
+      collageViewport: { w: collageViewport.style.width, h: collageViewport.style.height },
+      sourceViewport: { w: sourceViewport.style.width, h: sourceViewport.style.height }
+    };
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(state)); } catch { /* storage unavailable */ }
+  }
+
+  // Resize fires continuously while dragging the handle; only persist the rest.
+  let saveTimer;
+  function saveLayoutSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(saveLayout, 300); }
+
+  function restoreLayout() {
+    let state;
+    try { state = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null"); } catch { return; }
+    if (!state) return;
+
+    (state.panels || []).forEach((s) => {
+      const p = document.getElementById(s.id);
+      if (!p) return;
+      p.classList.remove(...SIZE_CLASSES, "minimized");
+      p.classList.add(SIZE_CLASSES.includes(s.size) ? s.size : "size-half");
+      if (s.minimized) p.classList.add("minimized");
+      p.style.order = s.order;
+      const group = p.querySelector(".size-toggle");
+      group.querySelectorAll("button[data-size]")
+        .forEach((b) => b.classList.toggle("active", "size-" + b.dataset.size === s.size));
+      group.querySelector('[data-action="minimize"]').classList.toggle("active", !!s.minimized);
+    });
+
+    if (state.autoSave) {
+      document.getElementById("autoSaveChk").checked = !!state.autoSave.on;
+      if (state.autoSave.secs) document.getElementById("autoSaveInterval").value = state.autoSave.secs;
+    }
+
+    if (state.layersCollapsed) {
+      document.getElementById("layersPanel").classList.add("collapsed");
+      const btn = document.getElementById("layersCollapseBtn");
+      btn.innerHTML = "&#9664;";
+      btn.title = "expand layers";
+    }
+    if (state.collageViewport?.w) collageViewport.style.width = state.collageViewport.w;
+    if (state.collageViewport?.h) collageViewport.style.height = state.collageViewport.h;
+    if (state.sourceViewport?.w) sourceViewport.style.width = state.sourceViewport.w;
+    if (state.sourceViewport?.h) sourceViewport.style.height = state.sourceViewport.h;
+  }
+
   document.querySelector(".layout").addEventListener("click", (e) => {
     const btn = e.target.closest(".size-toggle button");
     if (!btn) return;
     const panel = btn.closest(".panel");
-    panel.classList.remove("size-mini", "size-half", "size-full");
-    panel.classList.add("size-" + btn.dataset.size);
-    btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === btn));
+    if (btn.dataset.action === "move-left" || btn.dataset.action === "move-right") {
+      movePanel(panel, btn.dataset.action === "move-left" ? -1 : 1);
+      return;
+    }
+    if (btn.dataset.action === "minimize") {
+      btn.classList.toggle("active", panel.classList.toggle("minimized"));
+    } else {
+      panel.classList.remove("minimized", "size-mini", "size-half", "size-full");
+      panel.classList.add("size-" + btn.dataset.size);
+      panel.querySelector('.size-toggle [data-action="minimize"]').classList.remove("active");
+      btn.parentElement.querySelectorAll("button[data-size]")
+        .forEach((b) => b.classList.toggle("active", b === btn));
+    }
+    saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
-  new ResizeObserver(() => applyView()).observe(collageViewport);
+  new ResizeObserver(() => { applyView(); saveLayoutSoon(); }).observe(collageViewport);
 
   collageViewport.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -877,12 +1078,50 @@
     const scaleInput = document.getElementById("clipScale");
     const rotInput = document.getElementById("clipRotation");
     const blendInput = document.getElementById("clipBlend");
+    const opacityInput = document.getElementById("clipOpacity");
+    const tintInput = document.getElementById("clipTint");
+    const tintAmtInput = document.getElementById("clipTintAmt");
     scaleInput.value = clip.scale.toFixed(2);
     document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
     rotInput.value = Math.round(clip.rotation);
     blendInput.value = clip.blend || "source-over";
-    scaleInput.disabled = rotInput.disabled = blendInput.disabled = !!clip.locked;
+
+    const opacity = clip.opacity ?? 1;
+    opacityInput.value = opacity;
+    document.getElementById("clipOpacityValue").textContent = Math.round(opacity * 100) + "%";
+    const tintAmt = clip.tintAmount || 0;
+    tintInput.value = clip.tint || "#ff5500";
+    tintAmtInput.value = tintAmt;
+    document.getElementById("clipTintValue").textContent = Math.round(tintAmt * 100) + "%";
+
+    scaleInput.disabled = rotInput.disabled = blendInput.disabled =
+      opacityInput.disabled = tintInput.disabled = tintAmtInput.disabled = !!clip.locked;
   }
+
+  document.getElementById("clipOpacity").addEventListener("input", (e) => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    clip.opacity = parseFloat(e.target.value);
+    document.getElementById("clipOpacityValue").textContent = Math.round(clip.opacity * 100) + "%";
+    renderCollage(); syncTextarea();
+  });
+
+  function setTint(colour, amount) {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    // Keep the config clean: no tint keys at all when the amount is zero.
+    if (amount > 0) { clip.tint = colour; clip.tintAmount = amount; }
+    else { delete clip.tint; delete clip.tintAmount; }
+    document.getElementById("clipTintValue").textContent = Math.round(amount * 100) + "%";
+    renderCollage(); syncTextarea();
+  }
+
+  document.getElementById("clipTint").addEventListener("input", (e) => {
+    setTint(e.target.value, parseFloat(document.getElementById("clipTintAmt").value) || 0);
+  });
+  document.getElementById("clipTintAmt").addEventListener("input", (e) => {
+    setTint(document.getElementById("clipTint").value, parseFloat(e.target.value));
+  });
 
   document.getElementById("clipBlend").addEventListener("change", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
@@ -956,14 +1195,38 @@
     return { rotate: transformPoint(clip, [0, -d]), scale: transformPoint(clip, [stamp.w / 2, stamp.h / 2]) };
   }
 
+  /* Tinting happens on a copy of the stamp with source-atop, which respects
+     the existing alpha — so colour lands only on the cut shape, never in the
+     transparent surround. Cached on the stamp; rebuilt only when it changes. */
+  function stampFace(clip, stamp) {
+    const amount = clip.tintAmount || 0;
+    if (!amount) return stamp.canvas;
+    const colour = clip.tint || "#000000";
+    const key = colour + "|" + amount;
+    if (stamp.tintKey !== key) {
+      const off = document.createElement("canvas");
+      off.width = stamp.w; off.height = stamp.h;
+      const octx = off.getContext("2d");
+      octx.drawImage(stamp.canvas, 0, 0);
+      octx.globalCompositeOperation = "source-atop";
+      octx.globalAlpha = amount;
+      octx.fillStyle = colour;
+      octx.fillRect(0, 0, stamp.w, stamp.h);
+      stamp.tinted = off;
+      stamp.tintKey = key;
+    }
+    return stamp.tinted;
+  }
+
   function drawClip(ctx, clip, stamp) {
     ctx.save();
     // Blends against everything already drawn beneath, background included.
     ctx.globalCompositeOperation = clip.blend || "source-over";
+    ctx.globalAlpha = clip.opacity ?? 1;
     ctx.translate(clip.x, clip.y);
     ctx.rotate(clip.rotation * Math.PI / 180);
     ctx.scale(clip.scale * (clip.flipX ? -1 : 1), clip.scale * (clip.flipY ? -1 : 1));
-    ctx.drawImage(stamp.canvas, -stamp.w / 2, -stamp.h / 2);
+    ctx.drawImage(stampFace(clip, stamp), -stamp.w / 2, -stamp.h / 2);
     ctx.restore();
   }
 
@@ -1128,21 +1391,32 @@
 
   window.addEventListener("mouseup", () => { dragMode = null; collageViewport.classList.remove("panning"); });
 
-  const LINK_GROUPS = ["A", "B", "C", "D", "E", "F"];
+  document.getElementById("layersCollapseBtn").addEventListener("click", (e) => {
+    const collapsed = document.getElementById("layersPanel").classList.toggle("collapsed");
+    e.target.innerHTML = collapsed ? "&#9664;" : "&#9654;";
+    e.target.title = collapsed ? "expand layers" : "collapse layers";
+    saveLayout();
+    // Canvas gains/loses the column's width, so re-fit the view.
+    requestAnimationFrame(fitView);
+  });
 
   function renderLayerList() {
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
+    // Existing group names, offered as suggestions so grouping is a pick
+    // rather than a retype.
+    const groups = [...new Set(collage.clips.map((c) => c.link).filter(Boolean))].sort();
+    document.getElementById("linkGroups").innerHTML =
+      groups.map((g) => `<option value="${escapeHtml(g)}">`).join("");
     list.innerHTML = sorted.map((c) => `
       <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}">
         <div class="layer-top">
           <input type="text" class="layer-name" spellcheck="false"
                  value="${escapeHtml(c.name || c.source)}" title="source: ${escapeHtml(c.source)}">
           <span class="layer-z">z${c.z}</span>
-          <select class="layer-link" title="link group — linked clips move together">
-            <option value="">&#8212;</option>
-            ${LINK_GROUPS.map((g) => `<option value="${g}"${c.link === g ? " selected" : ""}>&#128279;${g}</option>`).join("")}
-          </select>
+          <input type="text" class="layer-link" list="linkGroups" placeholder="&#128279; group"
+                 value="${escapeHtml(c.link || "")}" spellcheck="false"
+                 title="link group — clips sharing a name move together">
         </div>
         <div class="layer-actions">
           <button data-action="lock" class="${c.locked ? "active" : ""}" title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#128274;" : "&#128275;"}</button>
@@ -1151,7 +1425,7 @@
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
           <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
           <button data-action="guides" class="${c.guides ? "active" : ""}" title="alignment guides">&#128208;</button>
-          <button data-action="copy" title="copy settings (scale, rotation, flips)">&#128203;</button>
+          <button data-action="copy" title="copy settings (scale, rotation, flips, blend, opacity, tint)">&#128203;</button>
           <button data-action="paste" title="apply copied settings">&#8681;</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
           <button data-action="duplicate" title="duplicate">&#10697;</button>
@@ -1224,13 +1498,26 @@
       clip.locked = !clip.locked;
       if (clip.locked && selectedId === clip.id) selectedId = null;
     } else if (action === "copy") {
-      // Transform only — never the mask, source or position.
+      // Appearance only — never the mask, source or position.
       settingsClipboard = {
         scale: clip.scale, rotation: clip.rotation,
-        flipX: !!clip.flipX, flipY: !!clip.flipY
+        flipX: !!clip.flipX, flipY: !!clip.flipY,
+        blend: clip.blend || "source-over",
+        opacity: clip.opacity ?? 1,
+        tint: clip.tint || null, tintAmount: clip.tintAmount || 0
       };
     } else if (action === "paste") {
-      if (settingsClipboard) Object.assign(clip, settingsClipboard);
+      if (settingsClipboard) {
+        const s = settingsClipboard;
+        Object.assign(clip, {
+          scale: s.scale, rotation: s.rotation,
+          flipX: s.flipX, flipY: s.flipY,
+          blend: s.blend, opacity: s.opacity
+        });
+        // Assigning undefined would leave dead keys in the config.
+        if (s.tintAmount > 0) { clip.tint = s.tint; clip.tintAmount = s.tintAmount; }
+        else { delete clip.tint; delete clip.tintAmount; }
+      }
     } else {
       selectedId = id;
     }
@@ -1269,22 +1556,23 @@
 
   // Deliberately does not re-render the list — that would drop focus mid-typing.
   document.getElementById("layerList").addEventListener("input", (e) => {
-    const inp = e.target.closest(".layer-name");
-    if (!inp) return;
-    const clip = collage.clips.find((c) => c.id === e.target.closest("li").dataset.id);
+    const li = e.target.closest("li");
+    if (!li) return;
+    const clip = collage.clips.find((c) => c.id === li.dataset.id);
     if (!clip) return;
-    clip.name = inp.value;
+    if (e.target.closest(".layer-name")) {
+      clip.name = e.target.value;
+    } else if (e.target.closest(".layer-link")) {
+      const group = e.target.value.trim();
+      if (group) clip.link = group; else delete clip.link;
+    } else return;
     syncTextarea();
   });
 
+  // On commit (blur/enter) it's safe to re-render, which refreshes the
+  // group suggestions with any newly-typed name.
   document.getElementById("layerList").addEventListener("change", (e) => {
-    const sel = e.target.closest(".layer-link");
-    if (!sel) return;
-    const clip = collage.clips.find((c) => c.id === e.target.closest("li").dataset.id);
-    if (!clip) return;
-    if (sel.value) clip.link = sel.value;
-    else delete clip.link;
-    renderLayerList(); syncTextarea();
+    if (e.target.closest(".layer-link")) renderLayerList();
   });
 
   document.getElementById("clipQuickActions").addEventListener("click", (e) => {
@@ -1318,6 +1606,15 @@
     document.getElementById("sizePreset").value = "";
     renderCollage(); fitView(); syncTextarea();
   });
+  document.getElementById("swapDimsBtn").addEventListener("click", () => {
+    const { width, height } = collage.canvas;
+    collage.canvas.width = height;
+    collage.canvas.height = width;
+    document.getElementById("canvasW").value = collage.canvas.width;
+    document.getElementById("canvasH").value = collage.canvas.height;
+    document.getElementById("sizePreset").value = "";
+    renderCollage(); fitView(); syncTextarea();
+  });
   document.getElementById("canvasBg").addEventListener("input", (e) => {
     collage.canvas.background = e.target.value;
     renderCollage(); syncTextarea();
@@ -1344,6 +1641,47 @@
       alert("Invalid JSON: " + err.message);
     }
   });
+
+  const CONFIG_KEY = "collage.config.v1";
+  const saveStatus = document.getElementById("saveStatus");
+
+  // Saves live state rather than the textarea, which may be mid-edit or
+  // invalid; use Apply first if you've hand-edited the JSON.
+  function saveConfig(auto) {
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify({ canvas: collage.canvas, clips: collage.clips }, null, 2));
+      const when = new Date().toLocaleTimeString();
+      saveStatus.textContent = `${auto ? "auto-saved" : "saved"} ${when}`;
+      return true;
+    } catch (err) {
+      saveStatus.textContent = "save failed: " + err.message;
+      return false;
+    }
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", () => saveConfig(false));
+
+  document.getElementById("loadBtn").addEventListener("click", () => {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) { saveStatus.textContent = "nothing saved yet"; return; }
+    document.getElementById("configText").value = raw;
+    document.getElementById("applyBtn").click();
+    saveStatus.textContent = "loaded";
+  });
+
+  // Opt-in only, at an interval you pick. Off by default.
+  let autoSaveTimer = null;
+  function applyAutoSave() {
+    clearInterval(autoSaveTimer);
+    autoSaveTimer = null;
+    const on = document.getElementById("autoSaveChk").checked;
+    const secs = Number(document.getElementById("autoSaveInterval").value) || 60;
+    document.getElementById("autoSaveInterval").disabled = !on;
+    if (on) autoSaveTimer = setInterval(() => saveConfig(true), secs * 1000);
+    saveLayout();
+  }
+  document.getElementById("autoSaveChk").addEventListener("change", applyAutoSave);
+  document.getElementById("autoSaveInterval").addEventListener("change", applyAutoSave);
 
   document.getElementById("downloadBtn").addEventListener("click", () => {
     const blob = new Blob([document.getElementById("configText").value], { type: "application/json" });
@@ -1489,6 +1827,8 @@
     previewOverlay.classList.remove("panning");
   });
 
+  restoreLayout();
+  applyAutoSave();
   renderCollage();
   renderLayerList();
   syncTextarea();
