@@ -16,22 +16,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. Create a safe staging folder and copy everything into it
-      - name: Prepare site
+      # 1. Zip everything up ourselves safely, ignoring read warnings completely
+      - name: Create safe archive zip
         run: |
-          mkdir -p _site
-          # Copy all your website files and photo directories safely
-          cp -r photos img mirror-mirror collage _site/
-          cp index.html .nojekyll _redirect CNAME 404.html meta.csv _site/ 2>/dev/null || true
+          zip -r artifact.zip . -x ".git/*" ".github/*"
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      # 2. Upload ONLY the clean _site folder (bypassing the root-scanning tar bug completely)
+      # 2. Upload the zip file using the standard uploader (bypassing Pages' broken tar tool)
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          path: '_site'
+          name: github-pages
+          path: artifact.zip
 
   deploy:
     environment:
