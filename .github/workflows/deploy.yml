@@ -16,14 +16,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. Create a safe staging folder and copy everything into it
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          # Copy all your website files and photo directories safely
+          cp -r photos img mirror-mirror collage _site/
+          cp index.html .nojekyll _redirect CNAME 404.html meta.csv _site/ 2>/dev/null || true
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # This uploads your site, but explicitly tells it to skip the heavy originals folder during the scan
+      # 2. Upload ONLY the clean _site folder (bypassing the root-scanning tar bug completely)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
   deploy:
     environment:
