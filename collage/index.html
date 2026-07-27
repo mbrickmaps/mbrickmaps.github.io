@@ -304,13 +304,45 @@
     <div class="row">
       <select id="sizePreset">
         <option value="">Custom&hellip;</option>
-        <option value="1080x1080">Square 1080&times;1080 (1:1)</option>
-        <option value="1080x1350">Portrait 1080&times;1350 (4:5)</option>
-        <option value="1080x1920">Story 1080&times;1920 (9:16)</option>
-        <option value="1920x1080">Landscape 1920&times;1080 (16:9)</option>
-        <option value="2000x3000">Print 2000&times;3000 (2:3)</option>
-        <option value="2480x3508">A4 Portrait 2480&times;3508 (300dpi)</option>
-        <option value="3508x2480">A4 Landscape 3508&times;2480 (300dpi)</option>
+        <optgroup label="Generic">
+          <option value="1080x1080">Square 1080&times;1080 (1:1)</option>
+          <option value="1080x1350">Portrait 1080&times;1350 (4:5)</option>
+          <option value="1080x1920">Vertical 1080&times;1920 (9:16)</option>
+          <option value="1920x1080">Landscape 1920&times;1080 (16:9)</option>
+        </optgroup>
+        <optgroup label="Instagram">
+          <option value="1080x1080">Post square 1080&times;1080</option>
+          <option value="1080x1350">Post portrait 1080&times;1350</option>
+          <option value="1080x566">Post landscape 1080&times;566</option>
+          <option value="1080x1920">Story / Reel 1080&times;1920</option>
+        </optgroup>
+        <optgroup label="Facebook">
+          <option value="1200x630">Post / link 1200&times;630</option>
+          <option value="1640x624">Cover 1640&times;624</option>
+        </optgroup>
+        <optgroup label="X / Twitter">
+          <option value="1600x900">Post 1600&times;900</option>
+          <option value="1500x500">Header 1500&times;500</option>
+        </optgroup>
+        <optgroup label="LinkedIn">
+          <option value="1200x627">Post 1200&times;627</option>
+          <option value="1584x396">Cover 1584&times;396</option>
+        </optgroup>
+        <optgroup label="Pinterest">
+          <option value="1000x1500">Pin 1000&times;1500 (2:3)</option>
+          <option value="1000x2100">Tall pin 1000&times;2100</option>
+        </optgroup>
+        <optgroup label="YouTube">
+          <option value="1280x720">Thumbnail 1280&times;720</option>
+          <option value="2560x1440">Channel art 2560&times;1440</option>
+        </optgroup>
+        <optgroup label="Print (300dpi)">
+          <option value="2000x3000">Photo 2000&times;3000 (2:3)</option>
+          <option value="2480x3508">A4 portrait 2480&times;3508</option>
+          <option value="3508x2480">A4 landscape 3508&times;2480</option>
+          <option value="3508x4961">A3 portrait 3508&times;4961</option>
+          <option value="4961x3508">A3 landscape 4961&times;3508</option>
+        </optgroup>
       </select>
       <label>W <input type="number" id="canvasW" value="1000"></label>
       <button id="swapDimsBtn" title="swap width and height">&#8646;</button>
@@ -329,6 +361,7 @@
       </select>
       <button id="outlinesToggleBtn">Hide outlines</button>
       <button id="previewBtn">Preview</button>
+      <button id="canvasSaveBtn" title="save the config to local storage">Save</button>
     </div>
     <div class="row" id="clipProps">
       <label>Scale
@@ -2080,6 +2113,14 @@
   }
 
   document.getElementById("saveBtn").addEventListener("click", () => saveConfig(false));
+
+  // Same save, reachable without leaving the canvas. The config panel's status
+  // line may be off-screen from here, so confirm on the button itself.
+  document.getElementById("canvasSaveBtn").addEventListener("click", (e) => {
+    if (!saveConfig(false)) return;
+    e.target.textContent = "Saved";
+    setTimeout(() => { e.target.textContent = "Save"; }, 1200);
+  });
 
   document.getElementById("loadBtn").addEventListener("click", () => {
     const raw = localStorage.getItem(CONFIG_KEY);
