@@ -28,6 +28,8 @@
 
   .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
   .panel-head h2 { margin: 0; }
+  .help-icon { cursor: help; opacity: 0.5; font-size: 0.85rem; font-weight: normal; }
+  .help-icon:hover { opacity: 1; }
   .size-toggle { display: flex; gap: 2px; flex-shrink: 0; }
   .size-toggle button { padding: 1px 6px; font-size: 0.75rem; }
   .size-toggle button.active { border-color: var(--accent2); color: var(--accent2); }
@@ -40,6 +42,7 @@
   button:hover { border-color: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
   .row button.active { border-color: var(--accent2); color: var(--accent2); }
+  .row.inactive { opacity: 0.4; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
   .dropdown { position: relative; }
@@ -95,7 +98,7 @@
   .layers-panel h2 { margin: 0 0 6px; }
 
   /* The handle is the divider: a full-height strip between canvas and layers,
-     with the arrow centred on it. */
+     with the arrow centered on it. */
   .divider-handle {
     align-self: stretch; flex: 0 0 14px;
     display: flex; align-items: center; justify-content: center;
@@ -117,6 +120,17 @@
   #collageViewport.panning { cursor: grabbing; }
   #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; outline: 1px solid #555; }
   #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
+  /* Zoom controls floated over each zoomable canvas. Bottom-left keeps them
+     clear of the minimap and the resize corner, both bottom-right. */
+  .view-controls {
+    position: absolute; left: 8px; bottom: 8px; z-index: 25;
+    display: flex; gap: 4px; align-items: center;
+    background: rgba(0, 0, 0, 0.7); border: 1px solid var(--border);
+    border-radius: 5px; padding: 3px 5px;
+    opacity: 0.3; transition: opacity 0.15s ease;
+  }
+  .view-controls:hover { opacity: 1; }
+  .view-controls button { padding: 1px 6px; font-size: 0.75rem; }
   #overviewCanvas {
     position: absolute; right: 8px; bottom: 8px; z-index: 15;
     border: 1px solid var(--border); cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.7);
@@ -133,9 +147,17 @@
   .quick-actions button { padding: 2px 6px; font-size: 0.85rem; }
   input[type="range"] { width: 140px; vertical-align: middle; }
   input[type="range"].mini-range { width: 90px; }
-  #clipScaleValue, #clipOpacityValue, #clipTintValue {
+  #clipScaleValue, #clipOpacityValue, #clipRotationValue {
     font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px;
   }
+  #clipProps label button { padding: 1px 6px; font-size: 0.75rem; }
+  #paletteSwatches { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 24px; }
+  .swatch {
+    width: 24px; height: 24px; padding: 0; border-radius: 3px;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .swatch:hover { border-color: var(--accent2); }
+  #paletteSelect { flex: 1 1 auto; min-width: 80px; }
   /* The flyout scrolls, so the list itself must not — nested scrollbars. */
   #layerList { list-style: none; margin: 0; padding: 0; width: 100%; }
   #layerList li {
@@ -156,6 +178,35 @@
   #layerList .layer-link { padding: 0 2px; font-size: 0.7rem; flex-shrink: 0; }
   #layerList button { padding: 1px 5px; font-size: 0.75rem; }
   #layerList button.active { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ---------- clip library ---------- */
+  #libraryList { list-style: none; margin: 0 0 8px; padding: 0; max-height: 420px; overflow-y: auto; }
+  #libraryList li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px;
+  }
+  #libraryList canvas {
+    flex-shrink: 0; width: 56px; height: 56px; object-fit: contain;
+    background: #000; border: 1px solid var(--border); border-radius: 3px;
+  }
+  .lib-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .lib-body input {
+    width: 100%; background: transparent; color: var(--fg); font-size: 0.78rem;
+    border: 1px solid transparent; border-radius: 3px; padding: 1px 3px;
+  }
+  .lib-body input:hover { border-color: var(--border); }
+  .lib-body input:focus { border-color: var(--accent2); background: #000; outline: none; }
+  .lib-source { font-size: 0.7rem; opacity: 0.55; }
+  .lib-actions { display: flex; gap: 2px; }
+  .lib-actions button { padding: 1px 5px; font-size: 0.75rem; }
+  #libraryTags { gap: 4px; }
+  #libraryTags .tag-chip {
+    padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+    background: #000; color: var(--fg); font-size: 0.7rem; cursor: pointer;
+  }
+  #libraryTags .tag-chip.active { background: var(--accent2); color: #000; border-color: var(--accent2); }
+  #librarySearch { flex: 1 1 140px; min-width: 100px; }
+  #starClipBtn { color: #ffcc33; }
 
   /* Floating thumbnail of a clip's masked shape, shown on layer hover. */
   .layer-preview {
@@ -196,7 +247,7 @@
 
   <section class="panel size-half" id="editorPanel">
     <div class="panel-head">
-      <h2>Clip source</h2>
+      <h2>Clip source <span class="help-icon" title="Click to place polygon points. Click near the first point (or Close path) to finish.&#10;Once closed: drag a point to move it, double-click a point to remove it (min 3), drag from inside the shape to move the whole path, or turn on Add point mode and click an edge to insert a point.&#10;Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are stored at source resolution.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -220,34 +271,28 @@
         <canvas id="sourceCanvas" width="480" height="360"></canvas>
         <div class="quick-actions" id="editorQuickActions" hidden>
           <button id="closePathBtn">Close path</button>
+          <button id="starClipBtn" title="save to clip library">&#9733;</button>
           <button id="addToCollageBtn" disabled>Add to collage</button>
+        </div>
+        <div class="view-controls">
+          <button type="button" id="srcZoomOut" title="zoom out">&minus;</button>
+          <span id="srcZoomLabel">100%</span>
+          <button type="button" id="srcZoomIn" title="zoom in">+</button>
+          <button type="button" id="srcFitBtn">Fit</button>
+          <button type="button" id="src100Btn">1:1</button>
         </div>
       </div>
       <canvas id="magnifier" width="150" height="150"></canvas>
     </div>
     <div class="row">
-      <button id="srcZoomOut">&minus;</button>
-      <span id="srcZoomLabel">100%</span>
-      <button id="srcZoomIn">+</button>
-      <button id="srcFitBtn">Fit</button>
-      <button id="src100Btn">1:1</button>
-    </div>
-    <div class="row">
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="clearPolyBtn">Clear</button>
     </div>
-    <p class="hint">
-      Click to place polygon points. Click near the first point (or hit "Close path") to finish.
-      Once closed, drag any point to move it, double-click a point to remove it (min 3 points),
-      or turn on "Add point mode" and click an edge to insert a new point there.
-      Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are
-      stored at source resolution, so accuracy is limited only by how far in you go.
-    </p>
   </section>
 
   <section class="panel size-half" id="collagePanel">
     <div class="panel-head">
-      <h2>Collage</h2>
+      <h2>Collage <span class="help-icon" title="Drag a clip to move it, its bottom-right handle to scale, its top handle to rotate.&#10;Drag empty canvas space to pan the view, scroll to zoom, shift+scroll over a selected clip to scale it. Linked clips move and scale together.&#10;Hide outlines clears the overlays in place; Preview opens the composite fullscreen, pan and zoom only, Esc to exit.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -274,19 +319,36 @@
       <label>BG <input type="color" id="canvasBg" value="#111111"></label>
     </div>
     <div class="row">
-      <button id="zoomOutBtn">&minus;</button>
-      <span id="zoomLabel">100%</span>
-      <button id="zoomInBtn">+</button>
-      <button id="fitViewBtn">Fit</button>
+      <select id="overlayGuide" title="composition overlay">
+        <option value="">no overlay</option>
+        <option value="grid">grid</option>
+        <option value="thirds">thirds</option>
+        <option value="golden">golden ratio</option>
+        <option value="spiral">golden spiral</option>
+        <option value="diagonals">diagonals</option>
+        <option value="center">center</option>
+      </select>
       <button id="outlinesToggleBtn">Hide outlines</button>
       <button id="previewBtn">Preview</button>
     </div>
-    <div class="row" id="clipProps" style="display:none;">
-      <label>Scale <input type="range" id="clipScale" min="0.05" max="8" step="0.01"> <span id="clipScaleValue">1.00</span></label>
-      <label>Rotation&deg; <input type="number" id="clipRotation" step="1"></label>
-      <label>Opacity <input type="range" class="mini-range" id="clipOpacity" min="0" max="1" step="0.01" value="1"> <span id="clipOpacityValue">100%</span></label>
+    <div class="row" id="clipProps">
+      <label>Scale
+        <button type="button" id="clipScaleDown" title="scale down">&minus;</button>
+        <input type="range" id="clipScale" min="0.05" max="8" step="0.01">
+        <button type="button" id="clipScaleUp" title="scale up">+</button>
+        <span id="clipScaleValue">1.00</span></label>
+      <label>Rotation&deg;
+        <button type="button" id="clipRotationDown" title="rotate anticlockwise">&minus;</button>
+        <input type="range" class="mini-range" id="clipRotation" min="-180" max="180" step="1" value="0">
+        <button type="button" id="clipRotationUp" title="rotate clockwise">+</button>
+        <span id="clipRotationValue">0</span></label>
+      <label>Opacity
+        <button type="button" id="clipOpacityDown" title="less opaque">&minus;</button>
+        <input type="range" class="mini-range" id="clipOpacity" min="0" max="1" step="0.01" value="1">
+        <button type="button" id="clipOpacityUp" title="more opaque">+</button>
+        <span id="clipOpacityValue">100%</span></label>
       <label>Tint <input type="color" id="clipTint" value="#ff5500">
-        <input type="range" class="mini-range" id="clipTintAmt" min="0" max="1" step="0.01" value="0"> <span id="clipTintValue">0%</span></label>
+        <button type="button" id="clipTintClear" title="remove tint">&#10005;</button></label>
       <label>Blend
         <select id="clipBlend">
           <option value="source-over">normal</option>
@@ -322,9 +384,17 @@
       <div id="collageViewport">
         <canvas id="collageCanvas" width="1000" height="700"></canvas>
         <canvas id="overviewCanvas" title="Click to jump the view here"></canvas>
+        <div class="view-controls">
+          <button type="button" id="zoomOutBtn" title="zoom out">&minus;</button>
+          <span id="zoomLabel">100%</span>
+          <button type="button" id="zoomInBtn" title="zoom in">+</button>
+          <button type="button" id="fitViewBtn">Fit</button>
+        </div>
         <div class="quick-actions" id="clipQuickActions" hidden>
           <button data-qa="flipx" title="flip horizontal">&#8596;</button>
           <button data-qa="flipy" title="flip vertical">&#8597;</button>
+          <button data-qa="front" title="bring to front">&#10514;</button>
+          <button data-qa="back" title="send to back">&#10515;</button>
           <button data-qa="duplicate" title="duplicate">&#10697;</button>
           <button data-qa="delete" title="delete">&#10005;</button>
         </div>
@@ -336,12 +406,68 @@
         <ul id="layerList"></ul>
       </div>
     </div>
-    <p class="hint">
-      Drag a clip to move it, its bottom-right handle to scale (or the Scale slider above), its top handle to rotate.
-      Drag empty canvas space to pan the view, scroll to zoom the view, shift+scroll over a selected clip to scale it.
-      "Hide outlines" clears the overlays in place; "Preview" opens the composite fullscreen,
-      pan and zoom only, Esc to exit.
-    </p>
+  </section>
+
+  <section class="panel size-mini" id="colorPanel">
+    <div class="panel-head">
+      <h2>Color library</h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="row">
+      <select id="paletteSelect"></select>
+      <button type="button" id="paletteNewBtn" title="new collection">+</button>
+      <button type="button" id="paletteRenameBtn" title="rename collection">&#9998;</button>
+      <button type="button" id="paletteDeleteBtn" title="delete collection">&#10005;</button>
+    </div>
+    <div class="row">
+      <input type="color" id="paletteColor" value="#ff5500">
+      <button type="button" id="paletteAddBtn">add color</button>
+      <button type="button" id="paletteGrabBtn" title="take the selected layer's tint color">grab tint</button>
+    </div>
+    <div id="paletteSwatches"></div>
+    <div class="row">
+      <button type="button" id="paletteDownloadBtn">Download</button>
+      <button type="button" id="paletteUploadBtn">Upload</button>
+      <input type="file" id="paletteUploadInput" accept="application/json" style="display:none">
+      <span id="paletteStatus" class="hint" style="margin:0;"></span>
+    </div>
+  </section>
+
+  <section class="panel size-mini" id="libraryPanel">
+    <div class="panel-head">
+      <h2>Clip library</h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="row">
+      <input type="text" id="librarySearch" placeholder="search name, source, tags&hellip;">
+      <select id="librarySort">
+        <option value="added">newest</option>
+        <option value="name">name</option>
+        <option value="source">source</option>
+      </select>
+    </div>
+    <div class="row" id="libraryTags"></div>
+    <ul id="libraryList"></ul>
+    <div class="row">
+      <button id="libraryDownloadBtn">Download</button>
+      <button id="libraryUploadBtn">Upload</button>
+      <input type="file" id="libraryUploadInput" accept="application/json" style="display:none">
+      <span id="libraryStatus" class="hint" style="margin:0;"></span>
+    </div>
   </section>
 
   <section class="panel size-mini" id="configPanel">
@@ -467,6 +593,7 @@
   const editor = {
     image: null, naturalW: 0, naturalH: 0,
     points: [], closed: false, addPointMode: false, dragIndex: -1,
+    dragPolygon: false, dragStart: null,
     editingClipId: null, editingUseOriginal: false
   };
 
@@ -534,6 +661,7 @@
     if (!editor.image || editor.points.length < 3) { qa.hidden = true; return; }
     document.getElementById("closePathBtn").hidden = editor.closed;
     document.getElementById("addToCollageBtn").hidden = !editor.closed;
+    document.getElementById("starClipBtn").hidden = !editor.closed;
     qa.hidden = false;
 
     const xs = editor.points.map((p) => p[0]), ys = editor.points.map((p) => p[1]);
@@ -627,7 +755,12 @@
     if (editor.closed) {
       const hitIndex = findPointNear(dx, dy);
       if (hitIndex !== -1) { editor.dragIndex = hitIndex; return; }
-      if (editor.addPointMode) { insertPointOnNearestEdge([dx, dy]); renderEditor(); }
+      if (editor.addPointMode) { insertPointOnNearestEdge([dx, dy]); renderEditor(); return; }
+      // Clicking inside the shape drags the whole path.
+      if (pointInPolygon([dx, dy], editor.points)) {
+        editor.dragPolygon = true;
+        editor.dragStart = [dx, dy];
+      }
       return;
     }
     if (editor.points.length >= 3 && findPointNear(dx, dy) === 0) {
@@ -645,6 +778,14 @@
       applySourceView();
       return;
     }
+    if (editor.dragPolygon) {
+      const [cx, cy] = getSourceCanvasPos(e);
+      const dx = cx - editor.dragStart[0], dy = cy - editor.dragStart[1];
+      editor.points = editor.points.map(([x, y]) => [x + dx, y + dy]);
+      editor.dragStart = [cx, cy];
+      renderEditor();
+      return;
+    }
     if (editor.dragIndex === -1) return;
     editor.points[editor.dragIndex] = getSourceCanvasPos(e);
     renderEditor();
@@ -653,6 +794,9 @@
   sourceCanvas.addEventListener("mousemove", (e) => {
     const [dx, dy] = getSourceCanvasPos(e);
     updateMagnifier(dx, dy);
+    // Signal that clicking inside will move the whole path.
+    const inside = editor.closed && editor.points.length >= 3 && pointInPolygon([dx, dy], editor.points);
+    sourceCanvas.style.cursor = inside ? "move" : "crosshair";
   });
 
   sourceCanvas.addEventListener("dblclick", (e) => {
@@ -664,6 +808,7 @@
 
   window.addEventListener("mouseup", () => {
     editor.dragIndex = -1;
+    editor.dragPolygon = false;
     srcPanning = false;
     sourceViewport.classList.remove("panning");
   });
@@ -971,6 +1116,7 @@
         order: Number(p.style.order) || 0
       })),
       layersCollapsed: document.getElementById("layersPanel").classList.contains("collapsed"),
+      overlayGuide: document.getElementById("overlayGuide").value,
       autoSave: {
         on: document.getElementById("autoSaveChk").checked,
         secs: document.getElementById("autoSaveInterval").value
@@ -1003,6 +1149,11 @@
       group.querySelector('[data-action="minimize"]').classList.toggle("active", !!s.minimized);
     });
 
+    if (state.overlayGuide) {
+      overlayGuide = state.overlayGuide;
+      document.getElementById("overlayGuide").value = state.overlayGuide;
+    }
+
     if (state.autoSave) {
       document.getElementById("autoSaveChk").checked = !!state.autoSave.on;
       if (state.autoSave.secs) document.getElementById("autoSaveInterval").value = state.autoSave.secs;
@@ -1021,7 +1172,7 @@
   }
 
   document.querySelector(".layout").addEventListener("click", (e) => {
-    const btn = e.target.closest(".size-toggle button");
+    const btn = e.target.closest(".panel-head button");
     if (!btn) return;
     const panel = btn.closest(".panel");
     if (btn.dataset.action === "move-left" || btn.dataset.action === "move-right") {
@@ -1050,10 +1201,7 @@
     if (e.shiftKey && selectedId) {
       const clip = collage.clips.find((c) => c.id === selectedId);
       if (clip && !clip.locked) {
-        clip.scale = Math.max(0.05, clip.scale * (e.deltaY < 0 ? 1.05 : 0.95));
-        document.getElementById("clipScale").value = clip.scale.toFixed(2);
-        document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
-        renderCollage(); syncTextarea();
+        setClipScale(clip, clip.scale * (e.deltaY < 0 ? 1.05 : 0.95));
       }
       return;
     }
@@ -1073,55 +1221,239 @@
   function updateClipProps() {
     const panel = document.getElementById("clipProps");
     const clip = collage.clips.find((c) => c.id === selectedId);
-    if (!clip) { panel.style.display = "none"; return; }
-    panel.style.display = "";
-    const scaleInput = document.getElementById("clipScale");
-    const rotInput = document.getElementById("clipRotation");
-    const blendInput = document.getElementById("clipBlend");
-    const opacityInput = document.getElementById("clipOpacity");
-    const tintInput = document.getElementById("clipTint");
-    const tintAmtInput = document.getElementById("clipTintAmt");
-    scaleInput.value = clip.scale.toFixed(2);
-    document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
-    rotInput.value = Math.round(clip.rotation);
-    blendInput.value = clip.blend || "source-over";
+    // Stays in the layout whether or not something is selected — toggling
+    // display here resized the panel and shunted the canvas on every click.
+    panel.classList.toggle("inactive", !clip);
+    const controls = panel.querySelectorAll("input, select, button");
+    if (!clip) {
+      controls.forEach((el) => { el.disabled = true; });
+      return;
+    }
+    controls.forEach((el) => { el.disabled = !!clip.locked; });
 
-    const opacity = clip.opacity ?? 1;
-    opacityInput.value = opacity;
-    document.getElementById("clipOpacityValue").textContent = Math.round(opacity * 100) + "%";
-    const tintAmt = clip.tintAmount || 0;
-    tintInput.value = clip.tint || "#ff5500";
-    tintAmtInput.value = tintAmt;
-    document.getElementById("clipTintValue").textContent = Math.round(tintAmt * 100) + "%";
+    syncScaleInputs(clip.scale);
+    document.getElementById("clipBlend").value = clip.blend || "source-over";
+    syncRotationInputs(clip.rotation);
+    syncOpacityInputs(clip.opacity ?? 1);
+    document.getElementById("clipTint").value = clip.tint || "#ff5500";
+  }
 
-    scaleInput.disabled = rotInput.disabled = blendInput.disabled =
-      opacityInput.disabled = tintInput.disabled = tintAmtInput.disabled = !!clip.locked;
+  function syncOpacityInputs(value) {
+    document.getElementById("clipOpacity").value = value;
+    document.getElementById("clipOpacityValue").textContent = Math.round(value * 100) + "%";
+  }
+
+  function setClipOpacity(clip, value) {
+    clip.opacity = Math.min(1, Math.max(0, value));
+    syncOpacityInputs(clip.opacity);
+    renderCollage(); syncTextarea();
   }
 
   document.getElementById("clipOpacity").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    clip.opacity = parseFloat(e.target.value);
-    document.getElementById("clipOpacityValue").textContent = Math.round(clip.opacity * 100) + "%";
-    renderCollage(); syncTextarea();
+    setClipOpacity(clip, parseFloat(e.target.value));
   });
 
-  function setTint(colour, amount) {
+  function stepOpacity(delta) {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    // Keep the config clean: no tint keys at all when the amount is zero.
-    if (amount > 0) { clip.tint = colour; clip.tintAmount = amount; }
-    else { delete clip.tint; delete clip.tintAmount; }
-    document.getElementById("clipTintValue").textContent = Math.round(amount * 100) + "%";
+    setClipOpacity(clip, (clip.opacity ?? 1) + delta);
+  }
+  document.getElementById("clipOpacityUp").addEventListener("click", () => stepOpacity(0.01));
+  document.getElementById("clipOpacityDown").addEventListener("click", () => stepOpacity(-0.01));
+
+  // Fixed mix strength — enough colour to read while the photo shows through.
+  const TINT_STRENGTH = 0.35;
+
+  function setTint(color) {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    clip.tint = color;
+    clip.tintAmount = TINT_STRENGTH;
     renderCollage(); syncTextarea();
   }
 
-  document.getElementById("clipTint").addEventListener("input", (e) => {
-    setTint(e.target.value, parseFloat(document.getElementById("clipTintAmt").value) || 0);
+  function clearTint() {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    delete clip.tint;
+    delete clip.tintAmount;
+    renderCollage(); syncTextarea();
+  }
+
+  document.getElementById("clipTint").addEventListener("input", (e) => setTint(e.target.value));
+  document.getElementById("clipTintClear").addEventListener("click", clearTint);
+
+  // ---------- color library ----------
+  /* Named collections of colors, applied as layer tints. Workspace-level like
+     the clip library, with the same download/upload escape hatch. */
+  const COLOR_KEY = "collage.colors.v1";
+  let palettes = [];
+  let activePaletteId = null;
+
+  function newPalette(name, colors) {
+    return {
+      id: "pal-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name, colors: colors || []
+    };
+  }
+
+  function loadPalettes() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLOR_KEY) || "null");
+      if (saved && Array.isArray(saved.palettes)) {
+        palettes = saved.palettes;
+        activePaletteId = saved.activeId;
+      }
+    } catch { /* fall through to defaults */ }
+
+    // Carry over the earlier flat swatch list, if one exists.
+    if (!palettes.length) {
+      let legacy = [];
+      try { legacy = JSON.parse(localStorage.getItem("collage.swatches.v1") || "[]") || []; } catch {}
+      palettes = [newPalette("Default", legacy)];
+    }
+    if (!palettes.some((p) => p.id === activePaletteId)) activePaletteId = palettes[0].id;
+  }
+
+  function savePalettes() {
+    try {
+      localStorage.setItem(COLOR_KEY, JSON.stringify({ palettes, activeId: activePaletteId }));
+    } catch { /* blocked */ }
+  }
+
+  function activePalette() { return palettes.find((p) => p.id === activePaletteId); }
+
+  function renderPalettes() {
+    const select = document.getElementById("paletteSelect");
+    select.innerHTML = palettes.map((p) =>
+      `<option value="${p.id}"${p.id === activePaletteId ? " selected" : ""}>${escapeHtml(p.name)} (${p.colors.length})</option>`
+    ).join("");
+
+    const palette = activePalette();
+    document.getElementById("paletteSwatches").innerHTML = (palette ? palette.colors : []).map((c) =>
+      `<button type="button" class="swatch" data-color="${escapeHtml(c)}"
+               style="background:${escapeHtml(c)}"
+               title="${escapeHtml(c)} — click to apply as tint, double-click to remove"></button>`
+    ).join("");
+  }
+
+  function addColorToPalette(color) {
+    const palette = activePalette();
+    if (!palette || palette.colors.includes(color)) return;
+    palette.colors.push(color);
+    savePalettes();
+    renderPalettes();
+  }
+
+  document.getElementById("paletteSelect").addEventListener("change", (e) => {
+    activePaletteId = e.target.value;
+    savePalettes();
+    renderPalettes();
   });
-  document.getElementById("clipTintAmt").addEventListener("input", (e) => {
-    setTint(document.getElementById("clipTint").value, parseFloat(e.target.value));
+
+  document.getElementById("paletteNewBtn").addEventListener("click", () => {
+    const name = prompt("Collection name:", "Palette " + (palettes.length + 1));
+    if (!name) return;
+    const palette = newPalette(name.trim());
+    palettes.push(palette);
+    activePaletteId = palette.id;
+    savePalettes();
+    renderPalettes();
   });
+
+  document.getElementById("paletteRenameBtn").addEventListener("click", () => {
+    const palette = activePalette();
+    if (!palette) return;
+    const name = prompt("Rename collection:", palette.name);
+    if (!name) return;
+    palette.name = name.trim();
+    savePalettes();
+    renderPalettes();
+  });
+
+  document.getElementById("paletteDeleteBtn").addEventListener("click", () => {
+    if (palettes.length < 2) {
+      document.getElementById("paletteStatus").textContent = "keep at least one collection";
+      return;
+    }
+    palettes = palettes.filter((p) => p.id !== activePaletteId);
+    activePaletteId = palettes[0].id;
+    savePalettes();
+    renderPalettes();
+  });
+
+  document.getElementById("paletteAddBtn").addEventListener("click", () => {
+    addColorToPalette(document.getElementById("paletteColor").value);
+  });
+
+  document.getElementById("paletteGrabBtn").addEventListener("click", () => {
+    const color = document.getElementById("clipTint").value;
+    document.getElementById("paletteColor").value = color;
+    addColorToPalette(color);
+  });
+
+  document.getElementById("paletteSwatches").addEventListener("click", (e) => {
+    const sw = e.target.closest(".swatch");
+    if (!sw || e.detail > 1) return;
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) {
+      document.getElementById("paletteStatus").textContent = "select an unlocked layer first";
+      return;
+    }
+    document.getElementById("clipTint").value = sw.dataset.color;
+    setTint(sw.dataset.color);
+    document.getElementById("paletteStatus").textContent = "";
+  });
+
+  document.getElementById("paletteSwatches").addEventListener("dblclick", (e) => {
+    const sw = e.target.closest(".swatch");
+    const palette = activePalette();
+    if (!sw || !palette) return;
+    palette.colors = palette.colors.filter((c) => c !== sw.dataset.color);
+    savePalettes();
+    renderPalettes();
+  });
+
+  document.getElementById("paletteDownloadBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(palettes, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "color-library.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("paletteUploadBtn").addEventListener("click", () =>
+    document.getElementById("paletteUploadInput").click());
+
+  document.getElementById("paletteUploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const incoming = JSON.parse(reader.result);
+        if (!Array.isArray(incoming)) throw new Error("expected an array of collections");
+        // Merge by id, same as the clip library.
+        const have = new Set(palettes.map((p) => p.id));
+        const added = incoming.filter((p) => p && p.id && Array.isArray(p.colors) && !have.has(p.id));
+        palettes = palettes.concat(added);
+        savePalettes();
+        renderPalettes();
+        document.getElementById("paletteStatus").textContent =
+          `${added.length} added, ${incoming.length - added.length} skipped`;
+      } catch (err) {
+        document.getElementById("paletteStatus").textContent = "invalid file: " + err.message;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  loadPalettes();
+
 
   document.getElementById("clipBlend").addEventListener("change", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
@@ -1130,19 +1462,57 @@
     renderCollage(); syncTextarea();
   });
 
+  function syncScaleInputs(value) {
+    document.getElementById("clipScale").value = value.toFixed(2);
+    document.getElementById("clipScaleValue").textContent = value.toFixed(2);
+  }
+
+  // Linked clips share a scale, so setting one sets the whole group.
+  function setClipScale(clip, value) {
+    const next = Math.max(0.05, value);
+    for (const c of linkedClips(clip)) if (!c.locked) c.scale = next;
+    syncScaleInputs(next);
+    renderCollage(); syncTextarea();
+  }
+
   document.getElementById("clipScale").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    clip.scale = Math.max(0.05, parseFloat(e.target.value) || clip.scale);
-    document.getElementById("clipScaleValue").textContent = clip.scale.toFixed(2);
-    renderCollage(); syncTextarea();
+    setClipScale(clip, parseFloat(e.target.value) || clip.scale);
   });
+
+  function stepScale(delta) {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    setClipScale(clip, clip.scale + delta);
+  }
+  document.getElementById("clipScaleUp").addEventListener("click", () => stepScale(0.01));
+  document.getElementById("clipScaleDown").addEventListener("click", () => stepScale(-0.01));
+  function syncRotationInputs(value) {
+    const shown = Math.round(value);
+    document.getElementById("clipRotation").value = shown;
+    document.getElementById("clipRotationValue").textContent = shown;
+  }
+
+  function setClipRotation(clip, value) {
+    clip.rotation = value;
+    syncRotationInputs(value);
+    renderCollage(); syncTextarea();
+  }
+
   document.getElementById("clipRotation").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    clip.rotation = parseFloat(e.target.value) || 0;
-    renderCollage(); syncTextarea();
+    setClipRotation(clip, parseFloat(e.target.value) || 0);
   });
+
+  function stepRotation(delta) {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    setClipRotation(clip, clip.rotation + delta);
+  }
+  document.getElementById("clipRotationUp").addEventListener("click", () => stepRotation(1));
+  document.getElementById("clipRotationDown").addEventListener("click", () => stepRotation(-1));
 
   function buildStamp(polygon, img) {
     const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
@@ -1166,7 +1536,7 @@
   }
 
   // Deliberately ignores flipX/flipY: mirroring a rectangle about its own
-  // centre yields the same four corners, so the bounding geometry is
+  // center yields the same four corners, so the bounding geometry is
   // flip-invariant. Keeping flip out of it means "top edge" stays the top
   // edge, so handles and the quick-actions bar don't jump when you flip.
   function transformPoint(clip, [lx, ly]) {
@@ -1196,13 +1566,13 @@
   }
 
   /* Tinting happens on a copy of the stamp with source-atop, which respects
-     the existing alpha — so colour lands only on the cut shape, never in the
+     the existing alpha — so color lands only on the cut shape, never in the
      transparent surround. Cached on the stamp; rebuilt only when it changes. */
   function stampFace(clip, stamp) {
     const amount = clip.tintAmount || 0;
     if (!amount) return stamp.canvas;
-    const colour = clip.tint || "#000000";
-    const key = colour + "|" + amount;
+    const color = clip.tint || "#000000";
+    const key = color + "|" + amount;
     if (stamp.tintKey !== key) {
       const off = document.createElement("canvas");
       off.width = stamp.w; off.height = stamp.h;
@@ -1210,7 +1580,7 @@
       octx.drawImage(stamp.canvas, 0, 0);
       octx.globalCompositeOperation = "source-atop";
       octx.globalAlpha = amount;
-      octx.fillStyle = colour;
+      octx.fillStyle = color;
       octx.fillRect(0, 0, stamp.w, stamp.h);
       stamp.tinted = off;
       stamp.tintKey = key;
@@ -1277,7 +1647,7 @@
     }
   }
 
-  /* Per-clip alignment guides: dashed lines through each edge and the centre
+  /* Per-clip alignment guides: dashed lines through each edge and the center
      of the clip's bounding box, extended across the canvas. Overlay only —
      drawn after the composite, so they never reach the preview or an export. */
   function drawGuides(ctx) {
@@ -1300,12 +1670,74 @@
     ctx.restore();
   }
 
+  /* Composition overlays. Canvas-space coordinates, but stroke widths are
+     divided by viewZoom so a line stays hairline-thin on screen at any zoom
+     instead of vanishing when zoomed out of a large canvas. */
+  let overlayGuide = "";
+
+  function drawGoldenSpiral(ctx, w, h) {
+    // A true logarithmic spiral (r = a·e^(bθ), b = ln(φ)/(π/2)) rather than the
+    // stacked-squares approximation — fewer places to get the geometry wrong.
+    const b = Math.log(1.618033988749895) / (Math.PI / 2);
+    const maxR = Math.hypot(w, h) / 2;
+    const turns = 4 * Math.PI;
+    const steps = 400;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * turns;
+      const r = maxR * Math.exp(b * (t - turns));
+      const x = w * 0.618 + r * Math.cos(t);
+      const y = h * 0.618 + r * Math.sin(t);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function drawOverlayGuide(ctx) {
+    if (!overlayGuide) return;
+    const w = collage.canvas.width, h = collage.canvas.height;
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.38)";
+    ctx.lineWidth = 1 / viewZoom;
+
+    if (overlayGuide === "spiral") {
+      drawGoldenSpiral(ctx, w, h);
+      ctx.restore();
+      return;
+    }
+
+    ctx.beginPath();
+    const vLines = [], hLines = [];
+    if (overlayGuide === "grid") {
+      for (let i = 1; i < 8; i++) { vLines.push(i / 8); hLines.push(i / 8); }
+    } else if (overlayGuide === "thirds") {
+      vLines.push(1 / 3, 2 / 3); hLines.push(1 / 3, 2 / 3);
+    } else if (overlayGuide === "golden") {
+      vLines.push(0.381966, 0.618034); hLines.push(0.381966, 0.618034);
+    } else if (overlayGuide === "center") {
+      vLines.push(0.5); hLines.push(0.5);
+    } else if (overlayGuide === "diagonals") {
+      ctx.moveTo(0, 0); ctx.lineTo(w, h);
+      ctx.moveTo(w, 0); ctx.lineTo(0, h);
+    }
+    for (const f of vLines) { ctx.moveTo(w * f, 0); ctx.lineTo(w * f, h); }
+    for (const f of hLines) { ctx.moveTo(0, h * f); ctx.lineTo(w, h * f); }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  document.getElementById("overlayGuide").addEventListener("change", (e) => {
+    overlayGuide = e.target.value;
+    saveLayout();
+    renderCollage();
+  });
+
   async function renderCollage() {
     collageCanvas.width = collage.canvas.width;
     collageCanvas.height = collage.canvas.height;
     const ctx = collageCanvas.getContext("2d");
     await drawComposite(ctx, collageCanvas.width, collageCanvas.height);
-    if (!hideOutlines) drawGuides(ctx);
+    if (!hideOutlines) { drawOverlayGuide(ctx); drawGuides(ctx); }
     const sel = collage.clips.find((c) => c.id === selectedId);
     if (sel && !hideOutlines) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
     renderOverview();
@@ -1383,7 +1815,10 @@
     } else if (dragMode === "scale") {
       const stamp = stampCache.get(clip.id);
       const base = Math.hypot(stamp.w / 2, stamp.h / 2) || 1;
-      clip.scale = Math.max(0.05, Math.hypot(pt[0] - clip.x, pt[1] - clip.y) / base);
+      // Through the shared setter so a linked group scales together.
+      for (const c of linkedClips(clip)) {
+        if (!c.locked) c.scale = Math.max(0.05, Math.hypot(pt[0] - clip.x, pt[1] - clip.y) / base);
+      }
     }
     lastMouse = pt;
     renderCollage(); syncTextarea(); updateClipProps();
@@ -1400,6 +1835,14 @@
     requestAnimationFrame(fitView);
   });
 
+  // Hue derived from the group name, so the same group is always the same
+  // color without anyone having to pick one.
+  function groupColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % 360;
+    return `hsl(${hash}, 70%, 55%)`;
+  }
+
   function renderLayerList() {
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
@@ -1409,7 +1852,8 @@
     document.getElementById("linkGroups").innerHTML =
       groups.map((g) => `<option value="${escapeHtml(g)}">`).join("");
     list.innerHTML = sorted.map((c) => `
-      <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}">
+      <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}"
+          style="${c.link ? `border-left-color:${groupColor(c.link)}` : ""}">
         <div class="layer-top">
           <input type="text" class="layer-name" spellcheck="false"
                  value="${escapeHtml(c.name || c.source)}" title="source: ${escapeHtml(c.source)}">
@@ -1425,8 +1869,6 @@
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
           <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
           <button data-action="guides" class="${c.guides ? "active" : ""}" title="alignment guides">&#128208;</button>
-          <button data-action="copy" title="copy settings (scale, rotation, flips, blend, opacity, tint)">&#128203;</button>
-          <button data-action="paste" title="apply copied settings">&#8681;</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
           <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
@@ -1462,9 +1904,6 @@
     return clip.link ? collage.clips.filter((c) => c.link === clip.link) : [clip];
   }
 
-  // Transform settings copied from one clip, ready to apply to others.
-  let settingsClipboard = null;
-
   document.getElementById("layerList").addEventListener("click", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
@@ -1497,27 +1936,6 @@
     } else if (action === "lock") {
       clip.locked = !clip.locked;
       if (clip.locked && selectedId === clip.id) selectedId = null;
-    } else if (action === "copy") {
-      // Appearance only — never the mask, source or position.
-      settingsClipboard = {
-        scale: clip.scale, rotation: clip.rotation,
-        flipX: !!clip.flipX, flipY: !!clip.flipY,
-        blend: clip.blend || "source-over",
-        opacity: clip.opacity ?? 1,
-        tint: clip.tint || null, tintAmount: clip.tintAmount || 0
-      };
-    } else if (action === "paste") {
-      if (settingsClipboard) {
-        const s = settingsClipboard;
-        Object.assign(clip, {
-          scale: s.scale, rotation: s.rotation,
-          flipX: s.flipX, flipY: s.flipY,
-          blend: s.blend, opacity: s.opacity
-        });
-        // Assigning undefined would leave dead keys in the config.
-        if (s.tintAmount > 0) { clip.tint = s.tint; clip.tintAmount = s.tintAmount; }
-        else { delete clip.tint; delete clip.tintAmount; }
-      }
     } else {
       selectedId = id;
     }
@@ -1583,6 +2001,9 @@
     const action = btn.dataset.qa;
     if (action === "flipx") clip.flipX = !clip.flipX;
     else if (action === "flipy") clip.flipY = !clip.flipY;
+    // z is only a sort key, so jumping the extremes is enough — no reindexing.
+    else if (action === "front") clip.z = Math.max(...collage.clips.map((c) => c.z)) + 1;
+    else if (action === "back") clip.z = Math.min(...collage.clips.map((c) => c.z)) - 1;
     else if (action === "duplicate") duplicateClip(clip);
     else if (action === "delete") deleteClip(clip.id);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
@@ -1741,6 +2162,210 @@
     reader.readAsText(file);
   });
 
+  // ---------- clip library ----------
+  /* Stores only what identifies a cut — source, polygon, and the resolution it
+     was drawn against. Placement and appearance belong to the collage, not the
+     saved clip, so the same entry can be dropped in at any size. */
+  const LIBRARY_KEY = "collage.library.v1";
+  let clipLibrary = [];
+  let libraryTagFilter = null;
+  const libThumbCache = new Map();
+
+  function saveLibrary() {
+    try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(clipLibrary)); } catch { /* full or blocked */ }
+  }
+
+  function libEntry(id) { return clipLibrary.find((e) => e.id === id); }
+
+  document.getElementById("starClipBtn").addEventListener("click", () => {
+    if (!editor.closed || editor.points.length < 3) return;
+    const source = currentSourceName();
+    clipLibrary.push({
+      id: "lib-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: source,
+      source,
+      polygon: editor.points.map((p) => p.slice()),
+      baseW: editor.naturalW, baseH: editor.naturalH,
+      useOriginal: !!editor.editingUseOriginal,
+      tags: [],
+      added: Date.now()
+    });
+    saveLibrary();
+    renderLibrary();
+    document.getElementById("libraryStatus").textContent = "starred";
+  });
+
+  async function drawLibraryThumb(canvas, entry) {
+    if (!canvas) return;
+    let stamp = libThumbCache.get(entry.id);
+    if (!stamp) {
+      let img;
+      try { img = await loadImage(resolveSourceUrl(entry.source, entry.useOriginal)); } catch { return; }
+      stamp = buildStamp(entry.polygon, img);
+      libThumbCache.set(entry.id, stamp);
+    }
+    const fit = Math.min(56 / stamp.w, 56 / stamp.h);
+    canvas.width = Math.max(1, Math.round(stamp.w * fit));
+    canvas.height = Math.max(1, Math.round(stamp.h * fit));
+    canvas.getContext("2d").drawImage(stamp.canvas, 0, 0, canvas.width, canvas.height);
+  }
+
+  function visibleLibrary() {
+    const q = document.getElementById("librarySearch").value.trim().toLowerCase();
+    const sort = document.getElementById("librarySort").value;
+    const rows = clipLibrary.filter((e) => {
+      if (libraryTagFilter && !(e.tags || []).includes(libraryTagFilter)) return false;
+      if (!q) return true;
+      return `${e.name || ""} ${e.source} ${(e.tags || []).join(" ")}`.toLowerCase().includes(q);
+    });
+    return rows.sort((a, b) =>
+      sort === "name" ? String(a.name || "").localeCompare(String(b.name || ""))
+        : sort === "source" ? String(a.source).localeCompare(String(b.source))
+          : (b.added || 0) - (a.added || 0));
+  }
+
+  function renderLibrary() {
+    const allTags = [...new Set(clipLibrary.flatMap((e) => e.tags || []))].sort();
+    document.getElementById("libraryTags").innerHTML = allTags.map((t) =>
+      `<button class="tag-chip ${t === libraryTagFilter ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+    ).join("");
+
+    const list = document.getElementById("libraryList");
+    const rows = visibleLibrary();
+    list.innerHTML = rows.map((e) => `
+      <li data-id="${e.id}">
+        <canvas></canvas>
+        <div class="lib-body">
+          <input class="lib-name" value="${escapeHtml(e.name || e.source)}" spellcheck="false" title="name">
+          <input class="lib-tags" value="${escapeHtml((e.tags || []).join(", "))}" spellcheck="false" placeholder="tags, comma separated">
+          <span class="lib-source">${escapeHtml(e.source)}${e.useOriginal ? " (original)" : ""}</span>
+          <span class="lib-actions">
+            <button data-lib="place" title="add to collage">+</button>
+            <button data-lib="edit" title="open mask in editor">&#9998;</button>
+            <button data-lib="delete" title="remove from library">&#10005;</button>
+          </span>
+        </div>
+      </li>
+    `).join("");
+
+    rows.forEach((e, i) => drawLibraryThumb(list.children[i]?.querySelector("canvas"), e));
+  }
+
+  function placeLibraryEntry(entry) {
+    const xs = entry.polygon.map((p) => p[0]), ys = entry.polygon.map((p) => p[1]);
+    const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
+    const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
+    // Land at a workable size rather than dropping a full-resolution cut that
+    // overflows the canvas.
+    const fit = Math.min(1, (collage.canvas.width * 0.4) / w, (collage.canvas.height * 0.4) / h);
+    const id = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
+    collage.clips.push({
+      id, source: entry.source,
+      polygon: entry.polygon.map((p) => p.slice()),
+      baseW: entry.baseW, baseH: entry.baseH, useOriginal: !!entry.useOriginal,
+      name: entry.name,
+      x: collage.canvas.width / 2, y: collage.canvas.height / 2,
+      scale: fit, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
+    });
+    selectedId = id;
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  }
+
+  function editLibraryEntry(entry) {
+    editor.editingClipId = null;
+    editor.editingUseOriginal = !!entry.useOriginal;
+    document.getElementById("addToCollageBtn").textContent = "Add to collage";
+    if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
+    else setCurrentSourceUI("url", entry.source);
+    loadImage(resolveSourceUrl(entry.source, entry.useOriginal))
+      .then((img) => setEditorImage(img, entry.polygon))
+      .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
+  }
+
+  document.getElementById("libraryTags").addEventListener("click", (e) => {
+    const chip = e.target.closest(".tag-chip");
+    if (!chip) return;
+    libraryTagFilter = libraryTagFilter === chip.dataset.tag ? null : chip.dataset.tag;
+    renderLibrary();
+  });
+
+  document.getElementById("libraryList").addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    const btn = e.target.closest("[data-lib]");
+    if (!li || !btn) return;
+    const entry = libEntry(li.dataset.id);
+    if (!entry) return;
+    if (btn.dataset.lib === "place") placeLibraryEntry(entry);
+    else if (btn.dataset.lib === "edit") editLibraryEntry(entry);
+    else if (btn.dataset.lib === "delete") {
+      clipLibrary = clipLibrary.filter((x) => x.id !== entry.id);
+      libThumbCache.delete(entry.id);
+      saveLibrary();
+      renderLibrary();
+    }
+  });
+
+  // No re-render while typing — it would drop focus mid-word.
+  document.getElementById("libraryList").addEventListener("input", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    const entry = libEntry(li.dataset.id);
+    if (!entry) return;
+    if (e.target.classList.contains("lib-name")) entry.name = e.target.value;
+    else if (e.target.classList.contains("lib-tags")) {
+      entry.tags = e.target.value.split(",").map((t) => t.trim()).filter(Boolean);
+    } else return;
+    saveLibrary();
+  });
+
+  // On commit, refresh so the tag chips pick up anything new.
+  document.getElementById("libraryList").addEventListener("change", (e) => {
+    if (e.target.classList.contains("lib-tags")) renderLibrary();
+  });
+
+  document.getElementById("librarySearch").addEventListener("input", renderLibrary);
+  document.getElementById("librarySort").addEventListener("change", renderLibrary);
+
+  document.getElementById("libraryDownloadBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(clipLibrary, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "clip-library.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("libraryUploadBtn").addEventListener("click", () =>
+    document.getElementById("libraryUploadInput").click());
+
+  document.getElementById("libraryUploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const incoming = JSON.parse(reader.result);
+        if (!Array.isArray(incoming)) throw new Error("expected an array of clips");
+        // Merge rather than replace, skipping ids already held.
+        const have = new Set(clipLibrary.map((x) => x.id));
+        const added = incoming.filter((x) => x && x.id && x.polygon && !have.has(x.id));
+        clipLibrary = clipLibrary.concat(added);
+        saveLibrary();
+        renderLibrary();
+        document.getElementById("libraryStatus").textContent =
+          `${added.length} added, ${incoming.length - added.length} skipped`;
+      } catch (err) {
+        document.getElementById("libraryStatus").textContent = "invalid library file: " + err.message;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  try { clipLibrary = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]") || []; }
+  catch { clipLibrary = []; }
+
   // ---------- distraction-free preview ----------
   const previewOverlay = document.getElementById("previewOverlay");
   const previewCanvas = document.getElementById("previewCanvas");
@@ -1829,6 +2454,8 @@
 
   restoreLayout();
   applyAutoSave();
+  renderPalettes();
+  renderLibrary();
   renderCollage();
   renderLayerList();
   syncTextarea();
