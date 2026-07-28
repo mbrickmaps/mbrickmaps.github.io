@@ -6,23 +6,61 @@
 <meta name="googlebot" content="noindex, nofollow, noimageindex">
 <title>Collage</title>
 <style>
-  :root { --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333; --accent: #ff5500; --accent2: #33ff33; }
+  :root {
+    --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333; --accent: #ff5500; --accent2: #33ff33;
+    --panel-gap: 16px; --row-unit: 4px;
+  }
   * { box-sizing: border-box; }
   body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
   h1 { font-size: 1.2rem; margin: 0 0 12px; }
   h2 { font-size: 0.95rem; margin: 0 0 8px; opacity: 0.85; }
-  .layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex: 0 0 auto; }
+  /* 12-column grid. Panel width is a column span; the row span is measured from
+     the panel's own height into a fine row unit (syncPanelSpan), which is what
+     lets `dense` lift a short panel up into the space beside a taller one
+     instead of leaving the row half empty.
+     row-gap is 0 because a gap would be inserted between every one of the many
+     implicit rows a panel spans; the panels carry their own bottom margin. */
+  .layout {
+    display: grid; grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: var(--row-unit); grid-auto-flow: row dense;
+    column-gap: var(--panel-gap); row-gap: 0; align-items: start;
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; grid-column: span 6; margin-bottom: var(--panel-gap); min-width: 0;
+  }
 
-  /* Panel sizing — small 1/3, medium 1/2, full. Widths are flex-basis so
-     panels reflow onto their own rows as they grow. The gap is subtracted so
-     three (or two) sit on one row without wrapping. */
-  .panel.size-mini { flex-basis: calc(33.333% - 11px); }
-  .panel.size-half { flex-basis: calc(50% - 8px); }
-  .panel.size-full { flex-basis: 100%; }
+  /* Panel sizing — column spans out of 12. These are the only widths that tile
+     the grid cleanly, so a row always adds up: 4+8, 6+6, 4+4+4. */
+  .panel.size-mini { grid-column: span 4; }        /* 1/3 */
+  .panel.size-half { grid-column: span 6; }        /* 1/2 */
+  .panel.size-twothirds { grid-column: span 8; }   /* 2/3 */
+  .panel.size-full { grid-column: span 12; }
 
-  /* Minimized: header only, shrunk to its own width. */
-  .panel.minimized { flex-basis: auto; }
+  /* Minimized: header only, parked at a third so it still lines up. */
+  .panel.minimized { grid-column: span 4; }
+
+  /* --- drag to rearrange --- */
+  .panel-head { cursor: grab; }
+  .panel-head button { cursor: pointer; }
+  .layout.is-dragging { user-select: none; }
+  /* The dragged panel goes fixed, which takes it out of the grid entirely; the
+     drop-slot stands in for it so the surrounding panels settle where they
+     would actually land. */
+  .panel.is-dragged {
+    position: fixed; z-index: 999; margin: 0; pointer-events: none;
+    opacity: 0.9; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    border-color: var(--accent); cursor: grabbing;
+  }
+  .drop-slot {
+    border: 2px dashed var(--accent); border-radius: 6px;
+    background: rgba(255, 85, 0, 0.07); margin-bottom: var(--panel-gap);
+    min-width: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; color: var(--accent); opacity: 0.9;
+    /* The grid aligns items to start so panels keep their content height; the
+       slot has no content, so it has to be told to fill the rows it claims. */
+    align-self: stretch;
+  }
   .panel.minimized > *:not(.panel-head) { display: none; }
   .panel.minimized .panel-head { margin-bottom: 0; }
 
@@ -43,8 +81,18 @@
   button:disabled { opacity: 0.4; cursor: not-allowed; }
   .row button.active { border-color: var(--accent2); color: var(--accent2); }
   .row.inactive { opacity: 0.4; }
+  /* Divider and label marking where the canvas controls end and the controls
+     for the selected layer begin. */
+  #clipProps { border-top: 1px solid var(--border); padding-top: 10px; }
+  /* flex-basis 100% forces the wrap, so the label sits on its own line above
+     the controls it names. */
+  .section-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; flex: 0 0 100%; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+  /* Labels elsewhere stay inline because their control is a small <input>; the
+     dropdown is a block-level div, so without this it wraps onto its own line
+     instead of sitting beside the label text like every other labeled control. */
+  .row > label:has(.dropdown) { display: flex; align-items: center; gap: 6px; }
   .dropdown { position: relative; }
   .dropdown-btn { min-width: 200px; text-align: left; }
   .dropdown-list {
@@ -77,7 +125,29 @@
      transform, so nodes and outlines rasterise sharp at every zoom level. */
   #sourceCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
   #srcZoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
-  #magnifier { border: 1px solid var(--border); flex-shrink: 0; }
+  /* Spot Check — a nearest-neighbour magnifier of the source under the cursor.
+     The canvas is exactly windowSize x magnification px so pixels stay square
+     and unscaled; .spot-view scrolls instead of stretching the panel when a
+     large window and 25x would otherwise overflow it. */
+  .spot-check {
+    flex-shrink: 0; max-width: 100%; padding: 8px; background: #0a0a0a;
+    border: 1px solid var(--border); border-radius: 4px;
+  }
+  .spot-check h3 { margin: 0 0 6px; font-size: 0.85rem; }
+  .spot-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.75rem; }
+  .spot-controls label { display: flex; gap: 4px; align-items: center; }
+  .spot-controls input[type="number"] { width: 56px; padding: 2px 4px; font-size: 0.75rem; }
+  .spot-controls select { padding: 2px 4px; font-size: 0.75rem; }
+  .spot-view { overflow: auto; max-width: 100%; max-height: 460px; }
+  #magnifier { border: 1px solid var(--border); display: block; }
+  .spot-idle {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    border: 1px solid var(--border); background: #151515; opacity: 0.5;
+    font-size: 0.75rem; padding: 8px; box-sizing: border-box;
+  }
+  /* These two swap via the hidden attribute, which an explicit display would
+     otherwise beat on specificity. */
+  #magnifier[hidden], .spot-idle[hidden] { display: none; }
   /* Canvas on the left, layers docked as a column on the right. */
   .viewport-wrap { display: flex; gap: 12px; align-items: flex-start; }
   /* resize:both gives a native drag corner; it needs a non-visible overflow,
@@ -165,6 +235,13 @@
     margin-bottom: 4px; cursor: pointer; font-size: 0.8rem;
   }
   #layerList li.selected { border-color: var(--accent2); }
+  /* Dragging a row restacks it — the row itself moves, so the gap it leaves is
+     the drop preview. */
+  #layerList li.layer-dragging {
+    opacity: 0.45; border-style: dashed; border-color: var(--accent); cursor: grabbing;
+  }
+  #layerList.is-restacking { user-select: none; }
+  #layerList.is-restacking li { cursor: grabbing; }
   #layerList .layer-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
   #layerList .layer-name {
     flex: 1 1 auto; min-width: 0; background: transparent; color: var(--fg);
@@ -246,24 +323,31 @@
 
   <section class="panel size-half" id="editorPanel">
     <div class="panel-head">
-      <h2>Clip source <span class="help-icon" title="Click to place polygon points. Click near the first point (or Close path) to finish.&#10;Once closed: drag a point to move it, double-click a point to remove it (min 3), drag from inside the shape to move the whole path, or turn on Add point mode and click an edge to insert a point.&#10;Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are stored at source resolution.">&#9432;</span></h2>
+      <h2>Clipper <span class="help-icon" title="Click to place polygon points. Click near the first point (or Close path) to finish.&#10;Once closed: drag a point to move it, double-click a point to remove it (min 3), drag from inside the shape to move the whole path, or turn on Add point mode and click an edge to insert a point.&#10;Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are stored at source resolution.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
         <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
         <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
     <div class="row">
-      <div class="dropdown" id="sourceDropdown">
-        <button type="button" id="sourceDropdownBtn" class="dropdown-btn">Loading photos&hellip;</button>
-        <div class="dropdown-list" id="sourceDropdownList" hidden></div>
-      </div>
+      <label>Load image
+        <div class="dropdown" id="sourceDropdown">
+          <button type="button" id="sourceDropdownBtn" class="dropdown-btn">Loading photos&hellip;</button>
+          <div class="dropdown-list" id="sourceDropdownList" hidden></div>
+        </div>
+      </label>
       <input type="text" id="sourceUrl" placeholder="https://... image URL" style="display:none">
       <button id="loadUrlBtn" style="display:none">Load</button>
     </div>
+    <p class="hint" id="sourceUrlHint" hidden>
+      JPG, PNG, WebP, GIF, AVIF or SVG &mdash; the server must allow anonymous
+      cross-origin requests (CORS), or the image will load but can't be exported.
+    </p>
     <div class="source-preview" id="sourcePreview" hidden><img id="sourcePreviewImg" alt=""></div>
     <div class="canvas-wrap">
       <div id="sourceViewport">
@@ -281,7 +365,24 @@
           <button type="button" id="src100Btn">1:1</button>
         </div>
       </div>
-      <canvas id="magnifier" width="150" height="150"></canvas>
+      <div class="spot-check">
+        <h3>Spot Check</h3>
+        <div class="spot-controls">
+          <label>Window
+            <input type="number" id="spotWindow" min="10" max="500" step="10" value="30">px</label>
+          <label>Magnification
+            <select id="spotMag">
+              <option value="4">4x</option>
+              <option value="10" selected>10x</option>
+              <option value="25">25x</option>
+            </select>
+          </label>
+        </div>
+        <div class="spot-view">
+          <canvas id="magnifier"></canvas>
+          <div class="spot-idle" id="spotIdle">Hover over source to magnify</div>
+        </div>
+      </div>
     </div>
     <div class="row">
       <button id="addPointModeBtn">Add point mode: off</button>
@@ -297,6 +398,7 @@
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
         <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
         <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -364,6 +466,7 @@
       <button id="canvasSaveBtn" title="save the config to local storage">Save</button>
     </div>
     <div class="row" id="clipProps">
+      <span class="section-label">Layer controls</span>
       <label>Scale
         <button type="button" id="clipScaleDown" title="scale down">&minus;</button>
         <input type="range" id="clipScale" min="0.05" max="8" step="0.01">
@@ -442,12 +545,13 @@
 
   <section class="panel size-mini" id="colorPanel">
     <div class="panel-head">
-      <h2>Color library</h2>
+      <h2>Swatches</h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
         <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
         <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -474,12 +578,13 @@
 
   <section class="panel size-mini" id="libraryPanel">
     <div class="panel-head">
-      <h2>Clip library</h2>
+      <h2>Clippings</h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
         <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
         <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -510,6 +615,7 @@
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
         <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
         <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
         <button type="button" data-size="full" title="full">&#9645;</button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -868,20 +974,74 @@
 
   new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); saveLayoutSoon(); }).observe(sourceViewport);
 
+  // ---------- Spot Check ----------
+  // A square window of `spot.size` source pixels centred on the cursor, blitted
+  // at `spot.mag` with smoothing off, so what you inspect is the actual pixels
+  // rather than an interpolated guess at them.
   const magCanvas = document.getElementById("magnifier");
   const mctx = magCanvas.getContext("2d");
-  const MAG_ZOOM = 4, MAG_SIZE = 150;
-  function updateMagnifier(nx, ny) {
-    if (!editor.image) return;
-    const half = (MAG_SIZE / 2) / MAG_ZOOM;
-    mctx.clearRect(0, 0, MAG_SIZE, MAG_SIZE);
-    mctx.drawImage(editor.image, nx - half, ny - half, half * 2, half * 2, 0, 0, MAG_SIZE, MAG_SIZE);
+  const spotIdle = document.getElementById("spotIdle");
+  const spotWindowInput = document.getElementById("spotWindow");
+  const spotMagSelect = document.getElementById("spotMag");
+  const spot = { size: 30, mag: 10, at: null };
+
+  function spotExtent() { return spot.size * spot.mag; }
+
+  // Backing store is the true output size — never CSS-scaled, or the pixels
+  // would blur and defeat the point.
+  function syncSpotSize() {
+    const px = spotExtent();
+    magCanvas.width = px;
+    magCanvas.height = px;
+    spotIdle.style.width = px + "px";
+    spotIdle.style.height = px + "px";
+  }
+
+  function showSpotIdle() {
+    spot.at = null;
+    magCanvas.hidden = true;
+    spotIdle.hidden = false;
+  }
+
+  function drawSpot() {
+    if (!editor.image || !spot.at) { showSpotIdle(); return; }
+    const px = spotExtent();
+    // Clamp the window inside the image. The crosshair then sits off-centre
+    // near an edge, which is exactly how you know you've reached one.
+    const sx = Math.max(0, Math.min(spot.at.x - spot.size / 2, editor.naturalW - spot.size));
+    const sy = Math.max(0, Math.min(spot.at.y - spot.size / 2, editor.naturalH - spot.size));
+    magCanvas.hidden = false;
+    spotIdle.hidden = true;
+    mctx.clearRect(0, 0, px, px);
+    mctx.imageSmoothingEnabled = false;
+    mctx.drawImage(editor.image, sx, sy, spot.size, spot.size, 0, 0, px, px);
+    // Crosshair tracks the real cursor, not the window centre.
+    const cx = (spot.at.x - sx) * spot.mag, cy = (spot.at.y - sy) * spot.mag;
     mctx.strokeStyle = "#ff5500";
+    mctx.lineWidth = 1;
     mctx.beginPath();
-    mctx.moveTo(MAG_SIZE / 2, 0); mctx.lineTo(MAG_SIZE / 2, MAG_SIZE);
-    mctx.moveTo(0, MAG_SIZE / 2); mctx.lineTo(MAG_SIZE, MAG_SIZE / 2);
+    mctx.moveTo(cx, 0); mctx.lineTo(cx, px);
+    mctx.moveTo(0, cy); mctx.lineTo(px, cy);
     mctx.stroke();
   }
+
+  function updateMagnifier(nx, ny) {
+    spot.at = { x: nx, y: ny };
+    drawSpot();
+  }
+
+  spotWindowInput.addEventListener("input", () => {
+    spot.size = Math.min(500, Math.max(10, parseInt(spotWindowInput.value) || 30));
+    syncSpotSize(); drawSpot(); saveLayoutSoon();
+  });
+  spotMagSelect.addEventListener("change", () => {
+    spot.mag = parseInt(spotMagSelect.value) || 10;
+    syncSpotSize(); drawSpot(); saveLayoutSoon();
+  });
+  sourceCanvas.addEventListener("mouseleave", showSpotIdle);
+
+  syncSpotSize();
+  showSpotIdle();
 
   document.getElementById("closePathBtn").addEventListener("click", () => {
     if (editor.points.length >= 3) { editor.closed = true; renderEditor(); }
@@ -932,6 +1092,7 @@
   // ---------- source picker (custom dropdown w/ hover preview) ----------
   const sourceUrlInput = document.getElementById("sourceUrl");
   const loadUrlBtn = document.getElementById("loadUrlBtn");
+  const sourceUrlHint = document.getElementById("sourceUrlHint");
   const dropdownBtn = document.getElementById("sourceDropdownBtn");
   const dropdownList = document.getElementById("sourceDropdownList");
   const sourcePreview = document.getElementById("sourcePreview");
@@ -961,12 +1122,14 @@
       currentSource = { type: "url", value: name || "" };
       sourceUrlInput.style.display = "";
       loadUrlBtn.style.display = "";
+      sourceUrlHint.hidden = false;
       dropdownBtn.textContent = "— custom URL —";
       if (name) sourceUrlInput.value = name;
     } else {
       currentSource = { type: "photo", value: name };
       sourceUrlInput.style.display = "none";
       loadUrlBtn.style.display = "none";
+      sourceUrlHint.hidden = true;
       const opt = photoOptions.find((p) => p.name === name);
       dropdownBtn.textContent = opt ? opt.label : name;
     }
@@ -1118,13 +1281,36 @@
   document.getElementById("fitViewBtn").addEventListener("click", fitView);
 
   // ---------- panel sizing & ordering ----------
-  /* Reordering uses the flex `order` property rather than moving nodes, so the
+  /* Reordering uses the `order` property rather than moving nodes, so the
      canvases keep their buffers and every listener stays attached. */
-  const layoutPanels = () => [...document.querySelectorAll(".layout > .panel")];
+  const layoutEl = document.querySelector(".layout");
+  const layoutPanels = () => [...layoutEl.querySelectorAll(":scope > .panel")];
   layoutPanels().forEach((p, i) => { p.style.order = i; });
 
+  const cssPx = (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+
+  /* Grid rows are a few pixels tall and each panel claims as many as its height
+     needs. That is what gives `dense` something to pack against — without it
+     every row would be as tall as its tallest panel and the gaps would stay. */
+  function syncPanelSpan(panel) {
+    if (panel.classList.contains("is-dragged")) return;
+    const unit = cssPx("--row-unit"), gap = cssPx("--panel-gap");
+    const span = Math.max(1, Math.ceil((panel.offsetHeight + gap) / unit));
+    panel.style.gridRow = `span ${span}`;
+  }
+
+  const syncAllSpans = () => layoutPanels().forEach(syncPanelSpan);
+
+  const spanObserver = new ResizeObserver((entries) => {
+    entries.forEach((e) => syncPanelSpan(e.target));
+  });
+  layoutPanels().forEach((p) => spanObserver.observe(p));
+
+  const panelsInOrder = () =>
+    layoutPanels().sort((a, b) => Number(a.style.order) - Number(b.style.order));
+
   function movePanel(panel, dir) {
-    const byOrder = layoutPanels().sort((a, b) => Number(a.style.order) - Number(b.style.order));
+    const byOrder = panelsInOrder();
     const i = byOrder.indexOf(panel);
     const j = i + dir;
     if (j < 0 || j >= byOrder.length) return;
@@ -1135,9 +1321,125 @@
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
   }
 
+  // ---------- drag a panel by its header to rearrange ----------
+  /* The dragged panel goes position:fixed, which pulls it out of the grid, and
+     a drop-slot of the same span takes its place. The slot is a real grid item,
+     so what you see during the drag is the actual settled layout, not a guess
+     at it. */
+  let drag = null;
+
+  const applyOrder = (items) => items.forEach((n, i) => { n.style.order = i; });
+
+  function panelUnder(x, y) {
+    return layoutPanels().find((p) => {
+      if (p === drag.panel) return false;
+      const r = p.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    });
+  }
+
+  function reslot(target, x, y) {
+    const r = target.getBoundingClientRect();
+    // A panel spanning most of the row is stacked above/below its neighbours,
+    // so the meaningful midpoint is horizontal for narrow ones, vertical for wide.
+    const wide = r.width > layoutEl.clientWidth * 0.6;
+    const after = wide ? y - r.top > r.height / 2 : x - r.left > r.width / 2;
+    const items = drag.order.filter((n) => n !== drag.slot);
+    const i = items.indexOf(target) + (after ? 1 : 0);
+    items.splice(i, 0, drag.slot);
+    drag.order = items;
+    applyOrder(items);
+  }
+
+  function startDrag(panel, ev) {
+    const rect = panel.getBoundingClientRect();
+    const cs = getComputedStyle(panel);
+
+    const slot = document.createElement("div");
+    slot.className = "drop-slot";
+    slot.textContent = "drop here";
+    slot.style.gridColumn = `${cs.gridColumnStart} / ${cs.gridColumnEnd}`;
+    slot.style.gridRow = panel.style.gridRow || "span 1";
+
+    drag = { panel, slot, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, order: null };
+
+    const items = panelsInOrder();
+    items.splice(items.indexOf(panel), 1, slot);
+    drag.order = items;
+    layoutEl.appendChild(slot);
+    applyOrder(items);
+
+    // Pin the size before going fixed, or the panel would collapse to content.
+    panel.style.width = rect.width + "px";
+    panel.style.height = rect.height + "px";
+    panel.classList.add("is-dragged");
+    layoutEl.classList.add("is-dragging");
+    moveDrag(ev);
+  }
+
+  function moveDrag(ev) {
+    drag.panel.style.left = `${ev.clientX - drag.dx}px`;
+    drag.panel.style.top = `${ev.clientY - drag.dy}px`;
+    const target = panelUnder(ev.clientX, ev.clientY);
+    if (target) reslot(target, ev.clientX, ev.clientY);
+  }
+
+  function endDrag(commit) {
+    const { panel, slot, order } = drag;
+    panel.classList.remove("is-dragged");
+    layoutEl.classList.remove("is-dragging");
+    panel.style.width = panel.style.height = panel.style.left = panel.style.top = "";
+
+    const final = commit ? order.map((n) => (n === slot ? panel : n)) : panelsInOrder();
+    slot.remove();
+    if (commit) applyOrder(final.filter((n) => n !== slot));
+    drag = null;
+
+    syncAllSpans();
+    saveLayout();
+    requestAnimationFrame(() => { syncAllSpans(); fitView(); fitSourceView(); });
+  }
+
+  layoutEl.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0 || drag) return;
+    const head = ev.target.closest(".panel-head");
+    // Let the buttons and the help tooltip keep their own behaviour.
+    if (!head || ev.target.closest("button, .help-icon")) return;
+    const panel = head.closest(".panel");
+    if (!panel || !layoutPanels().includes(panel)) return;
+
+    const startX = ev.clientX, startY = ev.clientY;
+    let armed = false;
+
+    const onMove = (e) => {
+      // A small threshold so an ordinary click on the header is still a click.
+      if (!armed && Math.hypot(e.clientX - startX, e.clientY - startY) < 5) return;
+      if (!armed) { armed = true; startDrag(panel, e); return; }
+      moveDrag(e);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
+      if (armed) endDrag(true);
+    };
+    const onKey = (e) => {
+      if (e.key !== "Escape" || !armed) return;
+      e.preventDefault();
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
+      endDrag(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("keydown", onKey, true);
+  });
+
   // ---------- layout persistence ----------
   const LAYOUT_KEY = "collage.layout.v1";
-  const SIZE_CLASSES = ["size-mini", "size-half", "size-full"];
+  const SIZE_CLASSES = ["size-mini", "size-half", "size-twothirds", "size-full"];
 
   function saveLayout() {
     const state = {
@@ -1154,7 +1456,8 @@
         secs: document.getElementById("autoSaveInterval").value
       },
       collageViewport: { w: collageViewport.style.width, h: collageViewport.style.height },
-      sourceViewport: { w: sourceViewport.style.width, h: sourceViewport.style.height }
+      sourceViewport: { w: sourceViewport.style.width, h: sourceViewport.style.height },
+      spotCheck: { size: spot.size, mag: spot.mag }
     };
     try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(state)); } catch { /* storage unavailable */ }
   }
@@ -1191,6 +1494,18 @@
       if (state.autoSave.secs) document.getElementById("autoSaveInterval").value = state.autoSave.secs;
     }
 
+    if (state.spotCheck) {
+      spot.size = Math.min(500, Math.max(10, Number(state.spotCheck.size) || spot.size));
+      // Only accept a magnification the select actually offers.
+      if ([...spotMagSelect.options].some((o) => Number(o.value) === Number(state.spotCheck.mag))) {
+        spot.mag = Number(state.spotCheck.mag);
+      }
+      spotWindowInput.value = spot.size;
+      spotMagSelect.value = spot.mag;
+      syncSpotSize();
+      showSpotIdle();
+    }
+
     if (state.layersCollapsed) {
       document.getElementById("layersPanel").classList.add("collapsed");
       const btn = document.getElementById("layersCollapseBtn");
@@ -1214,7 +1529,7 @@
     if (btn.dataset.action === "minimize") {
       btn.classList.toggle("active", panel.classList.toggle("minimized"));
     } else {
-      panel.classList.remove("minimized", "size-mini", "size-half", "size-full");
+      panel.classList.remove("minimized", ...SIZE_CLASSES);
       panel.classList.add("size-" + btn.dataset.size);
       panel.querySelector('.size-toggle [data-action="minimize"]').classList.remove("active");
       btn.parentElement.querySelectorAll("button[data-size]")
@@ -1222,7 +1537,7 @@
     }
     saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
-    requestAnimationFrame(() => { fitView(); fitSourceView(); });
+    requestAnimationFrame(() => { syncAllSpans(); fitView(); fitSourceView(); });
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
@@ -1936,6 +2251,87 @@
     return clip.link ? collage.clips.filter((c) => c.link === clip.link) : [clip];
   }
 
+  // ---------- drag a layer to restack it ----------
+  /* The list runs top-of-stack first, so the row is moved in the DOM as you
+     drag and the whole stack's z is rewritten from the final positions. Nothing
+     re-renders mid-drag, which would otherwise throw away the row being held. */
+  const layerListEl = document.getElementById("layerList");
+  let layerDrag = null;
+
+  function layerRowUnder(y) {
+    return [...layerListEl.querySelectorAll("li")].find((li) => {
+      if (li === layerDrag.li) return false;
+      const r = li.getBoundingClientRect();
+      return y >= r.top && y <= r.bottom;
+    });
+  }
+
+  function commitLayerOrder() {
+    const ids = [...layerListEl.querySelectorAll("li")].map((li) => li.dataset.id);
+    // Top row is the front of the stack, so z counts down the list.
+    ids.forEach((id, i) => {
+      const clip = collage.clips.find((c) => c.id === id);
+      if (clip) clip.z = ids.length - i;
+    });
+  }
+
+  layerListEl.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || layerDrag) return;
+    const li = e.target.closest("li");
+    // The name/link fields and the action buttons keep their own behaviour.
+    if (!li || e.target.closest("input, button")) return;
+
+    const startY = e.clientY, startX = e.clientX;
+    let armed = false;
+
+    const onMove = (ev) => {
+      if (!armed && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+      if (!armed) {
+        armed = true;
+        layerDrag = { li, id: li.dataset.id };
+        li.classList.add("layer-dragging");
+        layerListEl.classList.add("is-restacking");
+      }
+      const target = layerRowUnder(ev.clientY);
+      if (!target) return;
+      const r = target.getBoundingClientRect();
+      const after = ev.clientY > r.top + r.height / 2;
+      target.parentNode.insertBefore(li, after ? target.nextSibling : target);
+    };
+
+    const finish = (commit) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("keydown", onKey, true);
+      if (!armed) return;
+      li.classList.remove("layer-dragging");
+      layerListEl.classList.remove("is-restacking");
+      if (commit) {
+        commitLayerOrder();
+        selectedId = layerDrag.id;
+      }
+      layerDrag = null;
+      /* Swallow the click the release generates, or it would re-select. A
+         one-shot capture listener rather than a flag, so an Escape released
+         outside the list can't leave a stale flag to eat a later click. */
+      const swallow = (ev) => ev.stopPropagation();
+      layerListEl.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => layerListEl.removeEventListener("click", swallow, { capture: true }), 300);
+      renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+    };
+
+    const onUp = () => finish(true);
+    const onKey = (ev) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      finish(false);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("keydown", onKey, true);
+  });
+
   document.getElementById("layerList").addEventListener("click", (e) => {
     const li = e.target.closest("li");
     if (!li) return;
@@ -2501,6 +2897,9 @@
   syncTextarea();
   fitView();
   updateClipProps();
+  // Panels only have their real heights once everything above has rendered.
+  syncAllSpans();
+  requestAnimationFrame(syncAllSpans);
 </script>
 
 </body>
