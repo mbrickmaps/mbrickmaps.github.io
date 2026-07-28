@@ -8,26 +8,21 @@
 <style>
   :root {
     --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333; --accent: #ff5500; --accent2: #33ff33;
-    --panel-gap: 16px; --row-unit: 4px;
+    --panel-gap: 16px;
   }
   * { box-sizing: border-box; }
   body { background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
   h1 { font-size: 1.2rem; margin: 0 0 12px; }
   h2 { font-size: 0.95rem; margin: 0 0 8px; opacity: 0.85; }
-  /* 12-column grid. Panel width is a column span; the row span is measured from
-     the panel's own height into a fine row unit (syncPanelSpan), which is what
-     lets `dense` lift a short panel up into the space beside a taller one
-     instead of leaving the row half empty.
-     row-gap is 0 because a gap would be inserted between every one of the many
-     implicit rows a panel spans; the panels carry their own bottom margin. */
+  /* 12-column grid. Panel width is a column span; one grid row per panel, so
+     panels stay aligned in rows rather than staggering. */
   .layout {
     display: grid; grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: var(--row-unit); grid-auto-flow: row dense;
-    column-gap: var(--panel-gap); row-gap: 0; align-items: start;
+    gap: var(--panel-gap); align-items: start;
   }
   .panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-    padding: 12px; grid-column: span 6; margin-bottom: var(--panel-gap); min-width: 0;
+    padding: 12px; grid-column: span 6; min-width: 0;
   }
 
   /* Panel sizing — column spans out of 12. These are the only widths that tile
@@ -54,12 +49,9 @@
   }
   .drop-slot {
     border: 2px dashed var(--accent); border-radius: 6px;
-    background: rgba(255, 85, 0, 0.07); margin-bottom: var(--panel-gap);
+    background: rgba(255, 85, 0, 0.07);
     min-width: 0; display: flex; align-items: center; justify-content: center;
     font-size: 0.75rem; color: var(--accent); opacity: 0.9;
-    /* The grid aligns items to start so panels keep their content height; the
-       slot has no content, so it has to be told to fill the rows it claims. */
-    align-self: stretch;
   }
   .panel.minimized > *:not(.panel-head) { display: none; }
   .panel.minimized .panel-head { margin-bottom: 0; }
@@ -228,6 +220,19 @@
   .swatch:hover { border-color: var(--accent2); }
   #paletteSelect { flex: 1 1 auto; min-width: 80px; }
   /* The flyout scrolls, so the list itself must not — nested scrollbars. */
+  #exampleList { list-style: none; margin: 0 0 8px; padding: 0; }
+  #exampleList li {
+    display: flex; gap: 8px; align-items: center; padding: 4px; margin-bottom: 4px;
+    border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+  }
+  #exampleList li:hover { border-color: var(--accent); }
+  /* Thumbnails are rendered from the project's own JSON, so the list needs no
+     companion image files kept in sync. */
+  #exampleList canvas { display: block; background: #000; border: 1px solid var(--border); flex-shrink: 0; }
+  #exampleList .ex-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #exampleList .ex-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #exampleList .ex-sub { font-size: 0.7rem; opacity: 0.55; }
+
   #layerList { list-style: none; margin: 0; padding: 0; width: 100%; }
   #layerList li {
     display: flex; flex-direction: column; align-items: stretch; gap: 4px;
@@ -607,9 +612,26 @@
     </div>
   </section>
 
+  <section class="panel size-mini" id="examplesPanel">
+    <div class="panel-head">
+      <h2>Examples <span class="help-icon" title="Starter projects. Click one to load it into the collage — this replaces whatever is currently on the canvas.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <ul id="exampleList"></ul>
+    <span id="exampleStatus" class="hint" style="margin:0;"></span>
+  </section>
+
   <section class="panel size-mini" id="configPanel">
     <div class="panel-head">
-      <h2>Config</h2>
+      <h2>Settings <span class="help-icon" title="The project as JSON. Apply pushes the text below onto the canvas.&#10;Save and Load use this browser's local storage — one saved project, on this machine only, cleared if you clear site data.&#10;Download and Upload use a .json file on disk, which is what you share or keep.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -622,14 +644,12 @@
     </div>
     <textarea id="configText" spellcheck="false"></textarea>
     <div class="row" style="margin-top:8px;">
-      <button id="applyBtn">Apply</button>
-      <button id="saveBtn">Save</button>
-      <button id="loadBtn">Load</button>
-      <button id="downloadBtn">Download</button>
-      <button id="uploadBtn">Upload</button>
-      <input type="file" id="uploadInput" accept="application/json" style="display:none">
+      <button id="applyBtn" title="push the JSON above onto the canvas">Apply</button>
     </div>
     <div class="row">
+      <span class="section-label">This browser</span>
+      <button id="saveBtn" title="save the project into this browser's local storage">Save</button>
+      <button id="loadBtn" title="replace the canvas with the project saved in this browser">Load</button>
       <label><input type="checkbox" id="autoSaveChk"> auto-save</label>
       <select id="autoSaveInterval">
         <option value="30">30s</option>
@@ -638,6 +658,12 @@
         <option value="600">10m</option>
       </select>
       <span id="saveStatus" class="hint" style="margin:0;"></span>
+    </div>
+    <div class="row">
+      <span class="section-label">File</span>
+      <button id="downloadBtn" title="download the project as a .json file">Download</button>
+      <button id="uploadBtn" title="replace the canvas with a .json file from disk">Upload</button>
+      <input type="file" id="uploadInput" accept="application/json" style="display:none">
     </div>
     <div class="row">
       <button id="convertOriginalsBtn">Convert to originals</button>
@@ -1287,25 +1313,6 @@
   const layoutPanels = () => [...layoutEl.querySelectorAll(":scope > .panel")];
   layoutPanels().forEach((p, i) => { p.style.order = i; });
 
-  const cssPx = (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
-
-  /* Grid rows are a few pixels tall and each panel claims as many as its height
-     needs. That is what gives `dense` something to pack against — without it
-     every row would be as tall as its tallest panel and the gaps would stay. */
-  function syncPanelSpan(panel) {
-    if (panel.classList.contains("is-dragged")) return;
-    const unit = cssPx("--row-unit"), gap = cssPx("--panel-gap");
-    const span = Math.max(1, Math.ceil((panel.offsetHeight + gap) / unit));
-    panel.style.gridRow = `span ${span}`;
-  }
-
-  const syncAllSpans = () => layoutPanels().forEach(syncPanelSpan);
-
-  const spanObserver = new ResizeObserver((entries) => {
-    entries.forEach((e) => syncPanelSpan(e.target));
-  });
-  layoutPanels().forEach((p) => spanObserver.observe(p));
-
   const panelsInOrder = () =>
     layoutPanels().sort((a, b) => Number(a.style.order) - Number(b.style.order));
 
@@ -1359,7 +1366,7 @@
     slot.className = "drop-slot";
     slot.textContent = "drop here";
     slot.style.gridColumn = `${cs.gridColumnStart} / ${cs.gridColumnEnd}`;
-    slot.style.gridRow = panel.style.gridRow || "span 1";
+    slot.style.height = rect.height + "px";
 
     drag = { panel, slot, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, order: null };
 
@@ -1395,9 +1402,8 @@
     if (commit) applyOrder(final.filter((n) => n !== slot));
     drag = null;
 
-    syncAllSpans();
     saveLayout();
-    requestAnimationFrame(() => { syncAllSpans(); fitView(); fitSourceView(); });
+    requestAnimationFrame(() => { fitView(); fitSourceView(); });
   }
 
   layoutEl.addEventListener("pointerdown", (ev) => {
@@ -1537,7 +1543,7 @@
     }
     saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
-    requestAnimationFrame(() => { syncAllSpans(); fitView(); fitSourceView(); });
+    requestAnimationFrame(() => { fitView(); fitSourceView(); });
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
@@ -2491,6 +2497,90 @@
     }
   });
 
+  // ---------- examples ----------
+  /* examples.json is a plain list of paths, because static hosting has no
+     directory listing — the page cannot discover the files on its own. Entries
+     may be a bare path or {file, title} when a nicer name is wanted. */
+  const exampleList = document.getElementById("exampleList");
+  const exampleStatus = document.getElementById("exampleStatus");
+
+  /* Renders a project without touching any app state: buildStamp and drawClip
+     both take everything they need as arguments, so the thumbnail is drawn by
+     the same code that draws the real canvas. */
+  async function renderExampleThumb(config, boxW, boxH) {
+    const cw = config.canvas?.width || 1000, ch = config.canvas?.height || 700;
+    const scale = Math.min(boxW / cw, boxH / ch);
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(cw * scale));
+    c.height = Math.max(1, Math.round(ch * scale));
+    const ctx = c.getContext("2d");
+    if (config.canvas?.background) {
+      ctx.fillStyle = config.canvas.background;
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
+    ctx.scale(scale, scale);
+    for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
+      let img;
+      try { img = await loadImage(resolveSourceUrl(clip.source, clip.useOriginal)); } catch { continue; }
+      try { drawClip(ctx, clip, buildStamp(clip.polygon, img)); } catch { /* skip a bad clip */ }
+    }
+    return c;
+  }
+
+  function loadExample(config, label) {
+    document.getElementById("configText").value = JSON.stringify(config, null, 2);
+    document.getElementById("applyBtn").click();
+    exampleStatus.textContent = `loaded ${label}`;
+  }
+
+  async function renderExamples() {
+    let entries;
+    try {
+      const res = await fetch("examples.json");
+      if (!res.ok) throw new Error(`examples.json ${res.status}`);
+      const parsed = await res.json();
+      entries = Array.isArray(parsed) ? parsed : (parsed.examples || []);
+    } catch (err) {
+      exampleStatus.textContent = "no examples.json found";
+      console.error("failed to load examples.json", err);
+      return;
+    }
+    if (!entries.length) { exampleStatus.textContent = "no examples listed"; return; }
+
+    exampleList.innerHTML = "";
+    for (const entry of entries) {
+      const file = typeof entry === "string" ? entry : entry.file;
+      if (!file) continue;
+      const title = (typeof entry === "object" && entry.title) ||
+        file.split("/").pop().replace(/\.json$/i, "");
+
+      const li = document.createElement("li");
+      li.innerHTML = `<div class="ex-meta"><span class="ex-name">${escapeHtml(title)}</span>
+        <span class="ex-sub">loading&hellip;</span></div>`;
+      exampleList.appendChild(li);
+
+      let config;
+      try {
+        const r = await fetch(file);
+        if (!r.ok) throw new Error(String(r.status));
+        config = await r.json();
+      } catch (err) {
+        li.querySelector(".ex-sub").textContent = "failed to load";
+        continue;
+      }
+
+      const count = (config.clips || []).length;
+      li.querySelector(".ex-sub").textContent =
+        `${config.canvas?.width || "?"}×${config.canvas?.height || "?"} · ${count} clip${count === 1 ? "" : "s"}`;
+      li.title = `Load ${title} — replaces the current canvas`;
+      li.addEventListener("click", () => loadExample(config, title));
+
+      // A thumbnail failure must not cost the entry — the list still works.
+      try { li.prepend(await renderExampleThumb(config, 72, 72)); }
+      catch (err) { console.error("thumbnail failed for " + file, err); }
+    }
+  }
+
   const CONFIG_KEY = "collage.config.v1";
   const saveStatus = document.getElementById("saveStatus");
 
@@ -2894,12 +2984,10 @@
   renderLibrary();
   renderCollage();
   renderLayerList();
+  renderExamples();
   syncTextarea();
   fitView();
   updateClipProps();
-  // Panels only have their real heights once everything above has rendered.
-  syncAllSpans();
-  requestAnimationFrame(syncAllSpans);
 </script>
 
 </body>
