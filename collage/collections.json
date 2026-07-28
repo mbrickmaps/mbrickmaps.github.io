@@ -1,0 +1,22 @@
+[
+  {
+    "id": "example",
+    "name": "Example collection",
+    "description": "Replace this with a real curated set. Each item just needs a title and a url; everything else is optional and shown as metadata.",
+    "period": "1750–1900",
+    "published": "n/a",
+    "attribution": "Source institution name",
+    "link": "https://example.org/collection",
+    "note": "Images must be served with CORS headers (Access-Control-Allow-Origin) or they will not load — the clipper reads pixels off the canvas. IIIF endpoints usually work; ordinary web pages usually do not.",
+    "items": [
+      {
+        "title": "Placeholder — add your own",
+        "url": "",
+        "thumb": "",
+        "date": "",
+        "tags": ["animals", "buildings"],
+        "notes": "url is the full-resolution image. thumb is optional; the full url is used if omitted. tags drive the filter chips and are per-collection."
+      }
+    ]
+  }
+]

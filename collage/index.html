@@ -56,14 +56,43 @@
   .panel.minimized > *:not(.panel-head) { display: none; }
   .panel.minimized .panel-head { margin-bottom: 0; }
 
-  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .panel-head h2 { margin: 0; }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  /* min-width:0 lets a long title shrink rather than shoving the buttons past
+     the panel edge; the toggle wraps to its own line when it still won't fit. */
+  .panel-head h2 {
+    margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .help-icon { cursor: help; opacity: 0.5; font-size: 0.85rem; font-weight: normal; }
   .help-icon:hover { opacity: 1; }
-  .size-toggle { display: flex; gap: 2px; flex-shrink: 0; }
-  .size-toggle button { padding: 1px 6px; font-size: 0.75rem; }
+  /* Explicit grip, in addition to dragging the header itself. It's a plain
+     span, so the existing .panel-head pointerdown picks it up unchanged. */
+  .drag-handle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: #000; color: var(--fg); opacity: 0.5; cursor: grab;
+  }
+  .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
+  .drag-handle svg { width: 12px; height: 12px; display: block; }
+  .panel.is-dragged .drag-handle { cursor: grabbing; }
+  .size-toggle { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
+  .size-toggle button { padding: 1px 5px; font-size: 0.7rem; line-height: 1.5; }
   .size-toggle button.active { border-color: var(--accent2); color: var(--accent2); }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+
+  /* Collage panel stacking: layer controls sit directly above the canvas,
+     canvas/output options move below it. Ordered rather than re-ordered in
+     the markup so the size-preset block stays where it is. */
+  #collagePanel { display: flex; flex-direction: column; }
+  #collagePanel > .panel-head { order: 0; }
+  #collagePanel > #clipProps { order: 1; }
+  #collagePanel > .viewport-wrap { order: 2; }
+  #collagePanel > .row { order: 3; }
+  /* The rows below the canvas read as a group, so drop the gap above them. */
+  #collagePanel > .viewport-wrap { margin-bottom: 8px; }
   select, input[type="text"], input[type="number"], button {
     background: #000; color: var(--fg); border: 1px solid var(--border); border-radius: 4px;
     padding: 4px 8px; font-size: 0.85rem;
@@ -95,6 +124,10 @@
   .dropdown-item { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dropdown-item:hover { background: #222; }
   .dropdown-item.url-item { border-bottom: 1px solid var(--border); opacity: 0.85; }
+  .dropdown-group {
+    padding: 4px 8px 2px; font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 0.05em; opacity: 0.45; border-top: 1px solid var(--border);
+  }
   .source-preview {
     position: fixed; z-index: 1000; border: 1px solid var(--accent); background: #000; padding: 2px; border-radius: 4px;
   }
@@ -212,6 +245,34 @@
     font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px;
   }
   #clipProps label button { padding: 1px 6px; font-size: 0.75rem; }
+  /* ---------- collections ---------- */
+  #collectionSelect { flex: 1 1 auto; min-width: 80px; }
+  #collectionMeta {
+    font-size: 0.72rem; line-height: 1.45; opacity: 0.75;
+    border-left: 2px solid var(--border); padding: 2px 0 2px 8px; margin-bottom: 8px;
+  }
+  #collectionMeta .meta-line { display: block; }
+  #collectionMeta .meta-key { opacity: 0.55; text-transform: uppercase; font-size: 0.62rem; letter-spacing: 0.04em; }
+  #collectionSearch { flex: 1 1 140px; min-width: 100px; }
+  #collectionTags { gap: 4px; }
+  #collectionTags .tag-chip {
+    padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+    background: #000; color: var(--fg); font-size: 0.7rem; cursor: pointer;
+  }
+  #collectionTags .tag-chip.active { background: var(--accent2); color: #000; border-color: var(--accent2); }
+  #collectionItems { list-style: none; margin: 0 0 6px; padding: 0; max-height: 420px; overflow-y: auto; }
+  #collectionItems li {
+    display: flex; align-items: flex-start; gap: 8px; padding: 5px;
+    border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; cursor: pointer;
+  }
+  #collectionItems li:hover { border-color: var(--accent2); }
+  #collectionItems img {
+    width: 56px; height: 56px; object-fit: cover; flex-shrink: 0;
+    background: #000; border: 1px solid var(--border); border-radius: 3px;
+  }
+  .coll-title { font-size: 0.78rem; }
+  .coll-sub { font-size: 0.68rem; opacity: 0.55; }
+
   #paletteSwatches { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 24px; }
   .swatch {
     width: 24px; height: 24px; padding: 0; border-radius: 3px;
@@ -277,9 +338,24 @@
   }
   .lib-body input:hover { border-color: var(--border); }
   .lib-body input:focus { border-color: var(--accent2); background: #000; outline: none; }
+  /* Name and tags are both bare inputs, so without this they read as two
+     identical fields. Tags sit smaller and dimmer, behind a tag glyph. */
+  .lib-body .lib-name { font-weight: 600; }
+  .lib-body .lib-tags { font-size: 0.68rem; opacity: 0.7; padding-left: 15px; }
+  .lib-tags-wrap { position: relative; display: flex; align-items: center; }
+  .lib-tags-wrap::before {
+    content: "\1F3F7"; position: absolute; left: 1px;
+    font-size: 0.6rem; opacity: 0.5; pointer-events: none;
+  }
   .lib-source { font-size: 0.7rem; opacity: 0.55; }
   .lib-actions { display: flex; gap: 2px; }
   .lib-actions button { padding: 1px 5px; font-size: 0.75rem; }
+  .lib-link {
+    display: inline-flex; align-items: center; padding: 1px 5px;
+    border: 1px solid var(--border); border-radius: 4px;
+    font-size: 0.75rem; text-decoration: none; color: var(--fg);
+  }
+  .lib-link:hover { border-color: var(--accent); }
   #libraryTags { gap: 4px; }
   #libraryTags .tag-chip {
     padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
@@ -328,7 +404,7 @@
 
   <section class="panel size-half" id="editorPanel">
     <div class="panel-head">
-      <h2>Clipper <span class="help-icon" title="Click to place polygon points. Click near the first point (or Close path) to finish.&#10;Once closed: drag a point to move it, double-click a point to remove it (min 3), drag from inside the shape to move the whole path, or turn on Add point mode and click an edge to insert a point.&#10;Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are stored at source resolution.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Clipper <span class="help-icon" title="Click to place polygon points. Click near the first point (or Close path) to finish.&#10;Once closed: drag a point to move it, double-click a point to remove it (min 3), drag from inside the shape to move the whole path, or turn on Add point mode and click an edge to insert a point.&#10;Scroll to zoom, space-drag or middle-drag to pan. Zoom in for fine work — points are stored at source resolution.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -397,7 +473,7 @@
 
   <section class="panel size-half" id="collagePanel">
     <div class="panel-head">
-      <h2>Collage <span class="help-icon" title="Drag a clip to move it, its bottom-right handle to scale, its top handle to rotate.&#10;Drag empty canvas space to pan the view, scroll to zoom, shift+scroll over a selected clip to scale it. Linked clips move and scale together.&#10;Hide outlines clears the overlays in place; Preview opens the composite fullscreen, pan and zoom only, Esc to exit.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Collage <span class="help-icon" title="Drag a clip to move it, its bottom-right handle to scale, its top handle to rotate.&#10;Drag empty canvas space to pan the view, scroll to zoom, shift+scroll over a selected clip to scale it. Linked clips move and scale together.&#10;Hide outlines clears the overlays in place; Preview opens the composite fullscreen, pan and zoom only, Esc to exit.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -548,9 +624,35 @@
     </div>
   </section>
 
+  <section class="panel size-mini" id="collectionsPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Collections</h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="row">
+      <select id="collectionSelect"></select>
+      <button type="button" id="collectionsUploadBtn" title="load a collections file">Upload</button>
+      <input type="file" id="collectionsUploadInput" accept="application/json" style="display:none">
+    </div>
+    <div id="collectionMeta"></div>
+    <div class="row">
+      <input type="text" id="collectionSearch" placeholder="search title, notes, tags&hellip;">
+    </div>
+    <div class="row" id="collectionTags"></div>
+    <ul id="collectionItems"></ul>
+    <span id="collectionsStatus" class="hint" style="margin:0;"></span>
+  </section>
+
   <section class="panel size-mini" id="colorPanel">
     <div class="panel-head">
-      <h2>Swatches</h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Swatches</h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -570,7 +672,6 @@
     <div class="row">
       <input type="color" id="paletteColor" value="#ff5500">
       <button type="button" id="paletteAddBtn">add color</button>
-      <button type="button" id="paletteGrabBtn" title="take the selected layer's tint color">grab tint</button>
     </div>
     <div id="paletteSwatches"></div>
     <div class="row">
@@ -583,7 +684,7 @@
 
   <section class="panel size-mini" id="libraryPanel">
     <div class="panel-head">
-      <h2>Clippings</h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Clippings</h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -614,7 +715,7 @@
 
   <section class="panel size-mini" id="examplesPanel">
     <div class="panel-head">
-      <h2>Examples <span class="help-icon" title="Starter projects. Click one to load it into the collage — this replaces whatever is currently on the canvas.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Examples <span class="help-icon" title="Starter projects. Click one to load it into the collage — this replaces whatever is currently on the canvas.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -631,7 +732,7 @@
 
   <section class="panel size-mini" id="configPanel">
     <div class="panel-head">
-      <h2>Settings <span class="help-icon" title="The project as JSON. Apply pushes the text below onto the canvas.&#10;Save and Load use this browser's local storage — one saved project, on this machine only, cleared if you clear site data.&#10;Download and Upload use a .json file on disk, which is what you share or keep.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Settings <span class="help-icon" title="The project as JSON. Apply pushes the text below onto the canvas.&#10;Save and Load use this browser's local storage — one saved project, on this machine only, cleared if you clear site data.&#10;Download and Upload use a .json file on disk, which is what you share or keep.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -1135,12 +1236,38 @@
     return currentSource.type === "url" ? sourceUrlInput.value.trim() : currentSource.value;
   }
 
+  /* Every custom URL the current collage or library refers to. Loading a
+     config brings its URLs back into the picker instead of leaving them
+     buried in clip data where they can't be reused. */
+  function usedUrls() {
+    const sources = [
+      ...collage.clips.map((c) => c.source),
+      ...clipLibrary.map((e) => e.source)
+    ];
+    return [...new Set(sources.filter((s) => s && !isLibraryPhoto(s)))].sort();
+  }
+
+  function shortUrl(url) {
+    const tail = url.split("/").pop() || url;
+    return tail.length > 34 ? tail.slice(0, 31) + "…" : tail;
+  }
+
   function renderDropdownList() {
     const urlItem = `<div class="dropdown-item url-item" data-type="url" data-name="">&mdash; custom URL &mdash;</div>`;
-    const photoItems = photoOptions.map((p) =>
-      `<div class="dropdown-item" data-type="photo" data-name="${escapeHtml(p.name)}">${escapeHtml(p.label)}</div>`
-    ).join("");
-    dropdownList.innerHTML = urlItem + photoItems;
+
+    const used = usedUrls();
+    const usedItems = used.length
+      ? `<div class="dropdown-group">in this collage</div>` + used.map((u) =>
+        `<div class="dropdown-item" data-type="usedurl" data-name="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(shortUrl(u))}</div>`
+      ).join("")
+      : "";
+
+    const photoItems = (photoOptions.length ? `<div class="dropdown-group">photos</div>` : "") +
+      photoOptions.map((p) =>
+        `<div class="dropdown-item" data-type="photo" data-name="${escapeHtml(p.name)}">${escapeHtml(p.label)}</div>`
+      ).join("");
+
+    dropdownList.innerHTML = urlItem + usedItems + photoItems;
   }
 
   function setCurrentSourceUI(type, name) {
@@ -1162,12 +1289,24 @@
   }
 
   function selectSource(type, name) {
-    setCurrentSourceUI(type, name);
     dropdownList.hidden = true;
     // Picking a new source drops any "editing at original resolution" state,
     // otherwise baseW and useOriginal would disagree.
     editor.editingUseOriginal = false;
-    if (type === "url") { sourceUrlInput.focus(); return; }
+
+    if (type === "url") {
+      setCurrentSourceUI("url", "");
+      sourceUrlInput.focus();
+      return;
+    }
+    // A URL already in use — fill it in and load it, no retyping.
+    if (type === "usedurl") {
+      setCurrentSourceUI("url", name);
+      loadImage(name).then((img) => setEditorImage(img))
+        .catch(() => console.error("failed to load source image", name));
+      return;
+    }
+    setCurrentSourceUI("photo", name);
     loadImage(resolveSourceUrl(name)).then((img) => setEditorImage(img))
       .catch((err) => console.error("failed to load source image", err));
   }
@@ -1180,7 +1319,12 @@
       .catch((err) => console.error("failed to load source image", err));
   }
 
-  dropdownBtn.addEventListener("click", () => { dropdownList.hidden = !dropdownList.hidden; });
+  dropdownBtn.addEventListener("click", () => {
+    // Rebuild on open so URLs from a just-loaded config are always present,
+    // without having to hook every place a source could change.
+    if (dropdownList.hidden) renderDropdownList();
+    dropdownList.hidden = !dropdownList.hidden;
+  });
   document.addEventListener("click", (e) => {
     if (!document.getElementById("sourceDropdown").contains(e.target)) dropdownList.hidden = true;
   });
@@ -1191,8 +1335,10 @@
   });
   dropdownList.addEventListener("mouseover", (e) => {
     const item = e.target.closest(".dropdown-item");
-    if (!item || item.dataset.type !== "photo") { sourcePreview.hidden = true; return; }
-    sourcePreviewImg.src = resolveSourceUrl(item.dataset.name);
+    if (!item || item.dataset.type === "url") { sourcePreview.hidden = true; return; }
+    sourcePreviewImg.src = item.dataset.type === "usedurl"
+      ? item.dataset.name
+      : resolveSourceUrl(item.dataset.name);
     sourcePreview.hidden = false;
     const rect = item.getBoundingClientRect();
     sourcePreview.style.left = rect.right + 8 + "px";
@@ -1589,6 +1735,9 @@
     syncRotationInputs(clip.rotation);
     syncOpacityInputs(clip.opacity ?? 1);
     document.getElementById("clipTint").value = clip.tint || "#ff5500";
+    // One-way mirror: the swatch picker follows the selected layer so "add
+    // color" saves what you're looking at. Changing it never touches the layer.
+    document.getElementById("paletteColor").value = clip.tint || "#ff5500";
   }
 
   function syncOpacityInputs(value) {
@@ -1624,6 +1773,7 @@
     if (!clip || clip.locked) return;
     clip.tint = color;
     clip.tintAmount = TINT_STRENGTH;
+    document.getElementById("paletteColor").value = color;
     renderCollage(); syncTextarea();
   }
 
@@ -1637,6 +1787,147 @@
 
   document.getElementById("clipTint").addEventListener("input", (e) => setTint(e.target.value));
   document.getElementById("clipTintClear").addEventListener("click", clearTint);
+
+  // ---------- collections ----------
+  /* Curated external sources (map archives and the like), defined in
+     collections.json. Clicking an item sends its URL straight to the clipper. */
+  let collections = [];
+  let activeCollectionId = null;
+  let collectionTagFilter = null;
+
+  function activeCollection() {
+    return collections.find((c) => c.id === activeCollectionId);
+  }
+
+  function metaLine(key, value) {
+    return value ? `<span class="meta-line"><span class="meta-key">${escapeHtml(key)}</span> ${escapeHtml(value)}</span>` : "";
+  }
+
+  // Every item across every collection, each tagged with where it came from.
+  function allItems() {
+    return collections.flatMap((c) =>
+      (c.items || [])
+        .filter((it) => it && it.url)
+        .map((it) => ({ ...it, collectionId: c.id, collectionName: c.name }))
+    );
+  }
+
+  /* Single source of truth for what's on screen — the click handler indexes
+     into this same list, so filtering can never select the wrong item.
+     Search and tags apply across all collections; the dropdown is just one
+     more filter, not a hard scope. */
+  function visibleItems() {
+    const q = document.getElementById("collectionSearch").value.trim().toLowerCase();
+    return allItems().filter((it) => {
+      if (activeCollectionId && it.collectionId !== activeCollectionId) return false;
+      if (collectionTagFilter && !(it.tags || []).includes(collectionTagFilter)) return false;
+      if (!q) return true;
+      const hay = `${it.title || ""} ${it.notes || ""} ${it.date || ""} ${(it.tags || []).join(" ")} ${it.collectionName}`;
+      return hay.toLowerCase().includes(q);
+    });
+  }
+
+  function renderCollections() {
+    const select = document.getElementById("collectionSelect");
+    select.innerHTML =
+      `<option value=""${!activeCollectionId ? " selected" : ""}>All collections</option>` +
+      collections.map((c) =>
+        `<option value="${escapeHtml(c.id)}"${c.id === activeCollectionId ? " selected" : ""}>${escapeHtml(c.name)}</option>`
+      ).join("");
+
+    // Metadata describes a single collection, so it shows only when one is picked.
+    const coll = activeCollection();
+    document.getElementById("collectionMeta").innerHTML = !coll ? "" :
+      (coll.description ? `<span class="meta-line">${escapeHtml(coll.description)}</span>` : "") +
+      metaLine("period", coll.period) +
+      metaLine("published", coll.published) +
+      metaLine("source", coll.attribution) +
+      (coll.link ? `<span class="meta-line"><a href="${escapeHtml(coll.link)}" target="_blank" rel="noopener">collection &#8599;</a></span>` : "");
+
+    // Chips come from every item everywhere, so a tag reaches across collections.
+    const tags = [...new Set(allItems().flatMap((it) => it.tags || []))].sort();
+    document.getElementById("collectionTags").innerHTML = tags.map((t) =>
+      `<button type="button" class="tag-chip ${t === collectionTagFilter ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+    ).join("");
+
+    document.getElementById("collectionItems").innerHTML = visibleItems().map((it, i) => `
+      <li data-index="${i}" title="${escapeHtml(it.url)}">
+        <img src="${escapeHtml(it.thumb || it.url)}" alt="" loading="lazy">
+        <span>
+          <span class="coll-title">${escapeHtml(it.title || "untitled")}</span>
+          <span class="coll-sub">${escapeHtml(it.collectionName)}${it.date ? " &middot; " + escapeHtml(it.date) : ""}</span>
+          ${it.notes ? `<span class="coll-sub">${escapeHtml(it.notes)}</span>` : ""}
+          ${(it.tags || []).length ? `<span class="coll-sub">${escapeHtml((it.tags || []).join(", "))}</span>` : ""}
+        </span>
+      </li>
+    `).join("");
+  }
+
+  document.getElementById("collectionSearch").addEventListener("input", renderCollections);
+
+  document.getElementById("collectionTags").addEventListener("click", (e) => {
+    const chip = e.target.closest(".tag-chip");
+    if (!chip) return;
+    collectionTagFilter = collectionTagFilter === chip.dataset.tag ? null : chip.dataset.tag;
+    renderCollections();
+  });
+
+  // Just another filter now — tags and search keep whatever they were set to.
+  document.getElementById("collectionSelect").addEventListener("change", (e) => {
+    activeCollectionId = e.target.value || null;
+    renderCollections();
+  });
+
+  // Click an item to make it the clipper's source.
+  document.getElementById("collectionItems").addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    const item = visibleItems()[Number(li.dataset.index)];
+    if (!item) return;
+    document.getElementById("collectionsStatus").textContent = "loading " + shortUrl(item.url) + "…";
+    selectSource("usedurl", item.url);
+    loadImage(item.url)
+      .then(() => { document.getElementById("collectionsStatus").textContent = ""; })
+      .catch(() => {
+        document.getElementById("collectionsStatus").textContent =
+          "failed — the host may not allow cross-origin use";
+      });
+  });
+
+  function adoptCollections(data) {
+    if (!Array.isArray(data)) throw new Error("expected an array of collections");
+    collections = data.filter((c) => c && c.id && c.name);
+    // Default to showing everything, so tag filtering spans all collections
+    // without having to pick one first.
+    if (!collections.some((c) => c.id === activeCollectionId)) activeCollectionId = null;
+    renderCollections();
+  }
+
+  fetch("collections.json")
+    .then((r) => r.json())
+    .then(adoptCollections)
+    .catch(() => {
+      document.getElementById("collectionsStatus").textContent = "no collections.json found";
+    });
+
+  document.getElementById("collectionsUploadBtn").addEventListener("click", () =>
+    document.getElementById("collectionsUploadInput").click());
+
+  document.getElementById("collectionsUploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        adoptCollections(JSON.parse(reader.result));
+        document.getElementById("collectionsStatus").textContent = `${collections.length} collections loaded`;
+      } catch (err) {
+        document.getElementById("collectionsStatus").textContent = "invalid file: " + err.message;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
 
   // ---------- color library ----------
   /* Named collections of colors, applied as layer tints. Workspace-level like
@@ -1668,6 +1959,25 @@
       palettes = [newPalette("Default", legacy)];
     }
     if (!palettes.some((p) => p.id === activePaletteId)) activePaletteId = palettes[0].id;
+  }
+
+  /* swatches.json, if present, supplies default collections. Merged by id
+     rather than replacing, so adding one to the file makes it appear without
+     touching palettes you've built here, and it can't re-add one you deleted
+     in a later edit — only new ids come across. */
+  function loadDefaultPalettes() {
+    return fetch("swatches.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const have = new Set(palettes.map((p) => p.id));
+        const added = data.filter((p) => p && p.id && Array.isArray(p.colors) && !have.has(p.id));
+        if (!added.length) return;
+        palettes = palettes.concat(added);
+        savePalettes();
+        renderPalettes();
+      })
+      .catch(() => { /* no defaults file — perfectly fine */ });
   }
 
   function savePalettes() {
@@ -1741,12 +2051,6 @@
     addColorToPalette(document.getElementById("paletteColor").value);
   });
 
-  document.getElementById("paletteGrabBtn").addEventListener("click", () => {
-    const color = document.getElementById("clipTint").value;
-    document.getElementById("paletteColor").value = color;
-    addColorToPalette(color);
-  });
-
   document.getElementById("paletteSwatches").addEventListener("click", (e) => {
     const sw = e.target.closest(".swatch");
     if (!sw || e.detail > 1) return;
@@ -1806,6 +2110,7 @@
   });
 
   loadPalettes();
+  loadDefaultPalettes();
 
 
   document.getElementById("clipBlend").addEventListener("change", (e) => {
@@ -2476,8 +2781,30 @@
   });
 
   // ---------- config textarea ----------
+  /* Canvas maths produces values like 412.53333333333336. Two decimals is
+     finer than the deepest zoom can even resolve (1/16 of a source pixel), so
+     nothing is lost and the file gets far shorter. */
+  function roundTo(n, dp) {
+    const f = Math.pow(10, dp);
+    return Math.round(n * f) / f;
+  }
+
+  function tidyClip(c) {
+    const out = { ...c, polygon: c.polygon.map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)]) };
+    out.x = roundTo(c.x, 2);
+    out.y = roundTo(c.y, 2);
+    out.scale = roundTo(c.scale, 4);
+    out.rotation = roundTo(c.rotation, 2);
+    if (c.opacity !== undefined) out.opacity = roundTo(c.opacity, 2);
+    return out;
+  }
+
+  function configSnapshot() {
+    return { canvas: collage.canvas, clips: collage.clips.map(tidyClip) };
+  }
+
   function syncTextarea() {
-    document.getElementById("configText").value = JSON.stringify({ canvas: collage.canvas, clips: collage.clips }, null, 2);
+    document.getElementById("configText").value = JSON.stringify(configSnapshot(), null, 2);
   }
 
   document.getElementById("applyBtn").addEventListener("click", () => {
@@ -2588,7 +2915,7 @@
   // invalid; use Apply first if you've hand-edited the JSON.
   function saveConfig(auto) {
     try {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify({ canvas: collage.canvas, clips: collage.clips }, null, 2));
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(configSnapshot(), null, 2));
       const when = new Date().toLocaleTimeString();
       saveStatus.textContent = `${auto ? "auto-saved" : "saved"} ${when}`;
       return true;
@@ -2698,7 +3025,10 @@
   const libThumbCache = new Map();
 
   function saveLibrary() {
-    try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(clipLibrary)); } catch { /* full or blocked */ }
+    const tidy = clipLibrary.map((e) => ({
+      ...e, polygon: e.polygon.map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)])
+    }));
+    try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(tidy)); } catch { /* full or blocked */ }
   }
 
   function libEntry(id) { return clipLibrary.find((e) => e.id === id); }
@@ -2763,9 +3093,12 @@
         <canvas></canvas>
         <div class="lib-body">
           <input class="lib-name" value="${escapeHtml(e.name || e.source)}" spellcheck="false" title="name">
-          <input class="lib-tags" value="${escapeHtml((e.tags || []).join(", "))}" spellcheck="false" placeholder="tags, comma separated">
-          <span class="lib-source">${escapeHtml(e.source)}${e.useOriginal ? " (original)" : ""}</span>
+          <span class="lib-tags-wrap"><input class="lib-tags" value="${escapeHtml((e.tags || []).join(", "))}" spellcheck="false" placeholder="tags, comma separated"></span>
+          ${(e.name && e.name !== e.source) || e.useOriginal
+            ? `<span class="lib-source">${escapeHtml(e.source)}${e.useOriginal ? " (original)" : ""}</span>`
+            : ""}
           <span class="lib-actions">
+            <button data-lib="source" class="lib-link" title="hover to preview the source, click to load it into the clipper">&#9635;</button>
             <button data-lib="place" title="add to collage">+</button>
             <button data-lib="edit" title="open mask in editor">&#9998;</button>
             <button data-lib="delete" title="remove from library">&#10005;</button>
@@ -2798,6 +3131,19 @@
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   }
 
+  /* Loads just the source image, with no mask — a fresh cut from the same
+     picture. The pencil button is the one that brings the polygon back. */
+  function loadSourceIntoClipper(entry) {
+    editor.editingClipId = null;
+    editor.editingUseOriginal = !!entry.useOriginal;
+    document.getElementById("addToCollageBtn").textContent = "Add to collage";
+    if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
+    else setCurrentSourceUI("url", entry.source);
+    loadImage(resolveSourceUrl(entry.source, entry.useOriginal))
+      .then((img) => setEditorImage(img))
+      .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
+  }
+
   function editLibraryEntry(entry) {
     editor.editingClipId = null;
     editor.editingUseOriginal = !!entry.useOriginal;
@@ -2823,6 +3169,7 @@
     const entry = libEntry(li.dataset.id);
     if (!entry) return;
     if (btn.dataset.lib === "place") placeLibraryEntry(entry);
+    else if (btn.dataset.lib === "source") loadSourceIntoClipper(entry);
     else if (btn.dataset.lib === "edit") editLibraryEntry(entry);
     else if (btn.dataset.lib === "delete") {
       clipLibrary = clipLibrary.filter((x) => x.id !== entry.id);
@@ -2850,11 +3197,29 @@
     if (e.target.classList.contains("lib-tags")) renderLibrary();
   });
 
+  // Hovering the source button previews the whole uncut image, reusing the
+  // same floating preview the source picker uses.
+  document.getElementById("libraryList").addEventListener("mouseover", (e) => {
+    const btn = e.target.closest('[data-lib="source"]');
+    if (!btn) { sourcePreview.hidden = true; return; }
+    const entry = libEntry(btn.closest("li").dataset.id);
+    if (!entry) return;
+    sourcePreviewImg.src = resolveSourceUrl(entry.source, entry.useOriginal);
+    sourcePreview.hidden = false;
+    const rect = btn.getBoundingClientRect();
+    sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
+    sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
+  });
+  document.getElementById("libraryList").addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
+
   document.getElementById("librarySearch").addEventListener("input", renderLibrary);
   document.getElementById("librarySort").addEventListener("change", renderLibrary);
 
   document.getElementById("libraryDownloadBtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(clipLibrary, null, 2)], { type: "application/json" });
+    const tidy = clipLibrary.map((e) => ({
+      ...e, polygon: e.polygon.map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)])
+    }));
+    const blob = new Blob([JSON.stringify(tidy, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "clip-library.json";

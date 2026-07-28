@@ -1,0 +1,17 @@
+[
+  {
+    "id": "werner-earths",
+    "name": "Werner — Earths",
+    "colors": ["#e2d7b5", "#c8b88a", "#a68b5b", "#7d6234", "#4f3d21"]
+  },
+  {
+    "id": "map-conventional",
+    "name": "Conventional map",
+    "colors": ["#a8c8e0", "#cfe3c4", "#e8dcae", "#d9b98a", "#b2b2b2", "#ffffff"]
+  },
+  {
+    "id": "terminal",
+    "name": "Terminal",
+    "colors": ["#000000", "#33ff33", "#ff5500", "#e29742", "#eeeeee"]
+  }
+]
