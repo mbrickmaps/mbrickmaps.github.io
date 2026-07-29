@@ -562,7 +562,7 @@
       <span class="section-label">Layer controls</span>
       <label>Scale
         <button type="button" id="clipScaleDown" title="scale down">&minus;</button>
-        <input type="range" id="clipScale" min="0.05" max="8" step="0.01">
+        <input type="range" id="clipScale" min="0" max="1000" step="1">
         <button type="button" id="clipScaleUp" title="scale up">+</button>
         <span id="clipScaleValue">1.00</span></label>
       <label>Rotation&deg;
@@ -2147,14 +2147,29 @@
     renderCollage(); syncTextarea();
   });
 
+  /* The slider is logarithmic. On a linear 0.05–8 track everything useful is
+     squashed into the left eighth, since most clips sit near 1. Mapping
+     exponentially puts 1.00 around the middle and makes equal travel mean
+     equal proportional change, which is how scaling actually reads. */
+  const SCALE_MIN = 0.05, SCALE_MAX = 8, SCALE_STEPS = 1000;
+
+  function sliderToScale(v) {
+    return SCALE_MIN * Math.pow(SCALE_MAX / SCALE_MIN, v / SCALE_STEPS);
+  }
+
+  function scaleToSlider(s) {
+    const t = Math.log(s / SCALE_MIN) / Math.log(SCALE_MAX / SCALE_MIN);
+    return Math.round(Math.min(1, Math.max(0, t)) * SCALE_STEPS);
+  }
+
   function syncScaleInputs(value) {
-    document.getElementById("clipScale").value = value.toFixed(2);
+    document.getElementById("clipScale").value = scaleToSlider(value);
     document.getElementById("clipScaleValue").textContent = value.toFixed(2);
   }
 
   // Linked clips share a scale, so setting one sets the whole group.
   function setClipScale(clip, value) {
-    const next = Math.max(0.05, value);
+    const next = Math.max(SCALE_MIN, value);
     for (const c of linkedClips(clip)) if (!c.locked) c.scale = next;
     syncScaleInputs(next);
     renderCollage(); syncTextarea();
@@ -2163,16 +2178,18 @@
   document.getElementById("clipScale").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    setClipScale(clip, parseFloat(e.target.value) || clip.scale);
+    setClipScale(clip, sliderToScale(Number(e.target.value)));
   });
 
-  function stepScale(delta) {
+  // Multiplicative to match the slider — a fixed 0.01 is a big jump at 0.1
+  // and invisible at 6.
+  function stepScale(factor) {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || clip.locked) return;
-    setClipScale(clip, clip.scale + delta);
+    setClipScale(clip, clip.scale * factor);
   }
-  document.getElementById("clipScaleUp").addEventListener("click", () => stepScale(0.01));
-  document.getElementById("clipScaleDown").addEventListener("click", () => stepScale(-0.01));
+  document.getElementById("clipScaleUp").addEventListener("click", () => stepScale(1.02));
+  document.getElementById("clipScaleDown").addEventListener("click", () => stepScale(1 / 1.02));
   function syncRotationInputs(value) {
     const shown = Math.round(value);
     document.getElementById("clipRotation").value = shown;
