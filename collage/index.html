@@ -82,6 +82,8 @@
   .size-toggle button { padding: 1px 5px; font-size: 0.7rem; line-height: 1.5; }
   .size-toggle button.active { border-color: var(--accent2); color: var(--accent2); }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  /* display:flex above would otherwise beat the UA's [hidden] rule. */
+  .row[hidden] { display: none; }
 
   /* Collage panel stacking: layer controls sit directly above the canvas,
      canvas/output options move below it. Ordered rather than re-ordered in
@@ -154,11 +156,8 @@
      The canvas is exactly windowSize x magnification px so pixels stay square
      and unscaled; .spot-view scrolls instead of stretching the panel when a
      large window and 25x would otherwise overflow it. */
-  .spot-check {
-    flex-shrink: 0; max-width: 100%; padding: 8px; background: #0a0a0a;
-    border: 1px solid var(--border); border-radius: 4px;
-  }
-  .spot-check h3 { margin: 0 0 6px; font-size: 0.85rem; }
+  /* Its own panel now, so the panel supplies the frame — no nested card. */
+  .spot-check { max-width: 100%; }
   .spot-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.75rem; }
   .spot-controls label { display: flex; gap: 4px; align-items: center; }
   .spot-controls input[type="number"] { width: 56px; padding: 2px 4px; font-size: 0.75rem; }
@@ -446,28 +445,41 @@
           <button type="button" id="src100Btn">1:1</button>
         </div>
       </div>
-      <div class="spot-check">
-        <h3>Spot Check</h3>
-        <div class="spot-controls">
-          <label>Window
-            <input type="number" id="spotWindow" min="10" max="500" step="10" value="30">px</label>
-          <label>Magnification
-            <select id="spotMag">
-              <option value="4">4x</option>
-              <option value="10" selected>10x</option>
-              <option value="25">25x</option>
-            </select>
-          </label>
-        </div>
-        <div class="spot-view">
-          <canvas id="magnifier"></canvas>
-          <div class="spot-idle" id="spotIdle">Hover over source to magnify</div>
-        </div>
-      </div>
     </div>
     <div class="row">
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="clearPolyBtn">Clear</button>
+    </div>
+  </section>
+
+  <section class="panel size-mini" id="spotPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Spot Check <span class="help-icon" title="A nearest-neighbour magnifier of the source under the cursor. Window is how many source pixels are sampled; magnification is how many screen pixels each becomes.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="spot-check">
+      <div class="spot-controls">
+        <label>Window
+          <input type="number" id="spotWindow" min="10" max="500" step="10" value="30">px</label>
+        <label>Magnification
+          <select id="spotMag">
+            <option value="4">4x</option>
+            <option value="10" selected>10x</option>
+            <option value="25">25x</option>
+          </select>
+        </label>
+      </div>
+      <div class="spot-view">
+        <canvas id="magnifier"></canvas>
+        <div class="spot-idle" id="spotIdle">Hover over source to magnify</div>
+      </div>
     </div>
   </section>
 
@@ -638,7 +650,7 @@
     </div>
     <div class="row">
       <select id="collectionSelect"></select>
-      <button type="button" id="collectionsUploadBtn" title="load a collections file">Upload</button>
+      <button type="button" id="collectionsUploadBtn" title="load a collections .json file — this defines the list, it does not upload images">Import JSON</button>
       <input type="file" id="collectionsUploadInput" accept="application/json" style="display:none">
     </div>
     <div id="collectionMeta"></div>
@@ -675,8 +687,8 @@
     </div>
     <div id="paletteSwatches"></div>
     <div class="row">
-      <button type="button" id="paletteDownloadBtn">Download</button>
-      <button type="button" id="paletteUploadBtn">Upload</button>
+      <button type="button" id="paletteDownloadBtn" title="save all collections as a .json file">Export JSON</button>
+      <button type="button" id="paletteUploadBtn" title="load a swatches .json file — merges with what you already have">Import JSON</button>
       <input type="file" id="paletteUploadInput" accept="application/json" style="display:none">
       <span id="paletteStatus" class="hint" style="margin:0;"></span>
     </div>
@@ -706,8 +718,8 @@
     <div class="row" id="libraryTags"></div>
     <ul id="libraryList"></ul>
     <div class="row">
-      <button id="libraryDownloadBtn">Download</button>
-      <button id="libraryUploadBtn">Upload</button>
+      <button id="libraryDownloadBtn" title="save all clippings as a .json file — masks and source references, not images">Export JSON</button>
+      <button id="libraryUploadBtn" title="load a clippings .json file — merges with what you already have, does not upload images">Import JSON</button>
       <input type="file" id="libraryUploadInput" accept="application/json" style="display:none">
       <span id="libraryStatus" class="hint" style="margin:0;"></span>
     </div>
@@ -745,10 +757,10 @@
     </div>
     <textarea id="configText" spellcheck="false"></textarea>
     <div class="row" style="margin-top:8px;">
-      <button id="applyBtn" title="push the JSON above onto the canvas">Apply</button>
+      <button id="applyBtn" title="push your edits to the JSON above onto the canvas">Update</button>
     </div>
     <div class="row">
-      <span class="section-label">This browser</span>
+      <span class="section-label">This browser storage</span>
       <button id="saveBtn" title="save the project into this browser's local storage">Save</button>
       <button id="loadBtn" title="replace the canvas with the project saved in this browser">Load</button>
       <label><input type="checkbox" id="autoSaveChk"> auto-save</label>
@@ -762,11 +774,11 @@
     </div>
     <div class="row">
       <span class="section-label">File</span>
-      <button id="downloadBtn" title="download the project as a .json file">Download</button>
-      <button id="uploadBtn" title="replace the canvas with a .json file from disk">Upload</button>
+      <button id="downloadBtn" title="save the project as a .json file">Export JSON</button>
+      <button id="uploadBtn" title="replace the canvas with a project .json file from disk">Import JSON</button>
       <input type="file" id="uploadInput" accept="application/json" style="display:none">
     </div>
-    <div class="row">
+    <div class="row" hidden>
       <button id="convertOriginalsBtn">Convert to originals</button>
       <span id="convertStatus" class="hint" style="margin:0;"></span>
     </div>
@@ -1878,6 +1890,21 @@
     renderCollections();
   });
 
+  // Hovering shows the full image, not the row's thumbnail — the point of the
+  // panel is deciding whether a source is worth using.
+  document.getElementById("collectionItems").addEventListener("mouseover", (e) => {
+    const li = e.target.closest("li");
+    if (!li) { sourcePreview.hidden = true; return; }
+    const item = visibleItems()[Number(li.dataset.index)];
+    if (!item) return;
+    sourcePreviewImg.src = item.url;
+    sourcePreview.hidden = false;
+    const rect = li.getBoundingClientRect();
+    sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
+    sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
+  });
+  document.getElementById("collectionItems").addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
+
   // Click an item to make it the clipper's source.
   document.getElementById("collectionItems").addEventListener("click", (e) => {
     const li = e.target.closest("li");
@@ -2807,7 +2834,10 @@
     document.getElementById("configText").value = JSON.stringify(configSnapshot(), null, 2);
   }
 
-  document.getElementById("applyBtn").addEventListener("click", () => {
+  /* Pushes the textarea onto the canvas. Called directly by Load, Import and
+     Examples — they used to synthesise a click on the button, which made the
+     button load-bearing and impossible to remove safely. */
+  function applyConfigText() {
     try {
       const parsed = JSON.parse(document.getElementById("configText").value);
       collage.canvas = parsed.canvas || collage.canvas;
@@ -2819,10 +2849,14 @@
       if (collage.canvas.background) document.getElementById("canvasBg").value = collage.canvas.background;
       document.getElementById("sizePreset").value = "";
       renderCollage(); renderLayerList(); fitView(); updateClipProps();
+      return true;
     } catch (err) {
       alert("Invalid JSON: " + err.message);
+      return false;
     }
-  });
+  }
+
+  document.getElementById("applyBtn").addEventListener("click", applyConfigText);
 
   // ---------- examples ----------
   /* examples.json is a plain list of paths, because static hosting has no
@@ -2856,7 +2890,7 @@
 
   function loadExample(config, label) {
     document.getElementById("configText").value = JSON.stringify(config, null, 2);
-    document.getElementById("applyBtn").click();
+    applyConfigText();
     exampleStatus.textContent = `loaded ${label}`;
   }
 
@@ -2939,7 +2973,7 @@
     const raw = localStorage.getItem(CONFIG_KEY);
     if (!raw) { saveStatus.textContent = "nothing saved yet"; return; }
     document.getElementById("configText").value = raw;
-    document.getElementById("applyBtn").click();
+    applyConfigText();
     saveStatus.textContent = "loaded";
   });
 
@@ -3011,7 +3045,7 @@
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { document.getElementById("configText").value = reader.result; document.getElementById("applyBtn").click(); };
+    reader.onload = () => { document.getElementById("configText").value = reader.result; applyConfigText(); };
     reader.readAsText(file);
   });
 
