@@ -1,21 +1,37 @@
 [
   {
-    "id": "example",
-    "name": "Example collection",
-    "description": "Replace this with a real curated set. Each item just needs a title and a url; everything else is optional and shown as metadata.",
-    "period": "1750–1900",
-    "published": "n/a",
-    "attribution": "Source institution name",
+    "id": "drmc1",
+    "name": "Iconographic Encyclopaedia of Science, Literature, and Art",
+    "description": "The encyclopaedia comprises four volumes, and this particular title page is for Volume I, which covers Mathematics and Astronomy, Physics and Meteorology, Chemistry, Mineralogy, Geognosy, and Geology",
+    "period": "1850s",
+    "published": "1851",
+    "attribution": "David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries",
     "link": "https://example.org/collection",
-    "note": "Images must be served with CORS headers (Access-Control-Allow-Origin) or they will not load — the clipper reads pixels off the canvas. IIIF endpoints usually work; ordinary web pages usually do not.",
+    "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
     "items": [
       {
-        "title": "Placeholder — add your own",
+        "title": "Plate 122. (Anatomy including Skeletons.)",
+        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/12190181.jpg",
+        "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/__ia_thumb.jpg",
+        "date": "",
+        "tags": ["skeleton", "engraving"],
+        "notes": "David Rumsey Historical Map Collection"
+      },
+      {
+        "title": "Plate 136. Anatomy including the Vascular System.",
+        "url": "https://dn721905.ca.archive.org/0/items/dr_view-plate-136-anatomy-including-the-vascular-system-12190195/12190195.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": ["skeleton", "engraving"],
+        "notes": "David Rumsey Historical Map Collection"
+      },
+      {
+        "title": "",
         "url": "",
         "thumb": "",
         "date": "",
-        "tags": ["animals", "buildings"],
-        "notes": "url is the full-resolution image. thumb is optional; the full url is used if omitted. tags drive the filter chips and are per-collection."
+        "tags": [],
+        "notes": ""
       }
     ]
   }
