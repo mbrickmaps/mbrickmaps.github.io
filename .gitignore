@@ -11612,3 +11612,5 @@ src/img/grumpy/thumb/ww2_thumb.png
 *.sh
 /photos/node_modules
 photos/process-images.js
+*.webm
+collage/collage-reveal_reversed-first.png

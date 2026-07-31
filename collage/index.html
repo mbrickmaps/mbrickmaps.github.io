@@ -272,6 +272,14 @@
   .coll-title { font-size: 0.78rem; }
   .coll-sub { font-size: 0.68rem; opacity: 0.55; }
 
+  /* ---------- record ---------- */
+  #recordCanvas {
+    display: block; width: 100%; height: auto; margin-bottom: 6px;
+    background: #000; border: 1px solid var(--border); border-radius: 4px;
+  }
+  #recordPanel .row button.active { border-color: var(--accent2); color: var(--accent2); }
+  #recordPanel input[type="number"] { width: 62px; }
+
   #paletteSwatches { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 24px; }
   .swatch {
     width: 24px; height: 24px; padding: 0; border-radius: 3px;
@@ -740,6 +748,90 @@
     </div>
     <ul id="exampleList"></ul>
     <span id="exampleStatus" class="hint" style="margin:0;"></span>
+  </section>
+
+  <section class="panel size-mini" id="recordPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Record <span class="help-icon" title="Plays the layers in one at a time and records the result straight to a .webm file — no screen capture tool needed.&#10;It renders its own clean copy, so selection boxes, guides and the minimap can never appear in the video.&#10;Chrome or Firefox; Safari's recording support is unreliable.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
+        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="row">
+      <span class="section-label">Source</span>
+      <button type="button" id="recUseCurrentBtn" class="active">Current project</button>
+      <button type="button" id="recImportBtn">Import JSON</button>
+      <input type="file" id="recImportInput" accept="application/json" style="display:none">
+    </div>
+    <div class="row">
+      <span class="section-label">Mode</span>
+      <select id="recMode">
+        <option value="reveal" selected>layer reveal</option>
+        <option value="sources">sources &rarr; final</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Per layer <input type="number" id="recDelay" min="0.1" max="10" step="0.1" value="0.6">s</label>
+      <label>Stage hold <input type="number" id="recStage" min="0" max="20" step="0.5" value="3">s</label>
+      <label>Hold end <input type="number" id="recHold" min="0" max="20" step="0.5" value="2">s</label>
+    </div>
+    <div class="row" id="recSourcesOpts">
+      <label>Source fade <input type="number" id="recSourceFade" min="0" max="10" step="0.25" value="1.5">s</label>
+      <label>Effect step <input type="number" id="recEffect" min="0.1" max="5" step="0.1" value="0.4">s</label>
+    </div>
+    <div class="row" id="recSourcesOpts2">
+      <label>Blend
+        <select id="recBlendApply">
+          <option value="walk" selected>one by one</option>
+          <option value="together">all at once</option>
+        </select>
+      </label>
+      <label>Color
+        <select id="recColorApply">
+          <option value="walk" selected>one by one</option>
+          <option value="together">all at once</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Transition
+        <select id="recTransition">
+          <option value="cut">cut</option>
+          <option value="fade" selected>fade</option>
+          <option value="scale">scale up</option>
+          <option value="shrink">scale down</option>
+          <option value="rise">rise</option>
+          <option value="fall">fall</option>
+          <option value="drift">drift in</option>
+          <option value="spin">spin</option>
+        </select>
+      </label>
+      <label>Easing
+        <select id="recEasing">
+          <option value="out" selected>ease out</option>
+          <option value="inout">ease in-out</option>
+          <option value="linear">linear</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Longest edge <input type="number" id="recMax" min="200" max="4000" step="100" value="1200">px</label>
+      <label>FPS <input type="number" id="recFps" min="10" max="60" step="5" value="30"></label>
+    </div>
+    <div class="row">
+      <button type="button" id="recPlayBtn">Play</button>
+      <button type="button" id="recRecordBtn">Record</button>
+      <button type="button" id="recStopBtn" disabled>Stop</button>
+    </div>
+    <div class="row"><span id="recEstimate" class="hint" style="margin:0;"></span></div>
+    <canvas id="recordCanvas"></canvas>
+    <span id="recStatus" class="hint" style="margin:0;"></span>
   </section>
 
   <section class="panel size-mini" id="configPanel">
@@ -2167,11 +2259,33 @@
     document.getElementById("clipScaleValue").textContent = value.toFixed(2);
   }
 
-  // Linked clips share a scale, so setting one sets the whole group.
+  // Bounding centre of a set of clips — the pivot a group scales about.
+  function groupCenter(clips) {
+    const xs = clips.map((c) => c.x), ys = clips.map((c) => c.y);
+    return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+  }
+
+  /* A linked group scales as one object: every member's size AND its distance
+     from the group's centre are multiplied by the same factor. Setting each
+     member to the same absolute scale instead would flatten clips that were
+     deliberately different sizes and leave the spacing between them unchanged. */
   function setClipScale(clip, value) {
     const next = Math.max(SCALE_MIN, value);
-    for (const c of linkedClips(clip)) if (!c.locked) c.scale = next;
-    syncScaleInputs(next);
+    const group = linkedClips(clip).filter((c) => !c.locked);
+
+    if (group.length > 1) {
+      const factor = next / clip.scale;
+      const [cx, cy] = groupCenter(group);
+      for (const c of group) {
+        c.scale = Math.max(SCALE_MIN, c.scale * factor);
+        c.x = cx + (c.x - cx) * factor;
+        c.y = cy + (c.y - cy) * factor;
+      }
+    } else {
+      clip.scale = next;
+    }
+
+    syncScaleInputs(clip.scale);
     renderCollage(); syncTextarea();
   }
 
@@ -2196,9 +2310,30 @@
     document.getElementById("clipRotationValue").textContent = shown;
   }
 
+  /* Turns a set of clips about a pivot: each one spins on its own axis by the
+     delta AND orbits the pivot by the same amount. Offsets use the same matrix
+     as transformPoint, so positive stays clockwise on a y-down canvas. */
+  function rotateAbout(items, cx, cy, deltaDeg) {
+    const rad = deltaDeg * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    for (const it of items) {
+      it.clip.rotation = it.rotation + deltaDeg;
+      const ox = it.x - cx, oy = it.y - cy;
+      it.clip.x = cx + ox * cos - oy * sin;
+      it.clip.y = cy + ox * sin + oy * cos;
+    }
+  }
+
   function setClipRotation(clip, value) {
-    clip.rotation = value;
-    syncRotationInputs(value);
+    const group = linkedClips(clip).filter((c) => !c.locked);
+    if (group.length > 1) {
+      const [cx, cy] = groupCenter(group);
+      const snapshot = group.map((c) => ({ clip: c, x: c.x, y: c.y, rotation: c.rotation }));
+      rotateAbout(snapshot, cx, cy, value - clip.rotation);
+    } else {
+      clip.rotation = value;
+    }
+    syncRotationInputs(clip.rotation);
     renderCollage(); syncTextarea();
   }
 
@@ -2464,6 +2599,11 @@
 
   let dragMode = null;
   let lastMouse = null;
+  /* Captured when a scale drag starts. Scaling a group moves its members, so
+     measuring against live positions each frame would feed back on itself and
+     run away — everything is computed against this frozen baseline instead. */
+  let scaleDrag = null;
+  let rotateDrag = null;
 
   function getCollagePos(e) {
     const rect = collageCanvas.getBoundingClientRect();
@@ -2477,8 +2617,32 @@
       const stamp = stampCache.get(sel.id);
       if (stamp) {
         const handles = getHandles(sel, stamp);
-        if (Math.hypot(pt[0] - handles.rotate[0], pt[1] - handles.rotate[1]) < 10) { dragMode = "rotate"; lastMouse = pt; return; }
-        if (Math.hypot(pt[0] - handles.scale[0], pt[1] - handles.scale[1]) < 10) { dragMode = "scale"; lastMouse = pt; return; }
+        if (Math.hypot(pt[0] - handles.rotate[0], pt[1] - handles.rotate[1]) < 10) {
+          dragMode = "rotate";
+          lastMouse = pt;
+          const group = linkedClips(sel).filter((c) => !c.locked);
+          const members = group.length ? group : [sel];
+          const [cx, cy] = groupCenter(members);
+          rotateDrag = {
+            cx, cy,
+            startAngle: Math.atan2(pt[0] - cx, cy - pt[1]) * 180 / Math.PI,
+            items: members.map((c) => ({ clip: c, x: c.x, y: c.y, rotation: c.rotation }))
+          };
+          return;
+        }
+        if (Math.hypot(pt[0] - handles.scale[0], pt[1] - handles.scale[1]) < 10) {
+          dragMode = "scale";
+          lastMouse = pt;
+          const group = linkedClips(sel).filter((c) => !c.locked);
+          const members = group.length ? group : [sel];
+          const [cx, cy] = groupCenter(members);
+          scaleDrag = {
+            cx, cy,
+            startDist: Math.hypot(pt[0] - cx, pt[1] - cy) || 1,
+            items: members.map((c) => ({ clip: c, x: c.x, y: c.y, scale: c.scale }))
+          };
+          return;
+        }
       }
     }
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
@@ -2512,21 +2676,29 @@
       // Linked clips translate together; locked members stay put.
       const dx = pt[0] - lastMouse[0], dy = pt[1] - lastMouse[1];
       for (const c of linkedClips(clip)) { if (!c.locked) { c.x += dx; c.y += dy; } }
-    } else if (dragMode === "rotate") {
-      clip.rotation = Math.atan2(pt[0] - clip.x, clip.y - pt[1]) * 180 / Math.PI;
-    } else if (dragMode === "scale") {
-      const stamp = stampCache.get(clip.id);
-      const base = Math.hypot(stamp.w / 2, stamp.h / 2) || 1;
-      // Through the shared setter so a linked group scales together.
-      for (const c of linkedClips(clip)) {
-        if (!c.locked) c.scale = Math.max(0.05, Math.hypot(pt[0] - clip.x, pt[1] - clip.y) / base);
+    } else if (dragMode === "rotate" && rotateDrag) {
+      const angle = Math.atan2(pt[0] - rotateDrag.cx, rotateDrag.cy - pt[1]) * 180 / Math.PI;
+      rotateAbout(rotateDrag.items, rotateDrag.cx, rotateDrag.cy, angle - rotateDrag.startAngle);
+    } else if (dragMode === "scale" && scaleDrag) {
+      // Factor against the frozen baseline; a lone clip has zero offset from
+      // its own centre, so only its size changes.
+      const factor = Math.hypot(pt[0] - scaleDrag.cx, pt[1] - scaleDrag.cy) / scaleDrag.startDist;
+      for (const it of scaleDrag.items) {
+        it.clip.scale = Math.max(SCALE_MIN, it.scale * factor);
+        it.clip.x = scaleDrag.cx + (it.x - scaleDrag.cx) * factor;
+        it.clip.y = scaleDrag.cy + (it.y - scaleDrag.cy) * factor;
       }
     }
     lastMouse = pt;
     renderCollage(); syncTextarea(); updateClipProps();
   });
 
-  window.addEventListener("mouseup", () => { dragMode = null; collageViewport.classList.remove("panning"); });
+  window.addEventListener("mouseup", () => {
+    dragMode = null;
+    scaleDrag = null;
+    rotateDrag = null;
+    collageViewport.classList.remove("panning");
+  });
 
   document.getElementById("layersCollapseBtn").addEventListener("click", (e) => {
     const collapsed = document.getElementById("layersPanel").classList.toggle("collapsed");
@@ -2546,6 +2718,8 @@
   }
 
   function renderLayerList() {
+    // Layer count feeds the Record panel's duration estimate.
+    updateRecEstimate();
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     // Existing group names, offered as suggestions so grouping is a pick
@@ -3308,6 +3482,426 @@
   try { clipLibrary = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]") || []; }
   catch { clipLibrary = []; }
 
+  // ---------- record ----------
+  /* Draws its own clean copy of the scene rather than capturing the working
+     canvas, so selection boxes, guides and the minimap can't appear in the
+     video — and the output size is independent of the project resolution. */
+  const REVEAL_LEAD_IN = 300;  // blank beat before the first layer lands
+  let recConfig = null;        // null means "the live project"
+  let recPlaying = false;
+  let recStopRequested = false;
+  let mediaRecorder = null;
+
+  const recordCanvas = document.getElementById("recordCanvas");
+  const recStatus = document.getElementById("recStatus");
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function recSource() {
+    return recConfig || { canvas: collage.canvas, clips: collage.clips };
+  }
+
+  function sizeRecordCanvas(cfg) {
+    const maxEdge = Number(document.getElementById("recMax").value) || 1200;
+    const k = Math.min(1, maxEdge / Math.max(cfg.canvas.width, cfg.canvas.height));
+    recordCanvas.width = Math.max(1, Math.round(cfg.canvas.width * k));
+    recordCanvas.height = Math.max(1, Math.round(cfg.canvas.height * k));
+    return k;
+  }
+
+  const EASINGS = {
+    linear: (p) => p,
+    out: (p) => 1 - Math.pow(1 - p, 3),
+    inout: (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+  };
+
+  /* Returns the clip as it should look partway through its entrance. Offsets
+     are a fraction of canvas height rather than fixed pixels, so a transition
+     travels the same visual distance whatever the project resolution. */
+  function transitionProps(clip, p, type, easing, cfg) {
+    if (type === "cut") return clip;
+    const e = (EASINGS[easing] || EASINGS.out)(p);
+    const fade = (clip.opacity ?? 1) * e;
+    const travel = cfg.canvas.height * 0.06;
+    switch (type) {
+      case "scale":  return { ...clip, opacity: fade, scale: clip.scale * (0.8 + 0.2 * e) };
+      case "shrink": return { ...clip, opacity: fade, scale: clip.scale * (1.25 - 0.25 * e) };
+      case "rise":   return { ...clip, opacity: fade, y: clip.y + travel * (1 - e) };
+      case "fall":   return { ...clip, opacity: fade, y: clip.y - travel * (1 - e) };
+      case "drift":  return { ...clip, opacity: fade, x: clip.x - travel * (1 - e) };
+      case "spin":   return { ...clip, opacity: fade, rotation: clip.rotation - 15 * (1 - e),
+                              scale: clip.scale * (0.9 + 0.1 * e) };
+      default:       return { ...clip, opacity: fade };
+    }
+  }
+
+  // `count` clips visible; the newest drawn partway through its transition.
+  function drawRevealFrame(ctx, cfg, ordered, count, progress, k, type, easing) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (cfg.canvas.background) {
+      ctx.fillStyle = cfg.canvas.background;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    for (let i = 0; i < count; i++) {
+      const clip = ordered[i];
+      const stamp = stampCache.get(clip.id);
+      if (!stamp) continue;
+      const entering = i === count - 1 && progress < 1;
+      drawClip(ctx, entering ? transitionProps(clip, progress, type, easing, cfg) : clip, stamp);
+    }
+  }
+
+  function animateStep(ctx, cfg, ordered, count, ms, k, type, easing) {
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - start) / ms);
+        drawRevealFrame(ctx, cfg, ordered, count, p, k, type, easing);
+        if (p < 1 && !recStopRequested) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /* FPS doesn't change how long the run takes, only how many frames it is —
+     both are shown because the second is what drives file size. */
+  function updateRecEstimate() {
+    const n = recSource().clips.length;
+    const delay = Number(document.getElementById("recDelay").value) || 0.6;
+    const hold = Number(document.getElementById("recHold").value) || 0;
+    const stageHold = Number(document.getElementById("recStage").value) || 0;
+    const fps = Number(document.getElementById("recFps").value) || 30;
+    const sources = document.getElementById("recMode").value === "sources";
+
+    // Reveal costs one delay per layer; the flight is a single pass at 2x delay.
+    const secs = sources
+      ? stageHold + delay * 2 + hold
+      : REVEAL_LEAD_IN / 1000 + n * delay + hold;
+
+    document.getElementById("recEstimate").textContent = n
+      ? `${n} layers · ${secs.toFixed(1)}s · ~${Math.round(secs * fps)} frames`
+      : "no layers to play";
+  }
+
+  // Shared by both modes: starts capture and wires the download on stop.
+  function beginRecording() {
+    const type = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+      .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    if (!type) {
+      recStatus.textContent = "this browser can't record webm — try Chrome or Firefox";
+      return null;
+    }
+    const chunks = [];
+    const stream = recordCanvas.captureStream(Number(document.getElementById("recFps").value) || 30);
+    const recorder = new MediaRecorder(stream, { mimeType: type });
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `collage-${document.getElementById("recMode").value}.webm`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      recStatus.textContent = `saved ${a.download} — ${(blob.size / 1048576).toFixed(1)} MB`;
+    };
+    recorder.start();
+    mediaRecorder = recorder;
+    return recorder;
+  }
+
+  function setRecButtons(playing) {
+    document.getElementById("recPlayBtn").disabled = playing;
+    document.getElementById("recRecordBtn").disabled = playing;
+    document.getElementById("recStopBtn").disabled = !playing;
+  }
+
+  async function previewRecordStill() {
+    const cfg = recSource();
+    if (!cfg.clips.length) return;
+    const k = sizeRecordCanvas(cfg);
+    const ordered = [...cfg.clips].sort((a, b) => a.z - b.z);
+    for (const clip of ordered) await ensureStamp(clip);
+    drawRevealFrame(recordCanvas.getContext("2d"), cfg, ordered, ordered.length, 1, k, "cut", "out");
+    updateRecEstimate();
+  }
+
+  async function playReveal(record) {
+    if (recPlaying) return;
+    const cfg = recSource();
+    const ordered = [...cfg.clips].sort((a, b) => a.z - b.z);
+    if (!ordered.length) { recStatus.textContent = "nothing to play"; return; }
+
+    recPlaying = true;
+    recStopRequested = false;
+    setRecButtons(true);
+
+    const k = sizeRecordCanvas(cfg);
+    const ctx = recordCanvas.getContext("2d");
+    const delay = (Number(document.getElementById("recDelay").value) || 0.6) * 1000;
+    const hold = (Number(document.getElementById("recHold").value) || 0) * 1000;
+    const type = document.getElementById("recTransition").value;
+    const easing = document.getElementById("recEasing").value;
+
+    // Build every stamp first — a slow image mid-take would stall the video.
+    recStatus.textContent = "preparing images…";
+    for (const clip of ordered) await ensureStamp(clip);
+
+    const recorder = record ? beginRecording() : null;
+    if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
+
+    drawRevealFrame(ctx, cfg, ordered, 0, 1, k, type, easing);
+    await sleep(REVEAL_LEAD_IN);
+
+    for (let i = 1; i <= ordered.length && !recStopRequested; i++) {
+      recStatus.textContent = `layer ${i} of ${ordered.length}`;
+      if (type === "cut") {
+        drawRevealFrame(ctx, cfg, ordered, i, 1, k, type, easing);
+        await sleep(delay);
+      } else {
+        await animateStep(ctx, cfg, ordered, i, delay, k, type, easing);
+      }
+    }
+
+    drawRevealFrame(ctx, cfg, ordered, ordered.length, 1, k, type, easing);
+    if (!recStopRequested) await sleep(hold);
+
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    mediaRecorder = null;
+    recPlaying = false;
+    setRecButtons(false);
+    if (!record) recStatus.textContent = recStopRequested ? "stopped" : "done";
+  }
+
+  ["recDelay", "recHold", "recStage", "recFps"].forEach((id) =>
+    document.getElementById(id).addEventListener("input", updateRecEstimate));
+  document.getElementById("recMode").addEventListener("change", updateRecEstimate);
+
+  /* ---- sources → final ----
+     Lays every source out in a grid with its cut regions outlined, then flies
+     those regions to where they sit on the canvas. Each piece interpolates
+     position, rotation and both scale axes; letting a scale axis cross zero is
+     what reads as a mirror, so a flipped clip turns over on the way. */
+  async function buildStage(cfg) {
+    const clips = [...cfg.clips].sort((a, b) => a.z - b.z);
+
+    const bySource = new Map();
+    for (const clip of clips) {
+      const url = resolveSourceUrl(clip.source, clip.useOriginal);
+      if (!bySource.has(url)) bySource.set(url, { url, img: null, clips: [] });
+      bySource.get(url).clips.push(clip);
+    }
+    for (const sheet of bySource.values()) {
+      try { sheet.img = await loadImage(sheet.url); } catch { sheet.img = null; }
+    }
+    const sheets = [...bySource.values()].filter((s) => s.img);
+    if (!sheets.length) return null;
+
+    // Grid shaped to the canvas so cells stay roughly square.
+    const W = cfg.canvas.width, H = cfg.canvas.height;
+    const cols = Math.max(1, Math.min(sheets.length, Math.round(Math.sqrt(sheets.length * W / H)) || 1));
+    const rows = Math.ceil(sheets.length / cols);
+    const cw = W / cols, ch = H / rows;
+    const pad = Math.min(cw, ch) * 0.06;
+
+    const items = [];
+    sheets.forEach((sheet, i) => {
+      const iw = sheet.img.naturalWidth || sheet.img.width;
+      const ih = sheet.img.naturalHeight || sheet.img.height;
+      const s = Math.min((cw - pad * 2) / iw, (ch - pad * 2) / ih);
+      sheet.draw = {
+        s,
+        ox: (i % cols) * cw + (cw - iw * s) / 2,
+        oy: Math.floor(i / cols) * ch + (ch - ih * s) / 2,
+        w: iw * s, h: ih * s
+      };
+      for (const clip of sheet.clips) {
+        const stamp = stampCache.get(clip.id);
+        if (!stamp) continue;
+        const xs = clip.polygon.map((p) => p[0]), ys = clip.polygon.map((p) => p[1]);
+        const bcx = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const bcy = (Math.min(...ys) + Math.max(...ys)) / 2;
+        items.push({
+          clip, stamp,
+          start: { x: sheet.draw.ox + bcx * s, y: sheet.draw.oy + bcy * s, sx: s, sy: s, rot: 0 },
+          end: {
+            x: clip.x, y: clip.y,
+            sx: clip.scale * (clip.flipX ? -1 : 1),
+            sy: clip.scale * (clip.flipY ? -1 : 1),
+            rot: clip.rotation
+          }
+        });
+      }
+    });
+    return { cfg, sheets, items };
+  }
+
+  function drawStageFrame(ctx, stage, p, k, easing) {
+    const cfg = stage.cfg;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (cfg.canvas.background) {
+      ctx.fillStyle = cfg.canvas.background;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+
+    const e = (EASINGS[easing] || EASINGS.out)(p);
+    const sheetAlpha = 1 - Math.min(1, p / 0.4);   // sheets clear early in the flight
+
+    if (sheetAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = sheetAlpha;
+      for (const sheet of stage.sheets) {
+        const d = sheet.draw;
+        ctx.drawImage(sheet.img, d.ox, d.oy, d.w, d.h);
+      }
+      ctx.restore();
+    }
+
+    for (const it of stage.items) {
+      const t = {
+        x: it.start.x + (it.end.x - it.start.x) * e,
+        y: it.start.y + (it.end.y - it.start.y) * e,
+        sx: it.start.sx + (it.end.sx - it.start.sx) * e,
+        sy: it.start.sy + (it.end.sy - it.start.sy) * e,
+        rot: it.start.rot + (it.end.rot - it.start.rot) * e
+      };
+      ctx.save();
+      // Blend modes only once everything has landed.
+      ctx.globalCompositeOperation = p >= 1 ? (it.clip.blend || "source-over") : "source-over";
+      ctx.globalAlpha = it.clip.opacity ?? 1;
+      ctx.translate(t.x, t.y);
+      ctx.rotate(t.rot * Math.PI / 180);
+      ctx.scale(t.sx, t.sy);
+      ctx.drawImage(stampFace(it.clip, it.stamp), -it.stamp.w / 2, -it.stamp.h / 2);
+      ctx.restore();
+    }
+
+    // Outlines last so they stay readable over the pieces while staged.
+    if (sheetAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = sheetAlpha;
+      for (const sheet of stage.sheets) {
+        const d = sheet.draw;
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        ctx.lineWidth = 1 / k;
+        ctx.strokeRect(d.ox, d.oy, d.w, d.h);
+        ctx.strokeStyle = "#33ff33";
+        ctx.lineWidth = 2 / k;
+        for (const clip of sheet.clips) {
+          ctx.beginPath();
+          clip.polygon.forEach(([px, py], i) => {
+            const X = d.ox + px * d.s, Y = d.oy + py * d.s;
+            i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+          });
+          ctx.closePath();
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  async function playStage(record) {
+    if (recPlaying) return;
+    const cfg = recSource();
+    if (!cfg.clips.length) { recStatus.textContent = "nothing to play"; return; }
+
+    recPlaying = true;
+    recStopRequested = false;
+    setRecButtons(true);
+
+    const k = sizeRecordCanvas(cfg);
+    const ctx = recordCanvas.getContext("2d");
+
+    recStatus.textContent = "preparing images…";
+    for (const clip of cfg.clips) await ensureStamp(clip);
+    const stage = await buildStage(cfg);
+    if (!stage) {
+      recStatus.textContent = "no source images could be loaded";
+      recPlaying = false; setRecButtons(false);
+      return;
+    }
+
+    const flight = (Number(document.getElementById("recDelay").value) || 0.6) * 1000;
+    const stageHold = (Number(document.getElementById("recStage").value) || 0) * 1000;
+    const hold = (Number(document.getElementById("recHold").value) || 0) * 1000;
+    const easing = document.getElementById("recEasing").value;
+
+    const recorder = record ? beginRecording() : null;
+    if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
+
+    recStatus.textContent = `staging ${stage.sheets.length} sources`;
+    drawStageFrame(ctx, stage, 0, k, easing);
+    await sleep(stageHold);
+
+    recStatus.textContent = "assembling";
+    await new Promise((resolve) => {
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - start) / (flight * 2));
+        drawStageFrame(ctx, stage, p, k, easing);
+        if (p < 1 && !recStopRequested) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+
+    drawStageFrame(ctx, stage, 1, k, easing);
+    if (!recStopRequested) await sleep(hold);
+
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    mediaRecorder = null;
+    recPlaying = false;
+    setRecButtons(false);
+    if (!record) recStatus.textContent = recStopRequested ? "stopped" : "done";
+  }
+
+  function runRecordMode(record) {
+    return document.getElementById("recMode").value === "sources"
+      ? playStage(record)
+      : playReveal(record);
+  }
+
+  document.getElementById("recPlayBtn").addEventListener("click", () => runRecordMode(false));
+  document.getElementById("recRecordBtn").addEventListener("click", () => runRecordMode(true));
+  document.getElementById("recStopBtn").addEventListener("click", () => { recStopRequested = true; });
+
+  document.getElementById("recUseCurrentBtn").addEventListener("click", () => {
+    recConfig = null;
+    document.getElementById("recUseCurrentBtn").classList.add("active");
+    document.getElementById("recImportBtn").classList.remove("active");
+    recStatus.textContent = "using the current project";
+    previewRecordStill();
+  });
+
+  document.getElementById("recImportBtn").addEventListener("click", () =>
+    document.getElementById("recImportInput").click());
+
+  document.getElementById("recImportInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!parsed || !Array.isArray(parsed.clips)) throw new Error("expected a project with a clips array");
+        // Deliberately does not touch the canvas — this is for playback only.
+        recConfig = { canvas: parsed.canvas || { width: 1000, height: 700 }, clips: parsed.clips };
+        document.getElementById("recImportBtn").classList.add("active");
+        document.getElementById("recUseCurrentBtn").classList.remove("active");
+        recStatus.textContent = `${recConfig.clips.length} layers loaded — the canvas is untouched`;
+        previewRecordStill();
+      } catch (err) {
+        recStatus.textContent = "invalid project file: " + err.message;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
   // ---------- distraction-free preview ----------
   const previewOverlay = document.getElementById("previewOverlay");
   const previewCanvas = document.getElementById("previewCanvas");
@@ -3398,6 +3992,7 @@
   applyAutoSave();
   renderPalettes();
   renderLibrary();
+  previewRecordStill();
   renderCollage();
   renderLayerList();
   renderExamples();
