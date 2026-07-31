@@ -14,7 +14,11 @@
         "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/12190181.jpg",
         "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/__ia_thumb.jpg",
         "date": "",
-        "tags": ["skeleton", "engraving"],
+        "tags": [
+          "anatomy",
+          "skeleton",
+          "engraving"
+        ],
         "notes": "David Rumsey Historical Map Collection"
       },
       {
@@ -22,15 +26,573 @@
         "url": "https://dn721905.ca.archive.org/0/items/dr_view-plate-136-anatomy-including-the-vascular-system-12190195/12190195.jpg",
         "thumb": "",
         "date": "",
-        "tags": ["skeleton", "engraving"],
+        "tags": [
+          "anatomy",
+          "skeleton",
+          "engraving"
+        ],
         "notes": "David Rumsey Historical Map Collection"
       },
       {
-        "title": "",
-        "url": "",
+        "title": "Plate 134. (Anatomy including the Vascular System.)",
+        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-134-anatomy-including-the-vascular-system-12190193/12190193.jpg",
         "thumb": "",
         "date": "",
-        "tags": [],
+        "tags": [
+          "anatomy",
+          "vascular",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 126. (Anatomy including Ligaments and Muscles.)",
+        "url": "https://ia601606.us.archive.org/26/items/dr_view-plate-126-anatomy-including-ligaments-and-muscles-12190185/12190185.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "muscles",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 139. (Surgery: Operations.)",
+        "url": "https://dn721601.ca.archive.org/0/items/dr_view-plate-139-surgery-operations-12190198/12190198.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "surgery",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 123. (Anatomy including Bones and Teeth.)",
+        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-123-anatomy-including-bones-and-teeth-12190182/12190182.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "bones",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 128. (Anatomy including Muscles.)",
+        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-128-anatomy-including-muscles-12190187/12190187.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "muscles",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 138. (Anatomy including the Nerves.)",
+        "url": "https://dn721704.ca.archive.org/0/items/dr_view-plate-138-anatomy-including-the-nerves-12190197/12190197.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "nerves",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 129. (Anatomy including Organs.)",
+        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-129-anatomy-including-organs-12190188/12190188.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "organs",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 127. (Anatomy including Muscles.)",
+        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-127-anatomy-including-muscles-12190186/12190186.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "muscles",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 130. (Anatomy including Organs of Digestion.)",
+        "url": "https://ia902909.us.archive.org/20/items/dr_view-plate-130-anatomy-including-organs-of-digestion-12190189/12190189.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "organs",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 120. (Anatomy including Heads: Faces and Skulls.)",
+        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-120-anatomy-including-heads-faces-and-skulls-12190179/12190179.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "faces",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 121. (Anatomy including Heads: Skulls.)",
+        "url": "https://ia902905.us.archive.org/7/items/dr_view-plate-121-anatomy-including-heads-skulls-12190180/12190180.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "skulls",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 131. (Anatomy including the Eye.)",
+        "url": "https://dn710206.ca.archive.org/0/items/dr_view-plate-131-anatomy-including-the-eye-12190190/12190190.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "eyes",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 133. (Anatomy including the Vascular System.)",
+        "url": "https://dn721201.ca.archive.org/0/items/dr_view-plate-133-anatomy-including-the-vascular-system-12190192/12190192.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "vascular",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 124. (Anatomy including Ligaments and Muscles.)",
+        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-124-anatomy-including-ligaments-and-muscles-12190183/12190183.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "muscles",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 137. (Anatomy including the Brain and Nerves.)",
+        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-137-anatomy-including-the-brain-and-nerves-12190196/12190196.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "head",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 135. (Anatomy including the Vascular System.)",
+        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-135-anatomy-including-the-vascular-system-12190194/12190194.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "vascular",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 125. (Anatomy including Ligaments and Muscles.)",
+        "url": "https://dn710208.ca.archive.org/0/items/dr_view-plate-125-anatomy-including-ligaments-and-muscles-12190184/12190184.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "muscles",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 20. (Illustrations of the Art of Drawing.)",
+        "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-20-illustrations-of-the-art-of-drawing-12190602/12190602.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "anatomy",
+          "figure",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 5. (Ancient Sculpture.)",
+        "url": "https://dn721900.ca.archive.org/0/items/dr_view-plate-5-ancient-sculpture-12190587/12190587.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "sculpture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 4. (Ancient Sculpture.)",
+        "url": "https://dn721400.ca.archive.org/0/items/dr_view-plate-4-ancient-sculpture-12190586/12190586.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "sculpture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 3. (Ancient Sculpture.)",
+        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-3-ancient-sculpture-12190585/12190585.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "sculpture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 2. (Ancient Sculpture.)",
+        "url": "https://dn720704.ca.archive.org/0/items/dr_view-plate-2-ancient-sculpture-12190584/12190584.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "sculpture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 21. (Illustrations of the Art of Drawing.)",
+        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-21-illustrations-of-the-art-of-drawing-12190603/12190603.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "sculpture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 36. (Architecture of the Middle Ages.)",
+        "url": "https://dn721901.ca.archive.org/0/items/dr_view-plate-36-architecture-of-the-middle-ages-12190524/12190524.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "middle ages",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 44. (Castle Parts.)",
+        "url": "https://dn721900.ca.archive.org/0/items/dr_view-plate-44-castle-parts-12190416/12190416.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "middle ages",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 18. (Roman Architecture.)",
+        "url": "https://dn710209.ca.archive.org/0/items/dr_view-plate-18-roman-architecture-12190506/12190506.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "middle ages",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 45. (Great Wall of China; Towers, Battlements, and Loopholes.)",
+        "url": "https://dn710207.ca.archive.org/0/items/dr_view-plate-45-great-wall-of-china-towers-battlements-and-loopholes-12190417/12190417.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "middle ages",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 42. (Renaissance Church Architecture in Europe.)",
+        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-42-renaissance-church-architecture-in-europe-12190530/12190530.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "renaissance",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 23. (Architectural Classical Arcades.)",
+        "url": "https://dn721603.ca.archive.org/0/items/dr_view-plate-23-architectural-classical-arcades-12190511/12190511.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "classical",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 13. (Pumps.)",
+        "url": "https://dn721806.ca.archive.org/0/items/dr_view-plate-13-pumps-12190624/12190624.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "machinary",
+          "diagram",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 44. (Renaissance Church Architecture: St. Peter's in Rome.)",
+        "url": "https://dn721909.ca.archive.org/0/items/dr_view-plate-44-renaissance-church-architecture-st-peters-in-rome-12190532/12190532.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "renaissance",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 15. (Roman Architecture.)",
+        "url": "https://dn710203.ca.archive.org/0/items/dr_view-plate-15-roman-architecture-12190503/12190503.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "roman",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 27. (Crowns and Shields.)",
+        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-27-crowns-and-shields-12190312/12190312.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "clothing",
+          "crowns",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 57. (Modern Architecture in Europe and America.)",
+        "url": "https://ia800409.us.archive.org/5/items/dr_view-plate-57-modern-architecture-in-europe-and-america-12190545/12190545.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": " Plate 42. (Ancient City Gates including Mycenae, Messene, Spello, Babylon, Assos, Falerii, Pompeii, Rome.)",
+        "url": "https://dn721607.ca.archive.org/0/items/dr_view-plate-42-ancient-city-gates-including-mycenae-messene-spello-ba-12190414/12190414.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "ancient",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 12. (Greek and Roman Architecture.)",
+        "url": "https://dn721908.ca.archive.org/0/items/dr_view-plate-12-greek-and-roman-architecture-12190500/12190500.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "greek",
+          "roman",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 10. (Roman Standards, Crowns, Badgers, Medals, Trophies; Trajan's Column.)",
+        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-10-roman-standards-crowns-badgers-medals-trophies-traja-12190382/12190382.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "clothing",
+          "crowns",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 32. (Ship Docks, Lighthouses.)",
+        "url": "https://dn710108.ca.archive.org/0/items/dr_view-plate-32-ship-docks-lighthouses-12190458/12190458.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 22. (Architectural Classical Column Capitals and Entablature.)",
+        "url": "https://dn721907.ca.archive.org/0/items/dr_view-plate-22-architectural-classical-column-capitals-and-entablature-12190510/12190510.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 20. (Architectural Classical Orders)",
+        "url": "https://dn721802.ca.archive.org/0/items/dr_view-plate-20-architectural-classical-orders-12190508/12190508.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 28. (Architecture of the Middle Ages: Byzantine Style.)",
+        "url": "https://dn710202.ca.archive.org/0/items/dr_view-plate-28-architecture-of-the-middle-ages-byzantine-style-12190516/12190516.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 26. (Construction Details of Theatrical Buildings-continued.)",
+        "url": "https://dn710208.ca.archive.org/0/items/dr_view-plate-26-construction-details-of-theatrical-buildings-continued-12190608/12190608.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 19. (Roman Architecture.)",
+        "url": "https://dn710003.ca.archive.org/0/items/dr_view-plate-19-roman-architecture-12190507/12190507.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture",
+          "roman",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 8. (Construction of Wooden Bridges.)",
+        "url": "https://dn721309.ca.archive.org/0/items/dr_view-plate-8-construction-of-wooden-bridges-12190619/12190619.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 45. (Modern Church Architecture in Italy.)",
+        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-45-modern-church-architecture-in-italy-12190533/12190533.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "italian",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 47. (Modern Church Architecture in Paris.)",
+        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-47-modern-church-architecture-in-paris-12190535/12190535.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },
+            {
+        "title": "Plate 9. (Construction of Iron Bridges.)",
+        "url": "https://ia800903.us.archive.org/25/items/dr_view-plate-9-construction-of-iron-bridges-12190620/12190620.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },            
+      {
+        "title": "Plate 10. (Construction of Canals and Dams.)",
+        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-10-construction-of-canals-and-dams-12190621/12190621.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
+        "notes": ""
+      },            
+      {
+        "title": "Plate 80. (Zoology: Animals including Insects.)",
+        "url": "https://dn721607.ca.archive.org/0/items/dr_view-plate-80-zoology-animals-including-insects-12190138/12190138.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "engraving"
+        ],
         "notes": ""
       }
     ]
