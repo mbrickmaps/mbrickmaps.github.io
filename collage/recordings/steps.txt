@@ -1,0 +1,46 @@
+make the collage, download the json/save
+load from example
+set the settings for frame, see screenshot. 
+download videos as source to layer reveal and then as sources => final
+then convert reveral and get a cover image
+
+1. create the reversal
+
+ffmpeg -i collage-reveal.webm -vf reverse -c:v libvpx-vp9 -crf 18 -b:v 100M -c:a libopus collage-reveal_reversed.webm
+ffmpeg -i collage-sources.webm -vf reverse -c:v libvpx-vp9 -crf 18 -b:v 100M -c:a libopus collage-sources_reversed.webm
+
+2. get screen image for start and end
+
+ffmpeg -i collage-reveal_reversed.webm -vframes 1 collage-reveal_reversed-first.png    
+
+
+convert naming
+collage-reveal_reversed.webm => clip1
+collage-reveal.webm => clip2
+collage-sources_reversed.webm => clip3
+collage-sources.webm => clip4
+
+collage-reveal_reversed-first.png => frame1.png
+
+need final_output.webm
+touch final_output.webm
+
+3.
+ffmpeg \                           
+-loop 1 -t 2 -i frame1.png \
+-i clip1.webm \     
+-i clip2.webm \                                     
+-loop 1 -t 2 -i frame1.png \  
+-i clip3.webm \
+-i clip4.webm \
+-loop 1 -t 2 -i frame1.png \
+-filter_complex "[0:v][1:v][2:v][3:v][4:v][5:v][6:v]concat=n=7:v=1:a=0[v]" \
+-map "[v]" \
+-c:v libvpx-vp9 -crf 18 -b:v 100M final_output.webm
+
+4. Then covert for insta
+
+ffmpeg -i final_output.webm -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black" \
+-c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p \
+-c:a aac -b:a 128k -shortest \ instagram_reel_with_audio.mp4
