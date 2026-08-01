@@ -566,6 +566,27 @@
       <button id="previewBtn">Preview</button>
       <button id="canvasSaveBtn" title="save the config to local storage">Save</button>
     </div>
+    <div class="row">
+      <span class="section-label">Export</span>
+      <label>Size
+        <select id="exportScale">
+          <option value="1" selected>1&times;</option>
+          <option value="2">2&times;</option>
+          <option value="3">3&times;</option>
+          <option value="4">4&times;</option>
+        </select>
+      </label>
+      <label>DPI
+        <select id="exportDpi">
+          <option value="72">72</option>
+          <option value="150">150</option>
+          <option value="300" selected>300</option>
+          <option value="600">600</option>
+        </select>
+      </label>
+      <button id="exportPngBtn" title="render the finished collage to a PNG — no guides, outlines or minimap">Download PNG</button>
+      <span id="exportStatus" class="hint" style="margin:0;"></span>
+    </div>
     <div class="row" id="clipProps">
       <span class="section-label">Layer controls</span>
       <label>Scale
@@ -870,8 +891,8 @@
       <button id="uploadBtn" title="replace the canvas with a project .json file from disk">Import JSON</button>
       <input type="file" id="uploadInput" accept="application/json" style="display:none">
     </div>
-    <div class="row" hidden>
-      <button id="convertOriginalsBtn">Convert to originals</button>
+    <div class="row">
+      <button id="convertOriginalsBtn" title="swap every clip to a higher-resolution copy if one exists in photos/originals or sources, rescaling the masks to match">Load high-res sources</button>
       <span id="convertStatus" class="hint" style="margin:0;"></span>
     </div>
   </section>
@@ -934,15 +955,45 @@
 
   const photoNames = new Set();
 
+  // A bare meta.csv name is a photo; anything with a slash or a scheme is a
+  // path and gets used as-is — that's how sources/ material is referenced.
   function isLibraryPhoto(source) {
-    return !(/^https?:\/\//i.test(source) || source.startsWith("../") || source.startsWith("/"));
+    return !(/^https?:\/\//i.test(source) || source.includes("/"));
   }
 
   function originalUrl(name) { return `../photos/originals/${name}.jpg`; }
 
-  function resolveSourceUrl(source, useOriginal) {
+  function resolveSourceUrl(source, useOriginal, hires) {
+    // An explicit high-res path always wins — it's whatever the swap found,
+    // wherever it lives, so this isn't limited to one folder convention.
+    if (hires) return hires;
     if (!isLibraryPhoto(source)) return source;
     return useOriginal ? originalUrl(source) : `../photos/edits/${source}-web.jpg`;
+  }
+
+  // Every clip/library entry goes through this, so one place decides the URL.
+  function clipUrl(c) { return resolveSourceUrl(c.source, c.useOriginal, c.hires); }
+
+  /* Where a higher-resolution copy might live, tried in order. photos are
+     paired originals; sources/ is archive material that isn't a photo. */
+  const HIRES_ROOTS = [
+    (name) => `../photos/originals/${name}.jpg`,
+    (name) => `../sources/${name}.jpg`
+  ];
+
+  const hiresProbe = new Map();
+  function findHires(name) {
+    if (!isLibraryPhoto(name)) return Promise.resolve(null);
+    if (!hiresProbe.has(name)) {
+      hiresProbe.set(name, (async () => {
+        for (const root of HIRES_ROOTS) {
+          const url = root(name);
+          try { await loadImage(url); return url; } catch { /* try the next root */ }
+        }
+        return null;
+      })());
+    }
+    return hiresProbe.get(name);
   }
 
   // Probes once per name and caches the answer; loadImage caches the image
@@ -1476,7 +1527,7 @@
     // A converted clip's polygon is in original-resolution coordinates, so the
     // editor has to open the original or every point would land wrong.
     editor.editingUseOriginal = !!clip.useOriginal;
-    loadImage(resolveSourceUrl(clip.source, clip.useOriginal))
+    loadImage(clipUrl(clip))
       .then((img) => setEditorImage(img, clip.polygon));
   }
 
@@ -2457,7 +2508,7 @@
   }
 
   async function ensureStamp(clip) {
-    const url = resolveSourceUrl(clip.source, clip.useOriginal);
+    const url = clipUrl(clip);
     let img;
     try { img = await loadImage(url); } catch { return null; }
     const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
@@ -3073,7 +3124,7 @@
     ctx.scale(scale, scale);
     for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
       let img;
-      try { img = await loadImage(resolveSourceUrl(clip.source, clip.useOriginal)); } catch { continue; }
+      try { img = await loadImage(clipUrl(clip)); } catch { continue; }
       try { drawClip(ctx, clip, buildStamp(clip.polygon, img)); } catch { /* skip a bad clip */ }
     }
     return c;
@@ -3202,11 +3253,13 @@
     let converted = 0, already = 0, missing = 0;
 
     for (const clip of collage.clips) {
-      if (clip.useOriginal) { already++; continue; }
+      if (clip.hires || clip.useOriginal) { already++; continue; }
       if (!isLibraryPhoto(clip.source)) { missing++; continue; }
-      if (!(await hasOriginal(clip.source))) { missing++; continue; }
 
-      const orig = await loadImage(originalUrl(clip.source));
+      const url = await findHires(clip.source);
+      if (!url) { missing++; continue; }
+
+      const big = await loadImage(url);
       let base = clip.baseW;
       if (!base) {
         // Older clip with no recorded authoring size: fall back to measuring
@@ -3214,19 +3267,19 @@
         try { base = (await loadImage(resolveSourceUrl(clip.source, false))).naturalWidth; }
         catch { missing++; continue; }
       }
-      const k = orig.naturalWidth / base;
+      const k = big.naturalWidth / base;
       if (!isFinite(k) || k <= 0) { missing++; continue; }
 
       clip.polygon = clip.polygon.map(([x, y]) => [x * k, y * k]);
       clip.scale = clip.scale / k;
-      clip.baseW = orig.naturalWidth;
-      clip.baseH = orig.naturalHeight;
-      clip.useOriginal = true;
+      clip.baseW = big.naturalWidth;
+      clip.baseH = big.naturalHeight;
+      clip.hires = url;
       stampCache.delete(clip.id);
       converted++;
     }
 
-    status.textContent = `${converted} converted, ${already} already, ${missing} no original`;
+    status.textContent = `${converted} swapped, ${already} already, ${missing} not found`;
     e.target.disabled = false;
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
@@ -3281,7 +3334,7 @@
     let stamp = libThumbCache.get(entry.id);
     if (!stamp) {
       let img;
-      try { img = await loadImage(resolveSourceUrl(entry.source, entry.useOriginal)); } catch { return; }
+      try { img = await loadImage(clipUrl(entry)); } catch { return; }
       stamp = buildStamp(entry.polygon, img);
       libThumbCache.set(entry.id, stamp);
     }
@@ -3364,7 +3417,7 @@
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
     else setCurrentSourceUI("url", entry.source);
-    loadImage(resolveSourceUrl(entry.source, entry.useOriginal))
+    loadImage(clipUrl(entry))
       .then((img) => setEditorImage(img))
       .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
   }
@@ -3375,7 +3428,7 @@
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
     else setCurrentSourceUI("url", entry.source);
-    loadImage(resolveSourceUrl(entry.source, entry.useOriginal))
+    loadImage(clipUrl(entry))
       .then((img) => setEditorImage(img, entry.polygon))
       .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
   }
@@ -3429,7 +3482,7 @@
     if (!btn) { sourcePreview.hidden = true; return; }
     const entry = libEntry(btn.closest("li").dataset.id);
     if (!entry) return;
-    sourcePreviewImg.src = resolveSourceUrl(entry.source, entry.useOriginal);
+    sourcePreviewImg.src = clipUrl(entry);
     sourcePreview.hidden = false;
     const rect = btn.getBoundingClientRect();
     sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
@@ -3481,6 +3534,92 @@
 
   try { clipLibrary = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]") || []; }
   catch { clipLibrary = []; }
+
+  // ---------- export PNG ----------
+  /* Canvas can't set a PNG's DPI, so the pHYs chunk is written in afterwards.
+     It's metadata only — pixels come from the size multiplier — but it's what
+     tells print software the physical dimensions instead of guessing 72. */
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function withPngDpi(buffer, dpi) {
+    const src = new Uint8Array(buffer);
+    const ppm = Math.round(dpi / 0.0254);           // pHYs is pixels per metre
+    const body = new Uint8Array(13);                 // 4 type + 9 data
+    body.set([0x70, 0x48, 0x59, 0x73], 0);           // "pHYs"
+    const bv = new DataView(body.buffer);
+    bv.setUint32(4, ppm);
+    bv.setUint32(8, ppm);
+    body[12] = 1;                                    // unit: metre
+
+    const chunk = new Uint8Array(21);                // 4 len + 13 + 4 crc
+    const cv = new DataView(chunk.buffer);
+    cv.setUint32(0, 9);
+    chunk.set(body, 4);
+    cv.setUint32(17, crc32(body));
+
+    // Straight after IHDR: 8-byte signature + 25-byte IHDR chunk.
+    const at = 33;
+    const out = new Uint8Array(src.length + chunk.length);
+    out.set(src.subarray(0, at), 0);
+    out.set(chunk, at);
+    out.set(src.subarray(at), at + chunk.length);
+    return out;
+  }
+
+  function exportDimensions() {
+    const scale = Number(document.getElementById("exportScale").value) || 1;
+    return [Math.round(collage.canvas.width * scale), Math.round(collage.canvas.height * scale), scale];
+  }
+
+  function showExportSize() {
+    const [w, h] = exportDimensions();
+    document.getElementById("exportStatus").textContent = `${w} × ${h} px`;
+  }
+
+  ["exportScale", "exportDpi"].forEach((id) =>
+    document.getElementById(id).addEventListener("change", showExportSize));
+
+  document.getElementById("exportPngBtn").addEventListener("click", async (e) => {
+    const [w, h, scale] = exportDimensions();
+    const dpi = Number(document.getElementById("exportDpi").value) || 300;
+    const status = document.getElementById("exportStatus");
+    e.target.disabled = true;
+    status.textContent = "rendering…";
+
+    // Its own canvas drawn through drawComposite — background and clips only,
+    // so no guide, outline or minimap can reach the file.
+    const off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    const ctx = off.getContext("2d");
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    await drawComposite(ctx, collage.canvas.width, collage.canvas.height);
+
+    off.toBlob(async (blob) => {
+      const tagged = new Blob([withPngDpi(await blob.arrayBuffer(), dpi)], { type: "image/png" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(tagged);
+      a.download = `collage-${w}x${h}-${dpi}dpi.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      status.textContent = `${w} × ${h} px · ${(tagged.size / 1048576).toFixed(1)} MB`;
+      e.target.disabled = false;
+    }, "image/png");
+  });
 
   // ---------- record ----------
   /* Draws its own clean copy of the scene rather than capturing the working
@@ -3688,7 +3827,7 @@
 
     const bySource = new Map();
     for (const clip of clips) {
-      const url = resolveSourceUrl(clip.source, clip.useOriginal);
+      const url = clipUrl(clip);
       if (!bySource.has(url)) bySource.set(url, { url, img: null, clips: [] });
       bySource.get(url).clips.push(clip);
     }
@@ -3992,6 +4131,7 @@
   applyAutoSave();
   renderPalettes();
   renderLibrary();
+  showExportSize();
   previewRecordStill();
   renderCollage();
   renderLayerList();
