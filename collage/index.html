@@ -130,8 +130,11 @@
     padding: 4px 8px 2px; font-size: 0.65rem; text-transform: uppercase;
     letter-spacing: 0.05em; opacity: 0.45; border-top: 1px solid var(--border);
   }
+  /* pointer-events:none matters — without it the preview swallows the hover
+     for whatever it happens to be covering. */
   .source-preview {
-    position: fixed; z-index: 1000; border: 1px solid var(--accent); background: #000; padding: 2px; border-radius: 4px;
+    position: fixed; z-index: 1000; border: 1px solid var(--accent); background: #000;
+    padding: 2px; border-radius: 4px; pointer-events: none;
   }
   .source-preview img { display: block; max-width: 220px; max-height: 220px; }
   .canvas-wrap { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
@@ -190,6 +193,11 @@
     transition: flex-basis 0.15s ease;
   }
   .layers-panel h2 { margin: 0 0 6px; }
+  .layers-tools { font-size: 0.7rem; gap: 6px; margin-bottom: 6px; }
+  .layers-tools button { padding: 1px 6px; font-size: 0.7rem; }
+  .layers-tools label { display: flex; align-items: center; gap: 3px; }
+  /* Reads as active while the per-layer groups are being overridden. */
+  .layers-tools.group-all-on { color: var(--accent2); }
 
   /* The handle is the divider: a full-height strip between canvas and layers,
      with the arrow centered on it. */
@@ -263,7 +271,9 @@
   #collectionItems li {
     display: flex; align-items: flex-start; gap: 8px; padding: 5px;
     border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; cursor: pointer;
+    position: relative;
   }
+  .coll-hires { position: absolute; right: 6px; bottom: 6px; }
   #collectionItems li:hover { border-color: var(--accent2); }
   #collectionItems img {
     width: 56px; height: 56px; object-fit: cover; flex-shrink: 0;
@@ -271,6 +281,12 @@
   }
   .coll-title { font-size: 0.78rem; }
   .coll-sub { font-size: 0.68rem; opacity: 0.55; }
+  .hires-btn {
+    margin-top: 4px; padding: 2px 9px; font-size: 0.65rem; font-weight: 600;
+    border-radius: 999px; border: 1px solid #2f6b3a;
+    background: #1c3524; color: #8fd6a0;
+  }
+  .hires-btn:hover { background: #26492f; border-color: #43926f; color: #b6ecc2; }
 
   /* ---------- record ---------- */
   #recordCanvas {
@@ -279,6 +295,14 @@
   }
   #recordPanel .row button.active { border-color: var(--accent2); color: var(--accent2); }
   #recordPanel input[type="number"] { width: 62px; }
+
+  #hiresReport {
+    margin-bottom: 8px; max-height: 240px; overflow: auto;
+    font-family: "Courier New", monospace; font-size: 0.68rem; line-height: 1.5;
+  }
+  #hiresReport div { white-space: nowrap; }
+  #hiresReport .ok { color: var(--accent2); }
+  #hiresReport .no { opacity: 0.5; }
 
   #paletteSwatches { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; min-height: 24px; }
   .swatch {
@@ -323,6 +347,8 @@
   #layerList .layer-name:hover { border-color: var(--border); }
   #layerList .layer-name:focus { border-color: var(--accent2); background: #000; outline: none; }
   #layerList .layer-z { font-size: 0.7rem; opacity: 0.55; flex-shrink: 0; }
+  /* Sits ahead of the name so lock state reads before anything else. */
+  #layerList .layer-lock { flex-shrink: 0; padding: 1px 5px; font-size: 0.7rem; }
   #layerList .layer-actions { display: flex; gap: 2px; flex-wrap: wrap; }
   #layerList .layer-link { padding: 0 2px; font-size: 0.7rem; flex-shrink: 0; }
   #layerList button { padding: 1px 5px; font-size: 0.75rem; }
@@ -375,7 +401,7 @@
   /* Floating thumbnail of a clip's masked shape, shown on layer hover. */
   .layer-preview {
     position: fixed; z-index: 1000; background: #000; padding: 3px;
-    border: 1px solid var(--accent2); border-radius: 4px;
+    border: 1px solid var(--accent2); border-radius: 4px; pointer-events: none;
   }
   #configText { width: 100%; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
     background: #000; color: #7CFC7C; border: 1px solid var(--border); border-radius: 4px; resize: vertical; }
@@ -660,6 +686,13 @@
       <div class="layers-panel" id="layersPanel">
         <h2>Layers</h2>
         <datalist id="linkGroups"></datalist>
+        <div class="row layers-tools">
+          <button type="button" id="lockAllBtn" title="lock every layer">Lock all</button>
+          <button type="button" id="unlockAllBtn" title="unlock every layer">Unlock all</button>
+          <label title="treat every layer as one group — overrides the per-layer groups until unticked">
+            <input type="checkbox" id="groupAllChk"> group all
+          </label>
+        </div>
         <ul id="layerList"></ul>
       </div>
     </div>
@@ -796,6 +829,9 @@
         <option value="reveal" selected>layer reveal</option>
         <option value="sources">sources &rarr; final</option>
       </select>
+      <label title="play the same sequence backwards — the collage comes apart instead of together">
+        <input type="checkbox" id="recReverse"> reverse
+      </label>
     </div>
     <div class="row">
       <label>Per layer <input type="number" id="recDelay" min="0.1" max="10" step="0.1" value="0.6">s</label>
@@ -899,8 +935,10 @@
     </div>
     <div class="row">
       <button id="convertOriginalsBtn" title="swap every clip to a higher-resolution copy if one exists in photos/originals or sources, rescaling the masks to match">Load high-res sources</button>
+      <button id="checkHiresBtn" title="list what each clip is looking for, without changing anything">Check</button>
       <span id="convertStatus" class="hint" style="margin:0;"></span>
     </div>
+    <div id="hiresReport"></div>
   </section>
 
 </div>
@@ -984,7 +1022,8 @@
      paired originals; sources/ is archive material that isn't a photo. */
   const HIRES_ROOTS = [
     (name) => `../photos/originals/${name}.jpg`,
-    (name) => `../sources/${name}.jpg`
+    (name) => `sources/${name}.jpg`,      // collage/sources — where they are now
+    (name) => `../sources/${name}.jpg`    // repo root, if you ever move them up
   ];
 
   /* A library photo matches on its name; anything else — a URL or a path —
@@ -1401,6 +1440,11 @@
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function placeSourcePreview(rect) {
+    sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
+    sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
   }
 
   function currentSourceName() {
@@ -2021,7 +2065,8 @@
       `<button type="button" class="tag-chip ${t === collectionTagFilter ? "active" : ""}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`
     ).join("");
 
-    document.getElementById("collectionItems").innerHTML = visibleItems().map((it, i) => `
+    const rows = visibleItems();
+    document.getElementById("collectionItems").innerHTML = rows.map((it, i) => `
       <li data-index="${i}" title="${escapeHtml(it.url)}">
         <img src="${escapeHtml(it.thumb || it.url)}" alt="" loading="lazy">
         <span>
@@ -2029,9 +2074,23 @@
           <span class="coll-sub">${escapeHtml(it.collectionName)}${it.date ? " &middot; " + escapeHtml(it.date) : ""}</span>
           ${it.notes ? `<span class="coll-sub">${escapeHtml(it.notes)}</span>` : ""}
           ${(it.tags || []).length ? `<span class="coll-sub">${escapeHtml((it.tags || []).join(", "))}</span>` : ""}
+          <span class="coll-hires"></span>
         </span>
       </li>
     `).join("");
+
+    /* Each item quietly checks whether a higher-resolution copy of the same
+       filename exists in sources/. If it does the row offers it, so the
+       collection can stay pointed at a fast web derivative while the clipper
+       opens the big one. */
+    const list = document.getElementById("collectionItems");
+    rows.forEach(async (it, i) => {
+      const url = await findHires(it.url);
+      const slot = list.children[i]?.querySelector(".coll-hires");
+      if (!url || !slot) return;
+      list.children[i].dataset.hires = url;
+      slot.innerHTML = `<button type="button" class="hires-btn" data-hires="1">use hi-res &#9733;</button>`;
+    });
   }
 
   document.getElementById("collectionSearch").addEventListener("input", renderCollections);
@@ -2059,8 +2118,7 @@
     sourcePreviewImg.src = item.url;
     sourcePreview.hidden = false;
     const rect = li.getBoundingClientRect();
-    sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
-    sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
+    placeSourcePreview(rect);
   });
   document.getElementById("collectionItems").addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
 
@@ -2070,9 +2128,14 @@
     if (!li) return;
     const item = visibleItems()[Number(li.dataset.index)];
     if (!item) return;
-    document.getElementById("collectionsStatus").textContent = "loading " + shortUrl(item.url) + "…";
-    selectSource("usedurl", item.url);
-    loadImage(item.url)
+    // The hi-res button opts into the local copy; the row itself uses the
+    // collection's own URL.
+    const url = e.target.closest("[data-hires]") && li.dataset.hires
+      ? li.dataset.hires
+      : item.url;
+    document.getElementById("collectionsStatus").textContent = "loading " + shortUrl(url) + "…";
+    selectSource("usedurl", url);
+    loadImage(url)
       .then(() => { document.getElementById("collectionsStatus").textContent = ""; })
       .catch(() => {
         document.getElementById("collectionsStatus").textContent =
@@ -2492,7 +2555,8 @@
     return stamp.tinted;
   }
 
-  function drawClip(ctx, clip, stamp) {
+  // `image` lets playback pass a downscaled proxy in place of the full stamp.
+  function drawClip(ctx, clip, stamp, image) {
     ctx.save();
     // Blends against everything already drawn beneath, background included.
     ctx.globalCompositeOperation = clip.blend || "source-over";
@@ -2500,8 +2564,29 @@
     ctx.translate(clip.x, clip.y);
     ctx.rotate(clip.rotation * Math.PI / 180);
     ctx.scale(clip.scale * (clip.flipX ? -1 : 1), clip.scale * (clip.flipY ? -1 : 1));
-    ctx.drawImage(stampFace(clip, stamp), -stamp.w / 2, -stamp.h / 2);
+    ctx.drawImage(image || stampFace(clip, stamp), -stamp.w / 2, -stamp.h / 2, stamp.w, stamp.h);
     ctx.restore();
+  }
+
+  /* Playback proxy: a copy of the stamp at roughly the size it actually
+     occupies on the record canvas. Without it every frame resamples the full
+     stamp — which after loading high-res sources can be several megapixels per
+     clip, and is what makes the animation stutter. Only ever downscales. */
+  function playbackProxy(clip, stamp, k, effScale) {
+    const target = Math.ceil(stamp.w * Math.abs(effScale ?? clip.scale) * k);
+    if (!isFinite(target) || target < 1 || target >= stamp.w) return stampFace(clip, stamp);
+    const key = `${target}|${clip.tint || ""}|${clip.tintAmount || 0}`;
+    if (stamp.proxyKey !== key) {
+      const off = document.createElement("canvas");
+      off.width = target;
+      off.height = Math.max(1, Math.round(stamp.h * (target / stamp.w)));
+      const octx = off.getContext("2d");
+      octx.imageSmoothingQuality = "high";
+      octx.drawImage(stampFace(clip, stamp), 0, 0, off.width, off.height);
+      stamp.proxy = off;
+      stamp.proxyKey = key;
+    }
+    return stamp.proxy;
   }
 
   function drawSelectionOverlay(ctx, clip, stamp) {
@@ -2798,6 +2883,8 @@
       <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}"
           style="${c.link ? `border-left-color:${groupColor(c.link)}` : ""}">
         <div class="layer-top">
+          <button data-action="lock" class="layer-lock ${c.locked ? "active" : ""}"
+                  title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#9632;" : "&#9633;"}</button>
           <input type="text" class="layer-name" spellcheck="false"
                  value="${escapeHtml(c.name || c.source)}" title="source: ${escapeHtml(c.source)}">
           <span class="layer-z">z${c.z}</span>
@@ -2806,7 +2893,6 @@
                  title="link group — clips sharing a name move together">
         </div>
         <div class="layer-actions">
-          <button data-action="lock" class="${c.locked ? "active" : ""}" title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#128274;" : "&#128275;"}</button>
           <button data-action="up" title="bring forward">&#9650;</button>
           <button data-action="down" title="send back">&#9660;</button>
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
@@ -2842,10 +2928,25 @@
     if (selectedId === id) selectedId = null;
   }
 
-  // Everything sharing this clip's link group, or just the clip if unlinked.
+  /* Everything sharing this clip's link group, or just the clip if unlinked.
+     "group all" is a temporary override — it ignores the per-layer groups
+     without erasing them, so unticking restores exactly what was there. */
   function linkedClips(clip) {
+    if (document.getElementById("groupAllChk")?.checked) return collage.clips;
     return clip.link ? collage.clips.filter((c) => c.link === clip.link) : [clip];
   }
+
+  function setAllLocked(locked) {
+    for (const c of collage.clips) c.locked = locked;
+    if (locked) selectedId = null;
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  }
+
+  document.getElementById("lockAllBtn").addEventListener("click", () => setAllLocked(true));
+  document.getElementById("unlockAllBtn").addEventListener("click", () => setAllLocked(false));
+  document.getElementById("groupAllChk").addEventListener("change", (e) => {
+    document.querySelector(".layers-tools").classList.toggle("group-all-on", e.target.checked);
+  });
 
   // ---------- drag a layer to restack it ----------
   /* The list runs top-of-stack first, so the row is moved in the DOM as you
@@ -3299,6 +3400,49 @@
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
+  /* Diagnostic for the swap. Probes with a fresh Image and a cache-busting
+     query rather than loadImage, because loadImage caches failures — without
+     that, adding the files and re-checking would still report them missing. */
+  function probeUrl(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
+    });
+  }
+
+  document.getElementById("checkHiresBtn").addEventListener("click", async (e) => {
+    const report = document.getElementById("hiresReport");
+    const status = document.getElementById("convertStatus");
+    e.target.disabled = true;
+    report.innerHTML = "";
+    status.textContent = "checking…";
+    hiresProbe.clear();   // so a later swap re-probes rather than reusing a miss
+
+    const sources = [...new Set(collage.clips.map((c) => c.source))];
+    let found = 0;
+
+    for (const source of sources) {
+      const key = hiresKey(source);
+      let hit = false;
+      let rows = "";
+      for (const root of HIRES_ROOTS) {
+        const url = root(key);
+        const ok = await probeUrl(url);
+        if (ok) hit = true;
+        rows += `<div class="${ok ? "ok" : "no"}">&nbsp;&nbsp;${ok ? "&#10003;" : "&#10007;"} ${escapeHtml(new URL(url, location.href).href)}</div>`;
+      }
+      if (hit) found++;
+      report.insertAdjacentHTML("beforeend",
+        `<div class="${hit ? "ok" : "no"}">${escapeHtml(source)} &rarr; looking for "${escapeHtml(key)}.jpg"</div>${rows}`);
+    }
+
+    status.textContent = `${found} of ${sources.length} sources have a high-res copy`;
+    e.target.disabled = false;
+  });
+
   document.getElementById("uploadBtn").addEventListener("click", () => document.getElementById("uploadInput").click());
   document.getElementById("uploadInput").addEventListener("change", (e) => {
     const file = e.target.files[0];
@@ -3500,8 +3644,7 @@
     sourcePreviewImg.src = clipUrl(entry);
     sourcePreview.hidden = false;
     const rect = btn.getBoundingClientRect();
-    sourcePreview.style.left = Math.max(4, Math.min(rect.left - 232, window.innerWidth - 236)) + "px";
-    sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
+    placeSourcePreview(rect);
   });
   document.getElementById("libraryList").addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
 
@@ -3702,17 +3845,21 @@
       const stamp = stampCache.get(clip.id);
       if (!stamp) continue;
       const entering = i === count - 1 && progress < 1;
-      drawClip(ctx, entering ? transitionProps(clip, progress, type, easing, cfg) : clip, stamp);
+      drawClip(ctx, entering ? transitionProps(clip, progress, type, easing, cfg) : clip,
+               stamp, playbackProxy(clip, stamp, k));
     }
   }
 
-  function animateStep(ctx, cfg, ordered, count, ms, k, type, easing) {
+  function animateStep(ctx, cfg, ordered, count, ms, k, type, easing, reverse) {
     return new Promise((resolve) => {
       const start = performance.now();
       const tick = (now) => {
-        const p = Math.min(1, (now - start) / ms);
+        const raw = Math.min(1, (now - start) / ms);
+        // Reversed, the top clip runs its transition backwards and leaves.
+        const p = reverse ? 1 - raw : raw;
         drawRevealFrame(ctx, cfg, ordered, count, p, k, type, easing);
-        if (p < 1 && !recStopRequested) requestAnimationFrame(tick);
+        // raw, not p — reversed, p counts down and would end the loop at once.
+        if (raw < 1 && !recStopRequested) requestAnimationFrame(tick);
         else resolve();
       };
       requestAnimationFrame(tick);
@@ -3818,20 +3965,25 @@
     const recorder = record ? beginRecording() : null;
     if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
 
-    drawRevealFrame(ctx, cfg, ordered, 0, 1, k, type, easing);
+    const reverse = document.getElementById("recReverse").checked;
+    const n = ordered.length;
+
+    // Reversed we begin fully assembled and take a layer away each step.
+    drawRevealFrame(ctx, cfg, ordered, reverse ? n : 0, 1, k, type, easing);
     await sleep(REVEAL_LEAD_IN);
 
-    for (let i = 1; i <= ordered.length && !recStopRequested; i++) {
-      recStatus.textContent = `layer ${i} of ${ordered.length}`;
+    for (let step = 1; step <= n && !recStopRequested; step++) {
+      const i = reverse ? n - step + 1 : step;
+      recStatus.textContent = `layer ${step} of ${n}`;
       if (type === "cut") {
-        drawRevealFrame(ctx, cfg, ordered, i, 1, k, type, easing);
+        drawRevealFrame(ctx, cfg, ordered, reverse ? i - 1 : i, 1, k, type, easing);
         await sleep(delay);
       } else {
-        await animateStep(ctx, cfg, ordered, i, delay, k, type, easing);
+        await animateStep(ctx, cfg, ordered, i, delay, k, type, easing, reverse);
       }
     }
 
-    drawRevealFrame(ctx, cfg, ordered, ordered.length, 1, k, type, easing);
+    drawRevealFrame(ctx, cfg, ordered, reverse ? 0 : n, 1, k, type, easing);
     if (!recStopRequested) await sleep(hold);
 
     if (recorder && recorder.state !== "inactive") recorder.stop();
@@ -3857,7 +4009,7 @@
      those regions to where they sit on the canvas. Each piece interpolates
      position, rotation and both scale axes; letting a scale axis cross zero is
      what reads as a mirror, so a flipped clip turns over on the way. */
-  async function buildStage(cfg) {
+  async function buildStage(cfg, k) {
     const clips = [...cfg.clips].sort((a, b) => a.z - b.z);
 
     const bySource = new Map();
@@ -3890,6 +4042,16 @@
         oy: Math.floor(i / cols) * ch + (ch - ih * s) / 2,
         w: iw * s, h: ih * s
       };
+
+      /* Sheet drawn once at cell size. Redrawing a multi-megapixel scan every
+         frame is the single biggest cost in this mode. */
+      const proxy = document.createElement("canvas");
+      proxy.width = Math.max(1, Math.round(sheet.draw.w * k));
+      proxy.height = Math.max(1, Math.round(sheet.draw.h * k));
+      const pctx = proxy.getContext("2d");
+      pctx.imageSmoothingQuality = "high";
+      pctx.drawImage(sheet.img, 0, 0, proxy.width, proxy.height);
+      sheet.proxy = proxy;
       for (const clip of sheet.clips) {
         const stamp = stampCache.get(clip.id);
         if (!stamp) continue;
@@ -3929,7 +4091,7 @@
       ctx.globalAlpha = sheetAlpha;
       for (const sheet of stage.sheets) {
         const d = sheet.draw;
-        ctx.drawImage(sheet.img, d.ox, d.oy, d.w, d.h);
+        ctx.drawImage(sheet.proxy || sheet.img, d.ox, d.oy, d.w, d.h);
       }
       ctx.restore();
     }
@@ -3949,7 +4111,11 @@
       ctx.translate(t.x, t.y);
       ctx.rotate(t.rot * Math.PI / 180);
       ctx.scale(t.sx, t.sy);
-      ctx.drawImage(stampFace(it.clip, it.stamp), -it.stamp.w / 2, -it.stamp.h / 2);
+      // Proxy sized to the larger of its two ends, so it stays sharp across
+      // the whole flight without resampling the full stamp each frame.
+      const proxy = playbackProxy(it.clip, it.stamp, k,
+        Math.max(Math.abs(it.start.sx), Math.abs(it.end.sx)));
+      ctx.drawImage(proxy, -it.stamp.w / 2, -it.stamp.h / 2, it.stamp.w, it.stamp.h);
       ctx.restore();
     }
 
@@ -3992,7 +4158,7 @@
 
     recStatus.textContent = "preparing images…";
     for (const clip of cfg.clips) await ensureStamp(clip);
-    const stage = await buildStage(cfg);
+    const stage = await buildStage(cfg, k);
     if (!stage) {
       recStatus.textContent = "no source images could be loaded";
       recPlaying = false; setRecButtons(false);
@@ -4007,24 +4173,27 @@
     const recorder = record ? beginRecording() : null;
     if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
 
-    recStatus.textContent = `staging ${stage.sheets.length} sources`;
-    drawStageFrame(ctx, stage, 0, k, easing);
-    await sleep(stageHold);
+    const reverse = document.getElementById("recReverse").checked;
 
-    recStatus.textContent = "assembling";
+    // Reversed: start assembled, pieces fly home, hold on the source grid.
+    recStatus.textContent = reverse ? "assembled" : `staging ${stage.sheets.length} sources`;
+    drawStageFrame(ctx, stage, reverse ? 1 : 0, k, easing);
+    await sleep(reverse ? hold : stageHold);
+
+    recStatus.textContent = reverse ? "returning to sources" : "assembling";
     await new Promise((resolve) => {
       const start = performance.now();
       const tick = (now) => {
-        const p = Math.min(1, (now - start) / (flight * 2));
-        drawStageFrame(ctx, stage, p, k, easing);
-        if (p < 1 && !recStopRequested) requestAnimationFrame(tick);
+        const raw = Math.min(1, (now - start) / (flight * 2));
+        drawStageFrame(ctx, stage, reverse ? 1 - raw : raw, k, easing);
+        if (raw < 1 && !recStopRequested) requestAnimationFrame(tick);
         else resolve();
       };
       requestAnimationFrame(tick);
     });
 
-    drawStageFrame(ctx, stage, 1, k, easing);
-    if (!recStopRequested) await sleep(hold);
+    drawStageFrame(ctx, stage, reverse ? 0 : 1, k, easing);
+    if (!recStopRequested) await sleep(reverse ? stageHold : hold);
 
     if (recorder && recorder.state !== "inactive") recorder.stop();
     mediaRecorder = null;
