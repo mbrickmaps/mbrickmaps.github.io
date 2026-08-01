@@ -844,6 +844,12 @@
     <div class="row">
       <label>Longest edge <input type="number" id="recMax" min="200" max="4000" step="100" value="1200">px</label>
       <label>FPS <input type="number" id="recFps" min="10" max="60" step="5" value="30"></label>
+      <label>Format
+        <select id="recFormat">
+          <option value="webm" selected>WebM</option>
+          <option value="mp4">MP4</option>
+        </select>
+      </label>
     </div>
     <div class="row">
       <button type="button" id="recPlayBtn">Play</button>
@@ -3734,11 +3740,24 @@
   }
 
   // Shared by both modes: starts capture and wires the download on stop.
+  // Candidates most-specific first; the browser picks the first it can encode.
+  const REC_CODECS = {
+    webm: ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"],
+    mp4: ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4"]
+  };
+
+  function supportedRecType(format) {
+    return (REC_CODECS[format] || REC_CODECS.webm)
+      .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || null;
+  }
+
   function beginRecording() {
-    const type = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
-      .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    const format = document.getElementById("recFormat").value;
+    const type = supportedRecType(format);
     if (!type) {
-      recStatus.textContent = "this browser can't record webm — try Chrome or Firefox";
+      recStatus.textContent = format === "mp4"
+        ? "this browser can't record MP4 — try WebM, or Chrome 126+ / Safari"
+        : "this browser can't record WebM — try Chrome or Firefox";
       return null;
     }
     const chunks = [];
@@ -3749,7 +3768,7 @@
       const blob = new Blob(chunks, { type });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `collage-${document.getElementById("recMode").value}.webm`;
+      a.download = `collage-${document.getElementById("recMode").value}.${type.includes("mp4") ? "mp4" : "webm"}`;
       a.click();
       URL.revokeObjectURL(a.href);
       recStatus.textContent = `saved ${a.download} — ${(blob.size / 1048576).toFixed(1)} MB`;
@@ -3825,6 +3844,13 @@
   ["recDelay", "recHold", "recStage", "recFps"].forEach((id) =>
     document.getElementById(id).addEventListener("input", updateRecEstimate));
   document.getElementById("recMode").addEventListener("change", updateRecEstimate);
+
+  // Flag formats this browser can't encode, rather than failing at record time.
+  [...document.getElementById("recFormat").options].forEach((opt) => {
+    if (supportedRecType(opt.value)) return;
+    opt.disabled = true;
+    opt.textContent += " — unsupported";
+  });
 
   /* ---- sources → final ----
      Lays every source out in a grid with its cut regions outlined, then flies
