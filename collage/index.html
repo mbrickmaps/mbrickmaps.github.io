@@ -981,19 +981,29 @@
     (name) => `../sources/${name}.jpg`
   ];
 
+  /* A library photo matches on its name; anything else — a URL or a path —
+     matches on its bare filename, so a clip cut from
+     iiif.example.org/.../12190191.jpg finds sources/12190191.jpg. */
+  function hiresKey(source) {
+    if (isLibraryPhoto(source)) return source;
+    const tail = (source.split("/").pop() || "").split("?")[0];
+    return decodeURIComponent(tail).replace(/\.[^.]+$/, "");
+  }
+
   const hiresProbe = new Map();
-  function findHires(name) {
-    if (!isLibraryPhoto(name)) return Promise.resolve(null);
-    if (!hiresProbe.has(name)) {
-      hiresProbe.set(name, (async () => {
+  function findHires(source) {
+    const key = hiresKey(source);
+    if (!key) return Promise.resolve(null);
+    if (!hiresProbe.has(key)) {
+      hiresProbe.set(key, (async () => {
         for (const root of HIRES_ROOTS) {
-          const url = root(name);
+          const url = root(key);
           try { await loadImage(url); return url; } catch { /* try the next root */ }
         }
         return null;
       })());
     }
-    return hiresProbe.get(name);
+    return hiresProbe.get(key);
   }
 
   // Probes once per name and caches the answer; loadImage caches the image
@@ -3254,7 +3264,6 @@
 
     for (const clip of collage.clips) {
       if (clip.hires || clip.useOriginal) { already++; continue; }
-      if (!isLibraryPhoto(clip.source)) { missing++; continue; }
 
       const url = await findHires(clip.source);
       if (!url) { missing++; continue; }
