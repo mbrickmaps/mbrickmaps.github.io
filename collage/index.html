@@ -26,7 +26,8 @@
   }
 
   /* Panel sizing — column spans out of 12. These are the only widths that tile
-     the grid cleanly, so a row always adds up: 4+8, 6+6, 4+4+4. */
+     the grid cleanly, so a row always adds up: 3+3+3+3, 4+8, 6+6, 4+4+4. */
+  .panel.size-quarter { grid-column: span 3; }     /* 1/4 */
   .panel.size-mini { grid-column: span 4; }        /* 1/3 */
   .panel.size-half { grid-column: span 6; }        /* 1/2 */
   .panel.size-twothirds { grid-column: span 8; }   /* 2/3 */
@@ -91,8 +92,9 @@
   #collagePanel { display: flex; flex-direction: column; }
   #collagePanel > .panel-head { order: 0; }
   #collagePanel > #clipProps { order: 1; }
-  #collagePanel > .viewport-wrap { order: 2; }
-  #collagePanel > .row { order: 3; }
+  #collagePanel > #clipFilters { order: 2; }
+  #collagePanel > .viewport-wrap { order: 3; }
+  #collagePanel > .row { order: 4; }
   /* The rows below the canvas read as a group, so drop the gap above them. */
   #collagePanel > .viewport-wrap { margin-bottom: 8px; }
   select, input[type="text"], input[type="number"], button {
@@ -103,7 +105,7 @@
   button:hover { border-color: var(--accent); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
   .row button.active { border-color: var(--accent2); color: var(--accent2); }
-  .row.inactive { opacity: 0.4; }
+  .row.inactive, #clipFilters.inactive { opacity: 0.4; }
   /* Divider and label marking where the canvas controls end and the controls
      for the selected layer begin. */
   #clipProps { border-top: 1px solid var(--border); padding-top: 10px; }
@@ -148,6 +150,7 @@
     height: 420px; border: 1px solid var(--border); background: #000;
     resize: both; min-height: 160px; max-width: 100%;
   }
+  .size-quarter #sourceViewport { height: 160px; }
   .size-mini #sourceViewport { height: 240px; }
   .size-full #sourceViewport { height: 640px; }
   #sourceViewport.panning { cursor: grabbing; }
@@ -175,6 +178,15 @@
   /* These two swap via the hidden attribute, which an explicit display would
      otherwise beat on specificity. */
   #magnifier[hidden], .spot-idle[hidden] { display: none; }
+  .spot-swatch { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.75rem; }
+  /* display:flex above would otherwise beat the UA's [hidden] rule. */
+  .spot-swatch[hidden] { display: none; }
+  .spot-chip {
+    width: 26px; height: 26px; flex-shrink: 0; border-radius: 4px;
+    border: 1px solid var(--border); background: #000;
+  }
+  .spot-hex { font-family: ui-monospace, monospace; letter-spacing: 0.02em; }
+  .spot-rgb { opacity: 0.55; font-size: 0.7rem; }
   /* Canvas on the left, layers docked as a column on the right. */
   .viewport-wrap { display: flex; gap: 12px; align-items: flex-start; }
   /* resize:both gives a native drag corner; it needs a non-visible overflow,
@@ -184,6 +196,7 @@
     border: 1px solid var(--border); background: #0a0a0a; cursor: grab;
     resize: both; min-width: 200px; min-height: 160px; max-width: 100%;
   }
+  .size-quarter #collageViewport { height: 150px; }
   .size-mini #collageViewport { height: 220px; }
   .size-full #collageViewport { height: 620px; }
 
@@ -252,6 +265,27 @@
     font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px;
   }
   #clipProps label button { padding: 1px 6px; font-size: 0.75rem; }
+  /* A grid rather than a wrapping flex row: eight sliders on one flex line
+     overflow the panel edge, and auto-fit keeps them tidy at any panel width. */
+  #clipFilters {
+    /* min(190px, 100%) rather than a flat 190px so a quarter-width panel
+       narrower than one column shrinks instead of overflowing its edge. */
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+    gap: 4px 10px; border-top: 1px solid var(--border); padding-top: 10px;
+  }
+  #clipFilters[hidden] { display: none; }
+  /* .section-label's flex:0 0 100% means nothing in a grid — without this the
+     heading takes one cell and shunts the first slider into the next column. */
+  #clipFilters .section-label { grid-column: 1 / -1; }
+  #clipFilters label { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+  #clipFilters label > span:first-child { flex: 0 0 54px; opacity: 0.75; }
+  #clipFilters input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
+  #clipFilters .filter-value { flex: 0 0 42px; font-size: 0.75rem; opacity: 0.7; text-align: right; }
+  /* Non-default filters light up, so what's actually on is readable without
+     reading eight slider positions. */
+  #clipFilters label.on > span:first-child { color: var(--accent2); opacity: 1; }
+  #clipFilters label.on .filter-value { opacity: 1; color: var(--accent2); }
+  #clipFiltersReset { float: right; padding: 1px 6px; font-size: 0.7rem; }
   /* ---------- collections ---------- */
   #collectionSelect { flex: 1 1 auto; min-width: 80px; }
   #collectionMeta {
@@ -353,6 +387,7 @@
   #layerList .layer-link { padding: 0 2px; font-size: 0.7rem; flex-shrink: 0; }
   #layerList button { padding: 1px 5px; font-size: 0.75rem; }
   #layerList button.active { border-color: var(--accent2); color: var(--accent2); }
+  #layerList .layer-res { font-size: 0.65rem; letter-spacing: 0.04em; text-transform: uppercase; }
 
   /* ---------- clip library ---------- */
   #libraryList { list-style: none; margin: 0 0 8px; padding: 0; max-height: 420px; overflow-y: auto; }
@@ -405,6 +440,7 @@
   }
   #configText { width: 100%; height: 420px; font-family: "Courier New", monospace; font-size: 0.75rem;
     background: #000; color: #7CFC7C; border: 1px solid var(--border); border-radius: 4px; resize: vertical; }
+  .size-quarter #configText { height: 160px; }
   .size-mini #configText { height: 260px; }
   input[type="color"] { width: 40px; height: 26px; padding: 1px; background: #000;
     border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
@@ -441,10 +477,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" class="active" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -482,6 +519,7 @@
     </div>
     <div class="row">
       <button id="addPointModeBtn">Add point mode: off</button>
+      <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
     </div>
   </section>
@@ -492,9 +530,10 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -514,6 +553,13 @@
         <canvas id="magnifier"></canvas>
         <div class="spot-idle" id="spotIdle">Hover over source to magnify</div>
       </div>
+      <!-- The pixel under the crosshair, not the middle of the window: near an
+           edge the window is clamped and the two are different pixels. -->
+      <div class="spot-swatch" id="spotSwatch" hidden>
+        <span class="spot-chip" id="spotChip"></span>
+        <span class="spot-hex" id="spotHex"></span>
+        <span class="spot-rgb" id="spotRgb"></span>
+      </div>
     </div>
   </section>
 
@@ -523,10 +569,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" class="active" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" class="active" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -663,6 +710,12 @@
         </select>
       </label>
     </div>
+    <!-- Sliders are generated from CLIP_FILTERS so the list is defined once. -->
+    <div id="clipFilters">
+      <span class="section-label">Filters
+        <button type="button" id="clipFiltersReset" title="clear every filter on this layer">reset</button>
+      </span>
+    </div>
     <div class="viewport-wrap">
       <div id="collageViewport">
         <canvas id="collageCanvas" width="1000" height="700"></canvas>
@@ -704,9 +757,10 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -730,10 +784,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -762,10 +817,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -793,10 +849,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -810,10 +867,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -903,10 +961,11 @@
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
-        <button type="button" data-size="mini" class="active" title="small (1/3)">&#9643;</button>
-        <button type="button" data-size="half" title="medium (1/2)">&#9703;</button>
-        <button type="button" data-size="twothirds" title="large (2/3)">&#9707;</button>
-        <button type="button" data-size="full" title="full">&#9645;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
     </div>
@@ -934,7 +993,7 @@
       <input type="file" id="uploadInput" accept="application/json" style="display:none">
     </div>
     <div class="row">
-      <button id="convertOriginalsBtn" title="swap every clip to a higher-resolution copy if one exists in photos/originals or sources, rescaling the masks to match">Load high-res sources</button>
+      <button id="convertOriginalsBtn" title="point every clip at a higher-resolution copy if one exists in photos/originals or sources — nothing moves, and each layer can be switched back with its lo/hi button">Load high-res sources</button>
       <button id="checkHiresBtn" title="list what each clip is looking for, without changing anything">Check</button>
       <span id="convertStatus" class="hint" style="margin:0;"></span>
     </div>
@@ -1069,8 +1128,51 @@
     image: null, naturalW: 0, naturalH: 0,
     points: [], closed: false, addPointMode: false, dragIndex: -1,
     dragPolygon: false, dragStart: null,
-    editingClipId: null, editingUseOriginal: false
+    editingClipId: null, editingUseOriginal: false,
+    // Peek is a way of looking at the polygon, not a property of it — never
+    // persisted, and cleared whenever the source changes.
+    peekNodes: false
   };
+
+  /* Reads one source pixel. A 1x1 scratch canvas rather than a full-size copy
+     of the image: a full-resolution scan can be tens of megapixels, and the
+     source rectangle arguments mean only the single pixel is ever decoded.
+     Cached per integer coordinate, so a render pass over twenty stationary
+     points costs nothing and dragging one costs a single read per frame. */
+  const peekCanvas = document.createElement("canvas");
+  peekCanvas.width = peekCanvas.height = 1;
+  const peekCtx = peekCanvas.getContext("2d", { willReadFrequently: true });
+  const peekCache = new Map();
+  let peekTainted = false;
+
+  function sampleSource(x, y) {
+    if (!editor.image || peekTainted) return null;
+    const ix = Math.max(0, Math.min(Math.round(x), editor.naturalW - 1));
+    const iy = Math.max(0, Math.min(Math.round(y), editor.naturalH - 1));
+    const key = ix + "," + iy;
+    if (peekCache.has(key)) return peekCache.get(key);
+    let rgb = null;
+    try {
+      peekCtx.clearRect(0, 0, 1, 1);
+      peekCtx.drawImage(editor.image, ix, iy, 1, 1, 0, 0, 1, 1);
+      const d = peekCtx.getImageData(0, 0, 1, 1).data;
+      rgb = [d[0], d[1], d[2]];
+    } catch {
+      // Cross-origin image with no CORS headers taints the canvas. Give up on
+      // the whole feature rather than throwing once per point per frame.
+      peekTainted = true;
+      return null;
+    }
+    // Bounded so panning a huge image doesn't grow this without limit.
+    if (peekCache.size > 4000) peekCache.clear();
+    peekCache.set(key, rgb);
+    return rgb;
+  }
+
+  // Rec. 601 luma — picks the ring color that will actually stand out.
+  function contrastInk([r, g, b]) {
+    return (r * 299 + g * 587 + b * 114) / 1000 > 140 ? "#000" : "#fff";
+  }
 
   const sourceViewport = document.getElementById("sourceViewport");
   let srcZoom = 1, srcPanX = 0, srcPanY = 0, srcPanning = false, spaceHeld = false;
@@ -1118,6 +1220,11 @@
     editor.image = img;
     editor.naturalW = img.naturalWidth || img.width;
     editor.naturalH = img.naturalHeight || img.height;
+    // Samples belong to the old image, and peek drops back off with it — it's
+    // a way of inspecting one source, not a mode the clipper stays in.
+    peekCache.clear();
+    peekTainted = false;
+    if (editor.peekNodes) setPeekNodes(false);
     resizeSourceCanvas();
     if (presetPoints) {
       editor.points = presetPoints.map((p) => p.slice());
@@ -1170,12 +1277,21 @@
       sctx.stroke();
       if (editor.closed) { sctx.fillStyle = "rgba(255,85,0,0.2)"; sctx.fill(); }
       editor.points.forEach(([x, y], i) => {
+        // Peek fills the node with what's under it. The node then has to be
+        // bigger — a 5px dot of the same color as its surroundings is
+        // invisible — and gets a ring chosen against its own brightness so it
+        // reads on both a white sky and a black shadow.
+        const rgb = editor.peekNodes ? sampleSource(x, y) : null;
         sctx.beginPath();
-        sctx.arc(x, y, srcPx(5), 0, Math.PI * 2);
-        sctx.fillStyle = i === 0 && !editor.closed ? "#33ff33" : "#fff";
+        sctx.arc(x, y, srcPx(rgb ? 7 : 5), 0, Math.PI * 2);
+        sctx.fillStyle = rgb ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`
+          : (i === 0 && !editor.closed ? "#33ff33" : "#fff");
         sctx.fill();
-        sctx.strokeStyle = "#000";
-        sctx.lineWidth = srcPx(1);
+        // The open path's first point keeps its green ring — that's how you
+        // know which one closes the shape.
+        sctx.strokeStyle = i === 0 && !editor.closed ? "#33ff33"
+          : (rgb ? contrastInk(rgb) : "#000");
+        sctx.lineWidth = srcPx(rgb ? 2 : 1);
         sctx.stroke();
       });
     }
@@ -1312,7 +1428,7 @@
   new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); saveLayoutSoon(); }).observe(sourceViewport);
 
   // ---------- Spot Check ----------
-  // A square window of `spot.size` source pixels centred on the cursor, blitted
+  // A square window of `spot.size` source pixels centered on the cursor, blitted
   // at `spot.mag` with smoothing off, so what you inspect is the actual pixels
   // rather than an interpolated guess at them.
   const magCanvas = document.getElementById("magnifier");
@@ -1338,12 +1454,16 @@
     spot.at = null;
     magCanvas.hidden = true;
     spotIdle.hidden = false;
+    // Nothing under the cursor means no pixel to report — leaving the last
+    // one on screen would read as the current sample.
+    const wrap = document.getElementById("spotSwatch");
+    if (wrap) wrap.hidden = true;
   }
 
   function drawSpot() {
     if (!editor.image || !spot.at) { showSpotIdle(); return; }
     const px = spotExtent();
-    // Clamp the window inside the image. The crosshair then sits off-centre
+    // Clamp the window inside the image. The crosshair then sits off-center
     // near an edge, which is exactly how you know you've reached one.
     const sx = Math.max(0, Math.min(spot.at.x - spot.size / 2, editor.naturalW - spot.size));
     const sy = Math.max(0, Math.min(spot.at.y - spot.size / 2, editor.naturalH - spot.size));
@@ -1352,7 +1472,7 @@
     mctx.clearRect(0, 0, px, px);
     mctx.imageSmoothingEnabled = false;
     mctx.drawImage(editor.image, sx, sy, spot.size, spot.size, 0, 0, px, px);
-    // Crosshair tracks the real cursor, not the window centre.
+    // Crosshair tracks the real cursor, not the window center.
     const cx = (spot.at.x - sx) * spot.mag, cy = (spot.at.y - sy) * spot.mag;
     mctx.strokeStyle = "#ff5500";
     mctx.lineWidth = 1;
@@ -1360,6 +1480,20 @@
     mctx.moveTo(cx, 0); mctx.lineTo(cx, px);
     mctx.moveTo(0, cy); mctx.lineTo(px, cy);
     mctx.stroke();
+    drawSpotSwatch();
+  }
+
+  /* Reuses the clipper's 1x1 sampler, so this costs one cached read per move
+     rather than a getImageData over the magnified window. */
+  function drawSpotSwatch() {
+    const wrap = document.getElementById("spotSwatch");
+    const rgb = spot.at && sampleSource(spot.at.x, spot.at.y);
+    if (!rgb) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
+    document.getElementById("spotChip").style.background = hex;
+    document.getElementById("spotHex").textContent = hex;
+    document.getElementById("spotRgb").textContent = `rgb(${rgb.join(", ")})`;
   }
 
   function updateMagnifier(nx, ny) {
@@ -1387,9 +1521,32 @@
     editor.addPointMode = !editor.addPointMode;
     e.target.textContent = `Add point mode: ${editor.addPointMode ? "on" : "off"}`;
   });
+
+  // Resolves the button itself rather than closing over a const — setEditorImage
+  // calls this and can run before a const further down has initialised.
+  function setPeekNodes(on) {
+    const btn = document.getElementById("nodeColorBtn");
+    editor.peekNodes = on;
+    btn.textContent = `Peek nodes: ${on ? "on" : "off"}`;
+    btn.classList.toggle("active", on);
+    renderEditor();
+  }
+
+  const nodeColorBtn = document.getElementById("nodeColorBtn");
+  nodeColorBtn.addEventListener("click", () => {
+    setPeekNodes(!editor.peekNodes);
+    // A tainted source can't be read at all, so say why rather than leaving
+    // the button on with nothing visibly different.
+    if (editor.peekNodes && peekTainted) {
+      setPeekNodes(false);
+      nodeColorBtn.textContent = "Peek nodes: blocked";
+      nodeColorBtn.title = "this source is cross-origin and sends no CORS headers, so its pixels can't be read";
+    }
+  });
   document.getElementById("clearPolyBtn").addEventListener("click", () => {
     editor.points = []; editor.closed = false; editor.editingClipId = null;
     editor.editingUseOriginal = false;
+    setPeekNodes(false);
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderEditor();
   });
@@ -1584,11 +1741,22 @@
     document.getElementById("addToCollageBtn").textContent = "Update clip";
     if (photoNames.has(clip.source)) setCurrentSourceUI("photo", clip.source);
     else setCurrentSourceUI("url", clip.source);
-    // A converted clip's polygon is in original-resolution coordinates, so the
-    // editor has to open the original or every point would land wrong.
+    // The polygon is in the coordinates of the file it was drawn against, not
+    // whatever the layer is currently being cut from — so open that one, or
+    // every point would land off by the resolution ratio. Older projects that
+    // were re-authored at full size are caught by the baseW check.
     editor.editingUseOriginal = !!clip.useOriginal;
-    loadImage(clipUrl(clip))
-      .then((img) => setEditorImage(img, clip.polygon));
+    const authored = resolveSourceUrl(clip.source, clip.useOriginal);
+    loadImage(authored)
+      .then((img) => {
+        if (clip.hires && clip.baseW && img.naturalWidth !== clip.baseW) {
+          return loadImage(clip.hires).catch(() => img);
+        }
+        return img;
+      })
+      .catch(() => (clip.hires ? loadImage(clip.hires) : Promise.reject()))
+      .then((img) => setEditorImage(img, clip.polygon))
+      .catch(() => { /* source unreachable — leave the editor as it was */ });
   }
 
   // ---------- collage (right panel) ----------
@@ -1806,7 +1974,7 @@
 
   // ---------- layout persistence ----------
   const LAYOUT_KEY = "collage.layout.v1";
-  const SIZE_CLASSES = ["size-mini", "size-half", "size-twothirds", "size-full"];
+  const SIZE_CLASSES = ["size-quarter", "size-mini", "size-half", "size-twothirds", "size-full"];
 
   function saveLayout() {
     const state = {
@@ -1937,13 +2105,18 @@
     const clip = collage.clips.find((c) => c.id === selectedId);
     // Stays in the layout whether or not something is selected — toggling
     // display here resized the panel and shunted the canvas on every click.
+    const filters = document.getElementById("clipFilters");
     panel.classList.toggle("inactive", !clip);
-    const controls = panel.querySelectorAll("input, select, button");
+    filters.classList.toggle("inactive", !clip);
+    const controls = [...panel.querySelectorAll("input, select, button"),
+                     ...filters.querySelectorAll("input, button")];
     if (!clip) {
       controls.forEach((el) => { el.disabled = true; });
+      syncFilterInputs(null);
       return;
     }
     controls.forEach((el) => { el.disabled = !!clip.locked; });
+    syncFilterInputs(clip);
 
     syncScaleInputs(clip.scale);
     document.getElementById("clipBlend").value = clip.blend || "source-over";
@@ -1980,7 +2153,7 @@
   document.getElementById("clipOpacityUp").addEventListener("click", () => stepOpacity(0.01));
   document.getElementById("clipOpacityDown").addEventListener("click", () => stepOpacity(-0.01));
 
-  // Fixed mix strength — enough colour to read while the photo shows through.
+  // Fixed mix strength — enough color to read while the photo shows through.
   const TINT_STRENGTH = 0.35;
 
   function setTint(color) {
@@ -2002,6 +2175,101 @@
 
   document.getElementById("clipTint").addEventListener("input", (e) => setTint(e.target.value));
   document.getElementById("clipTintClear").addEventListener("click", clearTint);
+
+  // ---------- per-layer filters ----------
+
+  /* Order is the order they're applied in, so this reads as a pipeline: tone,
+     then color, then blur last. `def` is the value that means "off" and is
+     never written to the config, so a layer with no filters carries no
+     filters key at all. Declared here rather than next to stampFace because
+     the sliders below are generated from it. */
+  const CLIP_FILTERS = [
+    { key: "brightness", label: "Bright",   min: 0,    max: 3,   step: 0.01, def: 1, css: (v) => `brightness(${v})` },
+    { key: "contrast",   label: "Contrast", min: 0,    max: 3,   step: 0.01, def: 1, css: (v) => `contrast(${v})` },
+    { key: "saturate",   label: "Sat",      min: 0,    max: 3,   step: 0.01, def: 1, css: (v) => `saturate(${v})` },
+    { key: "grayscale",  label: "Gray",     min: 0,    max: 1,   step: 0.01, def: 0, css: (v) => `grayscale(${v})` },
+    { key: "sepia",      label: "Sepia",    min: 0,    max: 1,   step: 0.01, def: 0, css: (v) => `sepia(${v})` },
+    { key: "invert",     label: "Invert",   min: 0,    max: 1,   step: 0.01, def: 0, css: (v) => `invert(${v})` },
+    { key: "hueRotate",  label: "Hue",      min: -180, max: 180, step: 1,    def: 0, css: (v) => `hue-rotate(${v}deg)`, unit: "°" },
+    // Scaled by k so a blur set against a web copy still looks the same after
+    // the layer is switched to a high-res source — the stamp is k times bigger.
+    { key: "blur",       label: "Blur",     min: 0,    max: 20,  step: 0.5,  def: 0, css: (v, k) => `blur(${(v * k).toFixed(2)}px)`, unit: "px" }
+  ];
+
+  function filterString(clip, k = 1) {
+    if (!clip.filters) return "";
+    const parts = [];
+    for (const spec of CLIP_FILTERS) {
+      const v = clip.filters[spec.key];
+      if (v === undefined || v === spec.def) continue;
+      parts.push(spec.css(v, k));
+    }
+    return parts.join(" ");
+  }
+
+  const clipFiltersEl = document.getElementById("clipFilters");
+
+  clipFiltersEl.insertAdjacentHTML("beforeend", CLIP_FILTERS.map((f) => `
+    <label data-filter="${f.key}">
+      <span>${f.label}</span>
+      <input type="range" data-filter-input="${f.key}"
+             min="${f.min}" max="${f.max}" step="${f.step}" value="${f.def}">
+      <span class="filter-value"></span>
+    </label>
+  `).join(""));
+
+  // Percentages read better for the 0–3 and 0–1 filters; the two with a real
+  // unit (degrees, pixels) show the number itself.
+  function formatFilter(spec, v) {
+    return spec.unit ? `${Math.round(v * 10) / 10}${spec.unit}` : `${Math.round(v * 100)}%`;
+  }
+
+  // Looks the container up itself rather than closing over clipFiltersEl —
+  // updateClipProps can run before that const is initialised.
+  function syncFilterInputs(clip) {
+    const root = document.getElementById("clipFilters");
+    for (const spec of CLIP_FILTERS) {
+      const label = root.querySelector(`[data-filter="${spec.key}"]`);
+      if (!label) return;   // sliders not generated yet
+      const value = clip?.filters?.[spec.key] ?? spec.def;
+      label.querySelector("input").value = value;
+      label.querySelector(".filter-value").textContent = formatFilter(spec, value);
+      label.classList.toggle("on", !!clip && value !== spec.def);
+    }
+  }
+
+  function setClipFilter(clip, key, value) {
+    const spec = CLIP_FILTERS.find((f) => f.key === key);
+    if (!spec) return;
+    // Defaults are deleted rather than stored, so a layer with nothing set
+    // carries no filters key at all and the config stays readable.
+    if (value === spec.def) {
+      if (clip.filters) delete clip.filters[key];
+      if (clip.filters && !Object.keys(clip.filters).length) delete clip.filters;
+    } else {
+      (clip.filters ||= {})[key] = value;
+    }
+    // No cache to clear: both the face and the playback proxy key off the
+    // filter string, so changing one invalidates them on the next draw.
+    renderCollage(); syncTextarea();
+  }
+
+  clipFiltersEl.addEventListener("input", (e) => {
+    const key = e.target.dataset.filterInput;
+    if (!key) return;
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    setClipFilter(clip, key, parseFloat(e.target.value));
+    syncFilterInputs(clip);
+  });
+
+  document.getElementById("clipFiltersReset").addEventListener("click", () => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    delete clip.filters;
+    syncFilterInputs(clip);
+    renderCollage(); syncTextarea();
+  });
 
   // ---------- collections ----------
   /* Curated external sources (map archives and the like), defined in
@@ -2389,14 +2657,14 @@
     document.getElementById("clipScaleValue").textContent = value.toFixed(2);
   }
 
-  // Bounding centre of a set of clips — the pivot a group scales about.
+  // Bounding center of a set of clips — the pivot a group scales about.
   function groupCenter(clips) {
     const xs = clips.map((c) => c.x), ys = clips.map((c) => c.y);
     return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
   }
 
   /* A linked group scales as one object: every member's size AND its distance
-     from the group's centre are multiplied by the same factor. Setting each
+     from the group's center are multiplied by the same factor. Setting each
      member to the same absolute scale instead would flatten clips that were
      deliberately different sizes and leave the spacing between them unchanged. */
   function setClipScale(clip, value) {
@@ -2481,20 +2749,37 @@
   document.getElementById("clipRotationUp").addEventListener("click", () => stepRotation(1));
   document.getElementById("clipRotationDown").addEventListener("click", () => stepRotation(-1));
 
-  function buildStamp(polygon, img) {
+  /* Cut at the source file's own resolution but measured in authoring space:
+     w/h stay the size the polygon was drawn at, while the backing canvas is k
+     times that. So swapping a clip between its web copy and a high-res one
+     changes only how many pixels are inside the shape — the footprint, and
+     therefore position, rotation, scale and handles, never move. */
+  function buildStamp(polygon, img, k = 1) {
     const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
     const minX = Math.min(...xs), minY = Math.min(...ys);
     const w = Math.max(1, Math.ceil(Math.max(...xs) - minX));
     const h = Math.max(1, Math.ceil(Math.max(...ys) - minY));
+    const pw = Math.max(1, Math.round(w * k)), ph = Math.max(1, Math.round(h * k));
     const off = document.createElement("canvas");
-    off.width = w; off.height = h;
+    off.width = pw; off.height = ph;
     const octx = off.getContext("2d");
+    octx.scale(k, k);
     octx.beginPath();
     polygon.forEach(([x, y], i) => i === 0 ? octx.moveTo(x - minX, y - minY) : octx.lineTo(x - minX, y - minY));
     octx.closePath();
     octx.clip();
-    octx.drawImage(img, -minX, -minY);
-    return { canvas: off, w, h };
+    // Drawn at authoring size under the k scale, so it fills the canvas at
+    // full native detail without the polygon having to know about k.
+    octx.drawImage(img, -minX, -minY, img.naturalWidth / k, img.naturalHeight / k);
+    return { canvas: off, w, h, pw, ph };
+  }
+
+  /* A mask is stored in the coordinates of whichever file it was drawn
+     against, so cutting it from a bigger copy means scaling the cut, never the
+     stored polygon. Anything that builds a stamp goes through this. */
+  function stampScale(entry, img) {
+    const r = entry.baseW ? img.naturalWidth / entry.baseW : 1;
+    return isFinite(r) && r > 0 ? r : 1;
   }
 
   function localCorners(stamp) {
@@ -2532,27 +2817,35 @@
     return { rotate: transformPoint(clip, [0, -d]), scale: transformPoint(clip, [stamp.w / 2, stamp.h / 2]) };
   }
 
-  /* Tinting happens on a copy of the stamp with source-atop, which respects
-     the existing alpha — so color lands only on the cut shape, never in the
-     transparent surround. Cached on the stamp; rebuilt only when it changes. */
+  /* Filters and tint are baked into a copy of the stamp rather than applied
+     when drawing: setting ctx.filter every frame is what makes dragging and
+     playback crawl, and baking means the playback proxy inherits both for
+     free. Tint goes on after the filters, with source-atop so it respects the
+     existing alpha — color lands only on the cut shape, never in the
+     transparent surround — and so the tint itself isn't contrast-boosted.
+     Cached on the stamp; rebuilt only when the recipe changes. */
   function stampFace(clip, stamp) {
     const amount = clip.tintAmount || 0;
-    if (!amount) return stamp.canvas;
-    const color = clip.tint || "#000000";
-    const key = color + "|" + amount;
-    if (stamp.tintKey !== key) {
+    const filter = filterString(clip, stamp.pw / stamp.w);
+    if (!amount && !filter) return stamp.canvas;
+    const key = filter + "|" + (clip.tint || "#000000") + "|" + amount;
+    if (stamp.faceKey !== key) {
       const off = document.createElement("canvas");
-      off.width = stamp.w; off.height = stamp.h;
+      off.width = stamp.pw; off.height = stamp.ph;
       const octx = off.getContext("2d");
+      octx.filter = filter || "none";
       octx.drawImage(stamp.canvas, 0, 0);
-      octx.globalCompositeOperation = "source-atop";
-      octx.globalAlpha = amount;
-      octx.fillStyle = color;
-      octx.fillRect(0, 0, stamp.w, stamp.h);
-      stamp.tinted = off;
-      stamp.tintKey = key;
+      octx.filter = "none";
+      if (amount) {
+        octx.globalCompositeOperation = "source-atop";
+        octx.globalAlpha = amount;
+        octx.fillStyle = clip.tint || "#000000";
+        octx.fillRect(0, 0, stamp.pw, stamp.ph);
+      }
+      stamp.face = off;
+      stamp.faceKey = key;
     }
-    return stamp.tinted;
+    return stamp.face;
   }
 
   // `image` lets playback pass a downscaled proxy in place of the full stamp.
@@ -2574,12 +2867,14 @@
      clip, and is what makes the animation stutter. Only ever downscales. */
   function playbackProxy(clip, stamp, k, effScale) {
     const target = Math.ceil(stamp.w * Math.abs(effScale ?? clip.scale) * k);
-    if (!isFinite(target) || target < 1 || target >= stamp.w) return stampFace(clip, stamp);
-    const key = `${target}|${clip.tint || ""}|${clip.tintAmount || 0}`;
+    if (!isFinite(target) || target < 1 || target >= stamp.pw) return stampFace(clip, stamp);
+    // Keyed on the same recipe stampFace uses, computed rather than read back
+    // off the stamp — faceKey isn't written until stampFace has actually run.
+    const key = `${target}|${filterString(clip, stamp.pw / stamp.w)}|${clip.tint || ""}|${clip.tintAmount || 0}`;
     if (stamp.proxyKey !== key) {
       const off = document.createElement("canvas");
       off.width = target;
-      off.height = Math.max(1, Math.round(stamp.h * (target / stamp.w)));
+      off.height = Math.max(1, Math.round(stamp.ph * (target / stamp.pw)));
       const octx = off.getContext("2d");
       octx.imageSmoothingQuality = "high";
       octx.drawImage(stampFace(clip, stamp), 0, 0, off.width, off.height);
@@ -2612,10 +2907,11 @@
     const url = clipUrl(clip);
     let img;
     try { img = await loadImage(url); } catch { return null; }
+    const k = stampScale(clip, img);
     const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
     let stamp = stampCache.get(clip.id);
     if (!stamp || stamp.key !== key) {
-      stamp = buildStamp(clip.polygon, img);
+      stamp = buildStamp(clip.polygon, img, k);
       stamp.key = key;
       stampCache.set(clip.id, stamp);
     }
@@ -2833,7 +3129,7 @@
       rotateAbout(rotateDrag.items, rotateDrag.cx, rotateDrag.cy, angle - rotateDrag.startAngle);
     } else if (dragMode === "scale" && scaleDrag) {
       // Factor against the frozen baseline; a lone clip has zero offset from
-      // its own centre, so only its size changes.
+      // its own center, so only its size changes.
       const factor = Math.hypot(pt[0] - scaleDrag.cx, pt[1] - scaleDrag.cy) / scaleDrag.startDist;
       for (const it of scaleDrag.items) {
         it.clip.scale = Math.max(SCALE_MIN, it.scale * factor);
@@ -2898,12 +3194,38 @@
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
           <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
           <button data-action="guides" class="${c.guides ? "active" : ""}" title="alignment guides">&#128208;</button>
+          <button data-action="res" class="layer-res ${c.hires ? "active" : ""}"
+                  title="${c.hires ? `high-res source: ${escapeHtml(c.hires)} — click for the web copy` : "click to use a high-res source if one exists"}">${c.hires ? "hi" : "lo"}</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
           <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
         </div>
       </li>
     `).join("");
+  }
+
+  /* Per-layer resolution. Going back to "lo" only drops the hires pointer, and
+     going to "hi" only sets it, because the mask lives in authoring
+     coordinates either way — so this is a free round trip, not a conversion. */
+  async function toggleClipRes(clip, btn) {
+    if (clip.hires) {
+      clip.hires = null;
+      stampCache.delete(clip.id);
+      renderCollage(); renderLayerList(); syncTextarea();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "…";
+    const url = await findHires(clip.source);
+    if (!url) {
+      btn.disabled = false;
+      btn.textContent = "lo";
+      btn.title = `no high-res copy found for "${hiresKey(clip.source)}"`;
+      return;
+    }
+    clip.hires = url;
+    stampCache.delete(clip.id);
+    renderCollage(); renderLayerList(); syncTextarea();
   }
 
   function duplicateClip(clip) {
@@ -2917,7 +3239,9 @@
       polygon: clip.polygon.map((p) => p.slice()),
       name: (clip.name || clip.source) + " copy",
       locked: false,
-      x: clip.x + 20, y: clip.y + 20, z
+      // Lands exactly on top of the original — the copy is a stack, not an
+      // offset, so anything aligned stays aligned until you move it.
+      x: clip.x, y: clip.y, z
     });
     selectedId = newId;
   }
@@ -3048,6 +3372,10 @@
       if (swapIdx >= 0 && swapIdx < sorted.length) {
         const tmp = sorted[idx].z; sorted[idx].z = sorted[swapIdx].z; sorted[swapIdx].z = tmp;
       }
+    } else if (action === "res") {
+      // Async — it may have to probe for the file, so it re-renders itself.
+      toggleClipRes(clip, e.target);
+      return;
     } else if (action === "edit") {
       editClipMask(clip);
     } else if (action === "duplicate") {
@@ -3082,12 +3410,12 @@
     const h = layerPreviewCanvas.height = Math.max(1, Math.round(stamp.h * fit));
     const ctx = layerPreviewCanvas.getContext("2d");
     ctx.clearRect(0, 0, w, h);
-    // Flips applied so the thumbnail matches the canvas; rotation left off so
-    // the shape stays a stable, un-cropped preview of the mask.
+    // Flips, filters and tint applied so the thumbnail matches the canvas;
+    // rotation left off so the shape stays a stable, un-cropped preview.
     ctx.save();
     ctx.translate(clip.flipX ? w : 0, clip.flipY ? h : 0);
     ctx.scale(clip.flipX ? -1 : 1, clip.flipY ? -1 : 1);
-    ctx.drawImage(stamp.canvas, 0, 0, w, h);
+    ctx.drawImage(stampFace(clip, stamp), 0, 0, w, h);
     ctx.restore();
 
     layerPreview.hidden = false;
@@ -3242,7 +3570,7 @@
     for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
       let img;
       try { img = await loadImage(clipUrl(clip)); } catch { continue; }
-      try { drawClip(ctx, clip, buildStamp(clip.polygon, img)); } catch { /* skip a bad clip */ }
+      try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img))); } catch { /* skip a bad clip */ }
     }
     return c;
   }
@@ -3359,10 +3687,10 @@
     URL.revokeObjectURL(a.href);
   });
 
-  /* One-time upgrade: re-authors each clip's mask against the full-resolution
-     original. polygon x k puts the mask back on the right pixels; scale / k
-     keeps the canvas footprint identical, so the composite looks unchanged but
-     carries k times the real detail. Clips with no original are left alone. */
+  /* Points every clip at a higher-resolution copy of its source. Nothing about
+     the layer changes: the mask stays in the coordinates it was drawn in and
+     ensureStamp re-cuts it against the bigger file, so position, rotation and
+     scale hold still and the swap is reversible per layer. */
   document.getElementById("convertOriginalsBtn").addEventListener("click", async (e) => {
     const status = document.getElementById("convertStatus");
     e.target.disabled = true;
@@ -3370,26 +3698,9 @@
     let converted = 0, already = 0, missing = 0;
 
     for (const clip of collage.clips) {
-      if (clip.hires || clip.useOriginal) { already++; continue; }
-
+      if (clip.hires) { already++; continue; }
       const url = await findHires(clip.source);
       if (!url) { missing++; continue; }
-
-      const big = await loadImage(url);
-      let base = clip.baseW;
-      if (!base) {
-        // Older clip with no recorded authoring size: fall back to measuring
-        // the web derivative it must have been drawn against.
-        try { base = (await loadImage(resolveSourceUrl(clip.source, false))).naturalWidth; }
-        catch { missing++; continue; }
-      }
-      const k = big.naturalWidth / base;
-      if (!isFinite(k) || k <= 0) { missing++; continue; }
-
-      clip.polygon = clip.polygon.map(([x, y]) => [x * k, y * k]);
-      clip.scale = clip.scale / k;
-      clip.baseW = big.naturalWidth;
-      clip.baseH = big.naturalHeight;
       clip.hires = url;
       stampCache.delete(clip.id);
       converted++;
@@ -3494,7 +3805,7 @@
     if (!stamp) {
       let img;
       try { img = await loadImage(clipUrl(entry)); } catch { return; }
-      stamp = buildStamp(entry.polygon, img);
+      stamp = buildStamp(entry.polygon, img, stampScale(entry, img));
       libThumbCache.set(entry.id, stamp);
     }
     const fit = Math.min(56 / stamp.w, 56 / stamp.h);
@@ -4042,6 +4353,9 @@
         oy: Math.floor(i / cols) * ch + (ch - ih * s) / 2,
         w: iw * s, h: ih * s
       };
+      // Authoring coordinates -> this sheet's pixels. 1 unless the sheet is a
+      // high-res copy of what the masks were drawn against.
+      sheet.k = stampScale(sheet.clips[0], sheet.img);
 
       /* Sheet drawn once at cell size. Redrawing a multi-megapixel scan every
          frame is the single biggest cost in this mode. */
@@ -4055,12 +4369,15 @@
       for (const clip of sheet.clips) {
         const stamp = stampCache.get(clip.id);
         if (!stamp) continue;
+        // s maps source pixels to the cell, but the polygon is in authoring
+        // coordinates — for a high-res sheet those differ by sheet.k.
+        const ks = sheet.k * s;
         const xs = clip.polygon.map((p) => p[0]), ys = clip.polygon.map((p) => p[1]);
         const bcx = (Math.min(...xs) + Math.max(...xs)) / 2;
         const bcy = (Math.min(...ys) + Math.max(...ys)) / 2;
         items.push({
           clip, stamp,
-          start: { x: sheet.draw.ox + bcx * s, y: sheet.draw.oy + bcy * s, sx: s, sy: s, rot: 0 },
+          start: { x: sheet.draw.ox + bcx * ks, y: sheet.draw.oy + bcy * ks, sx: ks, sy: ks, rot: 0 },
           end: {
             x: clip.x, y: clip.y,
             sx: clip.scale * (clip.flipX ? -1 : 1),
@@ -4133,7 +4450,7 @@
         for (const clip of sheet.clips) {
           ctx.beginPath();
           clip.polygon.forEach(([px, py], i) => {
-            const X = d.ox + px * d.s, Y = d.oy + py * d.s;
+            const X = d.ox + px * d.s * sheet.k, Y = d.oy + py * d.s * sheet.k;
             i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
           });
           ctx.closePath();
