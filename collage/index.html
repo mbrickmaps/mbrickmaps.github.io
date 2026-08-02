@@ -328,6 +328,18 @@
     background: #000; border: 1px solid var(--border); border-radius: 4px;
   }
   #recordPanel .row button.active { border-color: var(--accent2); color: var(--accent2); }
+  #recJitterRules { flex: 0 0 100%; display: flex; flex-direction: column; gap: 4px; }
+  .jitter-rule { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; flex-wrap: wrap; }
+  /* The target is the only part worth room; the numbers are two digits. */
+  .jitter-rule select[data-f="target"] { flex: 1 1 120px; min-width: 0; }
+  .jitter-rule input[type="number"] { width: 52px; padding: 2px 4px; font-size: 0.75rem; }
+  .jitter-rule select { padding: 2px 4px; font-size: 0.75rem; }
+  .jitter-rule label { display: flex; align-items: center; gap: 3px; opacity: 0.75; }
+  .jitter-rule button[data-f="remove"] { padding: 1px 6px; font-size: 0.7rem; }
+  #recJitterAdd { float: right; padding: 1px 6px; font-size: 0.7rem; }
+  #recJitterRules:empty::after {
+    content: "no rules — nothing will move"; opacity: 0.5; font-size: 0.75rem;
+  }
   #recordPanel input[type="number"] { width: 62px; }
 
   #hiresReport {
@@ -893,6 +905,7 @@
       <select id="recMode">
         <option value="reveal" selected>layer reveal</option>
         <option value="sources">sources &rarr; final</option>
+        <option value="jitter">jitter</option>
       </select>
       <label title="play the same sequence backwards — the collage comes apart instead of together">
         <input type="checkbox" id="recReverse"> reverse
@@ -902,24 +915,6 @@
       <label>Per layer <input type="number" id="recDelay" min="0.1" max="10" step="0.1" value="0.6">s</label>
       <label>Stage hold <input type="number" id="recStage" min="0" max="20" step="0.5" value="3">s</label>
       <label>Hold end <input type="number" id="recHold" min="0" max="20" step="0.5" value="2">s</label>
-    </div>
-    <div class="row" id="recSourcesOpts">
-      <label>Source fade <input type="number" id="recSourceFade" min="0" max="10" step="0.25" value="1.5">s</label>
-      <label>Effect step <input type="number" id="recEffect" min="0.1" max="5" step="0.1" value="0.4">s</label>
-    </div>
-    <div class="row" id="recSourcesOpts2">
-      <label>Blend
-        <select id="recBlendApply">
-          <option value="walk" selected>one by one</option>
-          <option value="together">all at once</option>
-        </select>
-      </label>
-      <label>Color
-        <select id="recColorApply">
-          <option value="walk" selected>one by one</option>
-          <option value="together">all at once</option>
-        </select>
-      </label>
     </div>
     <div class="row">
       <label>Transition
@@ -942,8 +937,38 @@
         </select>
       </label>
     </div>
+    <div class="row" id="recJitterOpts" hidden>
+      <span class="section-label">Jitter rules
+        <button type="button" id="recJitterAdd" title="add another rule">+ rule</button>
+      </span>
+      <div id="recJitterRules"></div>
+      <label title="the run is Hold end seconds multiplied by this">Loops
+        <input type="number" id="recLoops" min="1" max="60" step="1" value="1"></label>
+      <button type="button" id="recJitterPreview" title="loop the motion in the preview below while you adjust — never touches the collage">preview: off</button>
+      <label title="draws the layer's resting position underneath, so a 2px move is something you can actually see">
+        <input type="checkbox" id="recJitterGhost"> ghost</label>
+      <span class="hint" style="margin:0; flex:0 0 100%;">
+        First matching rule wins, so put specific layers above <b>all layers</b>.
+        Anything no rule matches holds perfectly still.
+        Runs for <b>Hold end</b> &times; <b>Loops</b> seconds on the finished collage.
+      </span>
+    </div>
     <div class="row">
-      <label>Longest edge <input type="number" id="recMax" min="200" max="4000" step="100" value="1200">px</label>
+      <label title="the frame the video is delivered in. Anything other than the config's own size lets you position the collage inside it.">Target
+        <select id="recTarget">
+          <option value="config" selected>match config</option>
+          <optgroup label="Instagram">
+            <option value="1080x1080">square &mdash; 1080&times;1080</option>
+            <option value="1080x1350">portrait &mdash; 1080&times;1350</option>
+            <option value="1080x1920">story / reel &mdash; 1080&times;1920</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option value="1920x1080">landscape &mdash; 1920&times;1080</option>
+            <option value="1200x675">link card &mdash; 1200&times;675</option>
+            <option value="2000x2000">print square &mdash; 2000&times;2000</option>
+          </optgroup>
+        </select>
+      </label>
       <label>FPS <input type="number" id="recFps" min="10" max="60" step="5" value="30"></label>
       <label>Format
         <select id="recFormat">
@@ -951,6 +976,18 @@
           <option value="mp4">MP4</option>
         </select>
       </label>
+    </div>
+    <div class="row" id="recFrameOpts" hidden>
+      <span class="section-label">Framing</span>
+      <button type="button" id="recFitBtn" class="active" title="whole collage inside the frame, letterboxed if the shapes differ">fit</button>
+      <button type="button" id="recFillBtn" title="fill the frame, cropping whatever falls outside">fill</button>
+      <label title="on top of fit or fill">Zoom
+        <input type="range" class="mini-range" id="recZoom" min="0.25" max="3" step="0.01" value="1">
+        <span id="recZoomValue">100%</span></label>
+      <label>X <input type="number" id="recPanX" step="10" value="0"></label>
+      <label>Y <input type="number" id="recPanY" step="10" value="0"></label>
+      <button type="button" id="recFrameReset" title="back to centered, no zoom">reset</button>
+      <span class="hint" style="margin:0; flex:0 0 100%;">Drag inside the preview below to pan. The dashed edge is the collage.</span>
     </div>
     <div class="row">
       <button type="button" id="recPlayBtn">Play</button>
@@ -3220,8 +3257,10 @@
   }
 
   function renderLayerList() {
-    // Layer count feeds the Record panel's duration estimate.
+    // Layer count feeds the Record panel's duration estimate, and its names
+    // and groups feed the jitter target list.
     updateRecEstimate();
+    if (document.getElementById("recMode")?.value === "jitter") renderJitterRules();
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     // Existing group names, offered as suggestions so grouping is a pick
@@ -4162,12 +4201,73 @@
     return recConfig || { canvas: collage.canvas, clips: collage.clips };
   }
 
+  /* Delivery framing. The target is the frame the video is delivered in; the
+     collage is then positioned inside it. On "match config" every number below
+     collapses to the identity — same size, scale 1, no offset — so the default
+     path is exactly what it was before framing existed. */
+  const recFrame = { mode: "fit", zoom: 1, x: 0, y: 0 };
+
+  function targetSize(cfg) {
+    const v = document.getElementById("recTarget").value;
+    if (v === "config") return [cfg.canvas.width, cfg.canvas.height];
+    const [w, h] = v.split("x").map(Number);
+    return [w, h];
+  }
+
+  /* fit contains the whole collage and letterboxes; fill covers the frame and
+     crops. Zoom multiplies whichever you picked, and the offsets shift the
+     collage inside the frame — that's the pan. */
+  function recordTransform(cfg) {
+    const [tw, th] = targetSize(cfg);
+    const sx = tw / cfg.canvas.width, sy = th / cfg.canvas.height;
+    const base = recFrame.mode === "fill" ? Math.max(sx, sy) : Math.min(sx, sy);
+    const k = base * recFrame.zoom;
+    return {
+      tw, th, k,
+      tx: (tw - cfg.canvas.width * k) / 2 + recFrame.x,
+      ty: (th - cfg.canvas.height * k) / 2 + recFrame.y
+    };
+  }
+
+  function recordSize(cfg) {
+    const t = recordTransform(cfg);
+    return [t.tw, t.th, t.k];
+  }
+
+  // Stashed so the draw functions can apply the same offset without every one
+  // of them having to recompute it per frame.
+  let recView = { k: 1, tx: 0, ty: 0 };
+
   function sizeRecordCanvas(cfg) {
-    const maxEdge = Number(document.getElementById("recMax").value) || 1200;
-    const k = Math.min(1, maxEdge / Math.max(cfg.canvas.width, cfg.canvas.height));
-    recordCanvas.width = Math.max(1, Math.round(cfg.canvas.width * k));
-    recordCanvas.height = Math.max(1, Math.round(cfg.canvas.height * k));
-    return k;
+    const t = recordTransform(cfg);
+    recordCanvas.width = Math.max(1, Math.round(t.tw));
+    recordCanvas.height = Math.max(1, Math.round(t.th));
+    recView = { k: t.k, tx: t.tx, ty: t.ty };
+    return t.k;
+  }
+
+  /* Collage coordinates -> record canvas. `inspect` magnifies about the centre
+     of the frame and is preview-only — a recording always passes 1, so nothing
+     exported is ever zoomed. */
+  function applyRecordTransform(ctx, k, inspect = 1) {
+    if (inspect === 1) {
+      ctx.setTransform(k, 0, 0, k, recView.tx, recView.ty);
+      return;
+    }
+    const cx = ctx.canvas.width / 2, cy = ctx.canvas.height / 2;
+    ctx.setTransform(k * inspect, 0, 0, k * inspect,
+      cx + (recView.tx - cx) * inspect,
+      cy + (recView.ty - cy) * inspect);
+  }
+
+  /* The panel is a third of the layout wide, so a 1000px frame is displayed at
+     under 300px — at which point 2px of jitter is half a screen pixel and you
+     are tuning something you cannot see. The preview magnifies to at least 1:1
+     so a pixel of movement is a pixel on screen. */
+  function previewInspect() {
+    const shown = recordCanvas.getBoundingClientRect().width;
+    if (!shown || !recordCanvas.width) return 1;
+    return Math.max(1, recordCanvas.width / shown);
   }
 
   const EASINGS = {
@@ -4179,6 +4279,128 @@
   /* Returns the clip as it should look partway through its entrance. Offsets
      are a fraction of canvas height rather than fixed pixels, so a transition
      travels the same visual distance whatever the project resolution. */
+  /* ---- jitter ----
+     A few pixels of movement per layer so the collage never sits perfectly
+     still. Offsets are hashed from the clip id and the step number rather than
+     drawn from Math.random, which means a given frame always gets the same
+     offset: replaying looks identical, and a recording matches its preview. */
+  const recClock = { t0: 0 };
+
+  function hashUnit(str, step, axis) {
+    let h = 2166136261;
+    const s = `${str}|${step}|${axis}`;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    /* FNV alone leaves the top bits of "…|x" and "…|y" almost identical — one
+       trailing character apart is one multiply apart — and since the value is
+       read off the high bits, x and y came out nearly equal and every layer
+       slid along a 45 degree line. The murmur3 finaliser avalanches that one
+       bit through the whole word so the two axes are independent. */
+    h ^= h >>> 15; h = Math.imul(h, 2246822507);
+    h ^= h >>> 13; h = Math.imul(h, 3266489909);
+    h ^= h >>> 16;
+    return ((h >>> 0) / 4294967295) * 2 - 1;   // -1..1
+  }
+
+  const smoothstep = (t) => t * t * (3 - 2 * t);
+
+  /* Both modes read the same hashed sequence; the only difference is whether
+     the value snaps at each step or eases between them. That keeps a layer's
+     path recognisably the same whichever you pick. */
+  /* One rule per target, tried in order — so a rule naming a single layer
+     placed above "all layers" overrides it for that layer. A clip no rule
+     matches gets no offset at all, which is how you keep something pinned. */
+  const jitterRules = [{ target: "all", mode: "boil", amount: 2, hold: 2 }];
+
+  // fps is shared, so it's resolved once here rather than per rule per frame.
+  function jitterSettings() {
+    if (!jitterRules.length) return null;
+    return { rules: jitterRules, fps: Number(document.getElementById("recFps").value) || 30 };
+  }
+
+  // "all", a link group, or one specific clip.
+  function jitterHits(clip, target) {
+    if (!target || target === "all") return true;
+    if (target.startsWith("group:")) return clip.link === target.slice(6);
+    if (target.startsWith("clip:")) return clip.id === target.slice(5);
+    return false;
+  }
+
+  function jitterOffset(clip, nowMs, js) {
+    if (!js) return null;
+    const rule = js.rules.find((r) => jitterHits(clip, r.target));
+    if (!rule || !rule.amount) return null;
+
+    const hold = Math.max(1, rule.hold || 1);
+    // Elapsed playback time in "held frames" — the unit an offset lasts for.
+    const t = (nowMs - recClock.t0) / (1000 / js.fps) / hold;
+    const step = Math.floor(t);
+
+    if (rule.mode === "boil") {
+      return [hashUnit(clip.id, step, "x") * rule.amount, hashUnit(clip.id, step, "y") * rule.amount];
+    }
+    // drift: same waypoints, eased across so it floats instead of twitching.
+    const f = smoothstep(t - step);
+    const lerp = (a, b) => a + (b - a) * f;
+    return [
+      lerp(hashUnit(clip.id, step, "x"), hashUnit(clip.id, step + 1, "x")) * rule.amount,
+      lerp(hashUnit(clip.id, step, "y"), hashUnit(clip.id, step + 1, "y")) * rule.amount
+    ];
+  }
+
+  /* Options come from whatever the Record panel is pointed at, so an imported
+     config lists its own layers. A rule keeps its target if it still exists —
+     re-picking every time a layer is renamed would be miserable. */
+  function jitterTargetOptions(selected) {
+    const clips = recSource().clips || [];
+    const groups = [...new Set(clips.map((c) => c.link).filter(Boolean))].sort();
+    const opt = (v, label) =>
+      `<option value="${escapeHtml(v)}"${v === selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+    return opt("all", "all layers")
+      + (groups.length ? `<optgroup label="Groups">${groups.map((g) => opt("group:" + g, g)).join("")}</optgroup>` : "")
+      + (clips.length ? `<optgroup label="Layers">${clips.map((c) => opt("clip:" + c.id, c.name || c.source)).join("")}</optgroup>` : "");
+  }
+
+  function renderJitterRules() {
+    const list = document.getElementById("recJitterRules");
+    if (!list) return;
+    list.innerHTML = jitterRules.map((r, i) => `
+      <div class="jitter-rule" data-i="${i}">
+        <select data-f="target">${jitterTargetOptions(r.target)}</select>
+        <select data-f="mode">
+          <option value="boil"${r.mode === "boil" ? " selected" : ""}>boil</option>
+          <option value="drift"${r.mode === "drift" ? " selected" : ""}>drift</option>
+        </select>
+        <label title="how far it moves">&plusmn;<input type="number" data-f="amount" min="0" max="30" step="0.5" value="${r.amount}">px</label>
+        <label title="frames each offset is held. 2-3 reads as hand-drawn; drift wants 4-6 to float">hold
+          <input type="number" data-f="hold" min="1" max="12" step="1" value="${r.hold}">f</label>
+        <button type="button" data-f="remove" title="remove this rule">&#10005;</button>
+      </div>`).join("");
+  }
+
+  document.getElementById("recJitterAdd").addEventListener("click", () => {
+    jitterRules.push({ target: "all", mode: "boil", amount: 2, hold: 2 });
+    renderJitterRules();
+  });
+
+  document.getElementById("recJitterRules").addEventListener("input", (e) => {
+    const row = e.target.closest("[data-i]");
+    const field = e.target.dataset.f;
+    if (!row || !field) return;
+    const rule = jitterRules[Number(row.dataset.i)];
+    if (!rule) return;
+    rule[field] = (field === "amount" || field === "hold")
+      ? Number(e.target.value) : e.target.value;
+  });
+
+  document.getElementById("recJitterRules").addEventListener("click", (e) => {
+    if (e.target.dataset.f !== "remove") return;
+    jitterRules.splice(Number(e.target.closest("[data-i]").dataset.i), 1);
+    renderJitterRules();
+  });
+
   function transitionProps(clip, p, type, easing, cfg) {
     if (type === "cut") return clip;
     const e = (EASINGS[easing] || EASINGS.out)(p);
@@ -4204,7 +4426,7 @@
       ctx.fillStyle = cfg.canvas.background;
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
-    ctx.setTransform(k, 0, 0, k, 0, 0);
+    applyRecordTransform(ctx, k);
     for (let i = 0; i < count; i++) {
       const clip = ordered[i];
       const stamp = stampCache.get(clip.id);
@@ -4213,6 +4435,58 @@
       drawClip(ctx, entering ? transitionProps(clip, progress, type, easing, cfg) : clip,
                stamp, playbackProxy(clip, stamp, k));
     }
+  }
+
+  /* Jitter mode: the finished collage, held, with the targeted layers moving.
+     Reuses drawRevealFrame's shape but never transitions anything — every clip
+     sits at its own position plus whatever offset the clock says. */
+  function drawJitterFrame(ctx, cfg, ordered, k, js, now, env = 1, inspect = 1) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (cfg.canvas.background) {
+      ctx.fillStyle = cfg.canvas.background;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+    applyRecordTransform(ctx, k, inspect);
+    // Preview aid only — never on during a recording, so nothing you export
+    // can contain it.
+    const ghost = !recPlaying && document.getElementById("recJitterGhost").checked;
+
+    for (const clip of ordered) {
+      const stamp = stampCache.get(clip.id);
+      if (!stamp) continue;
+      // Sized for the magnified draw, or a zoomed preview would show a proxy
+      // built for a third of the size and look soft.
+      const proxy = playbackProxy(clip, stamp, k * inspect);
+      const j = env > 0 ? jitterOffset(clip, now, js) : null;
+
+      /* The resting position underneath at a third opacity. The separation
+         between the two copies *is* the jitter — which is the only way to
+         judge a 2px move without staring at a single frame. */
+      if (ghost && j) {
+        drawClip(ctx, { ...clip, opacity: (clip.opacity ?? 1) * 0.35 }, stamp, proxy);
+      }
+      drawClip(ctx, j ? { ...clip, x: clip.x + j[0] * env, y: clip.y + j[1] * env } : clip,
+               stamp, proxy);
+    }
+  }
+
+  /* Fades the movement in at the start and out at the end, so the run opens
+     and closes on the authored positions. That makes the last frame the real
+     collage rather than a version nudged a few pixels sideways, and lets the
+     clip loop without a jump. A fixed 300ms, capped at a quarter of the run so
+     a short hold still gets a middle. */
+  function jitterEnvelope(elapsed, total) {
+    if (total <= 0) return 0;
+    const ramp = Math.min(300, total * 0.25);
+    if (ramp <= 0) return 1;
+    // Clamped both ways: smoothstep of a negative input curves back up, so a
+    // one-sided clamp would report movement before the run has started.
+    const clamp01 = (v) => Math.max(0, Math.min(1, v));
+    return Math.min(
+      smoothstep(clamp01(elapsed / ramp)),
+      smoothstep(clamp01((total - elapsed) / ramp))
+    );
   }
 
   function animateStep(ctx, cfg, ordered, count, ms, k, type, easing, reverse) {
@@ -4239,15 +4513,24 @@
     const hold = Number(document.getElementById("recHold").value) || 0;
     const stageHold = Number(document.getElementById("recStage").value) || 0;
     const fps = Number(document.getElementById("recFps").value) || 30;
-    const sources = document.getElementById("recMode").value === "sources";
+    const mode = document.getElementById("recMode").value;
+    const loops = Math.max(1, Number(document.getElementById("recLoops").value) || 1);
 
-    // Reveal costs one delay per layer; the flight is a single pass at 2x delay.
-    const secs = sources
-      ? stageHold + delay * 2 + hold
+    // Reveal costs one delay per layer; the flight is a single pass at 2x
+    // delay; jitter is nothing but the hold, repeated.
+    const secs = mode === "jitter" ? hold * loops
+      : mode === "sources" ? stageHold + delay * 2 + hold
       : REVEAL_LEAD_IN / 1000 + n * delay + hold;
 
+    // Output dimensions are shown because the delivery frame quietly differing
+    // from the collage is exactly what you'd only notice after recording.
+    const cfg = recSource();
+    const [ow, oh] = recordSize(cfg);
+    const framed = document.getElementById("recTarget").value !== "config";
+    const size = `${ow}×${oh}${framed ? ` from ${cfg.canvas.width}×${cfg.canvas.height}` : ""}`;
+
     document.getElementById("recEstimate").textContent = n
-      ? `${n} layers · ${secs.toFixed(1)}s · ~${Math.round(secs * fps)} frames`
+      ? `${n} layers · ${secs.toFixed(1)}s · ~${Math.round(secs * fps)} frames · ${size}`
       : "no layers to play";
   }
 
@@ -4312,6 +4595,8 @@
     const ordered = [...cfg.clips].sort((a, b) => a.z - b.z);
     if (!ordered.length) { recStatus.textContent = "nothing to play"; return; }
 
+    // Jitter is measured from here, so a replay reproduces the same offsets.
+    recClock.t0 = performance.now();
     recPlaying = true;
     recStopRequested = false;
     setRecButtons(true);
@@ -4358,9 +4643,163 @@
     if (!record) recStatus.textContent = recStopRequested ? "stopped" : "done";
   }
 
-  ["recDelay", "recHold", "recStage", "recFps"].forEach((id) =>
+  ["recDelay", "recHold", "recStage", "recFps", "recLoops"].forEach((id) =>
     document.getElementById(id).addEventListener("input", updateRecEstimate));
-  document.getElementById("recMode").addEventListener("change", updateRecEstimate);
+  // Jitter's controls are meaningless in the other two modes, so they only
+  // appear when it's selected rather than sitting there doing nothing.
+  /* Static frame showing exactly what will be recorded, so the crop is
+     something you look at rather than something you find out about. Only draws
+     clips whose stamps are already built — this is a framing check, not a
+     render, and it must not block on loading. */
+  function renderRecordPreview() {
+    if (recPlaying) return;
+    const cfg = recSource();
+    const ctx = recordCanvas.getContext("2d");
+    const k = sizeRecordCanvas(cfg);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+    if (cfg.canvas.background) {
+      ctx.fillStyle = cfg.canvas.background;
+      ctx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
+    }
+
+    applyRecordTransform(ctx, k);
+    for (const clip of [...cfg.clips].sort((a, b) => a.z - b.z)) {
+      const stamp = stampCache.get(clip.id);
+      if (stamp) drawClip(ctx, clip, stamp, playbackProxy(clip, stamp, k));
+    }
+
+    // The collage edge, so you can see what's being cropped off and what's
+    // letterbox. Not drawn when the frame is the collage — nothing to show.
+    if (document.getElementById("recTarget").value !== "config") {
+      ctx.strokeStyle = "rgba(226,151,66,0.9)";
+      ctx.lineWidth = 1.5 / k;
+      ctx.setLineDash([6 / k, 4 / k]);
+      ctx.strokeRect(0, 0, cfg.canvas.width, cfg.canvas.height);
+      ctx.setLineDash([]);
+    }
+  }
+
+  function syncFrameInputs() {
+    document.getElementById("recZoom").value = recFrame.zoom;
+    document.getElementById("recZoomValue").textContent = Math.round(recFrame.zoom * 100) + "%";
+    document.getElementById("recPanX").value = Math.round(recFrame.x);
+    document.getElementById("recPanY").value = Math.round(recFrame.y);
+    document.getElementById("recFitBtn").classList.toggle("active", recFrame.mode === "fit");
+    document.getElementById("recFillBtn").classList.toggle("active", recFrame.mode === "fill");
+  }
+
+  function frameChanged() {
+    syncFrameInputs();
+    updateRecEstimate();
+    renderRecordPreview();
+  }
+
+  document.getElementById("recFitBtn").addEventListener("click", () => { recFrame.mode = "fit"; frameChanged(); });
+  document.getElementById("recFillBtn").addEventListener("click", () => { recFrame.mode = "fill"; frameChanged(); });
+  document.getElementById("recZoom").addEventListener("input", (e) => { recFrame.zoom = parseFloat(e.target.value); frameChanged(); });
+  document.getElementById("recPanX").addEventListener("input", (e) => { recFrame.x = Number(e.target.value) || 0; frameChanged(); });
+  document.getElementById("recPanY").addEventListener("input", (e) => { recFrame.y = Number(e.target.value) || 0; frameChanged(); });
+  document.getElementById("recFrameReset").addEventListener("click", () => {
+    recFrame.mode = "fit"; recFrame.zoom = 1; recFrame.x = 0; recFrame.y = 0;
+    frameChanged();
+  });
+
+  /* Drag inside the preview to pan. The canvas is displayed at whatever size
+     it fits, so pointer movement is converted through that ratio — otherwise
+     the collage would lag or outrun the cursor on a scaled-down preview. */
+  recordCanvas.addEventListener("pointerdown", (e) => {
+    if (document.getElementById("recTarget").value === "config" || recPlaying) return;
+    const rect = recordCanvas.getBoundingClientRect();
+    const ratio = recordCanvas.width / rect.width;
+    const from = { x: e.clientX, y: e.clientY, px: recFrame.x, py: recFrame.y };
+    recordCanvas.setPointerCapture(e.pointerId);
+    recordCanvas.style.cursor = "grabbing";
+
+    const move = (ev) => {
+      recFrame.x = from.px + (ev.clientX - from.x) * ratio;
+      recFrame.y = from.py + (ev.clientY - from.y) * ratio;
+      frameChanged();
+    };
+    const up = () => {
+      recordCanvas.removeEventListener("pointermove", move);
+      recordCanvas.removeEventListener("pointerup", up);
+      recordCanvas.style.cursor = "";
+    };
+    recordCanvas.addEventListener("pointermove", move);
+    recordCanvas.addEventListener("pointerup", up);
+  });
+
+  document.getElementById("recTarget").addEventListener("change", () => {
+    const framed = document.getElementById("recTarget").value !== "config";
+    document.getElementById("recFrameOpts").hidden = !framed;
+    // A new target means the old offsets refer to a frame that no longer
+    // exists, so framing starts centered rather than somewhere arbitrary.
+    recFrame.zoom = 1; recFrame.x = 0; recFrame.y = 0;
+    frameChanged();
+  });
+
+  /* A free-running loop of the motion, with no envelope and no end — it is for
+     judging the movement, not for producing anything. Rules are re-read every
+     frame, so editing amount or hold while it runs takes effect immediately.
+     It draws only to the record canvas; the collage is never touched. */
+  let jitterPreviewRAF = null;
+
+  function stopJitterPreview() {
+    if (!jitterPreviewRAF) return;
+    cancelAnimationFrame(jitterPreviewRAF);
+    jitterPreviewRAF = null;
+    document.getElementById("recJitterPreview").textContent = "preview: off";
+    document.getElementById("recJitterPreview").classList.remove("active");
+    renderRecordPreview();
+  }
+
+  function startJitterPreview() {
+    if (jitterPreviewRAF) return;
+    const cfg = recSource();
+    if (!cfg.clips.length) { recStatus.textContent = "nothing to preview"; return; }
+
+    const ctx = recordCanvas.getContext("2d");
+    const ordered = [...cfg.clips].sort((a, b) => a.z - b.z);
+    recClock.t0 = performance.now();
+    document.getElementById("recJitterPreview").textContent = "preview: on";
+    document.getElementById("recJitterPreview").classList.add("active");
+
+    const k = sizeRecordCanvas(cfg);
+    const inspect = previewInspect();
+    // Said out loud, or a magnified preview reads as the framing having broken.
+    recStatus.textContent = inspect > 1.05
+      ? `preview magnified ${inspect.toFixed(1)}× so the movement is visible — the recording is not`
+      : "preview";
+
+    const tick = (now) => {
+      if (!jitterPreviewRAF) return;
+      drawJitterFrame(ctx, cfg, ordered, k, jitterSettings(), now, 1, inspect);
+      jitterPreviewRAF = requestAnimationFrame(tick);
+    };
+    jitterPreviewRAF = requestAnimationFrame(tick);
+  }
+
+  document.getElementById("recJitterPreview").addEventListener("click", () =>
+    jitterPreviewRAF ? stopJitterPreview() : startJitterPreview());
+
+  // Ghost is a preview-only aid, so toggling it repaints the still frame too.
+  document.getElementById("recJitterGhost").addEventListener("change", () => {
+    if (!jitterPreviewRAF) renderRecordPreview();
+  });
+
+  function syncRecModeUI() {
+    const mode = document.getElementById("recMode").value;
+    document.getElementById("recJitterOpts").hidden = mode !== "jitter";
+    // Leaving the loop running after switching away would keep animating a
+    // preview for a mode you're no longer in.
+    if (mode !== "jitter") stopJitterPreview();
+    else renderJitterRules();
+    updateRecEstimate();
+  }
+  document.getElementById("recMode").addEventListener("change", syncRecModeUI);
+  syncRecModeUI();
 
   // Flag formats this browser can't encode, rather than failing at record time.
   [...document.getElementById("recFormat").options].forEach((opt) => {
@@ -4452,7 +4891,7 @@
       ctx.fillStyle = cfg.canvas.background;
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
-    ctx.setTransform(k, 0, 0, k, 0, 0);
+    applyRecordTransform(ctx, k);
 
     const e = (EASINGS[easing] || EASINGS.out)(p);
     const sheetAlpha = 1 - Math.min(1, p / 0.4);   // sheets clear early in the flight
@@ -4520,6 +4959,8 @@
     const cfg = recSource();
     if (!cfg.clips.length) { recStatus.textContent = "nothing to play"; return; }
 
+    // Jitter is measured from here, so a replay reproduces the same offsets.
+    recClock.t0 = performance.now();
     recPlaying = true;
     recStopRequested = false;
     setRecButtons(true);
@@ -4573,10 +5014,65 @@
     if (!record) recStatus.textContent = recStopRequested ? "stopped" : "done";
   }
 
+  /* Jitter mode: no reveal, no flight — the finished collage for Hold end
+     seconds with the targeted layers moving. Everything else about capture is
+     the same, so it reuses beginRecording and the same canvas sizing. */
+  async function playJitter(record) {
+    if (recPlaying) return;
+    const cfg = recSource();
+    if (!cfg.clips.length) { recStatus.textContent = "nothing to play"; return; }
+
+    recPlaying = true;
+    recStopRequested = false;
+    recClock.t0 = performance.now();
+    setRecButtons(true);
+
+    const k = sizeRecordCanvas(cfg);
+    const ctx = recordCanvas.getContext("2d");
+    recStatus.textContent = "preparing images…";
+    for (const clip of cfg.clips) await ensureStamp(clip);
+
+    const ordered = [...cfg.clips].sort((a, b) => a.z - b.z);
+    const js = jitterSettings();
+    const loops = Math.max(1, Number(document.getElementById("recLoops").value) || 1);
+    // One continuous sequence, just a longer one — the envelope still fades in
+    // at the very start and out at the very end, not at each loop boundary.
+    const ms = (Number(document.getElementById("recHold").value) || 0) * 1000 * loops;
+
+    const recorder = record ? beginRecording() : null;
+    if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
+
+    recStatus.textContent = js ? `jittering ${js.mode}` : "holding still";
+    await new Promise((resolve) => {
+      const start = performance.now();
+      const tick = (now) => {
+        const elapsed = now - start;
+        drawJitterFrame(ctx, cfg, ordered, k, js, now, jitterEnvelope(elapsed, ms));
+        if (elapsed < ms && !recStopRequested) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+
+    // The loop exits on whichever frame crosses the deadline, which is a hair
+    // past it — so the settled collage is drawn explicitly rather than left to
+    // whatever the envelope happened to be on that frame.
+    drawJitterFrame(ctx, cfg, ordered, k, js, performance.now(), 0);
+
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    mediaRecorder = null;
+    recPlaying = false;
+    setRecButtons(false);
+    if (!record) recStatus.textContent = recStopRequested ? "stopped" : "done";
+  }
+
   function runRecordMode(record) {
-    return document.getElementById("recMode").value === "sources"
-      ? playStage(record)
-      : playReveal(record);
+    // The loop owns the record canvas — leaving it running would fight the
+    // real playback for the same context and land in the capture stream.
+    stopJitterPreview();
+    const mode = document.getElementById("recMode").value;
+    if (mode === "jitter") return playJitter(record);
+    return mode === "sources" ? playStage(record) : playReveal(record);
   }
 
   document.getElementById("recPlayBtn").addEventListener("click", () => runRecordMode(false));
