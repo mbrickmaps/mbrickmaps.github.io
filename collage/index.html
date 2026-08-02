@@ -518,6 +518,7 @@
       </div>
     </div>
     <div class="row">
+      <button id="wholeImageBtn" title="replace the polygon with the whole source frame">Whole image</button>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
@@ -667,6 +668,12 @@
         <input type="range" id="clipScale" min="0" max="1000" step="1">
         <button type="button" id="clipScaleUp" title="scale up">+</button>
         <span id="clipScaleValue">1.00</span></label>
+      <label>Fit to canvas
+        <button type="button" id="fitClipWidthBtn" title="scale this layer to the canvas width">&#8596;</button>
+        <button type="button" id="fitClipHeightBtn" title="scale this layer to the canvas height">&#8597;</button>
+        <button type="button" id="fitClipBtn" title="scale this layer to sit entirely inside the canvas">both</button>
+        <button type="button" id="fillClipBtn" title="scale this layer to cover the canvas, overflowing the shorter side">fill</button>
+      </label>
       <label>Rotation&deg;
         <button type="button" id="clipRotationDown" title="rotate anticlockwise">&minus;</button>
         <input type="range" class="mini-range" id="clipRotation" min="-180" max="180" step="1" value="0">
@@ -1520,6 +1527,21 @@
   document.getElementById("addPointModeBtn").addEventListener("click", (e) => {
     editor.addPointMode = !editor.addPointMode;
     e.target.textContent = `Add point mode: ${editor.addPointMode ? "on" : "off"}`;
+  });
+
+  /* The whole frame as a four-point mask. Inset by half a pixel rather than
+     sitting on 0 and the full width: the polygon is a path, so a point exactly
+     on the right edge rasterises half-outside the image and leaves a hairline
+     of transparency down that side of the stamp. */
+  document.getElementById("wholeImageBtn").addEventListener("click", () => {
+    if (!editor.image) return;
+    const w = editor.naturalW, h = editor.naturalH;
+    editor.points = [[0.5, 0.5], [w - 0.5, 0.5], [w - 0.5, h - 0.5], [0.5, h - 0.5]];
+    editor.closed = true;
+    // Leaves editingClipId alone, so this works as "expand this clip to the
+    // whole frame" on an existing layer, not only as a fresh cut.
+    renderEditor();
+    fitSourceView();
   });
 
   // Resolves the button itself rather than closing over a const — setEditorImage
@@ -2686,6 +2708,38 @@
     syncScaleInputs(clip.scale);
     renderCollage(); syncTextarea();
   }
+
+  /* Scales the selected layer against the canvas. Measured on the stamp's
+     unrotated size — the footprint a rotated clip sweeps is bigger than the
+     clip, and fitting to that makes a tilted layer shrink for no visible
+     reason. Only the axis you asked for is recentred, so fitting the width
+     never quietly moves the layer vertically. */
+  function fitClipToCanvas(mode) {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || clip.locked) return;
+    const stamp = stampCache.get(clip.id);
+    if (!stamp) return;
+
+    const kx = collage.canvas.width / stamp.w;
+    const ky = collage.canvas.height / stamp.h;
+    const scale = mode === "width" ? kx
+      : mode === "height" ? ky
+      : mode === "fill" ? Math.max(kx, ky)
+      : Math.min(kx, ky);
+
+    // Goes through setClipScale so a linked group scales about its own center
+    // rather than each member jumping to the same absolute size.
+    setClipScale(clip, scale);
+
+    if (mode !== "height") clip.x = collage.canvas.width / 2;
+    if (mode !== "width") clip.y = collage.canvas.height / 2;
+    renderCollage(); syncTextarea(); updateClipProps();
+  }
+
+  document.getElementById("fitClipWidthBtn").addEventListener("click", () => fitClipToCanvas("width"));
+  document.getElementById("fitClipHeightBtn").addEventListener("click", () => fitClipToCanvas("height"));
+  document.getElementById("fitClipBtn").addEventListener("click", () => fitClipToCanvas("both"));
+  document.getElementById("fillClipBtn").addEventListener("click", () => fitClipToCanvas("fill"));
 
   document.getElementById("clipScale").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
