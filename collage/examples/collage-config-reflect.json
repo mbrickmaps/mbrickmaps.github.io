@@ -1,0 +1,147 @@
+{
+  "canvas": {
+    "width": 1000,
+    "height": 700,
+    "background": "#111111"
+  },
+  "clips": [
+    {
+      "id": "clip-msbxqksryl0g",
+      "source": "1909738_513058210551_4346_n_513058210551",
+      "polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          1599.5,
+          0.5
+        ],
+        [
+          1599.5,
+          2132.5
+        ],
+        [
+          0.5,
+          2132.5
+        ]
+      ],
+      "baseW": 1600,
+      "baseH": 2133,
+      "useOriginal": false,
+      "x": 752.97,
+      "y": 149.14,
+      "scale": 0.2372,
+      "rotation": 89.98,
+      "flipX": false,
+      "flipY": false,
+      "blend": "source-over",
+      "z": 1
+    },
+    {
+      "id": "clip-msbxqw575ptg",
+      "source": "1909738_513058210551_4346_n_513058210551",
+      "polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          1599.5,
+          0.5
+        ],
+        [
+          1599.5,
+          2132.5
+        ],
+        [
+          0.5,
+          2132.5
+        ]
+      ],
+      "baseW": 1600,
+      "baseH": 2133,
+      "useOriginal": false,
+      "x": 752.76,
+      "y": 528.56,
+      "scale": 0.2372,
+      "rotation": 89.98,
+      "flipX": true,
+      "flipY": false,
+      "blend": "source-over",
+      "z": 2,
+      "name": "1909738_513058210551_4346_n_513058210551 copy",
+      "locked": false
+    },
+    {
+      "id": "clip-msbxs0wzfk4u",
+      "source": "1909738_513058210551_4346_n_513058210551",
+      "polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          1599.5,
+          0.5
+        ],
+        [
+          1599.5,
+          2132.5
+        ],
+        [
+          0.5,
+          2132.5
+        ]
+      ],
+      "baseW": 1600,
+      "baseH": 2133,
+      "useOriginal": false,
+      "x": 248.49,
+      "y": 149.34,
+      "scale": 0.2372,
+      "rotation": 89.98,
+      "flipX": false,
+      "flipY": true,
+      "blend": "source-over",
+      "z": 3,
+      "name": "1909738_513058210551_4346_n_513058210551 copy",
+      "locked": false
+    },
+    {
+      "id": "clip-msbxsbezg89f",
+      "source": "1909738_513058210551_4346_n_513058210551",
+      "polygon": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          1599.5,
+          0.5
+        ],
+        [
+          1599.5,
+          2132.5
+        ],
+        [
+          0.5,
+          2132.5
+        ]
+      ],
+      "baseW": 1600,
+      "baseH": 2133,
+      "useOriginal": false,
+      "x": 248.49,
+      "y": 528.21,
+      "scale": 0.2372,
+      "rotation": 89.98,
+      "flipX": true,
+      "flipY": true,
+      "blend": "source-over",
+      "z": 4,
+      "name": "1909738_513058210551_4346_n_513058210551 copy copy",
+      "locked": false
+    }
+  ]
+}

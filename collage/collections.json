@@ -16,7 +16,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "figure",
           "engraving"
         ],
         "notes": ""
@@ -83,7 +82,6 @@
         "date": "",
         "tags": [
           "architecture",
-          "middle ages",
           "engraving"
         ],
         "notes": ""
@@ -95,7 +93,6 @@
         "date": "",
         "tags": [
           "architecture",
-          "renaissance",
           "engraving"
         ],
         "notes": ""
@@ -107,7 +104,6 @@
         "date": "",
         "tags": [
           "machinary",
-          "diagram",
           "engraving"
         ],
         "notes": ""
@@ -119,7 +115,6 @@
         "date": "",
         "tags": [
           "architecture",
-          "renaissance",
           "engraving"
         ],
         "notes": ""
@@ -142,7 +137,6 @@
         "date": "",
         "tags": [
           "architecture",
-          "ancient",
           "engraving"
         ],
         "notes": ""
@@ -154,8 +148,6 @@
         "date": "",
         "tags": [
           "architecture",
-          "greek",
-          "roman",
           "engraving"
         ],
         "notes": ""
@@ -279,8 +271,6 @@
         "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-1-indian-gods-and-religion-12190550/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "indian",
-          "gods",
           "religion",
           "engraving"
         ],
@@ -315,7 +305,7 @@
         "thumb": "https://dn721805.ca.archive.org/0/items/dr_view-plate-10-roman-standards-crowns-badgers-medals-trophies-traja-12190382/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "roman",
+          "architecture",
           "engraving"
         ],
         "notes": ""
@@ -339,7 +329,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "skeleton",
           "engraving"
         ],
         "notes": ""
@@ -351,7 +340,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "skeleton",
           "engraving"
         ],
         "notes": ""
@@ -363,8 +351,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "skeleton",
-          "teeth",
           "engraving"
         ],
         "notes": ""
@@ -376,7 +362,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "muscles",
           "engraving"
         ],
         "notes": ""
@@ -388,7 +373,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "muscles",
           "engraving"
         ],
         "notes": ""
@@ -400,7 +384,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "muscles",
           "engraving"
         ],
         "notes": ""
@@ -412,7 +395,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "muscles",
           "engraving"
         ],
         "notes": ""
@@ -424,8 +406,7 @@
         "date": "",
         "tags": [
           "anatomy",
-          "muscles",
-          "lithograph"
+          "engraving"
         ],
         "notes": ""
       },
@@ -436,7 +417,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "organs",
           "engraving"
         ],
         "notes": ""
@@ -447,10 +427,6 @@
         "thumb": "https://dn721906.ca.archive.org/0/items/dr_view-plate-13-greek-phoenician-syrian-and-roman-architecture-12190501/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "greek",
-          "phoenician",
-          "syrian",
-          "roman",
           "architecture",
           "engraving"
         ],
@@ -463,8 +439,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "organs",
-          "digestion",
           "engraving"
         ],
         "notes": ""
@@ -476,7 +450,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "eye",
           "engraving"
         ],
         "notes": ""
@@ -488,8 +461,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "ear",
-          "nose",
           "engraving"
         ],
         "notes": ""
@@ -501,7 +472,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "vascular",
           "engraving"
         ],
         "notes": ""
@@ -513,7 +483,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "vascular",
           "engraving"
         ],
         "notes": ""
@@ -525,7 +494,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "vascular",
           "engraving"
         ],
         "notes": ""
@@ -537,7 +505,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "vascular",
           "engraving"
         ],
         "notes": ""
@@ -549,8 +516,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "brain",
-          "nerves",
           "engraving"
         ],
         "notes": ""
@@ -562,7 +527,6 @@
         "date": "",
         "tags": [
           "anatomy",
-          "nerves",
           "engraving"
         ],
         "notes": ""
@@ -573,8 +537,7 @@
         "thumb": "https://dn721601.ca.archive.org/0/items/dr_view-plate-139-surgery-operations-12190198/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "surgery",
-          "operations",
+          "anatomy",
           "engraving"
         ],
         "notes": ""
@@ -999,7 +962,6 @@
         "thumb": "https://dn710006.ca.archive.org/0/items/dr_view-plate-5-egyptian-architecture-12190493/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "egyptian",
           "architecture",
           "engraving"
         ],
@@ -1011,7 +973,6 @@
         "thumb": "https://dn710008.ca.archive.org/0/items/dr_view-plate-6-egyptian-architecture-12190494/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "egyptian",
           "architecture",
           "engraving"
         ],
@@ -1034,9 +995,7 @@
         "thumb": "https://dn710205.ca.archive.org/0/items/dr_view-plate-77-zoology-animals-including-insects-12190135/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "insects",
           "engraving"
         ],
         "notes": ""
@@ -1047,9 +1006,7 @@
         "thumb": "https://dn721802.ca.archive.org/0/items/dr_view-plate-78-zoology-animals-including-crustaceans-12190136/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "crustaceans",
           "engraving"
         ],
         "notes": ""
@@ -1060,9 +1017,8 @@
         "thumb": "https://dn721601.ca.archive.org/0/items/dr_view-plate-79-zoology-animals-including-insects-12190137/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "insects"
+          "engraving"
         ],
         "notes": ""
       },
@@ -1072,9 +1028,7 @@
         "thumb": "https://dn721607.ca.archive.org/0/items/dr_view-plate-80-zoology-animals-including-insects-12190138/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "insects",
           "engraving"
         ],
         "notes": ""
@@ -1085,9 +1039,7 @@
         "thumb": "https://dn721605.ca.archive.org/0/items/dr_view-plate-81-zoology-animals-including-fish-12190139/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "fish",
           "engraving"
         ],
         "notes": ""
@@ -1098,9 +1050,7 @@
         "thumb": "https://dn721901.ca.archive.org/0/items/dr_view-plate-91-zoology-animals-including-seabirds-12190149/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "birds",
           "engraving"
         ],
         "notes": ""
@@ -1111,9 +1061,7 @@
         "thumb": "https://ia601000.us.archive.org/3/items/dr_view-plate-92-zoology-animals-including-seabirds-12190150/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "birds",
           "engraving"
         ],
         "notes": ""
@@ -1124,9 +1072,7 @@
         "thumb": "https://dn710007.ca.archive.org/0/items/dr_view-plate-93-zoology-animals-including-seabirds-12190151/__ia_thumb.jpg",
         "date": "",
         "tags": [
-          "zoology",
           "animals",
-          "birds",
           "engraving"
         ],
         "notes": ""
