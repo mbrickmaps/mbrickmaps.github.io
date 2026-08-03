@@ -597,6 +597,7 @@
       <input type="text" id="sourceUrl" placeholder="https://... image URL">
       <button id="loadUrlBtn">Load</button>
       <button id="stageCurrentBtn" title="add whatever the clipper is showing to the Image Stager">Stage</button>
+      <button id="clipperHiresBtn" title="load the full-resolution copy, if one exists — draws against it directly, so the mask is accurate at export size">Hi-res</button>
     </div>
     <p class="hint" id="sourceUrlHint">
       JPG, PNG, WebP, GIF, AVIF or SVG &mdash; the server must allow anonymous
@@ -1343,7 +1344,7 @@
     image: null, naturalW: 0, naturalH: 0,
     points: [], closed: false, addPointMode: false, dragIndex: -1,
     dragPolygon: false, dragStart: null,
-    editingClipId: null, editingUseOriginal: false,
+    editingClipId: null, editingUseOriginal: false, editingHires: null,
     // Peek is a way of looking at the polygon, not a property of it — never
     // persisted, and cleared whenever the source changes.
     peekNodes: false
@@ -1450,6 +1451,75 @@
     }
     fitSourceView();
   }
+
+  /* Swaps the editor's image without disturbing whatever's already drawn.
+     The polygon is authored in this canvas's raw pixel coordinates, so if the
+     replacement image is a different size — the whole point of a hi-res swap
+     — the points are rescaled by the size ratio first. setEditorImage always
+     closes the path when given points, which is right for loading a finished
+     clip but wrong for a swap mid-draw, so the actual closed state is
+     restored straight after. */
+  function editorSwapImage(img) {
+    const sx = editor.naturalW ? img.naturalWidth / editor.naturalW : 1;
+    const sy = editor.naturalH ? img.naturalHeight / editor.naturalH : 1;
+    const pts = editor.points.map(([x, y]) => [x * sx, y * sy]);
+    const wasClosed = editor.closed;
+    setEditorImage(img, pts.length ? pts : undefined);
+    editor.closed = wasClosed;
+    renderEditor();
+  }
+
+  function syncHiresButton() {
+    const btn = document.getElementById("clipperHiresBtn");
+    const on = !!editor.editingHires;
+    btn.classList.toggle("active", on);
+    btn.textContent = on ? "Hi-res: on" : "Hi-res";
+  }
+
+  /* One state, two places it's read from: editor.editingHires (what the
+     clipper is drawing against right now) and, if a clip is already open for
+     editing, that clip's own .hires (what the collage renders). They're kept
+     in lockstep here rather than reconciled later — the same rule that governs
+     every other "two variables, one fact" bug this session. Turning it back
+     off only drops the pointer; going back to hi-res later is a free retry,
+     not a re-fetch of anything lost. */
+  async function setEditorHires(on) {
+    const btn = document.getElementById("clipperHiresBtn");
+    const existing = editor.editingClipId && collage.clips.find((c) => c.id === editor.editingClipId);
+
+    const applyToClip = (url) => {
+      if (!existing) return;
+      existing.hires = url;
+      stampCache.delete(existing.id);
+      renderCollage(); renderLayerList(); syncTextarea();
+    };
+
+    if (!on) {
+      editor.editingHires = null;
+      applyToClip(null);
+      syncHiresButton();
+      try { editorSwapImage(await loadImage(resolveSourceUrl(currentSourceName(), editor.editingUseOriginal))); }
+      catch { /* current source unreachable — leave the editor as it was */ }
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Hi-res: checking…";
+    const url = await findHires(currentSourceName());
+    btn.disabled = false;
+    if (!url) {
+      btn.textContent = "Hi-res: none found";
+      setTimeout(syncHiresButton, 1500);
+      return;
+    }
+    editor.editingHires = url;
+    applyToClip(url);
+    syncHiresButton();
+    try { editorSwapImage(await loadImage(url)); }
+    catch { /* found the file but couldn't load it — state stays set, nothing on screen changes */ }
+  }
+
+  document.getElementById("clipperHiresBtn").addEventListener("click", () => setEditorHires(!editor.editingHires));
 
   /* Floats below the polygon: "Close path" while it's open, "Add to collage"
      once it's closed. Only ever one of the two is relevant. */
@@ -1790,6 +1860,8 @@
   document.getElementById("clearPolyBtn").addEventListener("click", () => {
     editor.points = []; editor.closed = false; editor.editingClipId = null;
     editor.editingUseOriginal = false;
+    editor.editingHires = null;
+    syncHiresButton();
     setPeekNodes(false);
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderEditor();
@@ -1816,6 +1888,10 @@
         // Resolution the polygon was drawn against — the reference point for
         // converting these coordinates to a different-sized source later.
         baseW: editor.naturalW, baseH: editor.naturalH, useOriginal: false,
+        // Toggling Hi-res before the clip exists has nowhere to write the
+        // pointer to — this is that write, deferred to the moment the clip
+        // is actually created.
+        hires: editor.editingHires || null,
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
         scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
       });
@@ -1823,6 +1899,8 @@
     }
     editor.editingClipId = null;
     editor.editingUseOriginal = false;
+    editor.editingHires = null;
+    syncHiresButton();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
@@ -1907,6 +1985,8 @@
     // Picking a new source drops any "editing at original resolution" state,
     // otherwise baseW and useOriginal would disagree.
     editor.editingUseOriginal = false;
+    editor.editingHires = null;
+    syncHiresButton();
     setSourceField(url);
     if (!url) { sourceUrlInput.focus(); return; }
     loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
@@ -1915,6 +1995,8 @@
 
   function loadTypedUrl() {
     editor.editingUseOriginal = false;
+    editor.editingHires = null;
+    syncHiresButton();
     const url = currentSourceName();
     if (!url) return;
     loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
@@ -1979,6 +2061,11 @@
     // every point would land off by the resolution ratio. Older projects that
     // were re-authored at full size are caught by the baseW check.
     editor.editingUseOriginal = !!clip.useOriginal;
+    // Reopening a clip that already has a hi-res copy set — via the per-layer
+    // button or a previous visit here — starts the toggle in the "on" state
+    // it was left in, rather than a fresh clip's default "off".
+    editor.editingHires = clip.hires || null;
+    syncHiresButton();
     const authored = resolveSourceUrl(clip.source, clip.useOriginal);
     loadImage(authored)
       .then((img) => {
