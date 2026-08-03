@@ -195,12 +195,18 @@
   /* These two swap via the hidden attribute, which an explicit display would
      otherwise beat on specificity. */
   #magnifier[hidden], .spot-idle[hidden] { display: none; }
+  /* Permanently in the layout — it goes blank rather than disappearing, so
+     hovering the source can't change the panel's height and shove everything
+     below it around. */
   .spot-swatch { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.75rem; }
-  /* display:flex above would otherwise beat the UA's [hidden] rule. */
-  .spot-swatch[hidden] { display: none; }
   .spot-chip {
     width: 26px; height: 26px; flex-shrink: 0; border-radius: 4px;
     border: 1px solid var(--border); background: #000;
+  }
+  /* Idle: a hatched square, so an empty reading can't be mistaken for black. */
+  .spot-chip.empty {
+    background: repeating-linear-gradient(45deg, #1a1a1a 0 4px, #242424 4px 8px);
+    border-style: dashed;
   }
   .spot-hex { font-family: ui-monospace, monospace; letter-spacing: 0.02em; }
   .spot-rgb { opacity: 0.55; font-size: 0.7rem; }
@@ -654,7 +660,7 @@
       </div>
       <!-- The pixel under the crosshair, not the middle of the window: near an
            edge the window is clamped and the two are different pixels. -->
-      <div class="spot-swatch" id="spotSwatch" hidden>
+      <div class="spot-swatch" id="spotSwatch">
         <span class="spot-chip" id="spotChip"></span>
         <span class="spot-hex" id="spotHex"></span>
         <span class="spot-rgb" id="spotRgb"></span>
@@ -735,6 +741,7 @@
         <option value="diagonals">diagonals</option>
         <option value="center">center</option>
       </select>
+      <button id="snapToggleBtn" title="snap a dragged layer to the edges and centers of other layers, and to the canvas">Snap: off</button>
       <button id="outlinesToggleBtn">Hide outlines</button>
       <button id="previewBtn">Preview</button>
       <button id="canvasSaveBtn" title="save the config to local storage">Save</button>
@@ -1644,18 +1651,20 @@
     const px = spotExtent();
     magCanvas.width = px;
     magCanvas.height = px;
-    spotIdle.style.width = px + "px";
-    spotIdle.style.height = px + "px";
+    /* +2 for the canvas's border: its width/height attributes size the bitmap,
+       so its border sits outside that, while the idle box is border-box.
+       Without this the panel changed height every time you hovered. */
+    spotIdle.style.width = (px + 2) + "px";
+    spotIdle.style.height = (px + 2) + "px";
   }
 
   function showSpotIdle() {
     spot.at = null;
     magCanvas.hidden = true;
     spotIdle.hidden = false;
-    // Nothing under the cursor means no pixel to report — leaving the last
-    // one on screen would read as the current sample.
-    const wrap = document.getElementById("spotSwatch");
-    if (wrap) wrap.hidden = true;
+    // Stays in the layout and goes blank — leaving the last reading on screen
+    // would look like the current sample.
+    drawSpotSwatch();
   }
 
   function drawSpot() {
@@ -1683,15 +1692,27 @@
 
   /* Reuses the clipper's 1x1 sampler, so this costs one cached read per move
      rather than a getImageData over the magnified window. */
+  /* Always on screen, empty when there's nothing under the cursor. Hiding it
+     changed the panel's height on every hover, which shoved everything below
+     it up and down. An idle state costs one row and keeps the page still. */
   function drawSpotSwatch() {
-    const wrap = document.getElementById("spotSwatch");
     const rgb = spot.at && sampleSource(spot.at.x, spot.at.y);
-    if (!rgb) { wrap.hidden = true; return; }
-    wrap.hidden = false;
+    const chip = document.getElementById("spotChip");
+    const hexEl = document.getElementById("spotHex");
+    const rgbEl = document.getElementById("spotRgb");
+
+    if (!rgb) {
+      chip.style.background = "";
+      chip.classList.add("empty");
+      hexEl.textContent = "—";
+      rgbEl.textContent = "hover the source";
+      return;
+    }
     const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
-    document.getElementById("spotChip").style.background = hex;
-    document.getElementById("spotHex").textContent = hex;
-    document.getElementById("spotRgb").textContent = `rgb(${rgb.join(", ")})`;
+    chip.classList.remove("empty");
+    chip.style.background = hex;
+    hexEl.textContent = hex;
+    rgbEl.textContent = `rgb(${rgb.join(", ")})`;
   }
 
   function updateMagnifier(nx, ny) {
@@ -3296,6 +3317,100 @@
     }
   }
 
+  /* ---------- snapping ----------
+     Off by default: freeform dragging is the baseline, snapping is opt-in.
+     A dragged layer aligns to the edges and centers of every other layer, and
+     to the canvas edges and center. The lines it locked onto are drawn while
+     the drag is live so you can see what it caught. */
+  let snapEnabled = false;
+  let snapLines = { xs: [], ys: [] };
+
+  const SNAP_PX = 6;   // screen pixels of tolerance, converted to canvas units
+
+  // Axis-aligned bounds of a clip as it actually sits on the canvas.
+  function clipBounds(clip, stamp) {
+    const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
+    const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
+    return { minX: Math.min(...xs), maxX: Math.max(...xs),
+             minY: Math.min(...ys), maxY: Math.max(...ys) };
+  }
+
+  /* Every line worth aligning to. The canvas comes first so that when a layer
+     edge and a canvas edge are both in range, the canvas wins — it's the more
+     deliberate target. */
+  function snapTargets(exclude) {
+    const W = collage.canvas.width, H = collage.canvas.height;
+    const xs = [0, W / 2, W], ys = [0, H / 2, H];
+    for (const c of collage.clips) {
+      if (exclude.has(c.id)) continue;
+      const stamp = stampCache.get(c.id);
+      if (!stamp) continue;
+      const b = clipBounds(c, stamp);
+      xs.push(b.minX, (b.minX + b.maxX) / 2, b.maxX);
+      ys.push(b.minY, (b.minY + b.maxY) / 2, b.maxY);
+    }
+    return { xs, ys };
+  }
+
+  /* Returns the nudge that would put the moving set onto a target line, or
+     zero if nothing is close enough. Works on the group's combined bounds, so
+     linked clips snap as one shape rather than fighting each other. */
+  function snapAdjust(moving) {
+    snapLines = { xs: [], ys: [] };
+    if (!snapEnabled || !moving.length) return { dx: 0, dy: 0 };
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const c of moving) {
+      const stamp = stampCache.get(c.id);
+      if (!stamp) continue;
+      const b = clipBounds(c, stamp);
+      minX = Math.min(minX, b.minX); maxX = Math.max(maxX, b.maxX);
+      minY = Math.min(minY, b.minY); maxY = Math.max(maxY, b.maxY);
+    }
+    if (!isFinite(minX)) return { dx: 0, dy: 0 };
+
+    const tol = SNAP_PX / viewZoom;
+    const targets = snapTargets(new Set(moving.map((c) => c.id)));
+
+    const best = (mine, list) => {
+      let d = 0, at = null, closest = tol;
+      for (const m of mine) {
+        for (const t of list) {
+          const gap = t - m;
+          if (Math.abs(gap) < closest) { closest = Math.abs(gap); d = gap; at = t; }
+        }
+      }
+      return { d, at };
+    };
+
+    const x = best([minX, (minX + maxX) / 2, maxX], targets.xs);
+    const y = best([minY, (minY + maxY) / 2, maxY], targets.ys);
+    if (x.at !== null) snapLines.xs.push(x.at);
+    if (y.at !== null) snapLines.ys.push(y.at);
+    return { dx: x.d, dy: y.d };
+  }
+
+  // Only while a drag is live — these are feedback, not part of the artwork.
+  function drawSnapLines(ctx) {
+    if (!snapLines.xs.length && !snapLines.ys.length) return;
+    const w = collage.canvas.width, h = collage.canvas.height;
+    ctx.save();
+    ctx.strokeStyle = "rgba(51, 255, 51, 0.9)";
+    ctx.lineWidth = 1 / viewZoom;
+    ctx.beginPath();
+    for (const x of snapLines.xs) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (const y of snapLines.ys) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  document.getElementById("snapToggleBtn").addEventListener("click", (e) => {
+    snapEnabled = !snapEnabled;
+    e.target.textContent = `Snap: ${snapEnabled ? "on" : "off"}`;
+    e.target.classList.toggle("active", snapEnabled);
+    if (!snapEnabled) { snapLines = { xs: [], ys: [] }; renderCollage(); }
+  });
+
   /* Per-clip alignment guides: dashed lines through each edge and the center
      of the clip's bounding box, extended across the canvas. Overlay only —
      drawn after the composite, so they never reach the preview or an export. */
@@ -3389,6 +3504,9 @@
     if (!hideOutlines) { drawOverlayGuide(ctx); drawGuides(ctx); }
     const sel = collage.clips.find((c) => c.id === selectedId);
     if (sel && !hideOutlines) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
+    // Last, and independent of Hide outlines: it only exists during a drag,
+    // and hiding the feedback you're currently relying on would be perverse.
+    drawSnapLines(ctx);
     renderOverview();
     updateQuickActions();
   }
@@ -3410,6 +3528,7 @@
   }
 
   let dragMode = null;
+  let clipMoveDrag = null;   // frozen baseline for a move, so snapping can't creep
   let lastMouse = null;
   /* Captured when a scale drag starts. Scaling a group moves its members, so
      measuring against live positions each frame would feed back on itself and
@@ -3463,6 +3582,13 @@
       const stamp = stampCache.get(clip.id);
       if (stamp && hitTestClip(clip, stamp, pt)) {
         selectedId = clip.id; dragMode = "move"; lastMouse = pt;
+        /* Frozen baseline: each frame positions the clips from where they
+           started plus the raw pointer delta, then snaps. Applying a snap on
+           top of the previous frame's snapped position would let it creep. */
+        clipMoveDrag = {
+          start: pt,
+          items: linkedClips(clip).filter((c) => !c.locked).map((c) => ({ clip: c, x: c.x, y: c.y }))
+        };
         renderCollage(); renderLayerList(); updateClipProps();
         return;
       }
@@ -3484,10 +3610,14 @@
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip) return;
     if (clip.locked) return;
-    if (dragMode === "move") {
+    if (dragMode === "move" && clipMoveDrag) {
       // Linked clips translate together; locked members stay put.
-      const dx = pt[0] - lastMouse[0], dy = pt[1] - lastMouse[1];
-      for (const c of linkedClips(clip)) { if (!c.locked) { c.x += dx; c.y += dy; } }
+      const dx = pt[0] - clipMoveDrag.start[0], dy = pt[1] - clipMoveDrag.start[1];
+      for (const it of clipMoveDrag.items) { it.clip.x = it.x + dx; it.clip.y = it.y + dy; }
+      const snap = snapAdjust(clipMoveDrag.items.map((it) => it.clip));
+      if (snap.dx || snap.dy) {
+        for (const it of clipMoveDrag.items) { it.clip.x += snap.dx; it.clip.y += snap.dy; }
+      }
     } else if (dragMode === "rotate" && rotateDrag) {
       const angle = Math.atan2(pt[0] - rotateDrag.cx, rotateDrag.cy - pt[1]) * 180 / Math.PI;
       rotateAbout(rotateDrag.items, rotateDrag.cx, rotateDrag.cy, angle - rotateDrag.startAngle);
@@ -3509,6 +3639,12 @@
     dragMode = null;
     scaleDrag = null;
     rotateDrag = null;
+    clipMoveDrag = null;
+    // The lines were feedback for the drag that just ended.
+    if (snapLines.xs.length || snapLines.ys.length) {
+      snapLines = { xs: [], ys: [] };
+      renderCollage();
+    }
     collageViewport.classList.remove("panning");
   });
 
