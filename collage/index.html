@@ -16,25 +16,42 @@
   h2 { font-size: 0.95rem; margin: 0 0 8px; opacity: 0.85; }
   /* 12-column grid. Panel width is a column span; one grid row per panel, so
      panels stay aligned in rows rather than staggering. */
+  /* The grid lays out COLUMNS, not panels. Panels stack inside a column, so a
+     short panel no longer reserves the height of the tallest thing beside it —
+     which is the gap a plain grid leaves and can't close. (CSS masonry would
+     do this natively but is Firefox-only behind a flag.) */
   .layout {
-    display: grid; grid-template-columns: repeat(12, 1fr);
+    /* minmax(0, 1fr) rather than 1fr: a bare 1fr track has a min-content
+       floor, so one wide panel could stretch its tracks and break the
+       12-unit arithmetic for every other row.
+       `dense` lets a narrow column backfill a gap an earlier wide one left,
+       instead of the row ending three units short. */
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-flow: row dense;
     gap: var(--panel-gap); align-items: start;
   }
+  .layout-col {
+    display: flex; flex-direction: column; gap: var(--panel-gap);
+    min-width: 0; grid-column: span 6;
+  }
+  /* Column widths out of 12 — the only spans that tile cleanly, so a row still
+     adds up: 3+3+3+3, 4+8, 6+6, 4+4+4. A column takes the width of its widest
+     panel. */
+  .layout-col.size-quarter { grid-column: span 3; }     /* 1/4 */
+  .layout-col.size-mini { grid-column: span 4; }        /* 1/3 */
+  .layout-col.size-half { grid-column: span 6; }        /* 1/2 */
+  .layout-col.size-twothirds { grid-column: span 8; }   /* 2/3 */
+  .layout-col.size-threequarters { grid-column: span 9; }  /* 3/4 — pairs with 1/4 */
+  .layout-col.size-full { grid-column: span 12; }
+
   .panel {
     background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-    padding: 12px; grid-column: span 6; min-width: 0;
+    padding: 12px; min-width: 0;
+    /* Makes the panel a query container so its contents can respond to how
+       wide the PANEL is, and stops content forcing the panel wider than the
+       column it was given. */
+    container-type: inline-size;
   }
-
-  /* Panel sizing — column spans out of 12. These are the only widths that tile
-     the grid cleanly, so a row always adds up: 3+3+3+3, 4+8, 6+6, 4+4+4. */
-  .panel.size-quarter { grid-column: span 3; }     /* 1/4 */
-  .panel.size-mini { grid-column: span 4; }        /* 1/3 */
-  .panel.size-half { grid-column: span 6; }        /* 1/2 */
-  .panel.size-twothirds { grid-column: span 8; }   /* 2/3 */
-  .panel.size-full { grid-column: span 12; }
-
-  /* Minimized: header only, parked at a third so it still lines up. */
-  .panel.minimized { grid-column: span 4; }
 
   /* --- drag to rearrange --- */
   .panel-head { cursor: grab; }
@@ -224,13 +241,19 @@
   .layers-panel.collapsed { flex-basis: 32px; padding: 8px 4px; overflow: hidden; }
   .layers-panel.collapsed h2,
   .layers-panel.collapsed #layerList { display: none; }
-  /* Below the panel's own breakpoint the column would be uselessly narrow,
-     so it drops under the canvas instead. */
-  @media (max-width: 900px) {
+  /* Keyed to the PANEL's width, not the window's. A window media query can't
+     see that a panel has been set to 1/4 on a wide screen, which is what left
+     the canvas and the layers column demanding ~536px side by side and
+     overflowing a 307px column. */
+  @container (max-width: 620px) {
     .viewport-wrap { flex-wrap: wrap; }
     .layers-panel { flex: 1 1 100%; max-height: 300px; }
     /* Stacked, so there's no vertical divider to sit on. */
     .divider-handle { display: none; }
+  }
+  /* Same reasoning for the clipper's canvas row. */
+  @container (max-width: 460px) {
+    .canvas-wrap { flex-direction: column; }
   }
   #collageViewport.panning { cursor: grabbing; }
   #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; outline: 1px solid #555; }
@@ -332,6 +355,66 @@
   .jitter-rule { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; flex-wrap: wrap; }
   /* The target is the only part worth room; the numbers are two digits. */
   .jitter-rule select[data-f="target"] { flex: 1 1 120px; min-width: 0; }
+  /* The step list is the longest field in a path rule, so it gets the row. */
+  .jitter-moves {
+    flex: 1 1 100%; min-width: 0; font-family: ui-monospace, monospace;
+    font-size: 0.72rem; padding: 2px 5px;
+  }
+
+  /* ---------- image selector ---------- */
+  #selectorList { list-style: none; margin: 0 0 8px; padding: 0; max-height: 420px; overflow-y: auto; }
+  #selectorList li {
+    display: flex; align-items: center; gap: 8px; padding: 4px;
+    border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; cursor: pointer;
+  }
+  #selectorList li:hover { border-color: var(--accent2); }
+  #selectorList img {
+    flex-shrink: 0; width: 44px; height: 44px; object-fit: cover;
+    background: #000; border: 1px solid var(--border); border-radius: 3px;
+  }
+  .sel-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .sel-title {
+    font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sel-sub { font-size: 0.66rem; opacity: 0.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A blob URL dies on reload, so anything session-only says so up front. */
+  .sel-temp { color: var(--accent); opacity: 0.85; }
+  #selectorList button { padding: 1px 5px; font-size: 0.72rem; flex-shrink: 0; }
+  #selectorList:empty::after {
+    content: "nothing staged — add from Collections, a URL, or a folder";
+    opacity: 0.5; font-size: 0.75rem;
+  }
+  .stage-btn {
+    background: #1b2a3a; border-color: #35566f; color: #9ec9e8;
+    padding: 1px 6px; font-size: 0.68rem;
+  }
+  .stage-btn:hover { background: #24384c; border-color: #4a7ea8; color: #cfe7f7; }
+
+  /* ---------- actions ---------- */
+  #actionList { list-style: none; margin: 0 0 8px; padding: 0; max-height: 420px; overflow-y: auto; }
+  #actionList li {
+    padding: 5px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  #actionList li.builtin { border-left: 2px solid var(--accent2); }
+  .action-top { display: flex; align-items: center; gap: 6px; }
+  .action-name {
+    flex: 1 1 auto; min-width: 0; background: transparent; color: var(--fg);
+    border: 1px solid transparent; border-radius: 3px; padding: 1px 3px; font-size: 0.8rem;
+  }
+  .action-name:hover { border-color: var(--border); }
+  .action-name:focus { border-color: var(--accent2); background: #000; outline: none; }
+  .action-body { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.72rem; }
+  .action-body label { display: flex; align-items: center; gap: 3px; opacity: 0.75; }
+  .action-body input[type="number"] { width: 52px; padding: 2px 4px; font-size: 0.72rem; }
+  .action-body select { padding: 2px 4px; font-size: 0.72rem; }
+  .action-steps {
+    flex: 1 1 100%; min-width: 0; font-family: ui-monospace, monospace;
+    font-size: 0.72rem; padding: 2px 5px;
+  }
+  #actionList button { padding: 1px 5px; font-size: 0.72rem; }
+  /* Reads the parsed step count back, so a typo shows up as a wrong number. */
+  .action-count { opacity: 0.5; font-size: 0.68rem; white-space: nowrap; }
   .jitter-rule input[type="number"] { width: 52px; padding: 2px 4px; font-size: 0.75rem; }
   .jitter-rule select { padding: 2px 4px; font-size: 0.75rem; }
   .jitter-rule label { display: flex; align-items: center; gap: 3px; opacity: 0.75; }
@@ -493,6 +576,7 @@
         <button type="button" data-size="mini" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" class="active" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -500,12 +584,13 @@
     <div class="row">
       <label>Load image
         <div class="dropdown" id="sourceDropdown">
-          <button type="button" id="sourceDropdownBtn" class="dropdown-btn">Loading photos&hellip;</button>
+          <button type="button" id="sourceDropdownBtn" class="dropdown-btn">&mdash; custom URL &mdash;</button>
           <div class="dropdown-list" id="sourceDropdownList" hidden></div>
         </div>
       </label>
       <input type="text" id="sourceUrl" placeholder="https://... image URL" style="display:none">
       <button id="loadUrlBtn" style="display:none">Load</button>
+      <button id="stageCurrentBtn" title="add whatever the clipper is showing to the Image Selector">Stage</button>
     </div>
     <p class="hint" id="sourceUrlHint" hidden>
       JPG, PNG, WebP, GIF, AVIF or SVG &mdash; the server must allow anonymous
@@ -546,6 +631,7 @@
         <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -586,6 +672,7 @@
         <button type="button" data-size="mini" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" class="active" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -779,6 +866,7 @@
         <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -807,6 +895,7 @@
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -840,6 +929,7 @@
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -862,6 +952,67 @@
     </div>
   </section>
 
+  <!-- Staging area. Things you might use, gathered before you commit to one. -->
+  <section class="panel size-mini" id="selectorPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Image Selector <span class="help-icon" title="Images you're considering. Add them from Collections with + stage, or from the Clipper with Stage. Click one to load it into the Clipper.&#10;Nothing here is downloaded — these are references, and the list is kept in this browser.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <div class="row">
+      <input type="text" id="selectorUrl" placeholder="paste an image URL&hellip;" spellcheck="false">
+      <button id="selectorAddUrlBtn">Add</button>
+      <button id="selectorFolderBtn" title="pick a folder — every image in it is staged. Files that also exist on this site are stored by path so they survive a reload.">Add folder&hellip;</button>
+      <input type="file" id="selectorFolderInput" webkitdirectory directory multiple accept="image/*" style="display:none">
+    </div>
+    <ul id="selectorList"></ul>
+    <div class="row">
+      <button id="selectorClearBtn" title="empty the staging list — the images themselves are untouched">Clear all</button>
+      <button id="selectorDownloadBtn" title="save the staged list as a .json file">Export JSON</button>
+      <button id="selectorUploadBtn" title="load a staged list .json file — merges with what you already have">Import JSON</button>
+      <input type="file" id="selectorUploadInput" accept="application/json" style="display:none">
+      <span id="selectorStatus" class="hint" style="margin:0;"></span>
+    </div>
+  </section>
+
+  <!-- What a motion IS. The Record panel decides where it's applied. -->
+  <section class="panel size-mini" id="actionsPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Actions <span class="help-icon" title="Named motions. A path is a list of steps — left right up down, or l r u d, or the diagonals ul ur dl dr, with . for a pause. The run is divided evenly between the steps and each is worth the distance.&#10;Boil jumps to a random offset every few frames; drift eases between random points.&#10;Assign them to layers in the Record panel.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <ul id="actionList"></ul>
+    <div class="row">
+      <button id="actionAddBtn" title="new path action">+ action</button>
+      <button id="actionResetBtn" title="restore the shipped examples alongside anything you've made">Restore examples</button>
+    </div>
+    <div class="row">
+      <button id="actionDownloadBtn" title="save all actions as a .json file">Export JSON</button>
+      <button id="actionUploadBtn" title="load an actions .json file — merges with what you already have">Import JSON</button>
+      <input type="file" id="actionUploadInput" accept="application/json" style="display:none">
+      <span id="actionStatus" class="hint" style="margin:0;"></span>
+    </div>
+  </section>
+
   <section class="panel size-mini" id="examplesPanel">
     <div class="panel-head">
       <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Examples <span class="help-icon" title="Starter projects. Click one to load it into the collage — this replaces whatever is currently on the canvas.">&#9432;</span></h2>
@@ -872,6 +1023,7 @@
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -890,6 +1042,7 @@
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -905,7 +1058,7 @@
       <select id="recMode">
         <option value="reveal" selected>layer reveal</option>
         <option value="sources">sources &rarr; final</option>
-        <option value="jitter">jitter</option>
+        <option value="motion">motion</option>
       </select>
       <label title="play the same sequence backwards — the collage comes apart instead of together">
         <input type="checkbox" id="recReverse"> reverse
@@ -938,7 +1091,7 @@
       </label>
     </div>
     <div class="row" id="recJitterOpts" hidden>
-      <span class="section-label">Jitter rules
+      <span class="section-label">Motions
         <button type="button" id="recJitterAdd" title="add another rule">+ rule</button>
       </span>
       <div id="recJitterRules"></div>
@@ -1009,6 +1162,7 @@
         <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
         <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
         <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
         <button type="button" data-size="full" title="full"><b>1</b></button>
         <button type="button" data-action="minimize" title="minimize">&minus;</button>
       </span>
@@ -1651,6 +1805,14 @@
   const sourcePreview = document.getElementById("sourcePreview");
   const sourcePreviewImg = document.getElementById("sourcePreviewImg");
 
+  /* Declared up here rather than with the rest of the Image Selector: the
+     source dropdown lists staged images and runs during init, which is before
+     that section is reached. */
+  const SELECTOR_KEY = "collage.selector.v1";
+  let stagedImages = [];
+  try { stagedImages = JSON.parse(localStorage.getItem(SELECTOR_KEY) || "[]") || []; }
+  catch { stagedImages = []; }
+
   let photoOptions = [];
   let currentSource = { type: "url", value: "" };
 
@@ -1693,12 +1855,16 @@
       ).join("")
       : "";
 
-    const photoItems = (photoOptions.length ? `<div class="dropdown-group">photos</div>` : "") +
-      photoOptions.map((p) =>
-        `<div class="dropdown-item" data-type="photo" data-name="${escapeHtml(p.name)}">${escapeHtml(p.label)}</div>`
-      ).join("");
+    /* The photo list is gone — sources come from Collections and the Image
+       Selector now. What stays is the custom URL and whatever this collage is
+       already using, which is the one thing neither panel can tell you. */
+    const staged = stagedImages.length
+      ? `<div class="dropdown-group">staged</div>` + stagedImages.map((s) =>
+        `<div class="dropdown-item" data-type="usedurl" data-name="${escapeHtml(s.url)}" title="${escapeHtml(s.url)}">${escapeHtml(s.title || shortUrl(s.url))}</div>`
+      ).join("")
+      : "";
 
-    dropdownList.innerHTML = urlItem + usedItems + photoItems;
+    dropdownList.innerHTML = urlItem + usedItems + staged;
   }
 
   function setCurrentSourceUI(type, name) {
@@ -1777,23 +1943,28 @@
   });
   dropdownList.addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
 
+  // Stages whatever the clipper currently has open, so a source you arrived at
+  // by typing a URL can be kept without loading it again later.
+  document.getElementById("stageCurrentBtn").addEventListener("click", () => {
+    const url = currentSourceName();
+    const status = document.getElementById("selectorStatus");
+    if (!url) { status.textContent = "nothing loaded to stage"; return; }
+    const added = stageImage({ url, title: shortUrl(url), from: "clipper" });
+    status.textContent = added ? "staged" : "already staged";
+  });
+
   loadUrlBtn.addEventListener("click", loadTypedUrl);
   sourceUrlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadTypedUrl(); });
 
-  fetch("../photos/meta.csv").then((r) => r.text()).then((text) => {
-    const rows = parseCSV(text);
-    photoOptions = rows.filter((r) => r.name && !r.exclude).map((r) => {
-      photoNames.add(r.name);
-      return { name: r.name, label: r.caption ? `${r.name} — ${r.caption}` : r.name };
-    });
-    renderDropdownList();
-    if (photoOptions.length) selectSource("photo", photoOptions[0].name);
-    else setCurrentSourceUI("url", "");
-  }).catch((err) => {
-    console.error("failed to load ../photos/meta.csv", err);
-    setCurrentSourceUI("url", "");
-    renderDropdownList();
-  });
+  /* meta.csv is no longer read. Photos were the only thing it fed, and the
+     clipper now starts on the custom URL field. Bare photo names in existing
+     configs still resolve — resolveSourceUrl maps them to photos/edits — so
+     old collages keep working without the list. */
+  setCurrentSourceUI("url", "");
+  // renderDropdownList is NOT called here: it reads `collage`, which is
+  // declared further down, and a synchronous call would abort the script on a
+  // temporal-dead-zone error. It runs with the other init at the end instead.
+  // This used to be hidden by meta.csv's fetch making the call asynchronous.
 
   function editClipMask(clip) {
     editor.editingClipId = clip.id;
@@ -1894,135 +2065,222 @@
   document.getElementById("zoomOutBtn").addEventListener("click", () => zoomBy(1 / 1.2));
   document.getElementById("fitViewBtn").addEventListener("click", fitView);
 
-  // ---------- panel sizing & ordering ----------
-  /* Reordering uses the `order` property rather than moving nodes, so the
-     canvases keep their buffers and every listener stays attached. */
+  // ---------- panel sizing & columns ----------
+  /* Panels live inside .layout-col containers and stack vertically. The grid
+     lays out the columns; a column is as wide as its widest panel. This is
+     what lets a short panel sit above another one instead of leaving the
+     height of its tallest neighbour empty underneath it. */
   const layoutEl = document.querySelector(".layout");
-  const layoutPanels = () => [...layoutEl.querySelectorAll(":scope > .panel")];
-  layoutPanels().forEach((p, i) => { p.style.order = i; });
 
-  const panelsInOrder = () =>
-    layoutPanels().sort((a, b) => Number(a.style.order) - Number(b.style.order));
+  /* One source of truth for the sizes, declared here because the column code
+     below runs during init — a later declaration would leave it in the
+     temporal dead zone and abort the script partway. */
+  const SPANS = {
+    "size-quarter": 3, "size-mini": 4, "size-half": 6,
+    "size-twothirds": 8, "size-threequarters": 9, "size-full": 12
+  };
+  const SPAN_CLASS = Object.fromEntries(Object.entries(SPANS).map(([c, n]) => [n, c]));
+  const SIZE_CLASSES = Object.keys(SPANS);
 
+  const columns = () => [...layoutEl.querySelectorAll(":scope > .layout-col")];
+  const layoutPanels = () => [...layoutEl.querySelectorAll(".panel")];
+  const panelsIn = (col) => [...col.querySelectorAll(":scope > .panel")];
+
+  function panelSpan(panel) {
+    if (panel.classList.contains("minimized")) return 4;
+    const cls = SIZE_CLASSES.find((c) => panel.classList.contains(c));
+    return SPANS[cls] || 6;
+  }
+
+  /* A column takes the width of its widest panel, so mixing sizes in one
+     column widens it rather than clipping anything. Empty columns are dropped
+     — otherwise dragging the last panel out would leave a hole. */
+  function syncColumns() {
+    for (const col of columns()) {
+      const panels = panelsIn(col);
+      if (!panels.length) { col.remove(); continue; }
+      const span = Math.max(...panels.map(panelSpan));
+      col.classList.remove(...Object.values(SPAN_CLASS));
+      col.classList.add(SPAN_CLASS[span] || "size-half");
+    }
+  }
+
+  function newColumn() {
+    const col = document.createElement("div");
+    col.className = "layout-col size-half";
+    return col;
+  }
+
+  // First run (or an old saved layout): every panel gets its own column, which
+  // reproduces exactly what the grid used to do.
+  function wrapLoosePanels() {
+    for (const panel of [...layoutEl.children]) {
+      if (!panel.classList.contains("panel")) continue;
+      const col = newColumn();
+      layoutEl.insertBefore(col, panel);
+      col.appendChild(panel);
+    }
+  }
+  wrapLoosePanels();
+  syncColumns();
+
+  /* Left/right moves the panel between columns; if it is alone in its column
+     the column itself moves, which is what "move left" means when nothing is
+     stacked. */
   function movePanel(panel, dir) {
-    const byOrder = panelsInOrder();
-    const i = byOrder.indexOf(panel);
-    const j = i + dir;
-    if (j < 0 || j >= byOrder.length) return;
-    const tmp = byOrder[i].style.order;
-    byOrder[i].style.order = byOrder[j].style.order;
-    byOrder[j].style.order = tmp;
+    const col = panel.closest(".layout-col");
+    const cols = columns();
+    const i = cols.indexOf(col);
+
+    if (panelsIn(col).length === 1) {
+      const j = i + dir;
+      if (j < 0 || j >= cols.length) return;
+      if (dir < 0) layoutEl.insertBefore(col, cols[j]);
+      else layoutEl.insertBefore(col, cols[j].nextSibling);
+    } else {
+      const target = cols[i + dir];
+      if (target) target.appendChild(panel);
+      else {
+        const fresh = newColumn();
+        if (dir < 0) layoutEl.insertBefore(fresh, cols[0]);
+        else layoutEl.appendChild(fresh);
+        fresh.appendChild(panel);
+      }
+    }
+    syncColumns();
     saveLayout();
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
   }
 
-  // ---------- drag a panel by its header to rearrange ----------
-  /* The dragged panel goes position:fixed, which pulls it out of the grid, and
-     a drop-slot of the same span takes its place. The slot is a real grid item,
-     so what you see during the drag is the actual settled layout, not a guess
-     at it. */
+  // ---------- drag a panel by its header ----------
+  /* The dragged panel goes position:fixed, which takes it out of flow, and a
+     drop-slot of the same height stands in for it inside a column. What you
+     see during the drag is the layout that will actually settle. */
   let drag = null;
 
-  const applyOrder = (items) => items.forEach((n, i) => { n.style.order = i; });
+  function dropTargetAt(x, y) {
+    const cols = columns();
 
-  function panelUnder(x, y) {
-    return layoutPanels().find((p) => {
-      if (p === drag.panel) return false;
-      const r = p.getBoundingClientRect();
-      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-    });
-  }
+    // Over a panel: stack above or below it, by its vertical midpoint. This is
+    // the merge — dropping onto a panel joins its column.
+    for (const col of cols) {
+      for (const panel of panelsIn(col)) {
+        if (panel === drag.panel) continue;
+        const r = panel.getBoundingClientRect();
+        if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+        return { col, before: y - r.top < r.height / 2 ? panel : panel.nextSibling };
+      }
+    }
 
-  function reslot(target, x, y) {
-    const r = target.getBoundingClientRect();
-    // A panel spanning most of the row is stacked above/below its neighbours,
-    // so the meaningful midpoint is horizontal for narrow ones, vertical for wide.
-    const wide = r.width > layoutEl.clientWidth * 0.6;
-    const after = wide ? y - r.top > r.height / 2 : x - r.left > r.width / 2;
-    const items = drag.order.filter((n) => n !== drag.slot);
-    const i = items.indexOf(target) + (after ? 1 : 0);
-    items.splice(i, 0, drag.slot);
-    drag.order = items;
-    applyOrder(items);
+    // Over a column but below its panels: append to it.
+    for (const col of cols) {
+      const r = col.getBoundingClientRect();
+      if (x >= r.left && x <= r.right) return { col, before: null };
+    }
+
+    // Past every column horizontally: a new column on that side.
+    const first = cols[0]?.getBoundingClientRect();
+    if (first && x < first.left) return { newColumnBefore: cols[0] };
+    return { newColumnBefore: null };
   }
 
   function startDrag(panel, ev) {
     const rect = panel.getBoundingClientRect();
-    const cs = getComputedStyle(panel);
 
     const slot = document.createElement("div");
     slot.className = "drop-slot";
     slot.textContent = "drop here";
-    slot.style.gridColumn = `${cs.gridColumnStart} / ${cs.gridColumnEnd}`;
     slot.style.height = rect.height + "px";
 
-    drag = { panel, slot, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top, order: null };
+    drag = { panel, slot, dx: ev.clientX - rect.left, dy: ev.clientY - rect.top,
+             home: panel.nextSibling, homeCol: panel.closest(".layout-col") };
 
-    const items = panelsInOrder();
-    items.splice(items.indexOf(panel), 1, slot);
-    drag.order = items;
-    layoutEl.appendChild(slot);
-    applyOrder(items);
-
-    // Pin the size before going fixed, or the panel would collapse to content.
+    panel.after(slot);
+    // Pin the size before going fixed, or the panel collapses to its content.
     panel.style.width = rect.width + "px";
     panel.style.height = rect.height + "px";
     panel.classList.add("is-dragged");
     layoutEl.classList.add("is-dragging");
+    // Out of flow now, so its column can shrink to whatever is left behind.
+    layoutEl.appendChild(panel);
+    syncColumns();
     moveDrag(ev);
   }
 
   function moveDrag(ev) {
     drag.panel.style.left = `${ev.clientX - drag.dx}px`;
     drag.panel.style.top = `${ev.clientY - drag.dy}px`;
-    const target = panelUnder(ev.clientX, ev.clientY);
-    if (target) reslot(target, ev.clientX, ev.clientY);
+
+    const t = dropTargetAt(ev.clientX, ev.clientY);
+    if (!t) return;
+    if (t.col) {
+      if (t.before) t.col.insertBefore(drag.slot, t.before);
+      else t.col.appendChild(drag.slot);
+    } else {
+      // A fresh column for the slot, reusing one if the slot already made it.
+      let col = drag.slot.parentElement;
+      if (!col || !col.classList.contains("layout-col") || panelsIn(col).length) {
+        col = newColumn();
+        layoutEl.insertBefore(col, t.newColumnBefore);
+        col.appendChild(drag.slot);
+      }
+    }
+    syncColumns();
   }
 
   function endDrag(commit) {
-    const { panel, slot, order } = drag;
+    const { panel, slot, home, homeCol } = drag;
     panel.classList.remove("is-dragged");
     layoutEl.classList.remove("is-dragging");
     panel.style.width = panel.style.height = panel.style.left = panel.style.top = "";
 
-    const final = commit ? order.map((n) => (n === slot ? panel : n)) : panelsInOrder();
-    slot.remove();
-    if (commit) applyOrder(final.filter((n) => n !== slot));
+    if (commit) slot.replaceWith(panel);
+    else {
+      slot.remove();
+      // Cancelled: back exactly where it started, even if that column was
+      // removed for being empty while the panel was out of flow.
+      if (!homeCol.isConnected) layoutEl.appendChild(homeCol);
+      homeCol.insertBefore(panel, home);
+    }
     drag = null;
 
+    syncColumns();
     saveLayout();
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
   }
 
+  /* Arms on a small movement rather than on press, so a click on the header —
+     or on a size button inside it — never starts a drag. */
   layoutEl.addEventListener("pointerdown", (ev) => {
     if (ev.button !== 0 || drag) return;
     const head = ev.target.closest(".panel-head");
-    // Let the buttons and the help tooltip keep their own behaviour.
     if (!head || ev.target.closest("button, .help-icon")) return;
     const panel = head.closest(".panel");
     if (!panel || !layoutPanels().includes(panel)) return;
 
-    const startX = ev.clientX, startY = ev.clientY;
+    const from = { x: ev.clientX, y: ev.clientY };
     let armed = false;
 
     const onMove = (e) => {
-      // A small threshold so an ordinary click on the header is still a click.
-      if (!armed && Math.hypot(e.clientX - startX, e.clientY - startY) < 5) return;
-      if (!armed) { armed = true; startDrag(panel, e); return; }
+      if (!armed) {
+        if (Math.hypot(e.clientX - from.x, e.clientY - from.y) < 5) return;
+        armed = true;
+        startDrag(panel, e);
+        return;
+      }
+      e.preventDefault();
       moveDrag(e);
     };
-    const onUp = () => {
+    const stop = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("keydown", onKey, true);
-      if (armed) endDrag(true);
     };
+    const onUp = () => { stop(); if (armed) endDrag(true); };
     const onKey = (e) => {
       if (e.key !== "Escape" || !armed) return;
       e.preventDefault();
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("keydown", onKey, true);
+      stop();
       endDrag(false);
     };
 
@@ -2033,16 +2291,16 @@
 
   // ---------- layout persistence ----------
   const LAYOUT_KEY = "collage.layout.v1";
-  const SIZE_CLASSES = ["size-quarter", "size-mini", "size-half", "size-twothirds", "size-full"];
 
   function saveLayout() {
     const state = {
-      panels: layoutPanels().map((p) => ({
+      // Columns, each an ordered list of panels — the structure IS the layout
+      // now, so panel order alone can't describe it.
+      columns: columns().map((col) => panelsIn(col).map((p) => ({
         id: p.id,
         size: SIZE_CLASSES.find((c) => p.classList.contains(c)) || "size-half",
-        minimized: p.classList.contains("minimized"),
-        order: Number(p.style.order) || 0
-      })),
+        minimized: p.classList.contains("minimized")
+      }))),
       layersCollapsed: document.getElementById("layersPanel").classList.contains("collapsed"),
       overlayGuide: document.getElementById("overlayGuide").value,
       autoSave: {
@@ -2065,18 +2323,49 @@
     try { state = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null"); } catch { return; }
     if (!state) return;
 
-    (state.panels || []).forEach((s) => {
+    const applyPanel = (s) => {
       const p = document.getElementById(s.id);
-      if (!p) return;
+      if (!p) return null;
       p.classList.remove(...SIZE_CLASSES, "minimized");
       p.classList.add(SIZE_CLASSES.includes(s.size) ? s.size : "size-half");
       if (s.minimized) p.classList.add("minimized");
-      p.style.order = s.order;
       const group = p.querySelector(".size-toggle");
       group.querySelectorAll("button[data-size]")
         .forEach((b) => b.classList.toggle("active", "size-" + b.dataset.size === s.size));
       group.querySelector('[data-action="minimize"]').classList.toggle("active", !!s.minimized);
-    });
+      return p;
+    };
+
+    if (Array.isArray(state.columns)) {
+      /* Rebuild the columns in saved order. Panels added to the app since the
+         layout was saved aren't listed, so they're left in the column they
+         were born in rather than disappearing. */
+      const placed = new Set();
+      for (const colState of state.columns) {
+        const panels = colState.map(applyPanel).filter(Boolean);
+        if (!panels.length) continue;
+        const col = newColumn();
+        layoutEl.appendChild(col);
+        for (const p of panels) { col.appendChild(p); placed.add(p.id); }
+      }
+      // Anything unplaced keeps its own column, moved to the end.
+      for (const p of layoutPanels()) {
+        if (placed.has(p.id)) continue;
+        const col = newColumn();
+        layoutEl.appendChild(col);
+        col.appendChild(p);
+      }
+    } else {
+      // Pre-columns layout: one column each, in the saved order.
+      (state.panels || []).sort((a, b) => (a.order || 0) - (b.order || 0)).forEach((s) => {
+        const p = applyPanel(s);
+        if (!p) return;
+        const col = newColumn();
+        layoutEl.appendChild(col);
+        col.appendChild(p);
+      });
+    }
+    syncColumns();
 
     if (state.overlayGuide) {
       overlayGuide = state.overlayGuide;
@@ -2129,6 +2418,8 @@
       btn.parentElement.querySelectorAll("button[data-size]")
         .forEach((b) => b.classList.toggle("active", b === btn));
     }
+    // A panel's size feeds its column's width, so the column has to re-measure.
+    syncColumns();
     saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
@@ -2401,23 +2692,15 @@
           <span class="coll-sub">${escapeHtml(it.collectionName)}${it.date ? " &middot; " + escapeHtml(it.date) : ""}</span>
           ${it.notes ? `<span class="coll-sub">${escapeHtml(it.notes)}</span>` : ""}
           ${(it.tags || []).length ? `<span class="coll-sub">${escapeHtml((it.tags || []).join(", "))}</span>` : ""}
-          <span class="coll-hires"></span>
+          <span class="coll-hires"><button type="button" class="stage-btn" data-stage="1" title="add to the Image Selector">+ stage</button></span>
         </span>
       </li>
     `).join("");
-
-    /* Each item quietly checks whether a higher-resolution copy of the same
-       filename exists in sources/. If it does the row offers it, so the
-       collection can stay pointed at a fast web derivative while the clipper
-       opens the big one. */
-    const list = document.getElementById("collectionItems");
-    rows.forEach(async (it, i) => {
-      const url = await findHires(it.url);
-      const slot = list.children[i]?.querySelector(".coll-hires");
-      if (!url || !slot) return;
-      list.children[i].dataset.hires = url;
-      slot.innerHTML = `<button type="button" class="hires-btn" data-hires="1">use hi-res &#9733;</button>`;
-    });
+    /* No hi-res probing here any more. It fired a network request per row on
+       every render — every keystroke in the search box — which is what made
+       the panel and its previews slow. The collection URL is the low-res one
+       and is what a click uses; a high-res swap is a per-layer decision made
+       in the layer list, where it can be undone. */
   }
 
   document.getElementById("collectionSearch").addEventListener("input", renderCollections);
@@ -2442,7 +2725,9 @@
     if (!li) { sourcePreview.hidden = true; return; }
     const item = visibleItems()[Number(li.dataset.index)];
     if (!item) return;
-    sourcePreviewImg.src = item.url;
+    // The thumbnail, not the full plate. These scans run to tens of megabytes
+    // and hovering a list would fetch one per row.
+    sourcePreviewImg.src = item.thumb || item.url;
     sourcePreview.hidden = false;
     const rect = li.getBoundingClientRect();
     placeSourcePreview(rect);
@@ -2455,11 +2740,18 @@
     if (!li) return;
     const item = visibleItems()[Number(li.dataset.index)];
     if (!item) return;
-    // The hi-res button opts into the local copy; the row itself uses the
-    // collection's own URL.
-    const url = e.target.closest("[data-hires]") && li.dataset.hires
-      ? li.dataset.hires
-      : item.url;
+
+    // Staging collects without loading — the whole point is to shortlist
+    // several before committing the clipper to one.
+    if (e.target.closest("[data-stage]")) {
+      const added = stageImage({ url: item.url, title: item.title || shortUrl(item.url),
+                                 thumb: item.thumb || "", from: item.collectionName || "collection" });
+      document.getElementById("collectionsStatus").textContent =
+        added ? "staged" : "already staged";
+      return;
+    }
+
+    const url = item.url;
     document.getElementById("collectionsStatus").textContent = "loading " + shortUrl(url) + "…";
     selectSource("usedurl", url);
     loadImage(url)
@@ -3260,7 +3552,7 @@
     // Layer count feeds the Record panel's duration estimate, and its names
     // and groups feed the jitter target list.
     updateRecEstimate();
-    if (document.getElementById("recMode")?.value === "jitter") renderJitterRules();
+    if (document.getElementById("recMode")?.value === "motion") renderJitterRules();
     const list = document.getElementById("layerList");
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     // Existing group names, offered as suggestions so grouping is a pick
@@ -4309,15 +4601,70 @@
   /* Both modes read the same hashed sequence; the only difference is whether
      the value snaps at each step or eases between them. That keeps a layer's
      path recognisably the same whichever you pick. */
-  /* One rule per target, tried in order — so a rule naming a single layer
-     placed above "all layers" overrides it for that layer. A clip no rule
-     matches gets no offset at all, which is how you keep something pinned. */
-  const jitterRules = [{ target: "all", mode: "boil", amount: 2, hold: 2 }];
+  /* ---------- actions ----------
+     A named motion. `type` decides which parameters matter: path uses steps
+     and yoyo, boil and drift use hold. `amount` here is the default distance;
+     an assignment in the Record panel can override it, so one Sway can be 3px
+     on a backdrop and 20px on a figure. */
+  const ACTION_KEY = "collage.actions.v1";
 
-  // fps is shared, so it's resolved once here rather than per rule per frame.
+  const BUILTIN_ACTIONS = [
+    { id: "act-boil",    name: "Boil",    type: "boil",  amount: 2,  hold: 2, builtin: true },
+    { id: "act-drift",   name: "Drift",   type: "drift", amount: 3,  hold: 5, builtin: true },
+    { id: "act-sway",    name: "Sway",    type: "path",  amount: 12, steps: "left right", yoyo: true, builtin: true },
+    { id: "act-bob",     name: "Bob",     type: "path",  amount: 10, steps: "up down", yoyo: true, builtin: true },
+    { id: "act-breathe", name: "Breathe", type: "path",  amount: 6,  steps: ". up . down", yoyo: true, builtin: true },
+    { id: "act-nudge",   name: "Nudge",   type: "path",  amount: 14, steps: "ul dr", yoyo: true, builtin: true }
+  ];
+
+  const cloneActions = (list) => list.map((a) => ({ ...a }));
+
+  let actions = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(ACTION_KEY) || "null");
+    actions = Array.isArray(saved) && saved.length ? saved : cloneActions(BUILTIN_ACTIONS);
+  } catch { actions = cloneActions(BUILTIN_ACTIONS); }
+
+  function saveActions() {
+    try { localStorage.setItem(ACTION_KEY, JSON.stringify(actions)); } catch { /* full or blocked */ }
+  }
+
+  const actionById = (id) => actions.find((a) => a.id === id) || null;
+
+  /* One assignment per target, tried in order — so an assignment naming a
+     single layer placed above "all layers" overrides it for that layer. A clip
+     no assignment matches gets no offset at all, which is how you pin one. */
+  const jitterRules = [{ target: "all", actionId: "act-boil", amount: null }];
+
+  /* Directions for path moves. One step = one entry, each worth the rule's
+     distance. Words, single letters and arrows all parse, so "left right up"
+     and "l r u" and "← → ↑" are the same thing. A dot or dash is a pause,
+     which is how you hold a beat without moving. */
+  const MOVE_DIRS = {
+    left: [-1, 0], l: [-1, 0], "←": [-1, 0],
+    right: [1, 0], r: [1, 0], "→": [1, 0],
+    up: [0, -1], u: [0, -1], "↑": [0, -1],
+    down: [0, 1], d: [0, 1], "↓": [0, 1],
+    ul: [-1, -1], ur: [1, -1], dl: [-1, 1], dr: [1, 1],
+    hold: [0, 0], ".": [0, 0], "-": [0, 0]
+  };
+
+  function parseMoves(str) {
+    return String(str || "").toLowerCase().split(/[\s,]+/).filter(Boolean)
+      .map((w) => MOVE_DIRS[w]).filter(Boolean);
+  }
+
+  // fps and the run length are shared, so they're resolved once per frame here
+  // rather than per rule. `total` is what a path's steps are divided across.
   function jitterSettings() {
     if (!jitterRules.length) return null;
-    return { rules: jitterRules, fps: Number(document.getElementById("recFps").value) || 30 };
+    const loops = Math.max(1, Number(document.getElementById("recLoops").value) || 1);
+    return {
+      rules: jitterRules,
+      fps: Number(document.getElementById("recFps").value) || 30,
+      total: Math.max(1, (Number(document.getElementById("recHold").value) || 0) * 1000 * loops),
+      easing: document.getElementById("recEasing").value
+    };
   }
 
   // "all", a link group, or one specific clip.
@@ -4328,25 +4675,58 @@
     return false;
   }
 
+  /* A scripted move: the sequence is divided evenly across the run, each step
+     worth `amount` pixels in its direction, accumulating as it goes — so
+     "left right up" ends one step up from where it started, not back at zero.
+     Yoyo runs the whole sequence forward then backward, which is the only way
+     it returns to the authored position on its own. */
+  function pathOffset(act, distance, nowMs, js) {
+    const moves = parseMoves(act.steps);
+    if (!moves.length) return null;
+
+    let p = ((nowMs - recClock.t0) % js.total) / js.total;
+    if (p < 0) p += 1;
+    if (act.yoyo) p = p < 0.5 ? p * 2 : 2 - p * 2;
+
+    const n = moves.length;
+    const scaled = Math.min(n, p * n);
+    const idx = Math.min(n - 1, Math.floor(scaled));
+    const f = (EASINGS[js.easing] || EASINGS.out)(scaled - idx);
+
+    // Everything already travelled, plus the eased part of the current step.
+    let cx = 0, cy = 0;
+    for (let i = 0; i < idx; i++) { cx += moves[i][0]; cy += moves[i][1]; }
+    return [(cx + moves[idx][0] * f) * distance,
+            (cy + moves[idx][1] * f) * distance];
+  }
+
   function jitterOffset(clip, nowMs, js) {
     if (!js) return null;
     const rule = js.rules.find((r) => jitterHits(clip, r.target));
-    if (!rule || !rule.amount) return null;
+    if (!rule) return null;
+    const act = actionById(rule.actionId);
+    if (!act) return null;
 
-    const hold = Math.max(1, rule.hold || 1);
+    // The assignment's distance wins when set; otherwise the action's own.
+    const distance = rule.amount == null || rule.amount === "" ? act.amount : Number(rule.amount);
+    if (!distance) return null;
+
+    if (act.type === "path") return pathOffset(act, distance, nowMs, js);
+
+    const hold = Math.max(1, act.hold || 1);
     // Elapsed playback time in "held frames" — the unit an offset lasts for.
     const t = (nowMs - recClock.t0) / (1000 / js.fps) / hold;
     const step = Math.floor(t);
 
-    if (rule.mode === "boil") {
-      return [hashUnit(clip.id, step, "x") * rule.amount, hashUnit(clip.id, step, "y") * rule.amount];
+    if (act.type === "boil") {
+      return [hashUnit(clip.id, step, "x") * distance, hashUnit(clip.id, step, "y") * distance];
     }
     // drift: same waypoints, eased across so it floats instead of twitching.
     const f = smoothstep(t - step);
     const lerp = (a, b) => a + (b - a) * f;
     return [
-      lerp(hashUnit(clip.id, step, "x"), hashUnit(clip.id, step + 1, "x")) * rule.amount,
-      lerp(hashUnit(clip.id, step, "y"), hashUnit(clip.id, step + 1, "y")) * rule.amount
+      lerp(hashUnit(clip.id, step, "x"), hashUnit(clip.id, step + 1, "x")) * distance,
+      lerp(hashUnit(clip.id, step, "y"), hashUnit(clip.id, step + 1, "y")) * distance
     ];
   }
 
@@ -4366,22 +4746,327 @@
   function renderJitterRules() {
     const list = document.getElementById("recJitterRules");
     if (!list) return;
-    list.innerHTML = jitterRules.map((r, i) => `
+    list.innerHTML = jitterRules.map((r, i) => {
+      const act = actionById(r.actionId);
+      return `
       <div class="jitter-rule" data-i="${i}">
         <select data-f="target">${jitterTargetOptions(r.target)}</select>
-        <select data-f="mode">
-          <option value="boil"${r.mode === "boil" ? " selected" : ""}>boil</option>
-          <option value="drift"${r.mode === "drift" ? " selected" : ""}>drift</option>
+        <select data-f="actionId">
+          ${actions.map((a) =>
+            `<option value="${escapeHtml(a.id)}"${a.id === r.actionId ? " selected" : ""}>${escapeHtml(a.name)}</option>`).join("")}
         </select>
-        <label title="how far it moves">&plusmn;<input type="number" data-f="amount" min="0" max="30" step="0.5" value="${r.amount}">px</label>
-        <label title="frames each offset is held. 2-3 reads as hand-drawn; drift wants 4-6 to float">hold
-          <input type="number" data-f="hold" min="1" max="12" step="1" value="${r.hold}">f</label>
-        <button type="button" data-f="remove" title="remove this rule">&#10005;</button>
-      </div>`).join("");
+        <label title="leave blank to use the action's own distance (${act ? act.amount : "—"}px)">&plusmn;<input
+          type="number" data-f="amount" min="0" max="400" step="0.5"
+          placeholder="${act ? act.amount : ""}" value="${r.amount == null ? "" : r.amount}">px</label>
+        <button type="button" data-f="remove" title="remove this assignment">&#10005;</button>
+      </div>`;
+    }).join("");
   }
 
+  /* ---------- image selector ----------
+     A shortlist of images you're considering, gathered before committing to
+     one. Entries are references, never copies — {url, title, thumb}. */
+  function saveStaged() {
+    // Blob URLs are only valid for this page load, so they're never persisted —
+    // saving them would restore a list of dead links after a reload.
+    const keep = stagedImages.filter((s) => !s.temp);
+    try { localStorage.setItem(SELECTOR_KEY, JSON.stringify(keep)); } catch { /* full or blocked */ }
+  }
+
+  function stageImage(entry) {
+    if (!entry || !entry.url) return false;
+    if (stagedImages.some((s) => s.url === entry.url)) return false;
+    stagedImages.push(entry);
+    saveStaged();
+    renderSelector();
+    renderDropdownList();
+    return true;
+  }
+
+  function renderSelector() {
+    const list = document.getElementById("selectorList");
+    if (!list) return;
+    list.innerHTML = stagedImages.map((s, i) => `
+      <li data-i="${i}" title="${escapeHtml(s.url)}">
+        <img src="${escapeHtml(s.thumb || s.url)}" alt="" loading="lazy">
+        <span class="sel-body">
+          <span class="sel-title">${escapeHtml(s.title || shortUrl(s.url))}</span>
+          <span class="sel-sub${s.temp ? " sel-temp" : ""}">${s.temp ? "this session only" : escapeHtml(s.from || shortUrl(s.url))}</span>
+        </span>
+        <button type="button" data-f="remove" title="remove from the list">&#10005;</button>
+      </li>`).join("");
+  }
+
+  document.getElementById("selectorList").addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    if (!li) return;
+    const i = Number(li.dataset.i);
+    if (e.target.dataset.f === "remove") {
+      stagedImages.splice(i, 1);
+      saveStaged(); renderSelector(); renderDropdownList();
+      return;
+    }
+    // Clicking the row sends it to the clipper, same as a collection item.
+    const entry = stagedImages[i];
+    if (!entry) return;
+    const status = document.getElementById("selectorStatus");
+    status.textContent = "loading…";
+    selectSource("usedurl", entry.url);
+    loadImage(entry.url)
+      .then(() => { status.textContent = ""; })
+      .catch(() => { status.textContent = "failed — the host may not allow cross-origin use"; });
+  });
+
+  document.getElementById("selectorList").addEventListener("mouseover", (e) => {
+    const li = e.target.closest("li");
+    if (!li) { sourcePreview.hidden = true; return; }
+    const entry = stagedImages[Number(li.dataset.i)];
+    if (!entry) return;
+    sourcePreviewImg.src = entry.thumb || entry.url;
+    sourcePreview.hidden = false;
+    placeSourcePreview(li.getBoundingClientRect());
+  });
+  document.getElementById("selectorList").addEventListener("mouseleave", () => { sourcePreview.hidden = true; });
+
+  function addStagedUrl() {
+    const input = document.getElementById("selectorUrl");
+    const url = input.value.trim();
+    if (!url) return;
+    const added = stageImage({ url, title: shortUrl(url), from: "url" });
+    document.getElementById("selectorStatus").textContent = added ? "" : "already staged";
+    if (added) input.value = "";
+  }
+  document.getElementById("selectorAddUrlBtn").addEventListener("click", addStagedUrl);
+  document.getElementById("selectorUrl").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addStagedUrl();
+  });
+
+  /* Folder import. A page can't read a path you type — it can only be handed
+     files through a picker. Each file is first checked against the places this
+     site actually serves images from: if the same filename is there, the
+     served path is staged instead of a blob, so the entry survives a reload
+     and can be saved in a config. Otherwise it's staged as session-only. */
+  const SERVED_ROOTS = ["sources/", "../sources/", "../photos/originals/", "../photos/edits/"];
+
+  async function servedPathFor(name) {
+    for (const root of SERVED_ROOTS) {
+      const url = root + name;
+      try { await loadImage(url); return url; } catch { /* not there, try the next */ }
+    }
+    return null;
+  }
+
+  document.getElementById("selectorFolderBtn").addEventListener("click", () =>
+    document.getElementById("selectorFolderInput").click());
+
+  document.getElementById("selectorFolderInput").addEventListener("change", async (e) => {
+    const files = [...e.target.files].filter((f) => /^image\//.test(f.type));
+    const status = document.getElementById("selectorStatus");
+    e.target.value = "";
+    if (!files.length) { status.textContent = "no images in that folder"; return; }
+
+    status.textContent = `checking ${files.length} file${files.length === 1 ? "" : "s"}…`;
+    let served = 0, temp = 0, dupe = 0;
+
+    for (const file of files) {
+      const path = await servedPathFor(file.name);
+      const entry = path
+        ? { url: path, title: file.name, from: path.replace(file.name, "") }
+        : { url: URL.createObjectURL(file), title: file.name, from: "local folder", temp: true };
+      if (stageImage(entry)) { path ? served++ : temp++; } else dupe++;
+    }
+
+    status.textContent = `${served} by path, ${temp} session-only`
+      + (dupe ? `, ${dupe} already staged` : "");
+  });
+
+  document.getElementById("selectorClearBtn").addEventListener("click", () => {
+    stagedImages = [];
+    saveStaged(); renderSelector(); renderDropdownList();
+    document.getElementById("selectorStatus").textContent = "";
+  });
+
+  document.getElementById("selectorDownloadBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(stagedImages.filter((s) => !s.temp), null, 2)],
+      { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "collage-selector.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("selectorUploadBtn").addEventListener("click", () =>
+    document.getElementById("selectorUploadInput").click());
+
+  document.getElementById("selectorUploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed)) throw new Error("expected an array");
+        let added = 0;
+        for (const entry of parsed) if (stageImage(entry)) added++;
+        document.getElementById("selectorStatus").textContent =
+          `${added} added, ${parsed.length - added} already here`;
+      } catch (err) {
+        document.getElementById("selectorStatus").textContent = `could not read: ${err.message}`;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  renderSelector();
+  // Safe here — everything it reads is initialised by this point.
+  renderDropdownList();
+
+  // ---------- actions panel ----------
+
+  function renderActions() {
+    const list = document.getElementById("actionList");
+    if (!list) return;
+    list.innerHTML = actions.map((a, i) => {
+      const steps = a.type === "path" ? parseMoves(a.steps).length : 0;
+      return `
+      <li data-i="${i}"${a.builtin ? ' class="builtin"' : ""}>
+        <div class="action-top">
+          <input type="text" class="action-name" data-f="name" spellcheck="false" value="${escapeHtml(a.name)}">
+          <select data-f="type">
+            <option value="path"${a.type === "path" ? " selected" : ""}>path</option>
+            <option value="boil"${a.type === "boil" ? " selected" : ""}>boil</option>
+            <option value="drift"${a.type === "drift" ? " selected" : ""}>drift</option>
+          </select>
+          <button type="button" data-f="duplicate" title="duplicate">&#10697;</button>
+          <button type="button" data-f="remove" title="delete">&#10005;</button>
+        </div>
+        <div class="action-body">
+          <label title="default distance — an assignment can override it">&plusmn;<input type="number" data-f="amount" min="0" max="400" step="0.5" value="${a.amount}">px</label>
+          ${a.type === "path" ? `
+            <label title="forwards then backwards, so it ends where it started">
+              <input type="checkbox" data-f="yoyo"${a.yoyo ? " checked" : ""}> yoyo</label>
+            <span class="action-count">${steps} step${steps === 1 ? "" : "s"}</span>
+            <input type="text" class="action-steps" data-f="steps" spellcheck="false"
+                   value="${escapeHtml(a.steps || "")}" placeholder="left right up"
+                   title="one word per step: left right up down, or l r u d, or the diagonals ul ur dl dr. A dot is a pause.">
+          ` : `
+            <label title="frames each offset is held. 2-3 reads as hand-drawn; drift wants 4-6 to float">hold
+              <input type="number" data-f="hold" min="1" max="12" step="1" value="${a.hold || 2}">f</label>
+          `}
+        </div>
+      </li>`;
+    }).join("");
+  }
+
+  /* Anything the panel changes has to reach the Record panel's assignment
+     rows too — they show action names and default distances. */
+  function actionsChanged({ rerenderRows = true } = {}) {
+    saveActions();
+    renderActions();
+    if (rerenderRows) renderJitterRules();
+  }
+
+  document.getElementById("actionList").addEventListener("input", (e) => {
+    const li = e.target.closest("li");
+    const field = e.target.dataset.f;
+    if (!li || !field) return;
+    const act = actions[Number(li.dataset.i)];
+    if (!act) return;
+    act[field] = e.target.type === "checkbox" ? e.target.checked
+      : (field === "amount" || field === "hold") ? Number(e.target.value)
+      : e.target.value;
+    // Editing a shipped action makes it yours — otherwise "Restore examples"
+    // would quietly undo your edits.
+    if (act.builtin) delete act.builtin;
+    saveActions();
+    // Type swaps which fields the row shows; the step count follows the text.
+    // Anything else re-rendering mid-keystroke would steal focus.
+    if (field === "type") { renderActions(); renderJitterRules(); }
+    else if (field === "steps") {
+      const c = li.querySelector(".action-count");
+      const n = parseMoves(act.steps).length;
+      if (c) c.textContent = `${n} step${n === 1 ? "" : "s"}`;
+    } else if (field === "name" || field === "amount") renderJitterRules();
+  });
+
+  document.getElementById("actionList").addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    const field = e.target.dataset.f;
+    if (!li || !field) return;
+    const i = Number(li.dataset.i);
+
+    if (field === "duplicate") {
+      const copy = { ...actions[i], id: "act-" + Date.now().toString(36), name: actions[i].name + " copy" };
+      delete copy.builtin;
+      actions.splice(i + 1, 0, copy);
+      actionsChanged();
+    } else if (field === "remove") {
+      const gone = actions[i].id;
+      actions.splice(i, 1);
+      // Assignments pointing at a deleted action would silently stop moving,
+      // so they fall back to whatever is left rather than dangling.
+      for (const r of jitterRules) if (r.actionId === gone) r.actionId = actions[0]?.id || "";
+      actionsChanged();
+    }
+  });
+
+  document.getElementById("actionAddBtn").addEventListener("click", () => {
+    actions.push({ id: "act-" + Date.now().toString(36), name: "New action",
+                   type: "path", amount: 10, steps: "left right", yoyo: true });
+    actionsChanged();
+  });
+
+  document.getElementById("actionResetBtn").addEventListener("click", () => {
+    // Adds back only what's missing, so your own actions survive.
+    const have = new Set(actions.map((a) => a.id));
+    const added = BUILTIN_ACTIONS.filter((a) => !have.has(a.id));
+    actions.push(...cloneActions(added));
+    actionsChanged();
+    document.getElementById("actionStatus").textContent =
+      added.length ? `restored ${added.length}` : "all present";
+  });
+
+  document.getElementById("actionDownloadBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(actions, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "collage-actions.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("actionUploadBtn").addEventListener("click", () =>
+    document.getElementById("actionUploadInput").click());
+
+  document.getElementById("actionUploadInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed)) throw new Error("expected an array of actions");
+        // Merged by id so re-importing tops up instead of duplicating.
+        const have = new Set(actions.map((a) => a.id));
+        const added = parsed.filter((a) => a && a.id && !have.has(a.id));
+        actions.push(...added);
+        actionsChanged();
+        document.getElementById("actionStatus").textContent =
+          `${added.length} added, ${parsed.length - added.length} already here`;
+      } catch (err) {
+        document.getElementById("actionStatus").textContent = `could not read: ${err.message}`;
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  renderActions();
+
   document.getElementById("recJitterAdd").addEventListener("click", () => {
-    jitterRules.push({ target: "all", mode: "boil", amount: 2, hold: 2 });
+    jitterRules.push({ target: "all", actionId: actions[0]?.id || "act-boil", amount: null });
     renderJitterRules();
   });
 
@@ -4391,8 +5076,14 @@
     if (!row || !field) return;
     const rule = jitterRules[Number(row.dataset.i)];
     if (!rule) return;
-    rule[field] = (field === "amount" || field === "hold")
-      ? Number(e.target.value) : e.target.value;
+    // Blank distance means "use the action's own", so it stays null rather
+    // than becoming 0 — which would mean "don't move".
+    rule[field] = field === "amount"
+      ? (e.target.value === "" ? null : Number(e.target.value))
+      : e.target.value;
+    // A different action has a different default distance to show as the
+    // placeholder. Re-rendering on any other field would steal focus.
+    if (field === "actionId") renderJitterRules();
   });
 
   document.getElementById("recJitterRules").addEventListener("click", (e) => {
@@ -4518,7 +5209,7 @@
 
     // Reveal costs one delay per layer; the flight is a single pass at 2x
     // delay; jitter is nothing but the hold, repeated.
-    const secs = mode === "jitter" ? hold * loops
+    const secs = mode === "motion" ? hold * loops
       : mode === "sources" ? stageHold + delay * 2 + hold
       : REVEAL_LEAD_IN / 1000 + n * delay + hold;
 
@@ -4766,15 +5457,27 @@
     document.getElementById("recJitterPreview").textContent = "preview: on";
     document.getElementById("recJitterPreview").classList.add("active");
 
-    const k = sizeRecordCanvas(cfg);
-    const inspect = previewInspect();
+    let k = sizeRecordCanvas(cfg);
+    let inspect = previewInspect();
     // Said out loud, or a magnified preview reads as the framing having broken.
     recStatus.textContent = inspect > 1.05
       ? `preview magnified ${inspect.toFixed(1)}× so the movement is visible — the recording is not`
       : "preview";
 
+    /* Framing has to be re-read while the loop runs or zoom appears dead — but
+       sizeRecordCanvas reallocates the canvas buffer, so it's only called when
+       something actually changed rather than on every frame. */
+    const framingKey = () => `${document.getElementById("recTarget").value}|${recFrame.mode}|${recFrame.zoom}`;
+    let lastKey = framingKey();
+
     const tick = (now) => {
       if (!jitterPreviewRAF) return;
+      const key = framingKey();
+      if (key !== lastKey) {
+        lastKey = key;
+        k = sizeRecordCanvas(cfg);
+        inspect = previewInspect();
+      }
       drawJitterFrame(ctx, cfg, ordered, k, jitterSettings(), now, 1, inspect);
       jitterPreviewRAF = requestAnimationFrame(tick);
     };
@@ -4791,10 +5494,10 @@
 
   function syncRecModeUI() {
     const mode = document.getElementById("recMode").value;
-    document.getElementById("recJitterOpts").hidden = mode !== "jitter";
+    document.getElementById("recJitterOpts").hidden = mode !== "motion";
     // Leaving the loop running after switching away would keep animating a
     // preview for a mode you're no longer in.
-    if (mode !== "jitter") stopJitterPreview();
+    if (mode !== "motion") stopJitterPreview();
     else renderJitterRules();
     updateRecEstimate();
   }
@@ -5042,7 +5745,11 @@
     const recorder = record ? beginRecording() : null;
     if (record && !recorder) { recPlaying = false; setRecButtons(false); return; }
 
-    recStatus.textContent = js ? `jittering ${js.mode}` : "holding still";
+    // js.mode is gone — a run can use several actions at once now, so it names
+    // how many assignments are live rather than one motion.
+    recStatus.textContent = js
+      ? `${js.rules.length} motion${js.rules.length === 1 ? "" : "s"}`
+      : "holding still";
     await new Promise((resolve) => {
       const start = performance.now();
       const tick = (now) => {
@@ -5071,7 +5778,7 @@
     // real playback for the same context and land in the capture stream.
     stopJitterPreview();
     const mode = document.getElementById("recMode").value;
-    if (mode === "jitter") return playJitter(record);
+    if (mode === "motion") return playJitter(record);
     return mode === "sources" ? playStage(record) : playReveal(record);
   }
 
