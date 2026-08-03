@@ -6,9 +6,73 @@
     "period": "1850s",
     "published": "1851",
     "attribution": "David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries",
-    "link": "https://example.org/collection",
-    "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
+    "link": "",
+    "note": "Accessed originally from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
     "items": [
+      {
+        "title": "Plate 19. (Prussian and French Infantries.)",
+        "url": "https://dn721908.ca.archive.org/0/items/dr_view-plate-19-prussian-and-french-infantries-12190391/12190391.jpg",
+        "thumb": "https://dn721908.ca.archive.org/0/items/dr_view-plate-19-prussian-and-french-infantries-12190391/__ia_thumb.jpg",
+        "date": "",
+        "tags": [
+          "prussian",
+          "french",
+          "infantries",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 20. (Prussian and French Cavalry.)",
+        "url": "https://dn710001.ca.archive.org/0/items/dr_view-plate-20-prussian-and-french-cavalry-12190392/12190392.jpg",
+        "thumb": "https://dn710001.ca.archive.org/0/items/dr_view-plate-20-prussian-and-french-cavalry-12190392/__ia_thumb.jpg",
+        "date": "",
+        "tags": [
+          "prussian",
+          "french",
+          "cavalry",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 21. (Austrian and British Infantries.)",
+        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-21-austrian-and-british-infantries-12190393/12190393.jpg",
+        "thumb": "https://dn721604.ca.archive.org/0/items/dr_view-plate-21-austrian-and-british-infantries-12190393/__ia_thumb.jpg",
+        "date": "",
+        "tags": [
+          "austrian",
+          "british",
+          "infantries",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 22. (British and Belgian Cavalry.)",
+        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-22-british-and-belgian-cavalry-12190394/12190394.jpg",
+        "thumb": "https://dn721604.ca.archive.org/0/items/dr_view-plate-22-british-and-belgian-cavalry-12190394/__ia_thumb.jpg",
+        "date": "",
+        "tags": [
+          "british",
+          "belgian",
+          "cavalry",
+          "engraving"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Plate 28. (Exercises in Fencing.)",
+        "url": "https://dn710201.ca.archive.org/0/items/dr_view-plate-28-exercises-in-fencing-12190400/12190400.jpg",
+        "thumb": "https://dn710201.ca.archive.org/0/items/dr_view-plate-28-exercises-in-fencing-12190400/__ia_thumb.jpg",
+        "date": "",
+        "tags": [
+          "exercises",
+          "fencing",
+          "engraving"
+        ],
+        "notes": ""
+      },
       {
         "title": "Plate 20. (Illustrations of the Art of Drawing.)",
         "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-20-illustrations-of-the-art-of-drawing-12190602/12190602.jpg",
@@ -1053,6 +1117,198 @@
           "animals",
           "engraving"
         ],
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "id": "drmc2",
+    "name": "",
+    "description": "",
+    "period": "",
+    "published": "",
+    "attribution": "",
+    "link": "",
+    "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
+    "items": [
+      {
+        "title": "(Care of and means of transportation of sick or wounded). Julius Bien & Co., Lith., N.Y. (1891-1895)",
+        "url": "1780177.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "(Ordnance, ordnance stores, etc.). Julius Bien & Co., Lith., N.Y. (1891-1895)",
+        "url": "1780176.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "(Uniforms, officers and enlisted men). (with) Badges to distinguish rank, U.S. Army, epaulettes, shoulder straps, chevrons. (with) Buttons, U.S. Army. (with) Collar badges, C.S. Army. (with) Sleeve badges, C.S. Army. (with) Chevrons, C.S. Army. (with) Caps, C.S. Army. (with) Buttons, C.S. Army. Julius Bien & Co., Lith., N.Y. (1891-1895)",
+        "url": "1780175.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "id": "drmc3",
+    "name": "",
+    "description": "",
+    "period": "1850s",
+    "published": "1851",
+    "attribution": "",
+    "link": "",
+    "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
+    "items": [
+      {
+        "title": "Architecture allégorique. Tableau des colonnes des monuments les plus remarquables. (Allegorical Architecture. A Chart of the Columns of the Most Remarkable Monuments.)",
+        "url": "18044012.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "architecture"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Âge de bronze. (Bronze Age.)",
+        "url": "18044054.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Champignons. (Mushrooms.)",
+        "url": "18044123.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [
+          "mushrooms"
+        ],
+        "notes": ""
+      },
+      {
+        "title": "Études de principes d'ornements. No. 2. (Studies of the Principles of Ornament. No. 2.)",
+        "url": "18044011.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Histoire naturelle. Coléoptères. (Natural History. Beetles.)",
+        "url": "18044143.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Histoire naturelle. Plantes vénéneuses. 2ème partie. (Natural History. Poisonous Plants. Part Two.)",
+        "url": "18044128.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Instruments de musique. (Musical Instruments.)",
+        "url": "18044048.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Instruments de musique. (Musical Instruments.)",
+        "url": "18044049.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Navigation aérienne (Étude pratique). (Aerial Navigation (Practical Study).)",
+        "url": "18044041.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Tableau des armes anciennes et modernes de tous les peuples. (Chart of Ancient and Modern Weapons of All Peoples.)",
+        "url": "18044101.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Tableau des divers modèles de grilles. (Chart of Various Models of Iron Grilles.)",
+        "url": "18044025.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Tableau du charpentier constructeur. (Chart for the Construction Carpenter.)",
+        "url": "18044021.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Tableau du constructeur d'escaliers en charpente et menuiserie. (Chart for the Builder of Timber and Joinery Staircases.)",
+        "url": "18044023.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Armes de jet – Armes à feu. (Projectile Weapons – Firearms.)",
+        "url": "18044100.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      },
+      {
+        "title": "Tableau de l’art aérostatique et de la direction des ballons. (Chart of the Art of Aerostation and the Steering of Balloons.)",
+        "url": "18044040.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
+        "notes": ""
+      }
+    ]
+  },
+  {
+    "id": "drmc4",
+    "name": "",
+    "description": "",
+    "period": "",
+    "published": "",
+    "attribution": "David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries",
+    "link": "",
+    "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
+    "items": [
+      {
+        "title": "Topraklar, taşlar, bazalt. Soils, Stones, Basalt.",
+        "url": "10739023.jpg",
+        "thumb": "",
+        "date": "",
+        "tags": [],
         "notes": ""
       }
     ]

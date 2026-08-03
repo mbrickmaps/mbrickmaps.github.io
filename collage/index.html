@@ -1282,21 +1282,31 @@
   // Every clip/library entry goes through this, so one place decides the URL.
   function clipUrl(c) { return resolveSourceUrl(c.source, c.useOriginal, c.hires); }
 
-  /* Where a higher-resolution copy might live, tried in order. photos are
-     paired originals; sources/ is archive material that isn't a photo. */
+  /* sources/ is now three tiers, built by sources/convert.sh from a plain
+     numbered .jpg: full/{key}.avif, lowres/{key}_lowres.avif,
+     thumbnails/{key}_thumb.avif — all keyed on the archive image number, e.g.
+     "12190039". The flat sources/{key}.jpg files these replaced are gone.
+     photos/ is a separate, still-valid system for personal photos. */
+  const SOURCE_TIER = {
+    full: (key) => `sources/full/${key}.avif`,
+    lowres: (key) => `sources/lowres/${key}_lowres.avif`,
+    thumb: (key) => `sources/thumbnails/${key}_thumb.avif`
+  };
+
+  // Where a higher-resolution copy might live, tried in order.
   const HIRES_ROOTS = [
-    (name) => `../photos/originals/${name}.jpg`,
-    (name) => `sources/${name}.jpg`,      // collage/sources — where they are now
-    (name) => `../sources/${name}.jpg`    // repo root, if you ever move them up
+    SOURCE_TIER.full,
+    (name) => `../photos/originals/${name}.jpg`
   ];
 
   /* A library photo matches on its name; anything else — a URL or a path —
      matches on its bare filename, so a clip cut from
-     iiif.example.org/.../12190191.jpg finds sources/12190191.jpg. */
+     iiif.example.org/.../12190191.jpg, or already pointed at
+     sources/lowres/12190191_lowres.avif, both find sources/full/12190191.avif. */
   function hiresKey(source) {
     if (isLibraryPhoto(source)) return source;
     const tail = (source.split("/").pop() || "").split("?")[0];
-    return decodeURIComponent(tail).replace(/\.[^.]+$/, "");
+    return decodeURIComponent(tail).replace(/\.[^.]+$/, "").replace(/_(lowres|thumb)$/, "");
   }
 
   const hiresProbe = new Map();
@@ -4957,15 +4967,26 @@
   });
 
   /* Folder import. A page can't read a path you type — it can only be handed
-     files through a picker. Each file is first checked against the places this
-     site actually serves images from: if the same filename is there, the
-     served path is staged instead of a blob, so the entry survives a reload
-     and can be saved in a config. Otherwise it's staged as session-only. */
-  const SERVED_ROOTS = ["sources/", "../sources/", "../photos/originals/", "../photos/edits/"];
+     files through a picker, so the picked file is only ever used to get the
+     image's key (its number, stripped of extension and any _lowres/_thumb
+     suffix). That key is then checked against the tiers sources/convert.sh
+     actually produces, so a folder of full-size originals, or of the lowres
+     or thumbnails output, all resolve to what the tiers actually serve.
+     lowres is tried first — the point of staging is to browse quickly, not to
+     pull full-resolution avifs one by one. photos/edits covers the older,
+     separate personal-photo system. Anything not found this way is staged as
+     a session-only blob instead. */
+  const STAGE_TIERS = [SOURCE_TIER.lowres, SOURCE_TIER.full,
+                       (key) => `../photos/edits/${key}-web.jpg`];
 
-  async function servedPathFor(name) {
-    for (const root of SERVED_ROOTS) {
-      const url = root + name;
+  function stageKey(filename) {
+    return filename.replace(/\.[^.]+$/, "").replace(/_(lowres|thumb)$/, "");
+  }
+
+  async function servedPathFor(filename) {
+    const key = stageKey(filename);
+    for (const tier of STAGE_TIERS) {
+      const url = tier(key);
       try { await loadImage(url); return url; } catch { /* not there, try the next */ }
     }
     return null;
@@ -4984,9 +5005,14 @@
     let served = 0, temp = 0, dupe = 0;
 
     for (const file of files) {
+      const key = stageKey(file.name);
       const path = await servedPathFor(file.name);
+      // convert.sh always writes all three tiers together, so a lowres or
+      // full hit implies a thumbnail exists too — no need to probe for it.
+      const fromSources = path && path.startsWith("sources/");
       const entry = path
-        ? { url: path, title: file.name, from: path.replace(file.name, "") }
+        ? { url: path, title: key, thumb: fromSources ? SOURCE_TIER.thumb(key) : "",
+            from: path.replace(file.name, "") }
         : { url: URL.createObjectURL(file), title: file.name, from: "local folder", temp: true };
       if (stageImage(entry)) { path ? served++ : temp++; } else dupe++;
     }
