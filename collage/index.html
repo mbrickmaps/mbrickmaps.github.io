@@ -144,7 +144,7 @@
   }
   .dropdown-item { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dropdown-item:hover { background: #222; }
-  .dropdown-item.url-item { border-bottom: 1px solid var(--border); opacity: 0.85; }
+  .dropdown-empty { padding: 8px 10px; font-size: 0.75rem; opacity: 0.55; }
   .dropdown-group {
     padding: 4px 8px 2px; font-size: 0.65rem; text-transform: uppercase;
     letter-spacing: 0.05em; opacity: 0.45; border-top: 1px solid var(--border);
@@ -584,15 +584,15 @@
     <div class="row">
       <label>Load image
         <div class="dropdown" id="sourceDropdown">
-          <button type="button" id="sourceDropdownBtn" class="dropdown-btn">&mdash; custom URL &mdash;</button>
+          <button type="button" id="sourceDropdownBtn" class="dropdown-btn" title="sources already in this collage, or staged in the Image Stager">recent &amp; staged &#9662;</button>
           <div class="dropdown-list" id="sourceDropdownList" hidden></div>
         </div>
       </label>
-      <input type="text" id="sourceUrl" placeholder="https://... image URL" style="display:none">
-      <button id="loadUrlBtn" style="display:none">Load</button>
-      <button id="stageCurrentBtn" title="add whatever the clipper is showing to the Image Selector">Stage</button>
+      <input type="text" id="sourceUrl" placeholder="https://... image URL">
+      <button id="loadUrlBtn">Load</button>
+      <button id="stageCurrentBtn" title="add whatever the clipper is showing to the Image Stager">Stage</button>
     </div>
-    <p class="hint" id="sourceUrlHint" hidden>
+    <p class="hint" id="sourceUrlHint">
       JPG, PNG, WebP, GIF, AVIF or SVG &mdash; the server must allow anonymous
       cross-origin requests (CORS), or the image will load but can't be exported.
     </p>
@@ -955,7 +955,7 @@
   <!-- Staging area. Things you might use, gathered before you commit to one. -->
   <section class="panel size-mini" id="selectorPanel">
     <div class="panel-head">
-      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Image Selector <span class="help-icon" title="Images you're considering. Add them from Collections with + stage, or from the Clipper with Stage. Click one to load it into the Clipper.&#10;Nothing here is downloaded — these are references, and the list is kept in this browser.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Image Stager <span class="help-icon" title="Images you're considering. Add them from Collections with + stage, or from the Clipper with Stage. Click one to load it into the Clipper.&#10;Nothing here is downloaded — these are references, and the list is kept in this browser.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -1805,7 +1805,7 @@
   const sourcePreview = document.getElementById("sourcePreview");
   const sourcePreviewImg = document.getElementById("sourcePreviewImg");
 
-  /* Declared up here rather than with the rest of the Image Selector: the
+  /* Declared up here rather than with the rest of the Image Stager: the
      source dropdown lists staged images and runs during init, which is before
      that section is reached. */
   const SELECTOR_KEY = "collage.selector.v1";
@@ -1813,8 +1813,8 @@
   try { stagedImages = JSON.parse(localStorage.getItem(SELECTOR_KEY) || "[]") || []; }
   catch { stagedImages = []; }
 
-  let photoOptions = [];
-  let currentSource = { type: "url", value: "" };
+  /* The URL field is the source of truth — there is no second "current
+     source" to fall out of step with it. The dropdown just fills it in. */
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1825,9 +1825,7 @@
     sourcePreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 236)) + "px";
   }
 
-  function currentSourceName() {
-    return currentSource.type === "url" ? sourceUrlInput.value.trim() : currentSource.value;
-  }
+  function currentSourceName() { return sourceUrlInput.value.trim(); }
 
   /* Every custom URL the current collage or library refers to. Loading a
      config brings its URLs back into the picker instead of leaving them
@@ -1845,74 +1843,50 @@
     return tail.length > 34 ? tail.slice(0, 31) + "…" : tail;
   }
 
+  /* Just a picker for sources already to hand. There's no "custom URL" entry
+     any more — the field beside it is always available, so switching back to
+     typing was a mode that only existed because picking used to hide it. */
   function renderDropdownList() {
-    const urlItem = `<div class="dropdown-item url-item" data-type="url" data-name="">&mdash; custom URL &mdash;</div>`;
-
     const used = usedUrls();
     const usedItems = used.length
       ? `<div class="dropdown-group">in this collage</div>` + used.map((u) =>
-        `<div class="dropdown-item" data-type="usedurl" data-name="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(shortUrl(u))}</div>`
+        `<div class="dropdown-item" data-name="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(shortUrl(u))}</div>`
       ).join("")
       : "";
 
-    /* The photo list is gone — sources come from Collections and the Image
-       Selector now. What stays is the custom URL and whatever this collage is
-       already using, which is the one thing neither panel can tell you. */
     const staged = stagedImages.length
       ? `<div class="dropdown-group">staged</div>` + stagedImages.map((s) =>
-        `<div class="dropdown-item" data-type="usedurl" data-name="${escapeHtml(s.url)}" title="${escapeHtml(s.url)}">${escapeHtml(s.title || shortUrl(s.url))}</div>`
+        `<div class="dropdown-item" data-name="${escapeHtml(s.url)}" title="${escapeHtml(s.url)}">${escapeHtml(s.title || shortUrl(s.url))}</div>`
       ).join("")
       : "";
 
-    dropdownList.innerHTML = urlItem + usedItems + staged;
+    dropdownList.innerHTML = usedItems + staged ||
+      `<div class="dropdown-empty">nothing yet &mdash; type a URL, or stage images in the Image Stager</div>`;
   }
 
-  function setCurrentSourceUI(type, name) {
-    if (type === "url") {
-      currentSource = { type: "url", value: name || "" };
-      sourceUrlInput.style.display = "";
-      loadUrlBtn.style.display = "";
-      sourceUrlHint.hidden = false;
-      dropdownBtn.textContent = "— custom URL —";
-      if (name) sourceUrlInput.value = name;
-    } else {
-      currentSource = { type: "photo", value: name };
-      sourceUrlInput.style.display = "none";
-      loadUrlBtn.style.display = "none";
-      sourceUrlHint.hidden = true;
-      const opt = photoOptions.find((p) => p.name === name);
-      dropdownBtn.textContent = opt ? opt.label : name;
-    }
+  // Puts a value in the field without loading it.
+  function setSourceField(url) {
+    sourceUrlInput.value = url || "";
   }
 
-  function selectSource(type, name) {
+  /* One path in: put the URL in the field and load it. Bare photo names from
+     older configs still work — resolveSourceUrl maps them. */
+  function selectSource(url) {
     dropdownList.hidden = true;
     // Picking a new source drops any "editing at original resolution" state,
     // otherwise baseW and useOriginal would disagree.
     editor.editingUseOriginal = false;
-
-    if (type === "url") {
-      setCurrentSourceUI("url", "");
-      sourceUrlInput.focus();
-      return;
-    }
-    // A URL already in use — fill it in and load it, no retyping.
-    if (type === "usedurl") {
-      setCurrentSourceUI("url", name);
-      loadImage(name).then((img) => setEditorImage(img))
-        .catch(() => console.error("failed to load source image", name));
-      return;
-    }
-    setCurrentSourceUI("photo", name);
-    loadImage(resolveSourceUrl(name)).then((img) => setEditorImage(img))
-      .catch((err) => console.error("failed to load source image", err));
+    setSourceField(url);
+    if (!url) { sourceUrlInput.focus(); return; }
+    loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
+      .catch(() => console.error("failed to load source image", url));
   }
 
   function loadTypedUrl() {
     editor.editingUseOriginal = false;
-    currentSource.value = sourceUrlInput.value.trim();
-    if (!currentSource.value) return;
-    loadImage(resolveSourceUrl(currentSource.value)).then((img) => setEditorImage(img))
+    const url = currentSourceName();
+    if (!url) return;
+    loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
       .catch((err) => console.error("failed to load source image", err));
   }
 
@@ -1928,7 +1902,7 @@
   dropdownList.addEventListener("click", (e) => {
     const item = e.target.closest(".dropdown-item");
     if (!item) return;
-    selectSource(item.dataset.type, item.dataset.name);
+    selectSource(item.dataset.name);
   });
   dropdownList.addEventListener("mouseover", (e) => {
     const item = e.target.closest(".dropdown-item");
@@ -1960,7 +1934,6 @@
      clipper now starts on the custom URL field. Bare photo names in existing
      configs still resolve — resolveSourceUrl maps them to photos/edits — so
      old collages keep working without the list. */
-  setCurrentSourceUI("url", "");
   // renderDropdownList is NOT called here: it reads `collage`, which is
   // declared further down, and a synchronous call would abort the script on a
   // temporal-dead-zone error. It runs with the other init at the end instead.
@@ -1969,8 +1942,7 @@
   function editClipMask(clip) {
     editor.editingClipId = clip.id;
     document.getElementById("addToCollageBtn").textContent = "Update clip";
-    if (photoNames.has(clip.source)) setCurrentSourceUI("photo", clip.source);
-    else setCurrentSourceUI("url", clip.source);
+    setSourceField(clip.source);
     // The polygon is in the coordinates of the file it was drawn against, not
     // whatever the layer is currently being cut from — so open that one, or
     // every point would land off by the resolution ratio. Older projects that
@@ -2079,35 +2051,41 @@
     "size-quarter": 3, "size-mini": 4, "size-half": 6,
     "size-twothirds": 8, "size-threequarters": 9, "size-full": 12
   };
-  const SPAN_CLASS = Object.fromEntries(Object.entries(SPANS).map(([c, n]) => [n, c]));
   const SIZE_CLASSES = Object.keys(SPANS);
 
   const columns = () => [...layoutEl.querySelectorAll(":scope > .layout-col")];
   const layoutPanels = () => [...layoutEl.querySelectorAll(".panel")];
   const panelsIn = (col) => [...col.querySelectorAll(":scope > .panel")];
 
-  function panelSpan(panel) {
-    if (panel.classList.contains("minimized")) return 4;
-    const cls = SIZE_CLASSES.find((c) => panel.classList.contains(c));
-    return SPANS[cls] || 6;
-  }
+  /* The SIZE BELONGS TO THE COLUMN, not to a panel. Panels stacked together
+     share a width by definition, so deriving the column from its widest panel
+     meant setting one panel to 1/4 did nothing when a wider one sat above it.
+     Clicking a size now sets the column, and every panel in it agrees. */
+  const columnSize = (col) => SIZE_CLASSES.find((c) => col.classList.contains(c)) || "size-half";
 
-  /* A column takes the width of its widest panel, so mixing sizes in one
-     column widens it rather than clipping anything. Empty columns are dropped
-     — otherwise dragging the last panel out would leave a hole. */
-  function syncColumns() {
-    for (const col of columns()) {
-      const panels = panelsIn(col);
-      if (!panels.length) { col.remove(); continue; }
-      const span = Math.max(...panels.map(panelSpan));
-      col.classList.remove(...Object.values(SPAN_CLASS));
-      col.classList.add(SPAN_CLASS[span] || "size-half");
+  function setColumnSize(col, size) {
+    col.classList.remove(...SIZE_CLASSES);
+    col.classList.add(SIZE_CLASSES.includes(size) ? size : "size-half");
+    // Every panel in the column shows the same active button.
+    for (const p of panelsIn(col)) {
+      p.querySelectorAll(".size-toggle button[data-size]").forEach((b) =>
+        b.classList.toggle("active", "size-" + b.dataset.size === size));
     }
   }
 
-  function newColumn() {
+  // Empty columns are dropped — otherwise dragging the last panel out of one
+  // would leave a hole the width of the column behind.
+  function syncColumns() {
+    for (const col of columns()) {
+      if (!panelsIn(col).length) { col.remove(); continue; }
+      if (!SIZE_CLASSES.some((c) => col.classList.contains(c))) col.classList.add("size-half");
+    }
+  }
+
+  function newColumn(size = "size-half") {
     const col = document.createElement("div");
-    col.className = "layout-col size-half";
+    col.className = "layout-col";
+    col.classList.add(SIZE_CLASSES.includes(size) ? size : "size-half");
     return col;
   }
 
@@ -2116,9 +2094,14 @@
   function wrapLoosePanels() {
     for (const panel of [...layoutEl.children]) {
       if (!panel.classList.contains("panel")) continue;
-      const col = newColumn();
+      // The panel's authored size becomes its column's, then leaves the panel:
+      // one owner for the width, so the two can never disagree.
+      const size = SIZE_CLASSES.find((c) => panel.classList.contains(c)) || "size-half";
+      panel.classList.remove(...SIZE_CLASSES);
+      const col = newColumn(size);
       layoutEl.insertBefore(col, panel);
       col.appendChild(panel);
+      setColumnSize(col, size);
     }
   }
   wrapLoosePanels();
@@ -2294,13 +2277,13 @@
 
   function saveLayout() {
     const state = {
-      // Columns, each an ordered list of panels — the structure IS the layout
-      // now, so panel order alone can't describe it.
-      columns: columns().map((col) => panelsIn(col).map((p) => ({
-        id: p.id,
-        size: SIZE_CLASSES.find((c) => p.classList.contains(c)) || "size-half",
-        minimized: p.classList.contains("minimized")
-      }))),
+      /* Columns, each with its own width and an ordered list of panels — the
+         structure IS the layout now, so a flat panel order can't describe it.
+         Size sits on the column because that's what owns it. */
+      columns: columns().map((col) => ({
+        size: columnSize(col),
+        panels: panelsIn(col).map((p) => ({ id: p.id, minimized: p.classList.contains("minimized") }))
+      })),
       layersCollapsed: document.getElementById("layersPanel").classList.contains("collapsed"),
       overlayGuide: document.getElementById("overlayGuide").value,
       autoSave: {
@@ -2326,44 +2309,43 @@
     const applyPanel = (s) => {
       const p = document.getElementById(s.id);
       if (!p) return null;
+      // Panels no longer carry a size class — the column does.
       p.classList.remove(...SIZE_CLASSES, "minimized");
-      p.classList.add(SIZE_CLASSES.includes(s.size) ? s.size : "size-half");
       if (s.minimized) p.classList.add("minimized");
-      const group = p.querySelector(".size-toggle");
-      group.querySelectorAll("button[data-size]")
-        .forEach((b) => b.classList.toggle("active", "size-" + b.dataset.size === s.size));
-      group.querySelector('[data-action="minimize"]').classList.toggle("active", !!s.minimized);
+      p.querySelector('.size-toggle [data-action="minimize"]')
+        .classList.toggle("active", !!s.minimized);
       return p;
     };
 
+    const placed = new Set();
+    const addColumn = (size, panels) => {
+      if (!panels.length) return;
+      const col = newColumn(size);
+      layoutEl.appendChild(col);
+      for (const p of panels) { col.appendChild(p); placed.add(p.id); }
+      setColumnSize(col, size);
+    };
+
     if (Array.isArray(state.columns)) {
-      /* Rebuild the columns in saved order. Panels added to the app since the
-         layout was saved aren't listed, so they're left in the column they
-         were born in rather than disappearing. */
-      const placed = new Set();
-      for (const colState of state.columns) {
-        const panels = colState.map(applyPanel).filter(Boolean);
-        if (!panels.length) continue;
-        const col = newColumn();
-        layoutEl.appendChild(col);
-        for (const p of panels) { col.appendChild(p); placed.add(p.id); }
-      }
-      // Anything unplaced keeps its own column, moved to the end.
-      for (const p of layoutPanels()) {
-        if (placed.has(p.id)) continue;
-        const col = newColumn();
-        layoutEl.appendChild(col);
-        col.appendChild(p);
+      for (const c of state.columns) {
+        // Tolerates the first columns format, which was a bare panel array
+        // with the size on each panel.
+        const list = Array.isArray(c) ? c : (c.panels || []);
+        const size = Array.isArray(c) ? (c[0]?.size || "size-half") : (c.size || "size-half");
+        addColumn(size, list.map(applyPanel).filter(Boolean));
       }
     } else {
       // Pre-columns layout: one column each, in the saved order.
-      (state.panels || []).sort((a, b) => (a.order || 0) - (b.order || 0)).forEach((s) => {
+      for (const s of (state.panels || []).sort((a, b) => (a.order || 0) - (b.order || 0))) {
         const p = applyPanel(s);
-        if (!p) return;
-        const col = newColumn();
-        layoutEl.appendChild(col);
-        col.appendChild(p);
-      });
+        if (p) addColumn(s.size || "size-half", [p]);
+      }
+    }
+
+    /* Panels added to the app since this layout was saved aren't in it, so
+       they get their own column at the end rather than vanishing. */
+    for (const p of layoutPanels()) {
+      if (!placed.has(p.id)) addColumn("size-half", [p]);
     }
     syncColumns();
 
@@ -2412,13 +2394,12 @@
     if (btn.dataset.action === "minimize") {
       btn.classList.toggle("active", panel.classList.toggle("minimized"));
     } else {
-      panel.classList.remove("minimized", ...SIZE_CLASSES);
-      panel.classList.add("size-" + btn.dataset.size);
+      // Sets the column, which is what actually carries the width — and marks
+      // the button on every panel stacked in it, so they can't disagree.
+      panel.classList.remove("minimized");
       panel.querySelector('.size-toggle [data-action="minimize"]').classList.remove("active");
-      btn.parentElement.querySelectorAll("button[data-size]")
-        .forEach((b) => b.classList.toggle("active", b === btn));
+      setColumnSize(panel.closest(".layout-col"), "size-" + btn.dataset.size);
     }
-    // A panel's size feeds its column's width, so the column has to re-measure.
     syncColumns();
     saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
@@ -2692,7 +2673,7 @@
           <span class="coll-sub">${escapeHtml(it.collectionName)}${it.date ? " &middot; " + escapeHtml(it.date) : ""}</span>
           ${it.notes ? `<span class="coll-sub">${escapeHtml(it.notes)}</span>` : ""}
           ${(it.tags || []).length ? `<span class="coll-sub">${escapeHtml((it.tags || []).join(", "))}</span>` : ""}
-          <span class="coll-hires"><button type="button" class="stage-btn" data-stage="1" title="add to the Image Selector">+ stage</button></span>
+          <span class="coll-hires"><button type="button" class="stage-btn" data-stage="1" title="add to the Image Stager">+ stage</button></span>
         </span>
       </li>
     `).join("");
@@ -2753,7 +2734,7 @@
 
     const url = item.url;
     document.getElementById("collectionsStatus").textContent = "loading " + shortUrl(url) + "…";
-    selectSource("usedurl", url);
+    selectSource(url);
     loadImage(url)
       .then(() => { document.getElementById("collectionsStatus").textContent = ""; })
       .catch(() => {
@@ -4270,8 +4251,7 @@
     editor.editingClipId = null;
     editor.editingUseOriginal = !!entry.useOriginal;
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
-    if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
-    else setCurrentSourceUI("url", entry.source);
+    setSourceField(entry.source);
     loadImage(clipUrl(entry))
       .then((img) => setEditorImage(img))
       .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
@@ -4281,8 +4261,7 @@
     editor.editingClipId = null;
     editor.editingUseOriginal = !!entry.useOriginal;
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
-    if (photoNames.has(entry.source)) setCurrentSourceUI("photo", entry.source);
-    else setCurrentSourceUI("url", entry.source);
+    setSourceField(entry.source);
     loadImage(clipUrl(entry))
       .then((img) => setEditorImage(img, entry.polygon))
       .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
@@ -4811,7 +4790,7 @@
     if (!entry) return;
     const status = document.getElementById("selectorStatus");
     status.textContent = "loading…";
-    selectSource("usedurl", entry.url);
+    selectSource(entry.url);
     loadImage(entry.url)
       .then(() => { status.textContent = ""; })
       .catch(() => { status.textContent = "failed — the host may not allow cross-origin use"; });
