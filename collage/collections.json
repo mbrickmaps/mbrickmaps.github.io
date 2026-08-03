@@ -11,8 +11,8 @@
     "items": [
       {
         "title": "Plate 19. (Prussian and French Infantries.)",
-        "url": "https://dn721908.ca.archive.org/0/items/dr_view-plate-19-prussian-and-french-infantries-12190391/12190391.jpg",
-        "thumb": "https://dn721908.ca.archive.org/0/items/dr_view-plate-19-prussian-and-french-infantries-12190391/__ia_thumb.jpg",
+        "url": "sources/lowres/12190391_lowres.avif",
+        "thumb": "sources/thumbnails/12190391_thumb.avif",
         "date": "",
         "tags": [
           "prussian",
@@ -24,8 +24,8 @@
       },
       {
         "title": "Plate 20. (Prussian and French Cavalry.)",
-        "url": "https://dn710001.ca.archive.org/0/items/dr_view-plate-20-prussian-and-french-cavalry-12190392/12190392.jpg",
-        "thumb": "https://dn710001.ca.archive.org/0/items/dr_view-plate-20-prussian-and-french-cavalry-12190392/__ia_thumb.jpg",
+        "url": "sources/lowres/12190392_lowres.avif",
+        "thumb": "sources/thumbnails/12190392_thumb.avif",
         "date": "",
         "tags": [
           "prussian",
@@ -37,8 +37,8 @@
       },
       {
         "title": "Plate 21. (Austrian and British Infantries.)",
-        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-21-austrian-and-british-infantries-12190393/12190393.jpg",
-        "thumb": "https://dn721604.ca.archive.org/0/items/dr_view-plate-21-austrian-and-british-infantries-12190393/__ia_thumb.jpg",
+        "url": "sources/lowres/12190393_lowres.avif",
+        "thumb": "sources/thumbnails/12190393_thumb.avif",
         "date": "",
         "tags": [
           "austrian",
@@ -50,8 +50,8 @@
       },
       {
         "title": "Plate 22. (British and Belgian Cavalry.)",
-        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-22-british-and-belgian-cavalry-12190394/12190394.jpg",
-        "thumb": "https://dn721604.ca.archive.org/0/items/dr_view-plate-22-british-and-belgian-cavalry-12190394/__ia_thumb.jpg",
+        "url": "sources/lowres/12190394_lowres.avif",
+        "thumb": "sources/thumbnails/12190394_thumb.avif",
         "date": "",
         "tags": [
           "british",
@@ -63,8 +63,8 @@
       },
       {
         "title": "Plate 28. (Exercises in Fencing.)",
-        "url": "https://dn710201.ca.archive.org/0/items/dr_view-plate-28-exercises-in-fencing-12190400/12190400.jpg",
-        "thumb": "https://dn710201.ca.archive.org/0/items/dr_view-plate-28-exercises-in-fencing-12190400/__ia_thumb.jpg",
+        "url": "sources/lowres/12190400_lowres.avif",
+        "thumb": "sources/thumbnails/12190400_thumb.avif",
         "date": "",
         "tags": [
           "exercises",
@@ -218,8 +218,8 @@
       },
       {
         "title": "Plate 28. (Architecture of the Middle Ages: Byzantine Style.)",
-        "url": "https://dn710202.ca.archive.org/0/items/dr_view-plate-28-architecture-of-the-middle-ages-byzantine-style-12190516/12190516.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190516_lowres.avif",
+        "thumb": "sources/thumbnails/12190516_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -288,8 +288,8 @@
       },
       {
         "title": "Plate 28. (Coats of Arms.)",
-        "url": "https://dn710001.ca.archive.org/0/items/dr_coat-of-arms-plate-28-coats-of-arms-12190313/12190313.jpg",
-        "thumb": "https://dn710001.ca.archive.org/0/items/dr_coat-of-arms-plate-28-coats-of-arms-12190313/__ia_thumb.jpg",
+        "url": "sources/lowres/12190313_lowres.avif",
+        "thumb": "sources/thumbnails/12190313_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -298,8 +298,8 @@
       },
       {
         "title": "Plate 29. (Coats of Arms.)",
-        "url": "https://dn721807.ca.archive.org/0/items/dr_coat-of-arms-plate-29-coats-of-arms-12190314/12190314.jpg",
-        "thumb": "https://dn721807.ca.archive.org/0/items/dr_coat-of-arms-plate-29-coats-of-arms-12190314/__ia_thumb.jpg",
+        "url": "sources/lowres/12190314_lowres.avif",
+        "thumb": "sources/thumbnails/12190314_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -308,8 +308,8 @@
       },
       {
         "title": "Plate 6. (Celestial Diagrams and Instruments).",
-        "url": "https://dn710208.ca.archive.org/0/items/dr_diagram-plate-6-celestial-diagrams-and-instruments-12190039/12190039.jpg",
-        "thumb": "https://dn710208.ca.archive.org/0/items/dr_diagram-plate-6-celestial-diagrams-and-instruments-12190039/__ia_thumb.jpg",
+        "url": "sources/lowres/12190039_lowres.avif",
+        "thumb": "sources/thumbnails/12190039_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -318,8 +318,8 @@
       },
       {
         "title": "Plate 1. (Construction of Roads; Thames Tunnel.)",
-        "url": "https://dn721801.ca.archive.org/0/items/dr_view-plate-1-construction-of-roads-thames-tunnel-12190612/12190612.jpg",
-        "thumb": "https://dn721801.ca.archive.org/0/items/dr_view-plate-1-construction-of-roads-thames-tunnel-12190612/__ia_thumb.jpg",
+        "url": "sources/lowres/12190612_lowres.avif",
+        "thumb": "sources/thumbnails/12190612_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -328,8 +328,8 @@
       },
       {
         "title": "Plate 1. (Indian Gods and Religion.)",
-        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-1-indian-gods-and-religion-12190550/12190550.jpg",
-        "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-1-indian-gods-and-religion-12190550/__ia_thumb.jpg",
+        "url": "sources/lowres/12190550_lowres.avif",
+        "thumb": "sources/thumbnails/12190550_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -338,8 +338,8 @@
       },
       {
         "title": "Plate 10. (Greek Architecture.)",
-        "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-10-greek-architecture-12190498/12190498.jpg",
-        "thumb": "https://dn721608.ca.archive.org/0/items/dr_view-plate-10-greek-architecture-12190498/__ia_thumb.jpg",
+        "url": "sources/lowres/12190498_lowres.avif",
+        "thumb": "sources/thumbnails/12190498_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -349,8 +349,8 @@
       },
       {
         "title": "Plate 10. (Greek Scene and Objects.)",
-        "url": "https://dn721807.ca.archive.org/0/items/dr_view-plate-10-greek-scene-and-objects-12190295/12190295.jpg",
-        "thumb": "https://dn721807.ca.archive.org/0/items/dr_view-plate-10-greek-scene-and-objects-12190295/__ia_thumb.jpg",
+        "url": "sources/lowres/12190295_lowres.avif",
+        "thumb": "sources/thumbnails/12190295_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -359,8 +359,8 @@
       },
       {
         "title": "Plate 10. (Roman Standards, Crowns, Badgers, Medals, Trophies; Trajan's Column.)",
-        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-10-roman-standards-crowns-badgers-medals-trophies-traja-12190382/12190382.jpg",
-        "thumb": "https://dn721805.ca.archive.org/0/items/dr_view-plate-10-roman-standards-crowns-badgers-medals-trophies-traja-12190382/__ia_thumb.jpg",
+        "url": "sources/lowres/12190382_lowres.avif",
+        "thumb": "sources/thumbnails/12190382_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -370,8 +370,8 @@
       },
       {
         "title": "Plate 120. (Anatomy including Heads: Faces and Skulls.)",
-        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-120-anatomy-including-heads-faces-and-skulls-12190179/12190179.jpg",
-        "thumb": "https://dn721805.ca.archive.org/0/items/dr_view-plate-120-anatomy-including-heads-faces-and-skulls-12190179/__ia_thumb.jpg",
+        "url": "sources/lowres/12190179_lowres.avif",
+        "thumb": "sources/thumbnails/12190179_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -381,8 +381,8 @@
       },
       {
         "title": "Plate 121. (Anatomy including Heads: Skulls.)",
-        "url": "https://dn710208.ca.archive.org/0/items/dr_view-plate-121-anatomy-including-heads-skulls-12190180/12190180.jpg",
-        "thumb": "https://dn710208.ca.archive.org/0/items/dr_view-plate-121-anatomy-including-heads-skulls-12190180/__ia_thumb.jpg",
+        "url": "sources/lowres/12190180_lowres.avif",
+        "thumb": "sources/thumbnails/12190180_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -392,8 +392,8 @@
       },
       {
         "title": "Plate 122. (Anatomy including Skeletons.)",
-        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/12190181.jpg",
-        "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-122-anatomy-including-skeletons-12190181/__ia_thumb.jpg",
+        "url": "sources/lowres/12190181_lowres.avif",
+        "thumb": "sources/thumbnails/12190181_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -403,8 +403,8 @@
       },
       {
         "title": "Plate 123. (Anatomy including Bones and Teeth.)",
-        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-123-anatomy-including-bones-and-teeth-12190182/12190182.jpg",
-        "thumb": "https://dn721602.ca.archive.org/0/items/dr_view-plate-123-anatomy-including-bones-and-teeth-12190182/__ia_thumb.jpg",
+        "url": "sources/lowres/12190182_lowres.avif",
+        "thumb": "sources/thumbnails/12190182_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -414,8 +414,8 @@
       },
       {
         "title": "Plate 124. (Anatomy including Ligaments and Muscles.)",
-        "url": "https://dn721805.ca.archive.org/0/items/dr_view-plate-124-anatomy-including-ligaments-and-muscles-12190183/12190183.jpg",
-        "thumb": "https://dn721805.ca.archive.org/0/items/dr_view-plate-124-anatomy-including-ligaments-and-muscles-12190183/__ia_thumb.jpg",
+        "url": "sources/lowres/12190183_lowres.avif",
+        "thumb": "sources/thumbnails/12190183_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -425,8 +425,8 @@
       },
       {
         "title": "Plate 125. (Anatomy including Ligaments and Muscles.)",
-        "url": "https://dn710208.ca.archive.org/0/items/dr_view-plate-125-anatomy-including-ligaments-and-muscles-12190184/12190184.jpg",
-        "thumb": "https://dn710208.ca.archive.org/0/items/dr_view-plate-125-anatomy-including-ligaments-and-muscles-12190184/__ia_thumb.jpg",
+        "url": "sources/lowres/12190184_lowres.avif",
+        "thumb": "sources/thumbnails/12190184_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -436,8 +436,8 @@
       },
       {
         "title": "Plate 126. (Anatomy including Ligaments and Muscles.)",
-        "url": "https://dn721606.ca.archive.org/0/items/dr_view-plate-126-anatomy-including-ligaments-and-muscles-12190185/12190185.jpg",
-        "thumb": "https://dn721606.ca.archive.org/0/items/dr_view-plate-126-anatomy-including-ligaments-and-muscles-12190185/__ia_thumb.jpg",
+        "url": "sources/lowres/12190185_lowres.avif",
+        "thumb": "sources/thumbnails/12190185_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -447,8 +447,8 @@
       },
       {
         "title": "Plate 127. (Anatomy including Muscles.)",
-        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-127-anatomy-including-muscles-12190186/12190186.jpg",
-        "thumb": "https://dn721605.ca.archive.org/0/items/dr_view-plate-127-anatomy-including-muscles-12190186/__ia_thumb.jpg",
+        "url": "sources/lowres/12190186_lowres.avif",
+        "thumb": "sources/thumbnails/12190186_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -458,8 +458,8 @@
       },
       {
         "title": "Plate 128. (Anatomy including Muscles.)",
-        "url": "https://ia600602.us.archive.org/29/items/dr_view-plate-128-anatomy-including-muscles-12190187/12190187.jpg",
-        "thumb": "https://ia600602.us.archive.org/29/items/dr_view-plate-128-anatomy-including-muscles-12190187/__ia_thumb.jpg",
+        "url": "sources/lowres/12190187_lowres.avif",
+        "thumb": "sources/thumbnails/12190187_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -469,8 +469,8 @@
       },
       {
         "title": "Plate 129. (Anatomy including Organs.)",
-        "url": "https://dn721604.ca.archive.org/0/items/dr_view-plate-129-anatomy-including-organs-12190188/12190188.jpg",
-        "thumb": "https://dn721604.ca.archive.org/0/items/dr_view-plate-129-anatomy-including-organs-12190188/__ia_thumb.jpg",
+        "url": "sources/lowres/12190188_lowres.avif",
+        "thumb": "sources/thumbnails/12190188_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -480,8 +480,8 @@
       },
       {
         "title": "Plate 13. (Greek, Phoenician, Syrian and Roman Architecture.)",
-        "url": "https://dn721906.ca.archive.org/0/items/dr_view-plate-13-greek-phoenician-syrian-and-roman-architecture-12190501/12190501.jpg",
-        "thumb": "https://dn721906.ca.archive.org/0/items/dr_view-plate-13-greek-phoenician-syrian-and-roman-architecture-12190501/__ia_thumb.jpg",
+        "url": "sources/lowres/12190501_lowres.avif",
+        "thumb": "sources/thumbnails/12190501_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -491,8 +491,8 @@
       },
       {
         "title": "Plate 130. (Anatomy including Organs of Digestion.)",
-        "url": "https://ia802909.us.archive.org/20/items/dr_view-plate-130-anatomy-including-organs-of-digestion-12190189/12190189.jpg",
-        "thumb": "https://ia802909.us.archive.org/20/items/dr_view-plate-130-anatomy-including-organs-of-digestion-12190189/__ia_thumb.jpg",
+        "url": "sources/lowres/12190189_lowres.avif",
+        "thumb": "sources/thumbnails/12190189_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -502,8 +502,8 @@
       },
       {
         "title": "Plate 131. (Anatomy including the Eye.)",
-        "url": "https://dn710206.ca.archive.org/0/items/dr_view-plate-131-anatomy-including-the-eye-12190190/12190190.jpg",
-        "thumb": "https://dn710206.ca.archive.org/0/items/dr_view-plate-131-anatomy-including-the-eye-12190190/__ia_thumb.jpg",
+        "url": "sources/lowres/12190190_lowres.avif",
+        "thumb": "sources/thumbnails/12190190_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -513,8 +513,8 @@
       },
       {
         "title": "Plate 132. (Anatomy including the Ear and Nose.)",
-        "url": "https://dn710007.ca.archive.org/0/items/dr_view-plate-132-anatomy-including-the-ear-and-nose-12190191/12190191.jpg",
-        "thumb": "https://dn710007.ca.archive.org/0/items/dr_view-plate-132-anatomy-including-the-ear-and-nose-12190191/__ia_thumb.jpg",
+        "url": "sources/lowres/12190191_lowres.avif",
+        "thumb": "sources/thumbnails/12190191_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -524,8 +524,8 @@
       },
       {
         "title": "Plate 133. (Anatomy including the Vascular System.)",
-        "url": "https://dn721201.ca.archive.org/0/items/dr_view-plate-133-anatomy-including-the-vascular-system-12190192/12190192.jpg",
-        "thumb": "https://dn721201.ca.archive.org/0/items/dr_view-plate-133-anatomy-including-the-vascular-system-12190192/__ia_thumb.jpg",
+        "url": "sources/lowres/12190192_lowres.avif",
+        "thumb": "sources/thumbnails/12190192_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -535,8 +535,8 @@
       },
       {
         "title": "Plate 134. (Anatomy including the Vascular System.)",
-        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-134-anatomy-including-the-vascular-system-12190193/12190193.jpg",
-        "thumb": "https://dn721804.ca.archive.org/0/items/dr_view-plate-134-anatomy-including-the-vascular-system-12190193/__ia_thumb.jpg",
+        "url": "sources/lowres/12190193_lowres.avif",
+        "thumb": "sources/thumbnails/12190193_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -546,8 +546,8 @@
       },
       {
         "title": "Plate 135. (Anatomy including the Vascular System.)",
-        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-135-anatomy-including-the-vascular-system-12190194/12190194.jpg",
-        "thumb": "https://dn710200.ca.archive.org/0/items/dr_view-plate-135-anatomy-including-the-vascular-system-12190194/__ia_thumb.jpg",
+        "url": "sources/lowres/12190194_lowres.avif",
+        "thumb": "sources/thumbnails/12190194_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -557,8 +557,8 @@
       },
       {
         "title": "Plate 136. (Anatomy including the Vascular System.)",
-        "url": "https://dn721905.ca.archive.org/0/items/dr_view-plate-136-anatomy-including-the-vascular-system-12190195/12190195.jpg",
-        "thumb": "https://dn721905.ca.archive.org/0/items/dr_view-plate-136-anatomy-including-the-vascular-system-12190195/__ia_thumb.jpg",
+        "url": "sources/lowres/12190195_lowres.avif",
+        "thumb": "sources/thumbnails/12190195_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -568,8 +568,8 @@
       },
       {
         "title": "Plate 137. (Anatomy including the Brain and Nerves.)",
-        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-137-anatomy-including-the-brain-and-nerves-12190196/12190196.jpg",
-        "thumb": "https://dn721605.ca.archive.org/0/items/dr_view-plate-137-anatomy-including-the-brain-and-nerves-12190196/__ia_thumb.jpg",
+        "url": "sources/lowres/12190196_lowres.avif",
+        "thumb": "sources/thumbnails/12190196_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -579,8 +579,8 @@
       },
       {
         "title": "Plate 138. (Anatomy including the Nerves.)",
-        "url": "https://dn721704.ca.archive.org/0/items/dr_view-plate-138-anatomy-including-the-nerves-12190197/12190197.jpg",
-        "thumb": "https://dn721704.ca.archive.org/0/items/dr_view-plate-138-anatomy-including-the-nerves-12190197/__ia_thumb.jpg",
+        "url": "sources/lowres/12190197_lowres.avif",
+        "thumb": "sources/thumbnails/12190197_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -590,8 +590,8 @@
       },
       {
         "title": "Plate 139. (Surgery: Operations.)",
-        "url": "https://dn721601.ca.archive.org/0/items/dr_view-plate-139-surgery-operations-12190198/12190198.jpg",
-        "thumb": "https://dn721601.ca.archive.org/0/items/dr_view-plate-139-surgery-operations-12190198/__ia_thumb.jpg",
+        "url": "sources/lowres/12190198_lowres.avif",
+        "thumb": "sources/thumbnails/12190198_thumb.avif",
         "date": "",
         "tags": [
           "anatomy",
@@ -601,8 +601,8 @@
       },
       {
         "title": "Plate 15. (Roman Architecture.)",
-        "url": "https://dn710203.ca.archive.org/0/items/dr_view-plate-15-roman-architecture-12190503/12190503.jpg",
-        "thumb": "https://dn710203.ca.archive.org/0/items/dr_view-plate-15-roman-architecture-12190503/__ia_thumb.jpg",
+        "url": "sources/lowres/12190503_lowres.avif",
+        "thumb": "sources/thumbnails/12190503_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -612,8 +612,8 @@
       },
       {
         "title": "Plate 16. (Roman Furniture and Tools.)",
-        "url": "https://dn710000.ca.archive.org/0/items/dr_view-plate-16-roman-furniture-and-tools-12190301/12190301.jpg",
-        "thumb": "https://dn710000.ca.archive.org/0/items/dr_view-plate-16-roman-furniture-and-tools-12190301/__ia_thumb.jpg",
+        "url": "sources/lowres/12190301_lowres.avif",
+        "thumb": "sources/thumbnails/12190301_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -622,8 +622,8 @@
       },
       {
         "title": "Plate 16. (Roman and Greek Architecture.)",
-        "url": "https://dn710000.ca.archive.org/0/items/dr_view-plate-16-roman-and-greek-architecture-12190504/12190504.jpg",
-        "thumb": "https://dn710000.ca.archive.org/0/items/dr_view-plate-16-roman-and-greek-architecture-12190504/__ia_thumb.jpg",
+        "url": "sources/lowres/12190504_lowres.avif",
+        "thumb": "sources/thumbnails/12190504_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -633,8 +633,8 @@
       },
       {
         "title": "Plate 17. (Roman Furniture and Tools, Pompeii, Monuments, Sarcophagi.)",
-        "url": "https://dn710100.ca.archive.org/0/items/dr_view-plate-17-roman-furniture-and-tools-pompeii-monuments-sarcophagi-12190302/12190302.jpg",
-        "thumb": "https://dn710100.ca.archive.org/0/items/dr_view-plate-17-roman-furniture-and-tools-pompeii-monuments-sarcophagi-12190302/__ia_thumb.jpg",
+        "url": "sources/lowres/12190302_lowres.avif",
+        "thumb": "sources/thumbnails/12190302_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -643,8 +643,8 @@
       },
       {
         "title": "Plate 17. (Roman and Greek Architecture.)",
-        "url": "https://dn721808.ca.archive.org/0/items/dr_view-plate-17-roman-and-greek-architecture-12190505/12190505.jpg",
-        "thumb": "https://dn721808.ca.archive.org/0/items/dr_view-plate-17-roman-and-greek-architecture-12190505/__ia_thumb.jpg",
+        "url": "sources/lowres/12190505_lowres.avif",
+        "thumb": "sources/thumbnails/12190505_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -654,8 +654,8 @@
       },
       {
         "title": "Plate 18. (Roman Architecture.)",
-        "url": "https://dn710209.ca.archive.org/0/items/dr_view-plate-18-roman-architecture-12190506/12190506.jpg",
-        "thumb": "https://dn710209.ca.archive.org/0/items/dr_view-plate-18-roman-architecture-12190506/__ia_thumb.jpg",
+        "url": "sources/lowres/12190506_lowres.avif",
+        "thumb": "sources/thumbnails/12190506_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -665,8 +665,8 @@
       },
       {
         "title": "Plate 18. (Steamship Construction.)",
-        "url": "https://dn721903.ca.archive.org/0/items/dr_view-plate-18-steamship-construction-12190444/12190444.jpg",
-        "thumb": "https://dn721903.ca.archive.org/0/items/dr_view-plate-18-steamship-construction-12190444/__ia_thumb.jpg",
+        "url": "sources/lowres/12190444_lowres.avif",
+        "thumb": "sources/thumbnails/12190444_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -675,8 +675,8 @@
       },
       {
         "title": "Plate 19. (Roman Architecture.)",
-        "url": "https://ia600806.us.archive.org/28/items/dr_view-plate-19-roman-architecture-12190507/12190507.jpg",
-        "thumb": "https://ia600806.us.archive.org/28/items/dr_view-plate-19-roman-architecture-12190507/__ia_thumb.jpg",
+        "url": "sources/lowres/12190507_lowres.avif",
+        "thumb": "sources/thumbnails/12190507_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -686,8 +686,8 @@
       },
       {
         "title": "Plate 19. (Steamship Construction.)",
-        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-19-steamship-construction-12190445/12190445.jpg",
-        "thumb": "https://dn721609.ca.archive.org/0/items/dr_view-plate-19-steamship-construction-12190445/__ia_thumb.jpg",
+        "url": "sources/lowres/12190445_lowres.avif",
+        "thumb": "sources/thumbnails/12190445_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -696,8 +696,8 @@
       },
       {
         "title": "Plate 19. (Weaving Machines and Tools.)",
-        "url": "https://dn721801.ca.archive.org/0/items/dr_view-plate-19-weaving-machines-and-tools-12190630/12190630.jpg",
-        "thumb": "https://dn721801.ca.archive.org/0/items/dr_view-plate-19-weaving-machines-and-tools-12190630/__ia_thumb.jpg",
+        "url": "sources/lowres/12190630_lowres.avif",
+        "thumb": "sources/thumbnails/12190630_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -706,8 +706,8 @@
       },
       {
         "title": "Plate 20. (Architectural Classical Orders)",
-        "url": "https://dn721802.ca.archive.org/0/items/dr_view-plate-20-architectural-classical-orders-12190508/12190508.jpg",
-        "thumb": "https://dn721802.ca.archive.org/0/items/dr_view-plate-20-architectural-classical-orders-12190508/__ia_thumb.jpg",
+        "url": "sources/lowres/12190508_lowres.avif",
+        "thumb": "sources/thumbnails/12190508_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -717,8 +717,8 @@
       },
       {
         "title": "Plate 21. (Architectural Classical Column Arrangement)",
-        "url": "https://dn721501.ca.archive.org/0/items/dr_view-plate-21-architectural-classical-column-arrangement-12190509/12190509.jpg",
-        "thumb": "https://dn721501.ca.archive.org/0/items/dr_view-plate-21-architectural-classical-column-arrangement-12190509/__ia_thumb.jpg",
+        "url": "sources/lowres/12190509_lowres.avif",
+        "thumb": "sources/thumbnails/12190509_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -728,8 +728,8 @@
       },
       {
         "title": "Plate 22. (Architectural Classical Column Capitals and Entablature.)",
-        "url": "https://dn721907.ca.archive.org/0/items/dr_view-plate-22-architectural-classical-column-capitals-and-entablature-12190510/12190510.jpg",
-        "thumb": "https://dn721907.ca.archive.org/0/items/dr_view-plate-22-architectural-classical-column-capitals-and-entablature-12190510/__ia_thumb.jpg",
+        "url": "sources/lowres/12190510_lowres.avif",
+        "thumb": "sources/thumbnails/12190510_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -739,8 +739,8 @@
       },
       {
         "title": "Plate 23. (Architectural Classical Arcades.)",
-        "url": "https://dn721603.ca.archive.org/0/items/dr_view-plate-23-architectural-classical-arcades-12190511/12190511.jpg",
-        "thumb": "https://dn721603.ca.archive.org/0/items/dr_view-plate-23-architectural-classical-arcades-12190511/__ia_thumb.jpg",
+        "url": "sources/lowres/12190511_lowres.avif",
+        "thumb": "sources/thumbnails/12190511_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -750,8 +750,8 @@
       },
       {
         "title": "Plate 24. (Mining Technology.)",
-        "url": "https://dn721808.ca.archive.org/0/items/dr_view-plate-24-mining-technology-12190635/12190635.jpg",
-        "thumb": "https://dn721808.ca.archive.org/0/items/dr_view-plate-24-mining-technology-12190635/__ia_thumb.jpg",
+        "url": "sources/lowres/12190635_lowres.avif",
+        "thumb": "sources/thumbnails/12190635_thumb.avif",
         "date": "",
         "tags": [
           "technology",
@@ -761,8 +761,8 @@
       },
       {
         "title": "Plate 26. (Military Gymnastics, Training.)",
-        "url": "https://dn721607.ca.archive.org/0/items/dr_view-plate-26-military-gymnastics-training-12190398/12190398.jpg",
-        "thumb": "https://dn721607.ca.archive.org/0/items/dr_view-plate-26-military-gymnastics-training-12190398/__ia_thumb.jpg",
+        "url": "sources/lowres/12190398_lowres.avif",
+        "thumb": "sources/thumbnails/12190398_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -771,8 +771,8 @@
       },
       {
         "title": "Plate 27. (Architecture of the Middle Ages: Romanesque Style.)",
-        "url": "https://dn721909.ca.archive.org/0/items/dr_view-plate-27-architecture-of-the-middle-ages-romanesque-style-12190515/12190515.jpg",
-        "thumb": "https://dn721909.ca.archive.org/0/items/dr_view-plate-27-architecture-of-the-middle-ages-romanesque-style-12190515/__ia_thumb.jpg",
+        "url": "sources/lowres/12190515_lowres.avif",
+        "thumb": "sources/thumbnails/12190515_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -782,8 +782,8 @@
       },
       {
         "title": "Plate 27. (Crowns and Shields.)",
-        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-27-crowns-and-shields-12190312/12190312.jpg",
-        "thumb": "https://dn710200.ca.archive.org/0/items/dr_view-plate-27-crowns-and-shields-12190312/__ia_thumb.jpg",
+        "url": "sources/lowres/12190312_lowres.avif",
+        "thumb": "sources/thumbnails/12190312_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -792,8 +792,8 @@
       },
       {
         "title": "Plate 28. (Architecture of the Middle Ages: Byzantine Style.)",
-        "url": "https://dn710202.ca.archive.org/0/items/dr_view-plate-28-architecture-of-the-middle-ages-byzantine-style-12190516/12190516.jpg",
-        "thumb": "https://dn710202.ca.archive.org/0/items/dr_view-plate-28-architecture-of-the-middle-ages-byzantine-style-12190516/__ia_thumb.jpg",
+        "url": "sources/lowres/12190516_lowres.avif",
+        "thumb": "sources/thumbnails/12190516_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -803,8 +803,8 @@
       },
       {
         "title": "Plate 29. (Architecture of the Middle Ages: Byzantine Style.)",
-        "url": "https://dn721904.ca.archive.org/0/items/dr_view-plate-29-architecture-of-the-middle-ages-byzantine-style-12190517/12190517.jpg",
-        "thumb": "https://dn721904.ca.archive.org/0/items/dr_view-plate-29-architecture-of-the-middle-ages-byzantine-style-12190517/__ia_thumb.jpg",
+        "url": "sources/lowres/12190517_lowres.avif",
+        "thumb": "sources/thumbnails/12190517_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -814,8 +814,8 @@
       },
       {
         "title": "Plate 3. (Egyptian Objects and Scenes.)",
-        "url": "https://dn710200.ca.archive.org/0/items/dr_view-plate-3-egyptian-objects-and-scenes-12190288/12190288.jpg",
-        "thumb": "https://dn710200.ca.archive.org/0/items/dr_view-plate-3-egyptian-objects-and-scenes-12190288/__ia_thumb.jpg",
+        "url": "sources/lowres/12190288_lowres.avif",
+        "thumb": "sources/thumbnails/12190288_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -824,8 +824,8 @@
       },
       {
         "title": "Plate 3. (Middle East Architecture.)",
-        "url": "https://dn710007.ca.archive.org/0/items/dr_view-plate-3-middle-east-architecture-12190491/12190491.jpg",
-        "thumb": "https://dn710007.ca.archive.org/0/items/dr_view-plate-3-middle-east-architecture-12190491/__ia_thumb.jpg",
+        "url": "sources/lowres/12190491_lowres.avif",
+        "thumb": "sources/thumbnails/12190491_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -835,8 +835,8 @@
       },
       {
         "title": "Plate 32. (Architecture of the Middle Ages: Arabian or Moorish Style.)",
-        "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-32-architecture-of-the-middle-ages-arabian-or-moorish-style-12190520/12190520.jpg",
-        "thumb": "https://dn721608.ca.archive.org/0/items/dr_view-plate-32-architecture-of-the-middle-ages-arabian-or-moorish-style-12190520/__ia_thumb.jpg",
+        "url": "sources/lowres/12190520_lowres.avif",
+        "thumb": "sources/thumbnails/12190520_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -846,8 +846,8 @@
       },
       {
         "title": "Plate 32. (Ship Docks, Lighthouses.)",
-        "url": "https://dn710108.ca.archive.org/0/items/dr_view-plate-32-ship-docks-lighthouses-12190458/12190458.jpg",
-        "thumb": "https://dn710108.ca.archive.org/0/items/dr_view-plate-32-ship-docks-lighthouses-12190458/__ia_thumb.jpg",
+        "url": "sources/lowres/12190458_lowres.avif",
+        "thumb": "sources/thumbnails/12190458_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -857,8 +857,8 @@
       },
       {
         "title": "Plate 33. (Architecture of the Middle Ages: Arabian or Moorish Style.)",
-        "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-33-architecture-of-the-middle-ages-arabian-or-moorish-style-12190521/12190521.jpg",
-        "thumb": "https://dn721608.ca.archive.org/0/items/dr_view-plate-33-architecture-of-the-middle-ages-arabian-or-moorish-style-12190521/__ia_thumb.jpg",
+        "url": "sources/lowres/12190521_lowres.avif",
+        "thumb": "sources/thumbnails/12190521_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -868,8 +868,8 @@
       },
       {
         "title": "Plate 34. (Architecture of the Middle Ages; Cologne Cathedral.)",
-        "url": "https://dn721808.ca.archive.org/0/items/dr_view-plate-34-architecture-of-the-middle-ages-cologne-cathedral-12190522/12190522.jpg",
-        "thumb": "https://dn721808.ca.archive.org/0/items/dr_view-plate-34-architecture-of-the-middle-ages-cologne-cathedral-12190522/__ia_thumb.jpg",
+        "url": "sources/lowres/12190522_lowres.avif",
+        "thumb": "sources/thumbnails/12190522_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -879,8 +879,8 @@
       },
       {
         "title": "Plate 36. (Architecture of the Middle Ages.)",
-        "url": "https://dn721901.ca.archive.org/0/items/dr_view-plate-36-architecture-of-the-middle-ages-12190524/12190524.jpg",
-        "thumb": "https://dn721901.ca.archive.org/0/items/dr_view-plate-36-architecture-of-the-middle-ages-12190524/__ia_thumb.jpg",
+        "url": "sources/lowres/12190524_lowres.avif",
+        "thumb": "sources/thumbnails/12190524_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -890,8 +890,8 @@
       },
       {
         "title": "Plate 36. (Modern Artillery.)",
-        "url": "https://dn710202.ca.archive.org/0/items/dr_view-plate-36-modern-artillery-12190408/12190408.jpg",
-        "thumb": "https://dn710202.ca.archive.org/0/items/dr_view-plate-36-modern-artillery-12190408/__ia_thumb.jpg",
+        "url": "sources/lowres/12190408_lowres.avif",
+        "thumb": "sources/thumbnails/12190408_thumb.avif",
         "date": "",
         "tags": [
           "military",
@@ -901,8 +901,8 @@
       },
       {
         "title": "Plate 37. (Architecture of the Middle Ages.)",
-        "url": "https://ia903209.us.archive.org/22/items/dr_view-plate-37-architecture-of-the-middle-ages-12190525/12190525.jpg",
-        "thumb": "https://ia903209.us.archive.org/22/items/dr_view-plate-37-architecture-of-the-middle-ages-12190525/__ia_thumb.jpg",
+        "url": "sources/lowres/12190525_lowres.avif",
+        "thumb": "sources/thumbnails/12190525_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -912,8 +912,8 @@
       },
       {
         "title": "Plate 37. (Military Carriages.)",
-        "url": "https://dn721606.ca.archive.org/0/items/dr_view-plate-37-military-carriages-12190409/12190409.jpg",
-        "thumb": "https://dn721606.ca.archive.org/0/items/dr_view-plate-37-military-carriages-12190409/__ia_thumb.jpg",
+        "url": "sources/lowres/12190409_lowres.avif",
+        "thumb": "sources/thumbnails/12190409_thumb.avif",
         "date": "",
         "tags": [
           "military",
@@ -923,8 +923,8 @@
       },
       {
         "title": "Plate 38. (Architecture of the Middle Ages; Arches.)",
-        "url": "https://dn710001.ca.archive.org/0/items/dr_view-plate-38-architecture-of-the-middle-ages-arches-12190526/12190526.jpg",
-        "thumb": "https://dn710001.ca.archive.org/0/items/dr_view-plate-38-architecture-of-the-middle-ages-arches-12190526/__ia_thumb.jpg",
+        "url": "sources/lowres/12190526_lowres.avif",
+        "thumb": "sources/thumbnails/12190526_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -934,8 +934,8 @@
       },
       {
         "title": "Plate 38. (Artillery and Pontoon Carriages.)",
-        "url": "https://dn721806.ca.archive.org/0/items/dr_view-plate-38-artillery-and-pontoon-carriages-12190410/12190410.jpg",
-        "thumb": "https://dn721806.ca.archive.org/0/items/dr_view-plate-38-artillery-and-pontoon-carriages-12190410/__ia_thumb.jpg",
+        "url": "sources/lowres/12190410_lowres.avif",
+        "thumb": "sources/thumbnails/12190410_thumb.avif",
         "date": "",
         "tags": [
           "military",
@@ -945,8 +945,8 @@
       },
       {
         "title": "Plate 39. (Architecture of the Middle Ages; Rouen Cathedral.)",
-        "url": "https://ia800409.us.archive.org/4/items/dr_view-plate-39-architecture-of-the-middle-ages-rouen-cathedral-12190527/12190527.jpg",
-        "thumb": "https://ia800409.us.archive.org/4/items/dr_view-plate-39-architecture-of-the-middle-ages-rouen-cathedral-12190527/__ia_thumb.jpg",
+        "url": "sources/lowres/12190527_lowres.avif",
+        "thumb": "sources/thumbnails/12190527_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -956,8 +956,8 @@
       },
       {
         "title": "Plate 39. (Fabrication of Artillery, Projectiles, Balls and Bombs.)",
-        "url": "https://dn721808.ca.archive.org/0/items/dr_view-plate-39-fabrication-of-artillery-projectiles-balls-and-bombs-12190411/12190411.jpg",
-        "thumb": "https://dn721808.ca.archive.org/0/items/dr_view-plate-39-fabrication-of-artillery-projectiles-balls-and-bombs-12190411/__ia_thumb.jpg",
+        "url": "sources/lowres/12190411_lowres.avif",
+        "thumb": "sources/thumbnails/12190411_thumb.avif",
         "date": "",
         "tags": [
           "military",
@@ -967,8 +967,8 @@
       },
       {
         "title": "Plate 40. (Architecture of the Middle Ages; Notre Dame Cathedral, Milan Cathedral.)",
-        "url": "https://dn721903.ca.archive.org/0/items/dr_view-plate-40-architecture-of-the-middle-ages-notre-dame-cathedral-mi-12190528/12190528.jpg",
-        "thumb": "https://dn721903.ca.archive.org/0/items/dr_view-plate-40-architecture-of-the-middle-ages-notre-dame-cathedral-mi-12190528/__ia_thumb.jpg",
+        "url": "sources/lowres/12190528_lowres.avif",
+        "thumb": "sources/thumbnails/12190528_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -978,8 +978,8 @@
       },
       {
         "title": "Plate 40. (Military Fireworks, Projectiles).",
-        "url": "https://dn710007.ca.archive.org/0/items/dr_view-plate-40-military-fireworks-projectiles-12190412/12190412.jpg",
-        "thumb": "https://dn710007.ca.archive.org/0/items/dr_view-plate-40-military-fireworks-projectiles-12190412/__ia_thumb.jpg",
+        "url": "sources/lowres/12190412_lowres.avif",
+        "thumb": "sources/thumbnails/12190412_thumb.avif",
         "date": "",
         "tags": [
           "military",
@@ -989,8 +989,8 @@
       },
       {
         "title": "Plate 45. (Great Wall of China; Towers, Battlements, and Loopholes.)",
-        "url": "https://dn710207.ca.archive.org/0/items/dr_view-plate-45-great-wall-of-china-towers-battlements-and-loopholes-12190417/12190417.jpg",
-        "thumb": "https://dn710207.ca.archive.org/0/items/dr_view-plate-45-great-wall-of-china-towers-battlements-and-loopholes-12190417/__ia_thumb.jpg",
+        "url": "sources/lowres/12190417_lowres.avif",
+        "thumb": "sources/thumbnails/12190417_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -1000,8 +1000,8 @@
       },
       {
         "title": "Plate 5. (Egyptian Architecture.)",
-        "url": "https://dn710006.ca.archive.org/0/items/dr_view-plate-5-egyptian-architecture-12190493/12190493.jpg",
-        "thumb": "https://dn710006.ca.archive.org/0/items/dr_view-plate-5-egyptian-architecture-12190493/__ia_thumb.jpg",
+        "url": "sources/lowres/12190493_lowres.avif",
+        "thumb": "sources/thumbnails/12190493_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -1011,8 +1011,8 @@
       },
       {
         "title": "Plate 6. (Egyptian Architecture.)",
-        "url": "https://dn710008.ca.archive.org/0/items/dr_view-plate-6-egyptian-architecture-12190494/12190494.jpg",
-        "thumb": "https://dn710008.ca.archive.org/0/items/dr_view-plate-6-egyptian-architecture-12190494/__ia_thumb.jpg",
+        "url": "sources/lowres/12190494_lowres.avif",
+        "thumb": "sources/thumbnails/12190494_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -1022,8 +1022,8 @@
       },
       {
         "title": "Plate 7. (Architectural Elements.)",
-        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-7-architectural-elements-12190495/12190495.jpg",
-        "thumb": "https://dn721602.ca.archive.org/0/items/dr_view-plate-7-architectural-elements-12190495/__ia_thumb.jpg",
+        "url": "sources/lowres/12190495_lowres.avif",
+        "thumb": "sources/thumbnails/12190495_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -1033,8 +1033,8 @@
       },
       {
         "title": "Plate 77. (Zoology: Animals including Insects.)",
-        "url": "https://dn710205.ca.archive.org/0/items/dr_view-plate-77-zoology-animals-including-insects-12190135/12190135.jpg",
-        "thumb": "https://dn710205.ca.archive.org/0/items/dr_view-plate-77-zoology-animals-including-insects-12190135/__ia_thumb.jpg",
+        "url": "sources/lowres/12190135_lowres.avif",
+        "thumb": "sources/thumbnails/12190135_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1044,8 +1044,8 @@
       },
       {
         "title": "Plate 78. (Zoology: Animals including Crustaceans.)",
-        "url": "https://dn721802.ca.archive.org/0/items/dr_view-plate-78-zoology-animals-including-crustaceans-12190136/12190136.jpg",
-        "thumb": "https://dn721802.ca.archive.org/0/items/dr_view-plate-78-zoology-animals-including-crustaceans-12190136/__ia_thumb.jpg",
+        "url": "sources/lowres/12190136_lowres.avif",
+        "thumb": "sources/thumbnails/12190136_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1055,8 +1055,8 @@
       },
       {
         "title": "Plate 79. (Zoology: Animals including Insects.)",
-        "url": "https://dn721601.ca.archive.org/0/items/dr_view-plate-79-zoology-animals-including-insects-12190137/12190137.jpg",
-        "thumb": "https://dn721601.ca.archive.org/0/items/dr_view-plate-79-zoology-animals-including-insects-12190137/__ia_thumb.jpg",
+        "url": "sources/lowres/12190137_lowres.avif",
+        "thumb": "sources/thumbnails/12190137_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1066,8 +1066,8 @@
       },
       {
         "title": "Plate 80. (Zoology: Animals including Insects.)",
-        "url": "https://dn721607.ca.archive.org/0/items/dr_view-plate-80-zoology-animals-including-insects-12190138/12190138.jpg",
-        "thumb": "https://dn721607.ca.archive.org/0/items/dr_view-plate-80-zoology-animals-including-insects-12190138/__ia_thumb.jpg",
+        "url": "sources/lowres/12190138_lowres.avif",
+        "thumb": "sources/thumbnails/12190138_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1077,8 +1077,8 @@
       },
       {
         "title": "Plate 81. (Zoology: Animals including Fish.)",
-        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-81-zoology-animals-including-fish-12190139/12190139.jpg",
-        "thumb": "https://dn721605.ca.archive.org/0/items/dr_view-plate-81-zoology-animals-including-fish-12190139/__ia_thumb.jpg",
+        "url": "sources/lowres/12190139_lowres.avif",
+        "thumb": "sources/thumbnails/12190139_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1088,8 +1088,8 @@
       },
       {
         "title": "Plate 91. (Zoology: Animals including Seabirds.)",
-        "url": "https://dn721901.ca.archive.org/0/items/dr_view-plate-91-zoology-animals-including-seabirds-12190149/12190149.jpg",
-        "thumb": "https://dn721901.ca.archive.org/0/items/dr_view-plate-91-zoology-animals-including-seabirds-12190149/__ia_thumb.jpg",
+        "url": "sources/lowres/12190149_lowres.avif",
+        "thumb": "sources/thumbnails/12190149_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1099,8 +1099,8 @@
       },
       {
         "title": "Plate 92. (Zoology: Animals including Seabirds.)",
-        "url": "https://ia601000.us.archive.org/3/items/dr_view-plate-92-zoology-animals-including-seabirds-12190150/12190150.jpg",
-        "thumb": "https://ia601000.us.archive.org/3/items/dr_view-plate-92-zoology-animals-including-seabirds-12190150/__ia_thumb.jpg",
+        "url": "sources/lowres/12190150_lowres.avif",
+        "thumb": "sources/thumbnails/12190150_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1110,8 +1110,8 @@
       },
       {
         "title": "Plate 93. (Zoology: Animals including Seabirds.)",
-        "url": "https://dn710007.ca.archive.org/0/items/dr_view-plate-93-zoology-animals-including-seabirds-12190151/12190151.jpg",
-        "thumb": "https://dn710007.ca.archive.org/0/items/dr_view-plate-93-zoology-animals-including-seabirds-12190151/__ia_thumb.jpg",
+        "url": "sources/lowres/12190151_lowres.avif",
+        "thumb": "sources/thumbnails/12190151_thumb.avif",
         "date": "",
         "tags": [
           "animals",
@@ -1123,34 +1123,34 @@
   },
   {
     "id": "drmc2",
-    "name": "",
-    "description": "",
-    "period": "",
-    "published": "",
-    "attribution": "",
+    "name": "Military Atlas",
+    "description": "Atlas to accompany the official records of the Union and Confederate armies.",
+    "period": "1860s",
+    "published": "1895",
+    "attribution": "U.S. Government Printing Office",
     "link": "",
     "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
     "items": [
       {
         "title": "(Care of and means of transportation of sick or wounded). Julius Bien & Co., Lith., N.Y. (1891-1895)",
-        "url": "1780177.jpg",
-        "thumb": "",
+        "url": "sources/lowres/1780177_lowres.avif",
+        "thumb": "sources/thumbnails/1780177_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "(Ordnance, ordnance stores, etc.). Julius Bien & Co., Lith., N.Y. (1891-1895)",
-        "url": "1780176.jpg",
-        "thumb": "",
+        "url": "sources/lowres/1780176_lowres.avif",
+        "thumb": "sources/thumbnails/1780176_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "(Uniforms, officers and enlisted men). (with) Badges to distinguish rank, U.S. Army, epaulettes, shoulder straps, chevrons. (with) Buttons, U.S. Army. (with) Collar badges, C.S. Army. (with) Sleeve badges, C.S. Army. (with) Chevrons, C.S. Army. (with) Caps, C.S. Army. (with) Buttons, C.S. Army. Julius Bien & Co., Lith., N.Y. (1891-1895)",
-        "url": "1780175.jpg",
-        "thumb": "",
+        "url": "sources/lowres/1780175_lowres.avif",
+        "thumb": "sources/thumbnails/1780175_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
@@ -1159,18 +1159,18 @@
   },
   {
     "id": "drmc3",
-    "name": "",
+    "name": "Encyclopédie Bouasse-Lebel [Tableaux synoptiques pour l'enseignement élémentaire des arts, des sciences et des métiers]",
     "description": "",
-    "period": "1850s",
-    "published": "1851",
+    "period": "",
+    "published": "1873",
     "attribution": "",
     "link": "",
     "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
     "items": [
       {
         "title": "Architecture allégorique. Tableau des colonnes des monuments les plus remarquables. (Allegorical Architecture. A Chart of the Columns of the Most Remarkable Monuments.)",
-        "url": "18044012.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044012_lowres.avif",
+        "thumb": "sources/thumbnails/18044012_thumb.avif",
         "date": "",
         "tags": [
           "architecture"
@@ -1179,16 +1179,16 @@
       },
       {
         "title": "Âge de bronze. (Bronze Age.)",
-        "url": "18044054.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044054_lowres.avif",
+        "thumb": "sources/thumbnails/18044054_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Champignons. (Mushrooms.)",
-        "url": "18044123.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044123_lowres.avif",
+        "thumb": "sources/thumbnails/18044123_thumb.avif",
         "date": "",
         "tags": [
           "mushrooms"
@@ -1197,96 +1197,96 @@
       },
       {
         "title": "Études de principes d'ornements. No. 2. (Studies of the Principles of Ornament. No. 2.)",
-        "url": "18044011.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044011_lowres.avif",
+        "thumb": "sources/thumbnails/18044011_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Histoire naturelle. Coléoptères. (Natural History. Beetles.)",
-        "url": "18044143.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044143_lowres.avif",
+        "thumb": "sources/thumbnails/18044143_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Histoire naturelle. Plantes vénéneuses. 2ème partie. (Natural History. Poisonous Plants. Part Two.)",
-        "url": "18044128.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044128_lowres.avif",
+        "thumb": "sources/thumbnails/18044128_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Instruments de musique. (Musical Instruments.)",
-        "url": "18044048.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044048_lowres.avif",
+        "thumb": "sources/thumbnails/18044048_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Instruments de musique. (Musical Instruments.)",
-        "url": "18044049.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044049_lowres.avif",
+        "thumb": "sources/thumbnails/18044049_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Navigation aérienne (Étude pratique). (Aerial Navigation (Practical Study).)",
-        "url": "18044041.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044041_lowres.avif",
+        "thumb": "sources/thumbnails/18044041_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Tableau des armes anciennes et modernes de tous les peuples. (Chart of Ancient and Modern Weapons of All Peoples.)",
-        "url": "18044101.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044101_lowres.avif",
+        "thumb": "sources/thumbnails/18044101_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Tableau des divers modèles de grilles. (Chart of Various Models of Iron Grilles.)",
-        "url": "18044025.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044025_lowres.avif",
+        "thumb": "sources/thumbnails/18044025_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Tableau du charpentier constructeur. (Chart for the Construction Carpenter.)",
-        "url": "18044021.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044021_lowres.avif",
+        "thumb": "sources/thumbnails/18044021_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Tableau du constructeur d'escaliers en charpente et menuiserie. (Chart for the Builder of Timber and Joinery Staircases.)",
-        "url": "18044023.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044023_lowres.avif",
+        "thumb": "sources/thumbnails/18044023_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Armes de jet – Armes à feu. (Projectile Weapons – Firearms.)",
-        "url": "18044100.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044100_lowres.avif",
+        "thumb": "sources/thumbnails/18044100_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
       },
       {
         "title": "Tableau de l’art aérostatique et de la direction des ballons. (Chart of the Art of Aerostation and the Steering of Balloons.)",
-        "url": "18044040.jpg",
-        "thumb": "",
+        "url": "sources/lowres/18044040_lowres.avif",
+        "thumb": "sources/thumbnails/18044040_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
@@ -1295,18 +1295,18 @@
   },
   {
     "id": "drmc4",
-    "name": "",
-    "description": "",
+    "name": "Manuscript World Encyclopedia",
+    "description": "This is an extraordinary privately assembled encyclopaedia, focused on Mecca as the Navel of the World. Written in manuscript in thin black and red pens in Ottoman language, it contains over 580 pages of manuscript in tiny characters, sometimes accompanied with charts, over 380 manuscript maps...",
     "period": "",
-    "published": "",
+    "published": "1918",
     "attribution": "David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries",
     "link": "",
     "note": "Accessed from archive.org. Images may be downloaded and used following Creative Commons CC BY-NC-SA 3.0 license. Image credit should be given to `David Rumsey Map Collection, David Rumsey Map Center, Stanford Libraries.`",
     "items": [
       {
         "title": "Topraklar, taşlar, bazalt. Soils, Stones, Basalt.",
-        "url": "10739023.jpg",
-        "thumb": "",
+        "url": "sources/lowres/10739023_lowres.avif",
+        "thumb": "sources/thumbnails/10739023_thumb.avif",
         "date": "",
         "tags": [],
         "notes": ""
