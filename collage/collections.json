@@ -74,75 +74,9 @@
         "notes": ""
       },
       {
-        "title": "Plate 20. (Illustrations of the Art of Drawing.)",
-        "url": "https://dn721608.ca.archive.org/0/items/dr_view-plate-20-illustrations-of-the-art-of-drawing-12190602/12190602.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "anatomy",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
-        "title": "Plate 5. (Ancient Sculpture.)",
-        "url": "https://dn721900.ca.archive.org/0/items/dr_view-plate-5-ancient-sculpture-12190587/12190587.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "sculpture",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
-        "title": "Plate 4. (Ancient Sculpture.)",
-        "url": "https://dn721400.ca.archive.org/0/items/dr_view-plate-4-ancient-sculpture-12190586/12190586.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "sculpture",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
-        "title": "Plate 3. (Ancient Sculpture.)",
-        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-3-ancient-sculpture-12190585/12190585.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "sculpture",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
-        "title": "Plate 2. (Ancient Sculpture.)",
-        "url": "https://dn720704.ca.archive.org/0/items/dr_view-plate-2-ancient-sculpture-12190584/12190584.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "sculpture",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
-        "title": "Plate 21. (Illustrations of the Art of Drawing.)",
-        "url": "https://dn721605.ca.archive.org/0/items/dr_view-plate-21-illustrations-of-the-art-of-drawing-12190603/12190603.jpg",
-        "thumb": "",
-        "date": "",
-        "tags": [
-          "sculpture",
-          "engraving"
-        ],
-        "notes": ""
-      },
-      {
         "title": "Plate 44. (Castle Parts.)",
-        "url": "https://dn721900.ca.archive.org/0/items/dr_view-plate-44-castle-parts-12190416/12190416.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190416_lowres.avif",
+        "thumb": "sources/thumbnails/12190416_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -152,8 +86,8 @@
       },
       {
         "title": "Plate 42. (Renaissance Church Architecture in Europe.)",
-        "url": "https://dn721804.ca.archive.org/0/items/dr_view-plate-42-renaissance-church-architecture-in-europe-12190530/12190530.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190530_lowres.avif",
+        "thumb": "sources/thumbnails/12190530_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -163,8 +97,8 @@
       },
       {
         "title": "Plate 13. (Pumps.)",
-        "url": "https://dn721806.ca.archive.org/0/items/dr_view-plate-13-pumps-12190624/12190624.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190624_lowres.avif",
+        "thumb": "sources/thumbnails/12190624_thumb.avif",
         "date": "",
         "tags": [
           "machinary",
@@ -174,8 +108,8 @@
       },
       {
         "title": "Plate 44. (Renaissance Church Architecture: St. Peter's in Rome.)",
-        "url": "https://dn721909.ca.archive.org/0/items/dr_view-plate-44-renaissance-church-architecture-st-peters-in-rome-12190532/12190532.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190532_lowres.avif",
+        "thumb": "sources/thumbnails/12190532_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -185,8 +119,8 @@
       },
       {
         "title": "Plate 57. (Modern Architecture in Europe and America.)",
-        "url": "https://ia800409.us.archive.org/5/items/dr_view-plate-57-modern-architecture-in-europe-and-america-12190545/12190545.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190545_lowres.avif",
+        "thumb": "sources/thumbnails/12190545_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -196,8 +130,8 @@
       },
       {
         "title": " Plate 42. (Ancient City Gates including Mycenae, Messene, Spello, Babylon, Assos, Falerii, Pompeii, Rome.)",
-        "url": "https://dn721607.ca.archive.org/0/items/dr_view-plate-42-ancient-city-gates-including-mycenae-messene-spello-ba-12190414/12190414.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190414_lowres.avif",
+        "thumb": "sources/thumbnails/12190414_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -207,8 +141,8 @@
       },
       {
         "title": "Plate 12. (Greek and Roman Architecture.)",
-        "url": "https://dn721908.ca.archive.org/0/items/dr_view-plate-12-greek-and-roman-architecture-12190500/12190500.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190500_lowres.avif",
+        "thumb": "sources/thumbnails/12190500_thumb.avif",
         "date": "",
         "tags": [
           "architecture",
@@ -228,8 +162,8 @@
       },
       {
         "title": "Plate 26. (Construction Details of Theatrical Buildings-continued.)",
-        "url": "https://dn710208.ca.archive.org/0/items/dr_view-plate-26-construction-details-of-theatrical-buildings-continued-12190608/12190608.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190608_lowres.avif",
+        "thumb": "sources/thumbnails/12190608_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -238,8 +172,8 @@
       },
       {
         "title": "Plate 8. (Construction of Wooden Bridges.)",
-        "url": "https://dn721309.ca.archive.org/0/items/dr_view-plate-8-construction-of-wooden-bridges-12190619/12190619.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190619_lowres.avif",
+        "thumb": "sources/thumbnails/12190619_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -248,8 +182,8 @@
       },
       {
         "title": "Plate 45. (Modern Church Architecture in Italy.)",
-        "url": "https://dn721609.ca.archive.org/0/items/dr_view-plate-45-modern-church-architecture-in-italy-12190533/12190533.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190533_lowres.avif",
+        "thumb": "sources/thumbnails/12190533_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -258,8 +192,8 @@
       },
       {
         "title": "Plate 47. (Modern Church Architecture in Paris.)",
-        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-47-modern-church-architecture-in-paris-12190535/12190535.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190535_lowres.avif",
+        "thumb": "sources/thumbnails/12190535_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -268,8 +202,8 @@
       },
       {
         "title": "Plate 9. (Construction of Iron Bridges.)",
-        "url": "https://ia800903.us.archive.org/25/items/dr_view-plate-9-construction-of-iron-bridges-12190620/12190620.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190620_lowres.avif",
+        "thumb": "sources/thumbnails/12190620_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
@@ -278,8 +212,8 @@
       },
       {
         "title": "Plate 10. (Construction of Canals and Dams.)",
-        "url": "https://dn721602.ca.archive.org/0/items/dr_view-plate-10-construction-of-canals-and-dams-12190621/12190621.jpg",
-        "thumb": "",
+        "url": "sources/lowres/12190621_lowres.avif",
+        "thumb": "sources/thumbnails/12190621_thumb.avif",
         "date": "",
         "tags": [
           "engraving"
