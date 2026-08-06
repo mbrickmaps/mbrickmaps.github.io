@@ -131,6 +131,20 @@
   .section-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; flex: 0 0 100%; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+
+  /* ---------- stats ---------- */
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .stats-table td { padding: 3px 4px; }
+  .stats-table td:first-child { opacity: 0.75; }
+  .stats-table td:last-child { text-align: right; font-family: ui-monospace, monospace; }
+  .stats-table th {
+    text-align: left; padding: 10px 4px 3px; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.04em; opacity: 0.5; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .stats-table th:first-child { padding-top: 4px; }
+  #statCheckSizesBtn { font-size: 0.68rem; padding: 1px 6px; text-transform: none; letter-spacing: normal; }
+  #statSourceSizes { padding-top: 2px; }
   /* Labels elsewhere stay inline because their control is a small <input>; the
      dropdown is a block-level div, so without this it wraps onto its own line
      instead of sitting beside the label text like every other labeled control. */
@@ -462,9 +476,16 @@
 
   #layerList { list-style: none; margin: 0; padding: 0; width: 100%; }
   #layerList li {
+    position: relative;
     display: flex; flex-direction: column; align-items: stretch; gap: 4px;
     padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px;
     margin-bottom: 4px; cursor: pointer; font-size: 0.8rem;
+  }
+  /* Pinned to the card itself, not either flex row — it stays put at the far
+     right regardless of how layer-top or layer-actions wrap. */
+  #layerList .layer-preview-btn {
+    position: absolute; top: 4px; right: 6px; z-index: 1;
+    padding: 1px 4px; font-size: 0.75rem;
   }
   #layerList li.selected { border-color: var(--accent2); }
   /* Dragging a row restacks it — the row itself moves, so the gap it leaves is
@@ -474,7 +495,8 @@
   }
   #layerList.is-restacking { user-select: none; }
   #layerList.is-restacking li { cursor: grabbing; }
-  #layerList .layer-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  /* Right-padded to clear the preview icon pinned over this row's corner. */
+  #layerList .layer-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding-right: 30px; }
   #layerList .layer-name {
     flex: 1 1 auto; min-width: 0; background: transparent; color: var(--fg);
     border: 1px solid transparent; border-radius: 3px; padding: 1px 3px; font-size: 0.8rem;
@@ -482,6 +504,11 @@
   #layerList .layer-name:hover { border-color: var(--border); }
   #layerList .layer-name:focus { border-color: var(--accent2); background: #000; outline: none; }
   #layerList .layer-z { font-size: 0.7rem; opacity: 0.55; flex-shrink: 0; }
+  /* Same eye glyph both states — dimmed rather than swapped for a "closed
+     eye" icon, since there's no crossed-eye emoji that reads clearly at this
+     size. Lives in .layer-actions with the other per-layer toggles. */
+  #layerList .layer-visible.active { opacity: 1; }
+  #layerList .layer-visible { opacity: 0.35; }
   /* Sits ahead of the name so lock state reads before anything else. */
   #layerList .layer-lock { flex-shrink: 0; padding: 1px 5px; font-size: 0.7rem; }
   #layerList .layer-actions { display: flex; gap: 2px; flex-wrap: wrap; }
@@ -622,7 +649,7 @@
       </div>
     </div>
     <div class="row">
-      <button id="wholeImageBtn" title="replace the polygon with the whole source frame">Whole image</button>
+      <button id="wholeImageBtn" title="replace the polygon with the whole source frame">Clip All</button>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
@@ -686,7 +713,7 @@
     </div>
     <div class="row">
       <select id="sizePreset">
-        <option value="">Custom&hellip;</option>
+        <option value="">Collage Size</option>
         <optgroup label="Generic">
           <option value="1080x1080">Square 1080&times;1080 (1:1)</option>
           <option value="1080x1350">Portrait 1080&times;1350 (4:5)</option>
@@ -1019,6 +1046,41 @@
       <input type="file" id="actionUploadInput" accept="application/json" style="display:none">
       <span id="actionStatus" class="hint" style="margin:0;"></span>
     </div>
+  </section>
+
+  <section class="panel size-mini" id="statsPanel">
+    <div class="panel-head">
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Stats <span class="help-icon" title="What this session is actually holding onto. Cached renders and loaded images are real, measured memory — width&#215;height&#215;4 bytes for whatever's decoded right now. Source file sizes are the only figure that costs a network request, so they're checked on demand rather than kept live.">&#9432;</span></h2>
+      <span class="size-toggle">
+        <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
+        <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
+        <button type="button" data-size="quarter" title="tiny (1/4)">&frac14;</button>
+        <button type="button" data-size="mini" class="active" title="small (1/3)">&frac13;</button>
+        <button type="button" data-size="half" title="medium (1/2)">&frac12;</button>
+        <button type="button" data-size="twothirds" title="large (2/3)">&frac23;</button>
+        <button type="button" data-size="threequarters" title="large (3/4)">&frac34;</button>
+        <button type="button" data-size="full" title="full"><b>1</b></button>
+        <button type="button" data-action="minimize" title="minimize">&minus;</button>
+      </span>
+    </div>
+    <table class="stats-table">
+      <tr><th colspan="3">Project</th></tr>
+      <tr><td>Layers</td><td id="statLayers" colspan="2"></td></tr>
+      <tr><td>Canvas</td><td id="statCanvas" colspan="2"></td></tr>
+      <tr><td>Config size</td><td id="statConfig" colspan="2"></td></tr>
+      <tr><th colspan="3">This session's memory</th></tr>
+      <tr><td>Cached renders</td><td id="statStampCount"></td><td id="statStampBytes"></td></tr>
+      <tr><td>Loaded images</td><td id="statImageCount"></td><td id="statImageBytes"></td></tr>
+      <tr><td>Staged, session-only</td><td id="statTempCount"></td><td id="statTempBytes"></td></tr>
+      <tr><th colspan="3">Browser storage</th></tr>
+      <tr><td>This app's data</td><td id="statLocalCount"></td><td id="statLocalBytes"></td></tr>
+      <tr><th colspan="3">
+        Source files on disk
+        <button type="button" id="statCheckSizesBtn" title="HEAD-request every source this collage currently uses and sum their sizes — the only row here that touches the network">Check&hellip;</button>
+      </th></tr>
+      <tr><td colspan="3" id="statSourceSizes" class="hint">not checked yet</td></tr>
+    </table>
+    <div class="row"><button id="statRefreshBtn">Refresh</button></div>
   </section>
 
   <section class="panel size-mini" id="examplesPanel">
@@ -3409,6 +3471,7 @@
       ctx.fillRect(0, 0, w, h);
     }
     for (const clip of [...collage.clips].sort((a, b) => a.z - b.z)) {
+      if (clip.hidden) continue;
       const stamp = await ensureStamp(clip);
       if (stamp) drawClip(ctx, clip, stamp);
     }
@@ -3439,7 +3502,7 @@
     const W = collage.canvas.width, H = collage.canvas.height;
     const xs = [0, W / 2, W], ys = [0, H / 2, H];
     for (const c of collage.clips) {
-      if (exclude.has(c.id)) continue;
+      if (exclude.has(c.id) || c.hidden) continue;
       const stamp = stampCache.get(c.id);
       if (!stamp) continue;
       const b = clipBounds(c, stamp);
@@ -3518,7 +3581,7 @@
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(255, 170, 0, 0.8)";
     for (const clip of collage.clips) {
-      if (!clip.guides) continue;
+      if (!clip.guides || clip.hidden) continue;
       const stamp = stampCache.get(clip.id);
       if (!stamp) continue;
       const corners = localCorners(stamp).map((c) => transformPoint(clip, c));
@@ -3675,7 +3738,7 @@
     }
     const sorted = [...collage.clips].sort((a, b) => b.z - a.z);
     for (const clip of sorted) {
-      if (clip.locked) continue; // locked clips aren't grabbable on canvas
+      if (clip.locked || clip.hidden) continue; // neither is grabbable on canvas
       const stamp = stampCache.get(clip.id);
       if (stamp && hitTestClip(clip, stamp, pt)) {
         selectedId = clip.id; dragMode = "move"; lastMouse = pt;
@@ -3787,7 +3850,10 @@
                  value="${escapeHtml(c.link || "")}" spellcheck="false"
                  title="link group — clips sharing a name move together">
         </div>
+        <button data-action="preview" class="layer-preview-btn" title="hover to preview this layer">&#128444;&#65039;</button>
         <div class="layer-actions">
+          <button data-action="visible" class="layer-visible ${c.hidden ? "" : "active"}"
+                  title="${c.hidden ? "show" : "hide"}">&#128065;&#65039;</button>
           <button data-action="up" title="bring forward">&#9650;</button>
           <button data-action="down" title="send back">&#9660;</button>
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
@@ -3988,6 +4054,11 @@
     } else if (action === "lock") {
       clip.locked = !clip.locked;
       if (clip.locked && selectedId === clip.id) selectedId = null;
+    } else if (action === "visible") {
+      clip.hidden = !clip.hidden;
+      // Hiding a selected layer would leave its handles floating over
+      // nothing.
+      if (clip.hidden && selectedId === clip.id) selectedId = null;
     } else {
       selectedId = id;
     }
@@ -3995,11 +4066,15 @@
   });
 
   // ---------- layer hover preview ----------
+  // Triggered by the magnifier icon specifically, not the row — hovering the
+  // name field or the other buttons no longer pops a thumbnail over them.
   const layerPreview = document.getElementById("layerPreview");
   const layerPreviewCanvas = document.getElementById("layerPreviewCanvas");
 
   document.getElementById("layerList").addEventListener("mouseover", (e) => {
-    const li = e.target.closest("li");
+    const btn = e.target.closest('[data-action="preview"]');
+    if (!btn) { layerPreview.hidden = true; return; }
+    const li = btn.closest("li");
     const clip = li && collage.clips.find((c) => c.id === li.dataset.id);
     const stamp = clip && stampCache.get(clip.id);
     if (!stamp) { layerPreview.hidden = true; return; }
@@ -4018,7 +4093,7 @@
     ctx.restore();
 
     layerPreview.hidden = false;
-    const rect = li.getBoundingClientRect();
+    const rect = btn.getBoundingClientRect();
     layerPreview.style.left = Math.max(4, Math.min(rect.left - w - 14, window.innerWidth - w - 14)) + "px";
     layerPreview.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - h - 14)) + "px";
   });
@@ -5014,7 +5089,10 @@
     if (!li) return;
     const i = Number(li.dataset.i);
     if (e.target.dataset.f === "remove") {
-      stagedImages.splice(i, 1);
+      // A temp entry's blob otherwise stays in memory until the page reloads,
+      // even though it's no longer reachable from anywhere in the UI.
+      const [gone] = stagedImages.splice(i, 1);
+      if (gone && gone.temp) URL.revokeObjectURL(gone.url);
       saveStaged(); renderSelector(); renderDropdownList();
       return;
     }
@@ -5100,7 +5178,10 @@
       const entry = path
         ? { url: path, title: key, thumb: fromSources ? SOURCE_TIER.thumb(key) : "",
             from: path.replace(file.name, "") }
-        : { url: URL.createObjectURL(file), title: file.name, from: "local folder", temp: true };
+        // file.size is captured here because it's the only point that ever
+        // holds the real File object — the Stats panel has no other way to
+        // know how much memory a temp blob is actually holding onto.
+        : { url: URL.createObjectURL(file), title: file.name, from: "local folder", temp: true, bytes: file.size };
       if (stageImage(entry)) { path ? served++ : temp++; } else dupe++;
     }
 
@@ -5109,6 +5190,7 @@
   });
 
   document.getElementById("selectorClearBtn").addEventListener("click", () => {
+    for (const s of stagedImages) if (s.temp) URL.revokeObjectURL(s.url);
     stagedImages = [];
     saveStaged(); renderSelector(); renderDropdownList();
     document.getElementById("selectorStatus").textContent = "";
@@ -5292,6 +5374,100 @@
   });
 
   renderActions();
+
+  // ---------- stats panel ----------
+  /* Everything here is either exactly counted (cache sizes, byte lengths) or
+     explicitly marked as an estimate (decoded-bitmap memory, which the
+     browser never reports directly — width*height*4 is the standard stand-in
+     for an uncompressed RGBA bitmap). Source file sizes are the one figure
+     that costs a network request per unique URL, so they're behind their own
+     button rather than refreshed automatically. */
+  const fmtBytes = (n) => {
+    if (!isFinite(n)) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const LOCAL_KEYS = [LAYOUT_KEY, COLOR_KEY, CONFIG_KEY, LIBRARY_KEY, ACTION_KEY, SELECTOR_KEY];
+
+  async function renderStats() {
+    document.getElementById("statLayers").textContent = collage.clips.length;
+    document.getElementById("statCanvas").textContent =
+      `${collage.canvas.width}×${collage.canvas.height}`;
+    const configBytes = new Blob([JSON.stringify(configSnapshot())]).size;
+    document.getElementById("statConfig").textContent = fmtBytes(configBytes);
+
+    // Every stamp is a real, currently-allocated canvas — pw*ph*4 is its
+    // actual backing-buffer size, not an estimate.
+    let stampBytes = 0;
+    for (const s of stampCache.values()) stampBytes += s.pw * s.ph * 4;
+    document.getElementById("statStampCount").textContent = stampCache.size;
+    document.getElementById("statStampBytes").textContent = fmtBytes(stampBytes);
+
+    // imageCache holds promises; only the settled ones have a real decoded
+    // size to report, so unsettled loads are counted but not sized yet.
+    let imageBytes = 0, imageResolved = 0;
+    for (const p of imageCache.values()) {
+      const img = await p.catch(() => null);
+      if (img && img.naturalWidth) { imageBytes += img.naturalWidth * img.naturalHeight * 4; imageResolved++; }
+    }
+    document.getElementById("statImageCount").textContent =
+      `${imageResolved}${imageResolved !== imageCache.size ? ` / ${imageCache.size}` : ""}`;
+    document.getElementById("statImageBytes").textContent = fmtBytes(imageBytes);
+
+    // The only true memory-safety number here: bytes a session-only blob is
+    // holding onto that a reload — or the leak fix above — would release.
+    const temps = stagedImages.filter((s) => s.temp);
+    document.getElementById("statTempCount").textContent = temps.length;
+    document.getElementById("statTempBytes").textContent =
+      fmtBytes(temps.reduce((sum, s) => sum + (s.bytes || 0), 0));
+
+    let localBytes = 0, localCount = 0;
+    for (const k of LOCAL_KEYS) {
+      const v = localStorage.getItem(k);
+      if (v == null) continue;
+      localCount++; localBytes += new Blob([v]).size;
+    }
+    document.getElementById("statLocalCount").textContent = `${localCount} keys`;
+    document.getElementById("statLocalBytes").textContent = fmtBytes(localBytes);
+  }
+
+  document.getElementById("statRefreshBtn").addEventListener("click", renderStats);
+
+  document.getElementById("statCheckSizesBtn").addEventListener("click", async (e) => {
+    const out = document.getElementById("statSourceSizes");
+    const urls = [...new Set(collage.clips.map((c) => clipUrl(c)))];
+    if (!urls.length) { out.textContent = "no layers to check"; return; }
+
+    e.target.disabled = true;
+    out.textContent = `checking ${urls.length} source${urls.length === 1 ? "" : "s"}…`;
+
+    /* fetch defaults to mode:"cors", so a cross-origin URL without permissive
+       headers throws outright rather than returning something readable —
+       there's no successful-but-opaque case to special-case here. A response
+       that comes back but has no Content-Length is the other real case: a
+       server that didn't set one, or — only under file:// during local
+       testing — no HTTP headers exist at all. */
+    let total = 0, known = 0, unreachable = 0, noHeader = 0;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        const len = res.headers.get("content-length");
+        if (len) { total += Number(len); known++; } else noHeader++;
+      } catch { unreachable++; }
+    }
+    e.target.disabled = false;
+    const missing = unreachable + noHeader;
+    let note = "";
+    if (unreachable) note += `, ${unreachable} couldn't be reached (likely cross-origin)`;
+    if (noHeader) note += `, ${noHeader} reachable but reported no size`;
+    out.textContent = missing
+      ? `${fmtBytes(total)} across ${known} of ${urls.length}${note}`
+      : `${fmtBytes(total)} across ${urls.length} source${urls.length === 1 ? "" : "s"}`;
+  });
+
+  renderStats();
 
   document.getElementById("recJitterAdd").addEventListener("click", () => {
     jitterRules.push({ target: "all", actionId: actions[0]?.id || "act-boil", amount: null });
