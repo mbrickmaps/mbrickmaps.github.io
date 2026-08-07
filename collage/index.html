@@ -650,6 +650,7 @@
     </div>
     <div class="row">
       <button id="wholeImageBtn" title="replace the polygon with the whole source frame">Clip All</button>
+      <button id="invertClipBtn" title="keep everything EXCEPT the shape — the polygon becomes a hole, and the clip's footprint becomes the whole source frame">Invert</button>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
@@ -1431,6 +1432,9 @@
     points: [], closed: false, addPointMode: false, dragIndex: -1,
     dragPolygon: false, dragStart: null,
     editingClipId: null, editingUseOriginal: false, editingHires: null,
+    // Which side of the polygon survives. Unlike peek this IS a property of
+    // the cut, so it travels onto the clip and back when one is reopened.
+    invert: false,
     // Peek is a way of looking at the polygon, not a property of it — never
     // persisted, and cleared whenever the source changes.
     peekNodes: false
@@ -1646,7 +1650,21 @@
       sctx.strokeStyle = "#ff5500";
       sctx.lineWidth = srcPx(2);
       sctx.stroke();
-      if (editor.closed) { sctx.fillStyle = "rgba(255,85,0,0.2)"; sctx.fill(); }
+      /* The tint marks what survives the cut, so inverted it has to land
+         outside the shape — rect + polygon under even-odd, the same trick
+         buildStamp uses, so the preview can't disagree with the render. */
+      if (editor.closed) {
+        sctx.fillStyle = "rgba(255,85,0,0.2)";
+        if (editor.invert) {
+          const p = new Path2D();
+          p.rect(0, 0, editor.naturalW, editor.naturalH);
+          editor.points.forEach(([x, y], i) => i === 0 ? p.moveTo(x, y) : p.lineTo(x, y));
+          p.closePath();
+          sctx.fill(p, "evenodd");
+        } else {
+          sctx.fill();
+        }
+      }
       editor.points.forEach(([x, y], i) => {
         // Peek fills the node with what's under it. The node then has to be
         // bigger — a 5px dot of the same color as its surroundings is
@@ -1922,6 +1940,31 @@
     fitSourceView();
   });
 
+  /* Same shape as setPeekNodes: resolve the button each time, because
+     setEditorImage calls this during load, before a const down here exists. */
+  function setInvertClip(on) {
+    const btn = document.getElementById("invertClipBtn");
+    editor.invert = !!on;
+    // Label is fixed; the active class is what shows the state, same as the
+    // other toggles in this row.
+    btn.classList.toggle("active", !!on);
+    // An open clip updates live, so the collage shows the flip without
+    // needing "Update clip" pressed first.
+    if (editor.editingClipId) {
+      const clip = collage.clips.find((c) => c.id === editor.editingClipId);
+      if (clip) {
+        clip.invert = !!on;
+        stampCache.delete(clip.id);
+        renderCollage(); renderLayerList();
+      }
+    }
+    renderEditor();
+  }
+
+  document.getElementById("invertClipBtn").addEventListener("click", () => {
+    setInvertClip(!editor.invert);
+  });
+
   // Resolves the button itself rather than closing over a const — setEditorImage
   // calls this and can run before a const further down has initialised.
   function setPeekNodes(on) {
@@ -1949,6 +1992,7 @@
     editor.editingHires = null;
     syncHiresButton();
     setPeekNodes(false);
+    setInvertClip(false);
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderEditor();
   });
@@ -1963,6 +2007,7 @@
         clip.baseW = editor.naturalW;
         clip.baseH = editor.naturalH;
         clip.useOriginal = !!editor.editingUseOriginal;
+        clip.invert = !!editor.invert;
         stampCache.delete(clip.id);
         selectedId = clip.id;
       }
@@ -1978,6 +2023,7 @@
         // pointer to — this is that write, deferred to the moment the clip
         // is actually created.
         hires: editor.editingHires || null,
+        invert: !!editor.invert,
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
         scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
       });
@@ -1986,6 +2032,7 @@
     editor.editingClipId = null;
     editor.editingUseOriginal = false;
     editor.editingHires = null;
+    setInvertClip(false);
     syncHiresButton();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
@@ -2152,6 +2199,8 @@
     // it was left in, rather than a fresh clip's default "off".
     editor.editingHires = clip.hires || null;
     syncHiresButton();
+    // Reopening shows the cut as it was left, same as the hi-res toggle.
+    setInvertClip(!!clip.invert);
     const authored = resolveSourceUrl(clip.source, clip.useOriginal);
     loadImage(authored)
       .then((img) => {
@@ -3322,7 +3371,27 @@
      times that. So swapping a clip between its web copy and a high-res one
      changes only how many pixels are inside the shape — the footprint, and
      therefore position, rotation, scale and handles, never move. */
-  function buildStamp(polygon, img, k = 1) {
+  function buildStamp(polygon, img, k = 1, invert = false) {
+    /* Inverted, the shape is a hole rather than the subject, so what's kept is
+       the whole frame minus it — and the footprint has to be the whole frame
+       too, not the polygon's box. rect + polygon under the even-odd rule
+       cancels the overlap, leaving everything outside the shape. */
+    if (invert) {
+      const w = Math.max(1, img.naturalWidth / k), h = Math.max(1, img.naturalHeight / k);
+      const pw = Math.max(1, Math.round(w * k)), ph = Math.max(1, Math.round(h * k));
+      const off = document.createElement("canvas");
+      off.width = pw; off.height = ph;
+      const octx = off.getContext("2d");
+      octx.scale(k, k);
+      const path = new Path2D();
+      path.rect(0, 0, w, h);
+      polygon.forEach(([x, y], i) => i === 0 ? path.moveTo(x, y) : path.lineTo(x, y));
+      path.closePath();
+      octx.clip(path, "evenodd");
+      octx.drawImage(img, 0, 0, w, h);
+      return { canvas: off, w, h, pw, ph };
+    }
+
     const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
     const minX = Math.min(...xs), minY = Math.min(...ys);
     const w = Math.max(1, Math.ceil(Math.max(...xs) - minX));
@@ -3476,10 +3545,10 @@
     let img;
     try { img = await loadImage(url); } catch { return null; }
     const k = stampScale(clip, img);
-    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url;
+    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url + "|" + (clip.invert ? "inv" : "");
     let stamp = stampCache.get(clip.id);
     if (!stamp || stamp.key !== key) {
-      stamp = buildStamp(clip.polygon, img, k);
+      stamp = buildStamp(clip.polygon, img, k, !!clip.invert);
       stamp.key = key;
       stampCache.set(clip.id, stamp);
     }
