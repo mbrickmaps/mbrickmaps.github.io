@@ -11624,3 +11624,8 @@ collage/build-collection.js
 collage/items.json
 collage/collections.json.bak
 collage/collage-2000x2000-300dpi.png
+
+# Full-res AVIF sources live on Cloudflare R2 (images.mbricknell.com/full),
+# not in the repo — 113 files at ~9MB each is 1GB, past Pages' artifact limit.
+/collage/sources/full
+/collage/recordings

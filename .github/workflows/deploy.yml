@@ -20,7 +20,19 @@ jobs:
         run: |
           mkdir -p _site
           cp -r img mirror-mirror collage photos _site/
-          
+
+          # Working material, never site content — copied in above by the
+          # wholesale `cp -r collage`/`cp -r photos`, so it has to come back
+          # out. collage/sources/full alone is ~1GB (convert.sh's full-res
+          # avifs), which is what pushed the artifact past Pages' 1GB limit
+          # and got a deploy cancelled outright. It's meant to be hosted
+          # separately (Cloudflare) and reached via a URL, not shipped here —
+          # once that's live, point HIRES_ROOTS at it in collage/index.html.
+          rm -rf _site/collage/sources/full
+          rm -rf _site/collage/downloads
+          rm -rf _site/collage/recordings
+          rm -rf _site/photos/node_modules
+
           # Replace the broken symlinks with actual physical files in the staging folder
           rm -rf _site/photos/originals
           mkdir -p _site/photos/originals

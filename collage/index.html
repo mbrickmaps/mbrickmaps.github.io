@@ -1080,7 +1080,11 @@
       </th></tr>
       <tr><td colspan="3" id="statSourceSizes" class="hint">not checked yet</td></tr>
     </table>
-    <div class="row"><button id="statRefreshBtn">Refresh</button></div>
+    <div class="row">
+      <button id="statRefreshBtn">Refresh</button>
+      <button id="statGcBtn" title="drop cached images and renders nothing on the canvas refers to any more — never touches a layer, only what's held in memory for it">Discard unused</button>
+      <span id="statGcResult" class="hint" style="margin:0;"></span>
+    </div>
   </section>
 
   <section class="panel size-mini" id="examplesPanel">
@@ -1350,8 +1354,15 @@
      thumbnails/{key}_thumb.avif — all keyed on the archive image number, e.g.
      "12190039". The flat sources/{key}.jpg files these replaced are gone.
      photos/ is a separate, still-valid system for personal photos. */
+  /* full/ lives on Cloudflare R2, not here: 113 files at ~9MB each is 1GB,
+     which blew past Pages' 1GB artifact limit and got a deploy cancelled.
+     deploy.yml strips sources/full from the artifact for the same reason.
+     lowres (11MB) and thumbnails (1.3MB) are small enough to ship with the
+     site. The bucket sends Access-Control-Allow-Origin, which the export
+     path needs — without it the canvas taints and saving fails silently. */
+  const FULL_ROOT = "https://images.mbricknell.com/full";
   const SOURCE_TIER = {
-    full: (key) => `sources/full/${key}.avif`,
+    full: (key) => `${FULL_ROOT}/${key}.avif`,
     lowres: (key) => `sources/lowres/${key}_lowres.avif`,
     thumb: (key) => `sources/thumbnails/${key}_thumb.avif`
   };
@@ -3915,6 +3926,11 @@
     collage.clips = collage.clips.filter((c) => c.id !== id);
     stampCache.delete(id);
     if (selectedId === id) selectedId = null;
+    /* The clearest discard moment there is. Deliberately not awaited — the
+       delete shouldn't wait on cache bookkeeping, and collectGarbage only
+       drops what nothing references, so a race with the next render is
+       harmless. */
+    collectGarbage();
   }
 
   /* Everything sharing this clip's link group, or just the clip if unlinked.
@@ -5433,7 +5449,75 @@
     document.getElementById("statLocalBytes").textContent = fmtBytes(localBytes);
   }
 
+  /* ---------- garbage collection ----------
+     Neither cache ever evicted anything: imageCache kept every URL ever
+     loaded, stampCache kept a canvas per clip id even after the clip was
+     deleted. A single 10389x8201 plate is ~340MB decoded, so a session spent
+     trying sources out would accumulate gigabytes of images nothing referenced
+     any more.
+
+     "Live" is deliberately generous — it keeps the lo-res copy of a hi-res
+     clip so toggling resolution back is instant rather than a re-fetch, and it
+     keeps whatever the clipper currently has open even if no clip uses it yet.
+     Anything outside that set is genuinely unreachable from the UI. */
+
+  // imageCache keys are whatever string was passed to loadImage (usually
+  // relative); an <img>.src is always absolute. Compared in one form or the
+  // comparison silently never matches.
+  const absolute = (u) => { try { return new URL(u, location.href).href; } catch { return u; } };
+
+  function liveImageUrls() {
+    const live = new Set();
+    const add = (u) => { if (u) live.add(absolute(u)); };
+    for (const c of collage.clips) {
+      add(clipUrl(c));                                    // what's actually drawn
+      add(resolveSourceUrl(c.source, c.useOriginal));      // the lo-res round trip
+      add(c.hires);
+    }
+    if (editor.image) add(editor.image.src);
+    // Staged blobs belong to the Stager — it revokes them on remove/clear.
+    for (const s of stagedImages) add(s.url);
+    return live;
+  }
+
+  async function collectGarbage() {
+    const live = liveImageUrls();
+    const clipIds = new Set(collage.clips.map((c) => c.id));
+    let stamps = 0, images = 0, bytes = 0;
+
+    for (const [id, stamp] of [...stampCache]) {
+      if (clipIds.has(id)) continue;
+      bytes += stamp.pw * stamp.ph * 4;
+      stampCache.delete(id);
+      stamps++;
+    }
+
+    for (const [url, p] of [...imageCache]) {
+      if (live.has(absolute(url))) continue;
+      const img = await p.catch(() => null);
+      if (img && img.naturalWidth) bytes += img.naturalWidth * img.naturalHeight * 4;
+      imageCache.delete(url);
+      images++;
+    }
+
+    // Probe results are just strings, but they point at URLs that may no
+    // longer exist — dropping them lets a re-check pick up a changed file.
+    if (!collage.clips.length) hiresProbe.clear();
+
+    return { stamps, images, bytes };
+  }
+
   document.getElementById("statRefreshBtn").addEventListener("click", renderStats);
+
+  document.getElementById("statGcBtn").addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    const freed = await collectGarbage();
+    await renderStats();
+    e.target.disabled = false;
+    document.getElementById("statGcResult").textContent = freed.stamps || freed.images
+      ? `freed ${fmtBytes(freed.bytes)} — ${freed.images} image${freed.images === 1 ? "" : "s"}, ${freed.stamps} render${freed.stamps === 1 ? "" : "s"}`
+      : "nothing to discard";
+  });
 
   document.getElementById("statCheckSizesBtn").addEventListener("click", async (e) => {
     const out = document.getElementById("statSourceSizes");
