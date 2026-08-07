@@ -1341,7 +1341,7 @@
   function resolveSourceUrl(source, useOriginal, hires) {
     // An explicit high-res path always wins — it's whatever the swap found,
     // wherever it lives, so this isn't limited to one folder convention.
-    if (hires) return hires;
+    if (hires) return normalizeHires(hires);
     if (!isLibraryPhoto(source)) return source;
     return useOriginal ? originalUrl(source) : `../photos/edits/${source}-web.jpg`;
   }
@@ -1372,6 +1372,19 @@
     SOURCE_TIER.full,
     (name) => `../photos/originals/${name}.jpg`
   ];
+
+  /* A clip's .hires is a stored URL, so any config or localStorage entry
+     saved while full/ was served from this origin still carries a literal
+     "sources/full/{key}.avif" — which 404s now that the tier lives on R2.
+     Re-derive those through SOURCE_TIER.full instead of trusting the
+     snapshot, so old saves keep working and one place still decides where
+     full-res lives. Anything else (a photos/originals path, an arbitrary
+     URL the swap found) is passed through untouched. */
+  function normalizeHires(hires) {
+    if (!hires) return hires;
+    const m = /(?:^|\/)sources\/full\/([^/?#]+)\.avif$/.exec(hires);
+    return m ? SOURCE_TIER.full(decodeURIComponent(m[1])) : hires;
+  }
 
   /* A library photo matches on its name; anything else — a URL or a path —
      matches on its bare filename, so a clip cut from
@@ -2143,11 +2156,11 @@
     loadImage(authored)
       .then((img) => {
         if (clip.hires && clip.baseW && img.naturalWidth !== clip.baseW) {
-          return loadImage(clip.hires).catch(() => img);
+          return loadImage(normalizeHires(clip.hires)).catch(() => img);
         }
         return img;
       })
-      .catch(() => (clip.hires ? loadImage(clip.hires) : Promise.reject()))
+      .catch(() => (clip.hires ? loadImage(normalizeHires(clip.hires)) : Promise.reject()))
       .then((img) => setEditorImage(img, clip.polygon))
       .catch(() => { /* source unreachable — leave the editor as it was */ });
   }
@@ -5472,7 +5485,7 @@
     for (const c of collage.clips) {
       add(clipUrl(c));                                    // what's actually drawn
       add(resolveSourceUrl(c.source, c.useOriginal));      // the lo-res round trip
-      add(c.hires);
+      add(normalizeHires(c.hires));
     }
     if (editor.image) add(editor.image.src);
     // Staged blobs belong to the Stager — it revokes them on remove/clear.
