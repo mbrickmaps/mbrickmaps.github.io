@@ -131,6 +131,11 @@
   .section-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; flex: 0 0 100%; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+  /* Names a group of controls without competing with the panel's own heading. */
+  .row-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    opacity: 0.55; margin: 0 0 4px;
+  }
 
   /* ---------- stats ---------- */
   .stats-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
@@ -149,6 +154,10 @@
      dropdown is a block-level div, so without this it wraps onto its own line
      instead of sitting beside the label text like every other labeled control. */
   .row > label:has(.dropdown) { display: flex; align-items: center; gap: 6px; }
+  /* Keeps a labelled control from being split across lines by the row's wrap. */
+  .row > label.inline-field { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .row > label.inline-field .mini-range { width: 90px; }
+  #pathScaleValue { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
   .dropdown { position: relative; }
   .dropdown-btn { min-width: 200px; text-align: left; }
   .dropdown-list {
@@ -636,6 +645,8 @@
         <canvas id="sourceCanvas" width="480" height="360"></canvas>
         <div class="quick-actions" id="editorQuickActions" hidden>
           <button id="closePathBtn">Close path</button>
+          <button id="flipPathXBtn" title="mirror the clipping path left-to-right about its centre">&#8596;</button>
+          <button id="flipPathYBtn" title="mirror the clipping path top-to-bottom about its centre">&#8597;</button>
           <button id="starClipBtn" title="save to clip library">&#9733;</button>
           <button id="addToCollageBtn" disabled>Add to collage</button>
         </div>
@@ -648,9 +659,23 @@
         </div>
       </div>
     </div>
+    <p class="row-label">Clipping path controls</p>
     <div class="row">
       <button id="wholeImageBtn" title="replace the polygon with the whole source frame">Clip All</button>
       <button id="invertClipBtn" title="keep everything EXCEPT the shape — the polygon becomes a hole, and the clip's footprint becomes the whole source frame">Invert</button>
+      <label class="inline-field">Shape
+        <select id="shapePreset" title="replace the polygon with a preset cutter — Freeform leaves whatever you've drawn alone">
+          <option value="">Freeform</option>
+        </select></label>
+      <label class="inline-field">Scale
+        <input type="range" class="mini-range" id="pathScale" min="10" max="300" step="1" value="100"
+               title="resize the clipping path about its centre — springs back to 100% so each drag adjusts from where you are">
+        <span id="pathScaleValue">100%</span></label>
+      <label class="inline-field">Rotate
+        <input type="range" class="mini-range" id="pathRotate" min="-180" max="180" step="1" value="0"
+               title="rotate the clipping path about its centre — springs back to 0&deg; so each drag turns from where you are">
+        <span id="pathRotateValue">0&deg;</span>
+        <button type="button" id="pathRotate90" title="turn a quarter turn clockwise">90&deg;</button></label>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
@@ -1619,6 +1644,9 @@
     document.getElementById("closePathBtn").hidden = editor.closed;
     document.getElementById("addToCollageBtn").hidden = !editor.closed;
     document.getElementById("starClipBtn").hidden = !editor.closed;
+    // Mirroring an unclosed path is meaningless — it's still being drawn.
+    document.getElementById("flipPathXBtn").hidden = !editor.closed;
+    document.getElementById("flipPathYBtn").hidden = !editor.closed;
     qa.hidden = false;
 
     const xs = editor.points.map((p) => p[0]), ys = editor.points.map((p) => p[1]);
@@ -1705,6 +1733,7 @@
       if (d < bestDist) { bestDist = d; bestIdx = i; }
     }
     editor.points.splice(bestIdx + 1, 0, pt);
+    resetShapeSelect();
   }
 
   // Returns image coordinates — the same space points are stored in.
@@ -1747,6 +1776,7 @@
       editor.closed = true; renderEditor(); return;
     }
     editor.points.push([dx, dy]);
+    resetShapeSelect();
     renderEditor();
   });
 
@@ -1783,7 +1813,7 @@
     if (!editor.closed || editor.points.length <= 3) return;
     const [dx, dy] = getSourceCanvasPos(e);
     const hitIndex = findPointNear(dx, dy);
-    if (hitIndex !== -1) { editor.points.splice(hitIndex, 1); renderEditor(); }
+    if (hitIndex !== -1) { editor.points.splice(hitIndex, 1); resetShapeSelect(); renderEditor(); }
   });
 
   window.addEventListener("mouseup", () => {
@@ -1934,11 +1964,172 @@
     const w = editor.naturalW, h = editor.naturalH;
     editor.points = [[0.5, 0.5], [w - 0.5, 0.5], [w - 0.5, h - 0.5], [0.5, h - 0.5]];
     editor.closed = true;
+    resetShapeSelect();
     // Leaves editingClipId alone, so this works as "expand this clip to the
     // whole frame" on an existing layer, not only as a fresh cut.
     renderEditor();
     fitSourceView();
   });
+
+  /* ---------- preset cutters ----------
+     shapes.json holds polygons in a 0..1 unit square, so one definition fits
+     any source. Fitted by the SHORTER side and centred, which keeps a circle
+     circular — stretching to the frame would make every preset a different
+     shape depending on which photo was open. Freeform ("") is the default and
+     never touches the points. */
+  let presetShapes = [];
+
+  function loadShapes() {
+    return fetch("shapes.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        presetShapes = data.filter((s) => s && s.id && Array.isArray(s.points) && s.points.length >= 3);
+        const sel = document.getElementById("shapePreset");
+        for (const s of presetShapes) {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name || s.id;
+          sel.appendChild(opt);
+        }
+      })
+      .catch(() => { /* no shapes.json — the dropdown just stays Freeform */ });
+  }
+
+  function shapePoints(shape, w, h) {
+    const side = Math.min(w, h);
+    const ox = (w - side) / 2, oy = (h - side) / 2;
+    return shape.points.map(([x, y]) => [ox + x * side, oy + y * side]);
+  }
+
+  /* Once a point moves, the path is no longer the preset — say so, rather
+     than leaving the dropdown claiming a shape the polygon no longer is.
+     Re-picking the same entry then still recuts, which it wouldn't if the
+     select still held that value. */
+  function resetShapeSelect() {
+    const sel = document.getElementById("shapePreset");
+    if (sel && sel.value) sel.value = "";
+  }
+
+  document.getElementById("shapePreset").addEventListener("change", (e) => {
+    const shape = presetShapes.find((s) => s.id === e.target.value);
+    if (!shape || !editor.image) return;
+    editor.points = shapePoints(shape, editor.naturalW, editor.naturalH);
+    editor.closed = true;
+    // Same as Clip All: leaves editingClipId alone, so this also works as
+    // "recut this existing layer with a cookie cutter".
+    renderEditor();
+    fitSourceView();
+  });
+
+  /* ---------- clipping path scale ----------
+     Scales about the polygon's centroid. The slider springs back to 100% on
+     release and re-snapshots on the next grab, so it always reads as "resize
+     from here" — that way a hand-edited point never fights a stale baseline,
+     and it works on a freeform path as readily as on a preset. */
+  let pathScaleBase = null;
+
+  function centroidOf(points) {
+    const n = points.length;
+    return [points.reduce((a, p) => a + p[0], 0) / n, points.reduce((a, p) => a + p[1], 0) / n];
+  }
+
+  function scalePath(points, factor) {
+    const [cx, cy] = centroidOf(points);
+    return points.map(([x, y]) => [cx + (x - cx) * factor, cy + (y - cy) * factor]);
+  }
+
+  const pathScaleInput = document.getElementById("pathScale");
+  const pathScaleValue = document.getElementById("pathScaleValue");
+
+  const snapshotPath = () => { pathScaleBase = editor.points.map((p) => p.slice()); };
+  pathScaleInput.addEventListener("pointerdown", snapshotPath);
+  pathScaleInput.addEventListener("keydown", () => { if (!pathScaleBase) snapshotPath(); });
+
+  pathScaleInput.addEventListener("input", (e) => {
+    const pct = Number(e.target.value);
+    pathScaleValue.textContent = pct + "%";
+    if (!pathScaleBase || pathScaleBase.length < 3) return;
+    editor.points = scalePath(pathScaleBase, pct / 100);
+    renderEditor();
+  });
+
+  // Springing back is what makes the "resize from here" model work.
+  const releasePathScale = () => {
+    pathScaleBase = null;
+    pathScaleInput.value = 100;
+    pathScaleValue.textContent = "100%";
+  };
+  pathScaleInput.addEventListener("change", releasePathScale);
+  pathScaleInput.addEventListener("blur", releasePathScale);
+
+  /* Rotation, on the same snapshot-and-spring-back model as the scale above —
+     turns about the centroid so the path pivots in place rather than swinging
+     around the origin. Kept as its own baseline: scaling and turning in one
+     gesture isn't possible anyway, and sharing one would make whichever
+     control you grabbed second inherit the other's starting points. */
+  let pathRotateBase = null;
+
+  function rotatePath(points, degrees) {
+    const [cx, cy] = centroidOf(points);
+    const a = degrees * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+    return points.map(([x, y]) => {
+      const dx = x - cx, dy = y - cy;
+      return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+    });
+  }
+
+  const pathRotateInput = document.getElementById("pathRotate");
+  const pathRotateValue = document.getElementById("pathRotateValue");
+
+  const snapshotRotate = () => { pathRotateBase = editor.points.map((p) => p.slice()); };
+  pathRotateInput.addEventListener("pointerdown", snapshotRotate);
+  pathRotateInput.addEventListener("keydown", () => { if (!pathRotateBase) snapshotRotate(); });
+
+  pathRotateInput.addEventListener("input", (e) => {
+    const deg = Number(e.target.value);
+    pathRotateValue.textContent = deg + "°";
+    if (!pathRotateBase || pathRotateBase.length < 3) return;
+    editor.points = rotatePath(pathRotateBase, deg);
+    renderEditor();
+  });
+
+  const releasePathRotate = () => {
+    pathRotateBase = null;
+    pathRotateInput.value = 0;
+    pathRotateValue.textContent = "0°";
+  };
+  pathRotateInput.addEventListener("change", releasePathRotate);
+  pathRotateInput.addEventListener("blur", releasePathRotate);
+
+  /* The quarter turn is the case the slider is worst at — you want exactly
+     90, not 89. Applied straight to the live points, no baseline needed. */
+  document.getElementById("pathRotate90").addEventListener("click", () => {
+    if (editor.points.length < 3) return;
+    editor.points = rotatePath(editor.points, 90);
+    resetShapeSelect();
+    renderEditor();
+  });
+
+  /* Mirrors about the centroid, so the path flips where it sits rather than
+     jumping across the frame. Winding order reverses under a mirror, which
+     neither clip() nor the even-odd rule cares about, so the points are left
+     in place rather than reversed. */
+  function flipPath(points, axis) {
+    const [cx, cy] = centroidOf(points);
+    return axis === "x"
+      ? points.map(([x, y]) => [2 * cx - x, y])
+      : points.map(([x, y]) => [x, 2 * cy - y]);
+  }
+
+  for (const [id, axis] of [["flipPathXBtn", "x"], ["flipPathYBtn", "y"]]) {
+    document.getElementById(id).addEventListener("click", () => {
+      if (editor.points.length < 3) return;
+      editor.points = flipPath(editor.points, axis);
+      resetShapeSelect();
+      renderEditor();
+    });
+  }
 
   /* Same shape as setPeekNodes: resolve the button each time, because
      setEditorImage calls this during load, before a const down here exists. */
@@ -1993,6 +2184,7 @@
     syncHiresButton();
     setPeekNodes(false);
     setInvertClip(false);
+    resetShapeSelect();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderEditor();
   });
@@ -6487,6 +6679,10 @@
   syncTextarea();
   fitView();
   updateClipProps();
+  // Down here with the other startup calls, not beside its definition: the
+  // handler reads `editor`, and a const declared later is still in its
+  // temporal dead zone during parse.
+  loadShapes();
 </script>
 
 </body>
