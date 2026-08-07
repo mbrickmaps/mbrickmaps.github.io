@@ -2174,11 +2174,14 @@
     // Label is fixed; the active class is what shows the state, same as the
     // other toggles in this row.
     btn.classList.toggle("active", !!on);
-    // An open clip updates live, so the collage shows the flip without
-    // needing "Update clip" pressed first.
+    /* An open clip updates live, so the collage shows the flip without
+       needing "Update clip" pressed first — but only when the value actually
+       changes. Opening a clip calls this to initialise the toggle, and
+       invalidating the stamp there dropped the layer from the canvas until an
+       async rebuild finished, showing the dark background through it. */
     if (editor.editingClipId) {
       const clip = collage.clips.find((c) => c.id === editor.editingClipId);
-      if (clip) {
+      if (clip && !!clip.invert !== !!on) {
         clip.invert = !!on;
         stampCache.delete(clip.id);
         renderCollage(); renderLayerList();
@@ -3896,16 +3899,22 @@
   /* The composite alone — background plus clips, never any overlay. Shared by
      the editor canvas and the preview, so the preview can't inherit chrome. */
   async function drawComposite(ctx, w, h) {
+    /* Every stamp is resolved before anything is cleared, so the clear and
+       the draw happen in one synchronous pass. Clearing first and awaiting
+       inside the loop meant any await — even a cached stamp, which still
+       yields a microtask — could let a frame paint the bare background,
+       flashing the canvas dark on every render.
+       Promise.all rather than a sequential loop also loads a cold canvas in
+       parallel instead of one clip at a time. */
+    const ordered = [...collage.clips].sort((a, b) => a.z - b.z).filter((c) => !c.hidden);
+    const stamps = await Promise.all(ordered.map((c) => ensureStamp(c)));
+
     ctx.clearRect(0, 0, w, h);
     if (collage.canvas.background) {
       ctx.fillStyle = collage.canvas.background;
       ctx.fillRect(0, 0, w, h);
     }
-    for (const clip of [...collage.clips].sort((a, b) => a.z - b.z)) {
-      if (clip.hidden) continue;
-      const stamp = await ensureStamp(clip);
-      if (stamp) drawClip(ctx, clip, stamp);
-    }
+    ordered.forEach((clip, i) => { if (stamps[i]) drawClip(ctx, clip, stamps[i]); });
   }
 
   /* ---------- snapping ----------
@@ -4088,8 +4097,13 @@
   });
 
   async function renderCollage() {
-    collageCanvas.width = collage.canvas.width;
-    collageCanvas.height = collage.canvas.height;
+    /* Only on a real size change: assigning to canvas.width resets the bitmap
+       to transparent even when the value is identical, and it happens
+       synchronously — so an unconditional assignment blanked the canvas on
+       every render and left it blank until the awaited stamps came back.
+       drawComposite clears for itself, after its stamps resolve. */
+    if (collageCanvas.width !== collage.canvas.width) collageCanvas.width = collage.canvas.width;
+    if (collageCanvas.height !== collage.canvas.height) collageCanvas.height = collage.canvas.height;
     const ctx = collageCanvas.getContext("2d");
     await drawComposite(ctx, collageCanvas.width, collageCanvas.height);
     if (!hideOutlines) { drawOverlayGuide(ctx); drawGuides(ctx); }
