@@ -510,6 +510,10 @@
     padding: 1px 4px; font-size: 0.75rem;
   }
   #layerList li.selected { border-color: var(--accent2); }
+  /* Every selected row is outlined; the primary — the one the properties
+     panel edits and the one drawing handles on canvas — is filled as well,
+     so a multi-selection still shows which layer the sliders will move. */
+  #layerList li.selected.primary { background: #14261a; }
   /* Dragging a row restacks it — the row itself moves, so the gap it leaves is
      the drop preview. */
   #layerList li.layer-dragging {
@@ -2232,7 +2236,7 @@
         clip.useOriginal = !!editor.editingUseOriginal;
         clip.invert = !!editor.invert;
         stampCache.delete(clip.id);
-        selectedId = clip.id;
+        selectOnly(clip.id);
       }
     } else {
       const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
@@ -2250,7 +2254,7 @@
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
         scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
       });
-      selectedId = id;
+      selectOnly(id);
     }
     editor.editingClipId = null;
     editor.editingUseOriginal = false;
@@ -2289,7 +2293,7 @@
       x: collage.canvas.width / 2, y: collage.canvas.height / 2,
       scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
     });
-    selectedId = id;
+    selectOnly(id);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
@@ -2472,7 +2476,40 @@
   // ---------- collage (right panel) ----------
   const collageCanvas = document.getElementById("collageCanvas");
   const collage = { canvas: { width: 1000, height: 700, background: "#111111" }, clips: [] };
+  /* selectedId stays the primary — the last thing clicked, what the props
+     panel edits and what draws handles. selectedIds is everything currently
+     selected, primary included. Keeping both means the 38 existing uses of
+     selectedId are untouched, and only the operations that genuinely act on
+     many layers (move, delete) read the set. */
   let selectedId = null;
+  let selectedIds = new Set();
+
+  function selectOnly(id) {
+    selectedId = id;
+    selectedIds = id ? new Set([id]) : new Set();
+  }
+  function toggleSelected(id) {
+    if (!id) return;
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+      // Dropping the primary promotes whatever is left, so the props panel
+      // never points at a layer that is no longer selected.
+      if (selectedId === id) selectedId = [...selectedIds][selectedIds.size - 1] || null;
+    } else {
+      selectedIds.add(id);
+      selectedId = id;
+    }
+  }
+  /* What a drag or delete should act on: the whole selection when there's
+     more than one, otherwise the clip's link group — so shift-click doesn't
+     take away the grouping behaviour that already existed. */
+  function selectionFor(clip) {
+    if (selectedIds.size > 1 && selectedIds.has(clip.id)) {
+      return collage.clips.filter((c) => selectedIds.has(c.id));
+    }
+    return linkedClips(clip);
+  }
+
   const stampCache = new Map();
 
   // ---------- viewport pan/zoom ----------
@@ -4135,19 +4172,22 @@
       if (clip.locked || clip.hidden) continue; // neither is grabbable on canvas
       const stamp = stampCache.get(clip.id);
       if (stamp && hitTestClip(clip, stamp, pt)) {
-        selectedId = clip.id; dragMode = "move"; lastMouse = pt;
+        if (e.shiftKey) toggleSelected(clip.id); else if (!selectedIds.has(clip.id)) selectOnly(clip.id);
+        else selectedId = clip.id;          // already in a multi-selection: drag it, don't collapse
+        dragMode = "move"; lastMouse = pt;
         /* Frozen baseline: each frame positions the clips from where they
            started plus the raw pointer delta, then snaps. Applying a snap on
            top of the previous frame's snapped position would let it creep. */
         clipMoveDrag = {
           start: pt,
-          items: linkedClips(clip).filter((c) => !c.locked).map((c) => ({ clip: c, x: c.x, y: c.y }))
+          items: selectionFor(clip).filter((c) => !c.locked).map((c) => ({ clip: c, x: c.x, y: c.y }))
         };
         renderCollage(); renderLayerList(); updateClipProps();
         return;
       }
     }
-    selectedId = null; dragMode = "pan";
+    if (!e.shiftKey) selectOnly(null);     // shift on empty space keeps what you have
+    dragMode = "pan";
     collageViewport.classList.add("panning");
     renderCollage(); renderLayerList(); updateClipProps();
   });
@@ -4232,7 +4272,7 @@
     document.getElementById("linkGroups").innerHTML =
       groups.map((g) => `<option value="${escapeHtml(g)}">`).join("");
     list.innerHTML = sorted.map((c) => `
-      <li class="${c.id === selectedId ? "selected" : ""}" data-id="${c.id}"
+      <li class="${selectedIds.has(c.id) ? "selected" : ""}${c.id === selectedId ? " primary" : ""}" data-id="${c.id}"
           style="${c.link ? `border-left-color:${groupColor(c.link)}` : ""}">
         <div class="layer-top">
           <button data-action="lock" class="layer-lock ${c.locked ? "active" : ""}"
@@ -4304,13 +4344,17 @@
       // offset, so anything aligned stays aligned until you move it.
       x: clip.x, y: clip.y, z
     });
-    selectedId = newId;
+    selectOnly(newId);
   }
 
   function deleteClip(id) {
-    collage.clips = collage.clips.filter((c) => c.id !== id);
-    stampCache.delete(id);
-    if (selectedId === id) selectedId = null;
+    /* Deleting one of several selected layers deletes them all — otherwise a
+       multi-selection is only half a selection, and clearing five layers is
+       five clicks. Deleting something outside the selection stays a single. */
+    const ids = selectedIds.size > 1 && selectedIds.has(id) ? new Set(selectedIds) : new Set([id]);
+    collage.clips = collage.clips.filter((c) => !ids.has(c.id));
+    for (const gone of ids) { stampCache.delete(gone); selectedIds.delete(gone); }
+    if (ids.has(selectedId)) selectedId = [...selectedIds][selectedIds.size - 1] || null;
     /* The clearest discard moment there is. Deliberately not awaited — the
        delete shouldn't wait on cache bookkeeping, and collectGarbage only
        drops what nothing references, so a race with the next render is
@@ -4328,7 +4372,7 @@
 
   function setAllLocked(locked) {
     for (const c of collage.clips) c.locked = locked;
-    if (locked) selectedId = null;
+    if (locked) selectOnly(null);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   }
 
@@ -4395,7 +4439,7 @@
       layerListEl.classList.remove("is-restacking");
       if (commit) {
         commitLayerOrder();
-        selectedId = layerDrag.id;
+        selectOnly(layerDrag.id);
       }
       layerDrag = null;
       /* Swallow the click the release generates, or it would re-select. A
@@ -4457,14 +4501,14 @@
       clip.guides = !clip.guides;
     } else if (action === "lock") {
       clip.locked = !clip.locked;
-      if (clip.locked && selectedId === clip.id) selectedId = null;
+      if (clip.locked && selectedIds.has(clip.id)) toggleSelected(clip.id);
     } else if (action === "visible") {
       clip.hidden = !clip.hidden;
       // Hiding a selected layer would leave its handles floating over
       // nothing.
-      if (clip.hidden && selectedId === clip.id) selectedId = null;
+      if (clip.hidden && selectedIds.has(clip.id)) toggleSelected(clip.id);
     } else {
-      selectedId = id;
+      if (e.shiftKey) toggleSelected(id); else selectOnly(id);
     }
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
@@ -4608,7 +4652,7 @@
       collage.canvas = parsed.canvas || collage.canvas;
       collage.clips = parsed.clips || [];
       stampCache.clear();
-      selectedId = null;
+      selectOnly(null);
       document.getElementById("canvasW").value = collage.canvas.width;
       document.getElementById("canvasH").value = collage.canvas.height;
       if (collage.canvas.background) document.getElementById("canvasBg").value = collage.canvas.background;
@@ -5049,7 +5093,7 @@
       x: collage.canvas.width / 2, y: collage.canvas.height / 2,
       scale: fit, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
     });
-    selectedId = id;
+    selectOnly(id);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   }
 
