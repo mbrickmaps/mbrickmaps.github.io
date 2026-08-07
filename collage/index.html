@@ -168,6 +168,19 @@
   .dropdown-item { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dropdown-item:hover { background: #222; }
   .dropdown-empty { padding: 8px 10px; font-size: 0.75rem; opacity: 0.55; }
+  /* Anchored to the star that opened it, so the choice appears where you
+     clicked rather than in a corner of the screen. */
+  .star-menu {
+    position: fixed; z-index: 60; background: #000;
+    border: 1px solid var(--border); border-radius: 4px; padding: 2px;
+    display: flex; flex-direction: column; min-width: 190px;
+  }
+  .star-menu button {
+    text-align: left; border: none; background: none; color: var(--fg);
+    padding: 5px 8px; font-size: 0.8rem; cursor: pointer; border-radius: 3px;
+  }
+  .star-menu button:hover { background: #222; }
+  .star-menu .star-menu-note { font-size: 0.68rem; opacity: 0.5; padding: 2px 8px 5px; }
   .dropdown-group {
     padding: 4px 8px 2px; font-size: 0.65rem; text-transform: uppercase;
     letter-spacing: 0.05em; opacity: 0.45; border-top: 1px solid var(--border);
@@ -648,6 +661,8 @@
           <button id="flipPathXBtn" title="mirror the clipping path left-to-right about its centre">&#8596;</button>
           <button id="flipPathYBtn" title="mirror the clipping path top-to-bottom about its centre">&#8597;</button>
           <button id="starClipBtn" title="save to clip library">&#9733;</button>
+          <input type="color" id="fillColorInput" value="#ff5500" title="colour for a solid fill layer">
+          <button id="addFillBtn" title="add this path to the collage as a solid colour layer instead of a cut-out — set its blend to &quot;color&quot; to tint a b&amp;w photo underneath while keeping its tones">Fill</button>
           <button id="addToCollageBtn" disabled>Add to collage</button>
         </div>
         <div class="view-controls">
@@ -844,6 +859,7 @@
         <input type="range" class="mini-range" id="clipOpacity" min="0" max="1" step="0.01" value="1">
         <button type="button" id="clipOpacityUp" title="more opaque">+</button>
         <span id="clipOpacityValue">100%</span></label>
+      <label id="clipFillRow" hidden>Fill <input type="color" id="clipFill" value="#ff5500"></label>
       <label>Tint <input type="color" id="clipTint" value="#ff5500">
         <button type="button" id="clipTintClear" title="remove tint">&#10005;</button></label>
       <label>Blend
@@ -1647,6 +1663,12 @@
     // Mirroring an unclosed path is meaningless — it's still being drawn.
     document.getElementById("flipPathXBtn").hidden = !editor.closed;
     document.getElementById("flipPathYBtn").hidden = !editor.closed;
+    /* Fill takes only the path, never the pixels — so the open source is a
+       tracing reference here, not the subject. Shown alongside the other
+       path actions, since it's the same decision point: what does this
+       polygon become when it leaves the clipper. */
+    document.getElementById("addFillBtn").hidden = !editor.closed;
+    document.getElementById("fillColorInput").hidden = !editor.closed;
     qa.hidden = false;
 
     const xs = editor.points.map((p) => p[0]), ys = editor.points.map((p) => p[1]);
@@ -1844,6 +1866,13 @@
   // One source pixel per CSS pixel.
   document.getElementById("src100Btn").addEventListener("click", () => srcZoomBy(1 / srcZoom));
 
+  /* Declared here rather than beside saveLayoutSoon a thousand lines down:
+     observing an element fires the callback once immediately, and `let` in
+     its temporal dead zone throws on read. saveLayoutSoon is a hoisted
+     function declaration so it resolves fine — it was the timer handle that
+     didn't exist yet, losing the first layout save on every page load. */
+  let saveTimer;
+
   new ResizeObserver(() => { resizeSourceCanvas(); renderEditor(); saveLayoutSoon(); }).observe(sourceViewport);
 
   // ---------- Spot Check ----------
@@ -1995,6 +2024,8 @@
       })
       .catch(() => { /* no shapes.json — the dropdown just stays Freeform */ });
   }
+
+
 
   function shapePoints(shape, w, h) {
     const side = Math.min(w, h);
@@ -2227,6 +2258,38 @@
     setInvertClip(false);
     syncHiresButton();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  });
+
+  /* Takes the path and leaves the pixels behind: the open source was only a
+     reference to draw against. Always creates a new layer rather than
+     rewriting the one being edited — turning a photo cut-out into a flat
+     colour would silently destroy the cut, and you can still delete it. */
+  document.getElementById("clipFill").addEventListener("input", (e) => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || !clip.fill) return;
+    clip.fill = e.target.value;
+    // The colour is in the stamp's cache key, so this rebuilds rather than
+    // reusing the old paint.
+    stampCache.delete(clip.id);
+    renderCollage(); renderLayerList(); syncTextarea();
+  });
+
+  document.getElementById("addFillBtn").addEventListener("click", () => {
+    if (!editor.closed || editor.points.length < 3) return;
+    const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
+    const id = "fill-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    collage.clips.push({
+      id, source: "", polygon: editor.points.map((p) => p.slice()),
+      fill: document.getElementById("fillColorInput").value,
+      // Recorded even though there's no image: an inverted fill needs a frame
+      // to be "everything except" of, and this is the frame it was drawn in.
+      baseW: editor.naturalW, baseH: editor.naturalH, useOriginal: false,
+      hires: null, invert: !!editor.invert,
+      x: collage.canvas.width / 2, y: collage.canvas.height / 2,
+      scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
+    });
+    selectedId = id;
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
   });
 
@@ -2743,7 +2806,6 @@
   }
 
   // Resize fires continuously while dragging the handle; only persist the rest.
-  let saveTimer;
   function saveLayoutSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(saveLayout, 300); }
 
   function restoreLayout() {
@@ -2893,6 +2955,12 @@
     }
     controls.forEach((el) => { el.disabled = !!clip.locked; });
     syncFilterInputs(clip);
+
+    // Only a fill layer has a fill to change — the row is meaningless on a
+    // photo cut-out, so it isn't there rather than sitting inert.
+    const fillRow = document.getElementById("clipFillRow");
+    fillRow.hidden = !clip.fill;
+    if (clip.fill) document.getElementById("clipFill").value = clip.fill;
 
     syncScaleInputs(clip.scale);
     document.getElementById("clipBlend").value = clip.blend || "source-over";
@@ -3603,6 +3671,32 @@
     return { canvas: off, w, h, pw, ph };
   }
 
+  /* A colour layer is the same polygon with paint behind it instead of a
+     photograph. No source, so nothing to load, no CORS, no resolution — the
+     stamp is authored at 1:1 and scaled like any other clip.
+
+     Inverted it needs a frame to be "everything except" of, which a fill has
+     no natural size for. baseW/baseH — the source frame the path was drawn
+     against — is that frame, which is why they're recorded even for fills. */
+  function buildFillStamp(polygon, color, invert, frameW, frameH) {
+    const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
+    const minX = invert ? 0 : Math.min(...xs);
+    const minY = invert ? 0 : Math.min(...ys);
+    const w = Math.max(1, invert ? frameW : Math.ceil(Math.max(...xs) - minX));
+    const h = Math.max(1, invert ? frameH : Math.ceil(Math.max(...ys) - minY));
+    const off = document.createElement("canvas");
+    off.width = Math.round(w); off.height = Math.round(h);
+    const octx = off.getContext("2d");
+    const path = new Path2D();
+    if (invert) path.rect(0, 0, w, h);
+    polygon.forEach(([x, y], i) =>
+      i === 0 ? path.moveTo(x - minX, y - minY) : path.lineTo(x - minX, y - minY));
+    path.closePath();
+    octx.fillStyle = color || "#ff5500";
+    octx.fill(path, invert ? "evenodd" : "nonzero");
+    return { canvas: off, w, h, pw: off.width, ph: off.height };
+  }
+
   /* A mask is stored in the coordinates of whichever file it was drawn
      against, so cutting it from a bigger copy means scaling the cut, never the
      stored polygon. Anything that builds a stamp goes through this. */
@@ -3733,6 +3827,21 @@
   }
 
   async function ensureStamp(clip) {
+    /* Fills short-circuit the whole image path — no fetch, so a colour layer
+       renders on the first frame instead of after a network round trip. */
+    if (clip.fill) {
+      const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|fill:" + clip.fill
+        + "|" + (clip.invert ? "inv" : "");
+      let stamp = stampCache.get(clip.id);
+      if (!stamp || stamp.key !== key) {
+        stamp = buildFillStamp(clip.polygon, clip.fill, !!clip.invert,
+          clip.baseW || 1000, clip.baseH || 1000);
+        stamp.key = key;
+        stampCache.set(clip.id, stamp);
+      }
+      return stamp;
+    }
+
     const url = clipUrl(clip);
     let img;
     try { img = await loadImage(url); } catch { return null; }
@@ -4129,7 +4238,8 @@
           <button data-action="lock" class="layer-lock ${c.locked ? "active" : ""}"
                   title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#9632;" : "&#9633;"}</button>
           <input type="text" class="layer-name" spellcheck="false"
-                 value="${escapeHtml(c.name || c.source)}" title="source: ${escapeHtml(c.source)}">
+                 value="${escapeHtml(c.name || c.source || (c.fill ? "fill " + c.fill : ""))}"
+                 title="${c.fill ? `solid fill ${escapeHtml(c.fill)}` : `source: ${escapeHtml(c.source)}`}">
           <span class="layer-z">z${c.z}</span>
           <input type="text" class="layer-link" list="linkGroups" placeholder="&#128279; group"
                  value="${escapeHtml(c.link || "")}" spellcheck="false"
@@ -4147,6 +4257,7 @@
           <button data-action="res" class="layer-res ${c.hires ? "active" : ""}"
                   title="${c.hires ? `high-res source: ${escapeHtml(c.hires)} — click for the web copy` : "click to use a high-res source if one exists"}">${c.hires ? "hi" : "lo"}</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
+          <button data-action="star" title="save this layer to Clippings">&#9733;</button>
           <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
         </div>
@@ -4335,6 +4446,9 @@
       editClipMask(clip);
     } else if (action === "duplicate") {
       duplicateClip(clip);
+    } else if (action === "star") {
+      openStarMenu(clip, e.target);
+      return;
     } else if (action === "flipx") {
       clip.flipX = !clip.flipX;
     } else if (action === "flipy") {
@@ -4745,6 +4859,87 @@
 
   function libEntry(id) { return clipLibrary.find((e) => e.id === id); }
 
+  /* Saves an existing layer to Clippings, whatever it is — a photo cut, an
+     inverted cut, or a solid colour shape. The clipper's own star can't do
+     this: mid-draw there's a path and a reference image but no answer to
+     "did you mean a cut or a shape", whereas a placed layer already is one. */
+  function starClipToLibrary(clip, shapeOnly) {
+    /* Shape only drops the source and the colour, keeping the outline alone —
+       that's what makes one entry reusable on any image, at any colour.
+       Placing it back builds a fill in the clipper's current colour. */
+    clipLibrary.push({
+      id: "lib-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      /* Name the outline after whatever it was cut from, not after the word
+         "shape" — "12190039 (shape)" says where it came from, "shape (shape)"
+         says nothing twice. */
+      name: shapeOnly
+        ? ((clip.name || (clip.source || "").split("/").pop().replace(/\.[^.]+$/, "") || "outline") + " (shape)")
+        : (clip.name || clip.source || (clip.fill ? "fill " + clip.fill : "shape")),
+      source: shapeOnly ? "" : (clip.source || ""),
+      polygon: clip.polygon.map((p) => p.slice()),
+      baseW: clip.baseW, baseH: clip.baseH,
+      useOriginal: shapeOnly ? false : !!clip.useOriginal,
+      fill: shapeOnly ? undefined : (clip.fill || undefined),
+      shapeOnly: !!shapeOnly,
+      invert: !!clip.invert,
+      tags: [],
+      added: Date.now()
+    });
+    saveLibrary();
+    renderLibrary();
+    document.getElementById("libraryStatus").textContent = shapeOnly ? "starred as shape" : "starred";
+  }
+
+  /* Two ways to keep a layer, so the star asks rather than guessing. Default
+     is the whole clip; shape only is the outline on its own. */
+  let starMenuEl = null;
+  let starMenuDismiss = null;
+  /* The dismiss listener has to come off with the menu. Leaving it attached
+     meant each open added another, and a listener still holding a reference
+     to a previous menu saw clicks inside the current one as "outside" and
+     closed it. */
+  function closeStarMenu() {
+    if (starMenuDismiss) {
+      document.removeEventListener("pointerdown", starMenuDismiss);
+      starMenuDismiss = null;
+    }
+    if (starMenuEl) { starMenuEl.remove(); starMenuEl = null; }
+  }
+  function openStarMenu(clip, anchorEl) {
+    closeStarMenu();
+    const menu = document.createElement("div");
+    menu.className = "star-menu";
+    const item = (label, note, fn) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.addEventListener("click", () => { fn(); closeStarMenu(); });
+      menu.appendChild(b);
+      if (note) {
+        const n = document.createElement("div");
+        n.className = "star-menu-note";
+        n.textContent = note;
+        menu.appendChild(n);
+      }
+    };
+    item(clip.fill ? "Save colour shape" : "Save clip",
+         clip.fill ? "keeps the colour" : "keeps the source image",
+         () => starClipToLibrary(clip, false));
+    item("Shape only", "outline alone — reusable on any image",
+         () => starClipToLibrary(clip, true));
+
+    document.body.appendChild(menu);
+    const r = anchorEl.getBoundingClientRect();
+    menu.style.left = Math.min(r.left, innerWidth - menu.offsetWidth - 6) + "px";
+    menu.style.top = Math.min(r.bottom + 4, innerHeight - menu.offsetHeight - 6) + "px";
+    starMenuEl = menu;
+    // Deferred, or this very click would close it again immediately.
+    setTimeout(() => {
+      if (starMenuEl !== menu) return;        // already replaced or closed
+      starMenuDismiss = (ev) => { if (!menu.contains(ev.target)) closeStarMenu(); };
+      document.addEventListener("pointerdown", starMenuDismiss);
+    }, 0);
+  }
+
   document.getElementById("starClipBtn").addEventListener("click", () => {
     if (!editor.closed || editor.points.length < 3) return;
     const source = currentSourceName();
@@ -4755,6 +4950,9 @@
       polygon: editor.points.map((p) => p.slice()),
       baseW: editor.naturalW, baseH: editor.naturalH,
       useOriginal: !!editor.editingUseOriginal,
+      // Which side of the path survives travels with the cut; without this a
+      // starred inverted cut came back as a normal one.
+      invert: !!editor.invert,
       tags: [],
       added: Date.now()
     });
@@ -4767,9 +4965,15 @@
     if (!canvas) return;
     let stamp = libThumbCache.get(entry.id);
     if (!stamp) {
-      let img;
-      try { img = await loadImage(clipUrl(entry)); } catch { return; }
-      stamp = buildStamp(entry.polygon, img, stampScale(entry, img));
+      if (entry.fill || entry.shapeOnly || !entry.source) {
+        // Grey for a bare outline: it has no colour of its own to show.
+        stamp = buildFillStamp(entry.polygon, entry.fill || "#8a8a8a", !!entry.invert,
+          entry.baseW || 1000, entry.baseH || 1000);
+      } else {
+        let img;
+        try { img = await loadImage(clipUrl(entry)); } catch { return; }
+        stamp = buildStamp(entry.polygon, img, stampScale(entry, img), !!entry.invert);
+      }
       libThumbCache.set(entry.id, stamp);
     }
     const fit = Math.min(56 / stamp.w, 56 / stamp.h);
@@ -4835,6 +5039,12 @@
       id, source: entry.source,
       polygon: entry.polygon.map((p) => p.slice()),
       baseW: entry.baseW, baseH: entry.baseH, useOriginal: !!entry.useOriginal,
+      /* A colour entry has no source to load; fill is what makes it draw.
+         A shape-only entry has neither, so it takes the clipper's current
+         colour — that's the point of storing the outline bare. */
+      fill: entry.fill || (entry.shapeOnly || !entry.source
+        ? document.getElementById("fillColorInput").value : undefined),
+      invert: !!entry.invert,
       name: entry.name,
       x: collage.canvas.width / 2, y: collage.canvas.height / 2,
       scale: fit, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
@@ -5744,6 +5954,9 @@
     const live = new Set();
     const add = (u) => { if (u) live.add(absolute(u)); };
     for (const c of collage.clips) {
+      // A fill has no source; resolving one would invent ../photos/edits/-web.jpg
+      // and pin a cache entry that can never exist.
+      if (c.fill) continue;
       add(clipUrl(c));                                    // what's actually drawn
       add(resolveSourceUrl(c.source, c.useOriginal));      // the lo-res round trip
       add(normalizeHires(c.hires));
