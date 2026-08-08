@@ -358,6 +358,10 @@
   #paintSizeValue { font-size: 0.8rem; opacity: 0.7; width: 28px; display: inline-block; }
   /* The brush is live: the pointer has to stop reading as "grab to pan". */
   #collageViewport.painting { cursor: crosshair; }
+  /* A middle-button pan works while the brush is live, so both classes can be
+     on at once. Panning wins — it's the thing actually happening — and it has
+     to be stated after .painting to beat it at equal specificity. */
+  #collageViewport.painting.panning { cursor: grabbing; }
 
   /* The size preview: a ring the true diameter of the brush where it will
      land, so the width is something you see rather than infer from a number.
@@ -949,7 +953,7 @@
       </label>
       <input type="color" id="paintColor" value="#ff5500" title="brush color — clicking a swatch sets this too">
       <button type="button" id="paintBrushBtn" class="tool-on" title="paint">&#128396;&#65039; Brush</button>
-      <button type="button" id="paintEraseBtn" title="rub out what you painted — only this layer, never what's underneath"><span class="eraser-chip"></span> Erase</button>
+      <button type="button" id="paintEraseBtn" title="rub out what you painted — only this layer, never what's underneath. Right-drag erases without switching tool."><span class="eraser-chip"></span> Erase</button>
       <label title="brush diameter — [ and ] step it down and up">Size
         <input type="range" class="mini-range" id="paintSize" min="1" max="200" step="1" value="24">
         <span id="paintSizeValue">24</span></label>
@@ -2424,7 +2428,7 @@
     const d = paintTool.size * (clip.scale || 1) * viewZoom;
     const rect = collageViewport.getBoundingClientRect();
     ring.hidden = false;
-    ring.classList.toggle("erasing", paintTool.erase);
+    ring.classList.toggle("erasing", paintErasing());
     ring.style.borderRadius = paintTool.shape === "square" ? "0" : "50%";
     ring.style.width = ring.style.height = Math.max(3, d) + "px";
     ring.style.left = (brushHover.x - rect.left) + "px";
@@ -3988,6 +3992,15 @@
      being an ordinary layer you can drag and scale on canvas. */
   const paintTool = { color: "#ff5500", size: 24, shape: "round", erase: false, live: true };
 
+  /* Held right button = erase, for as long as it's down. Transient, so it
+     lives beside the tool rather than in it: it must never survive the drag
+     that set it, and releasing must put you back on whichever of Brush or
+     Erase you had chosen. */
+  let paintRightErase = false;
+
+  // What the next stroke will do, tool setting or right button, whichever.
+  function paintErasing() { return paintTool.erase || paintRightErase; }
+
   // The selected layer, but only when it is actually accepting brush strokes.
   function paintTarget() {
     if (!paintTool.live) return null;
@@ -4522,7 +4535,7 @@
       color: paintTool.color,
       size: paintTool.size,
       shape: paintTool.shape,
-      erase: paintTool.erase,
+      erase: paintErasing(),
       pts: [canvasToPaint(clip, pt)]
     };
     if (!clip.strokes) clip.strokes = [];
@@ -4557,6 +4570,31 @@
   }
 
   collageCanvas.addEventListener("mousedown", (e) => {
+    /* Middle button always pans, whatever tool is loaded — with the brush
+       live the canvas is a sheet of paper and there is otherwise no empty
+       space left to grab. preventDefault is what stops Chrome opening its
+       autoscroll widget on top of the drag. */
+    if (e.button === 1) {
+      e.preventDefault();
+      dragMode = "pan";
+      collageViewport.classList.add("panning");
+      return;
+    }
+    /* Right button erases, but only where there is something to erase on —
+       everywhere else it's still the context menu, and taking that away from
+       the whole canvas to serve a tool that isn't loaded would be rude. */
+    if (e.button === 2 && paintTarget()) {
+      e.preventDefault();
+      paintRightErase = true;
+      dragMode = "paint";
+      startStroke(paintTarget(), getCollagePos(e));
+      updateBrushRing();          // the ring goes pink for the duration
+      renderCollage();
+      return;
+    }
+    // Any other non-left button must not lay down a stroke or pick up a layer
+    // on its way past.
+    if (e.button !== 0) return;
     const pt = getCollagePos(e);
     /* Before anything else: with the brush live this canvas is a sheet of
        paper, not a set of draggable objects. Nothing else can claim the
@@ -4637,6 +4675,11 @@
   // Off the canvas there is nowhere for a stroke to land, so the ring goes too.
   collageCanvas.addEventListener("mouseleave", () => { brushHover = null; updateBrushRing(); });
 
+  /* preventDefault on mousedown doesn't stop the menu — it's a separate
+     event. Suppressed only while the brush is live, so right-click behaves
+     normally everywhere else on the canvas. */
+  collageCanvas.addEventListener("contextmenu", (e) => { if (paintTarget()) e.preventDefault(); });
+
   collageCanvas.addEventListener("mousemove", (e) => {
     if (!dragMode) return;
     if (dragMode === "paint") {
@@ -4681,6 +4724,10 @@
   window.addEventListener("mouseup", () => {
     if (paintDrag) {
       paintDrag = null;
+      // Back to whichever of Brush or Erase was actually chosen — the right
+      // button only ever borrowed the eraser.
+      paintRightErase = false;
+      updateBrushRing();
       // The stroke is only worth writing out once it's finished; doing it per
       // move would re-serialise the whole config on every pixel.
       syncTextarea();
