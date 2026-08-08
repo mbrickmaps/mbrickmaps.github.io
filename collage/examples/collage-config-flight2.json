@@ -37,7 +37,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 7,
+      "z": 8,
       "filters": {
         "contrast": 1.25,
         "invert": 1,
@@ -696,7 +696,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "source-over",
-      "z": 17,
+      "z": 18,
       "filters": {
         "saturate": 0,
         "contrast": 1.58,
@@ -1054,7 +1054,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 20,
+      "z": 21,
       "link": "man",
       "locked": true
     },
@@ -1554,7 +1554,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 23,
+      "z": 24,
       "link": "man",
       "locked": true
     },
@@ -2038,7 +2038,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 25,
+      "z": 26,
       "locked": true,
       "link": "bird"
     },
@@ -2518,7 +2518,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 26,
+      "z": 27,
       "name": "sources/lowres/12190392_lowres.avif copy",
       "locked": true,
       "link": "bird"
@@ -2555,7 +2555,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 1,
+      "z": 0,
       "filters": {
         "contrast": 1.25,
         "invert": 1,
@@ -2603,7 +2603,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 6,
+      "z": 1,
       "filters": {
         "contrast": 1.25,
         "invert": 1,
@@ -3115,7 +3115,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 24,
+      "z": 25,
       "link": "man",
       "locked": true,
       "name": "sources/lowres/1780175_lowres.avif copy"
@@ -3468,7 +3468,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 21,
+      "z": 22,
       "link": "man",
       "locked": true,
       "name": "sources/lowres/1780175_lowres.avif copy"
@@ -4105,7 +4105,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "darken",
-      "z": 18,
+      "z": 19,
       "filters": {
         "saturate": 0,
         "contrast": 1.58,
@@ -4192,7 +4192,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 27,
+      "z": 28,
       "locked": true,
       "link": "missle",
       "filters": {
@@ -4277,7 +4277,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 28,
+      "z": 29,
       "name": "sources/lowres/12190412_lowres.avif copy",
       "locked": true,
       "tint": "#fa0505",
@@ -4584,7 +4584,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 14,
+      "z": 15,
       "link": "man2",
       "locked": true
     },
@@ -4884,7 +4884,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 13,
+      "z": 14,
       "name": "sources/lowres/1780175_lowres.avif copy",
       "locked": true,
       "link": "man2"
@@ -5069,7 +5069,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 15,
+      "z": 16,
       "link": "feather",
       "filters": {
         "contrast": 1.2
@@ -5256,7 +5256,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 16,
+      "z": 17,
       "name": "sources/lowres/18044011_lowres.avif copy",
       "locked": true,
       "tint": "#ff0000",
@@ -5459,7 +5459,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 29,
+      "z": 30,
       "locked": true,
       "link": "bird2"
     },
@@ -5655,7 +5655,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 30,
+      "z": 31,
       "name": "sources/lowres/12190150_lowres.avif copy",
       "locked": true,
       "link": "bird2"
@@ -5892,7 +5892,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 31,
+      "z": 32,
       "locked": true
     },
     {
@@ -6127,7 +6127,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 32,
+      "z": 33,
       "name": "sources/lowres/12190150_lowres.avif copy",
       "locked": true
     },
@@ -6427,7 +6427,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "source-over",
-      "z": 33,
+      "z": 34,
       "locked": true
     },
     {
@@ -6726,7 +6726,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "multiply",
-      "z": 34,
+      "z": 35,
       "name": "sources/lowres/12190150_lowres.avif copy",
       "locked": true
     },
@@ -6906,7 +6906,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 5,
+      "z": 6,
       "locked": true,
       "filters": {
         "contrast": 1.86,
@@ -7089,7 +7089,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 4,
+      "z": 5,
       "name": "sources/lowres/12190150_lowres.avif copy",
       "locked": true,
       "filters": {
@@ -7368,7 +7368,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "darken",
-      "z": 19,
+      "z": 20,
       "tint": "#666260",
       "tintAmount": 0.35,
       "locked": true
@@ -7461,7 +7461,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 11,
+      "z": 12,
       "tint": "#666260",
       "tintAmount": 0.35,
       "name": "sources/lowres/12190150_lowres.avif copy",
@@ -7579,7 +7579,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 12,
+      "z": 13,
       "locked": true
     },
     {
@@ -7706,7 +7706,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 10,
+      "z": 11,
       "locked": true
     },
     {
@@ -7833,7 +7833,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "source-over",
-      "z": 9,
+      "z": 10,
       "name": "sources/lowres/12190621_lowres.avif copy",
       "locked": true
     },
@@ -7913,7 +7913,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "source-over",
-      "z": 8,
+      "z": 9,
       "name": "sources/lowres/12190151_lowres.avif copy",
       "locked": true,
       "filters": {
@@ -8017,7 +8017,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "source-over",
-      "z": 22,
+      "z": 23,
       "filters": {
         "contrast": 1.07
       },
@@ -8209,7 +8209,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "color",
-      "z": 35,
+      "z": 36,
       "opacity": 0.76,
       "locked": true
     },
@@ -8459,7 +8459,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "overlay",
-      "z": 36,
+      "z": 37,
       "locked": true
     },
     {
@@ -8548,7 +8548,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "color-burn",
-      "z": 37,
+      "z": 38,
       "opacity": 0.84,
       "filters": {
         "invert": 0.63,
@@ -8673,7 +8673,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "overlay",
-      "z": 38,
+      "z": 39,
       "locked": true
     },
     {
@@ -8942,7 +8942,7 @@
       "flipX": false,
       "flipY": false,
       "blend": "multiply",
-      "z": 39,
+      "z": 40,
       "locked": true
     },
     {
@@ -9211,7 +9211,7 @@
       "flipX": true,
       "flipY": false,
       "blend": "darken",
-      "z": 40,
+      "z": 41,
       "locked": false
     },
     {
@@ -9238,7 +9238,7 @@
       "baseW": 1200,
       "baseH": 761,
       "useOriginal": false,
-      "hires": null,
+      "hires": "https://images.mbricknell.com/full/15541017.avif",
       "invert": false,
       "x": 498.33,
       "y": 150.29,
@@ -9254,6 +9254,145 @@
         "contrast": 1.35,
         "saturate": 0.97
       }
+    },
+    {
+      "id": "clip-msjpwewoqvtr",
+      "source": "sources/lowres/10200019_lowres.avif",
+      "polygon": [
+        [
+          9212.43,
+          4176.64
+        ],
+        [
+          8342.27,
+          3876.54
+        ],
+        [
+          7254.58,
+          3666.47
+        ],
+        [
+          7029.54,
+          3696.48
+        ],
+        [
+          6631.97,
+          3703.99
+        ],
+        [
+          6204.39,
+          3643.97
+        ],
+        [
+          5859.33,
+          3809.02
+        ],
+        [
+          5919.34,
+          4011.58
+        ],
+        [
+          6736.99,
+          4896.87
+        ],
+        [
+          7442.11,
+          5317
+        ],
+        [
+          8027.22,
+          5497.06
+        ],
+        [
+          9309.94,
+          5489.55
+        ],
+        [
+          9557.49,
+          5091.93
+        ],
+        [
+          9700.01,
+          4814.34
+        ],
+        [
+          9407.46,
+          4364.2
+        ]
+      ],
+      "baseW": 11821,
+      "baseH": 8000,
+      "useOriginal": false,
+      "hires": "https://images.mbricknell.com/full/10200019.avif",
+      "invert": false,
+      "x": 753.12,
+      "y": 481.59,
+      "scale": 0.2339,
+      "rotation": -7,
+      "flipX": false,
+      "flipY": false,
+      "blend": "source-over",
+      "z": 7,
+      "filters": {
+        "contrast": 1.25,
+        "brightness": 0.94,
+        "saturate": 0.76
+      }
+    },
+    {
+      "id": "clip-msjq0p2y8598",
+      "source": "sources/lowres/10200019_lowres.avif",
+      "polygon": [
+        [
+          8516.8,
+          2534.26
+        ],
+        [
+          7181.57,
+          3516.94
+        ],
+        [
+          6431.43,
+          3456.93
+        ],
+        [
+          5748.81,
+          2789.31
+        ],
+        [
+          5531.27,
+          2406.74
+        ],
+        [
+          5636.29,
+          2001.67
+        ],
+        [
+          6258.9,
+          1934.16
+        ],
+        [
+          7444.11,
+          2091.69
+        ],
+        [
+          8149.24,
+          2391.74
+        ]
+      ],
+      "baseW": 11821,
+      "baseH": 8000,
+      "useOriginal": false,
+      "hires": "https://images.mbricknell.com/full/10200019.avif",
+      "invert": false,
+      "x": 145.79,
+      "y": 478.54,
+      "scale": 0.2071,
+      "rotation": 1.89,
+      "flipX": false,
+      "flipY": false,
+      "blend": "source-over",
+      "z": 4
     }
   ]
 }
