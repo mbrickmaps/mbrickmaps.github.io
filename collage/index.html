@@ -109,6 +109,10 @@
   #collagePanel { display: flex; flex-direction: column; }
   #collagePanel > .panel-head { order: 0; }
   #collagePanel > #clipProps { order: 1; }
+  /* Same order as the layer controls, so it keeps its DOM position directly
+     beneath them — without this it inherits .row's order:4 and the brush ends
+     up below the canvas, away from the sheet it paints on. */
+  #collagePanel > #paintTools { order: 1; }
   #collagePanel > #clipFilters { order: 2; }
   #collagePanel > .viewport-wrap { order: 3; }
   #collagePanel > .row { order: 4; }
@@ -260,7 +264,7 @@
   .size-full #collageViewport { height: 620px; }
 
   .layers-panel {
-    flex: 0 0 300px; align-self: stretch; max-height: 620px; overflow-y: auto;
+    flex: 0 0 380px; align-self: stretch; max-height: 620px; overflow-y: auto;
     background: #151515; border: 1px solid var(--border); border-radius: 6px; padding: 8px;
     transition: flex-basis 0.15s ease;
   }
@@ -287,7 +291,7 @@
      see that a panel has been set to 1/4 on a wide screen, which is what left
      the canvas and the layers column demanding ~536px side by side and
      overflowing a 307px column. */
-  @container (max-width: 620px) {
+  @container (max-width: 700px) {
     .viewport-wrap { flex-wrap: wrap; }
     .layers-panel { flex: 1 1 100%; max-height: 300px; }
     /* Stacked, so there's no vertical divider to sit on. */
@@ -330,6 +334,47 @@
     font-size: 0.8rem; opacity: 0.7; display: inline-block; width: 38px;
   }
   #clipProps label button { padding: 1px 6px; font-size: 0.75rem; }
+
+  /* Paint layer bar. Only in the DOM while a paint layer is selected — the
+     brush settings mean nothing on a cut-out or a fill. */
+  #paintTools { border-top: 1px solid var(--border); padding-top: 8px; }
+  #paintTools[hidden] { display: none; }
+  #paintTools button { padding: 2px 8px; font-size: 0.78rem; }
+  /* Brush vs eraser is a two-state pick, so the inactive one has to read as
+     off rather than merely unpressed. */
+  #paintTools button.tool-on { background: var(--accent2); color: #000; }
+  /* Pink Pearl. There is no pink square in the emoji set, so the eraser is a
+     drawn chip — and the active state goes pink with it, so the two tools
+     never light up the same color as each other. */
+  .eraser-chip {
+    display: inline-block; width: 10px; height: 10px; vertical-align: -1px;
+    background: #f2a0b4; border: 1px solid #b76d80; border-radius: 2px;
+  }
+  /* Scoped through #paintTools to outrank the generic tool-on above it —
+     one id and a class loses to one id, a class and a type. */
+  #paintTools #paintEraseBtn.tool-on { background: #f2a0b4; border-color: #f2a0b4; }
+  #paintTools #paintEraseBtn.tool-on .eraser-chip { background: #fff; border-color: #b76d80; }
+  #paintTools label { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; }
+  #paintSizeValue { font-size: 0.8rem; opacity: 0.7; width: 28px; display: inline-block; }
+  /* The brush is live: the pointer has to stop reading as "grab to pan". */
+  #collageViewport.painting { cursor: crosshair; }
+
+  /* The size preview: a ring the true diameter of the brush where it will
+     land, so the width is something you see rather than infer from a number.
+     A DOM circle rather than something drawn into the canvas — following the
+     pointer must not cost a composite of every layer per mousemove.
+     White ring inside a black one so it stays visible over paint of any
+     color, and pointer-events:none so it can never swallow a stroke. */
+  #brushCursor {
+    position: absolute; z-index: 25; pointer-events: none;
+    border-radius: 50%; box-sizing: border-box;
+    border: 1px solid #fff; outline: 1px solid rgba(0, 0, 0, 0.85);
+    transform: translate(-50%, -50%);
+  }
+  #brushCursor[hidden] { display: none; }
+  /* Matches the Pink Pearl on the Erase button, so the ring says which tool
+     is loaded without anyone having to look away from the canvas. */
+  #brushCursor.erasing { border-color: #f2a0b4; }
   /* A grid rather than a wrapping flex row: eight sliders on one flex line
      overflow the panel edge, and auto-fit keeps them tidy at any panel width. */
   #clipFilters {
@@ -665,8 +710,8 @@
           <button id="flipPathXBtn" title="mirror the clipping path left-to-right about its centre">&#8596;</button>
           <button id="flipPathYBtn" title="mirror the clipping path top-to-bottom about its centre">&#8597;</button>
           <button id="starClipBtn" title="save to clip library">&#9733;</button>
-          <input type="color" id="fillColorInput" value="#ff5500" title="colour for a solid fill layer">
-          <button id="addFillBtn" title="add this path to the collage as a solid colour layer instead of a cut-out — set its blend to &quot;color&quot; to tint a b&amp;w photo underneath while keeping its tones">Fill</button>
+          <input type="color" id="fillColorInput" value="#ff5500" title="color for a solid fill layer">
+          <button id="addFillBtn" title="add this path to the collage as a solid color layer instead of a cut-out — set its blend to &quot;color&quot; to tint a b&amp;w photo underneath while keeping its tones">Fill</button>
           <button id="addToCollageBtn" disabled>Add to collage</button>
         </div>
         <div class="view-controls">
@@ -897,6 +942,24 @@
         </select>
       </label>
     </div>
+    <div class="row" id="paintTools" hidden>
+      <span class="section-label">Paint layer</span>
+      <label title="untick to move, scale or rotate this layer on canvas instead of painting on it">
+        <input type="checkbox" id="paintEnabled" checked> brush live
+      </label>
+      <input type="color" id="paintColor" value="#ff5500" title="brush color — clicking a swatch sets this too">
+      <button type="button" id="paintBrushBtn" class="tool-on" title="paint">&#128396;&#65039; Brush</button>
+      <button type="button" id="paintEraseBtn" title="rub out what you painted — only this layer, never what's underneath"><span class="eraser-chip"></span> Erase</button>
+      <label title="brush diameter — [ and ] step it down and up">Size
+        <input type="range" class="mini-range" id="paintSize" min="1" max="200" step="1" value="24">
+        <span id="paintSizeValue">24</span></label>
+      <label>Nib
+        <select id="paintShape" title="round ends and turns softly; square ends flat and corners sharply">
+          <option value="round" selected>&#9679; round</option>
+          <option value="square">&#9632; square</option>
+        </select></label>
+      <button type="button" id="paintClearBtn" title="erase every stroke on this layer">Clear Layer</button>
+    </div>
     <!-- Sliders are generated from CLIP_FILTERS so the list is defined once. -->
     <div id="clipFilters">
       <span class="section-label">Filters
@@ -913,6 +976,7 @@
           <button type="button" id="zoomInBtn" title="zoom in">+</button>
           <button type="button" id="fitViewBtn">Fit</button>
         </div>
+        <div id="brushCursor" hidden></div>
         <div class="quick-actions" id="clipQuickActions" hidden>
           <button data-qa="flipx" title="flip horizontal">&#8596;</button>
           <button data-qa="flipy" title="flip vertical">&#8597;</button>
@@ -927,6 +991,7 @@
         <h2>Layers</h2>
         <datalist id="linkGroups"></datalist>
         <div class="row layers-tools">
+          <button type="button" id="addPaintBtn" title="add an empty paint layer the size of the canvas — a cel you can brush on directly">&#128396;&#65039; Paint layer</button>
           <button type="button" id="lockAllBtn" title="lock every layer">Lock all</button>
           <button type="button" id="unlockAllBtn" title="unlock every layer">Unlock all</button>
           <label title="treat every layer as one group — overrides the per-layer groups until unticked">
@@ -2271,12 +2336,12 @@
   /* Takes the path and leaves the pixels behind: the open source was only a
      reference to draw against. Always creates a new layer rather than
      rewriting the one being edited — turning a photo cut-out into a flat
-     colour would silently destroy the cut, and you can still delete it. */
+     color would silently destroy the cut, and you can still delete it. */
   document.getElementById("clipFill").addEventListener("input", (e) => {
     const clip = collage.clips.find((c) => c.id === selectedId);
     if (!clip || !clip.fill) return;
     clip.fill = e.target.value;
-    // The colour is in the stamp's cache key, so this rebuilds rather than
+    // The color is in the stamp's cache key, so this rebuilds rather than
     // reusing the old paint.
     stampCache.delete(clip.id);
     renderCollage(); renderLayerList(); syncTextarea();
@@ -2298,6 +2363,146 @@
     });
     selectOnly(id);
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  });
+
+  /* ---------- paint layer controls ----------
+     An empty cel the size of the canvas, sitting on top. It needs no source
+     and no path, so unlike Fill it isn't built from whatever the clipper
+     happens to be holding — it's added straight from the layers panel. */
+  document.getElementById("addPaintBtn").addEventListener("click", () => {
+    const z = collage.clips.length ? Math.max(...collage.clips.map((c) => c.z)) + 1 : 1;
+    const id = "paint-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    collage.clips.push({
+      id, paint: true, source: "", polygon: [], strokes: [], rev: 0,
+      // The sheet's own size. Everything above the stamp reads w/h from here,
+      // so a canvas resize later leaves existing paint where it was drawn
+      // rather than stretching it.
+      baseW: collage.canvas.width, baseH: collage.canvas.height,
+      useOriginal: false, hires: null, invert: false,
+      x: collage.canvas.width / 2, y: collage.canvas.height / 2,
+      scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
+    });
+    selectOnly(id);
+    paintTool.live = true;
+    document.getElementById("paintEnabled").checked = true;
+    renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
+  });
+
+  // Rebuilds from the strokes array rather than trusting the live bitmap —
+  // the only way to take paint off is to draw the sheet again without it.
+  function repaintLayer(clip) {
+    clip.rev = (clip.rev || 0) + 1;
+    renderCollage(); syncTextarea();
+  }
+
+  function setPaintErase(on) {
+    paintTool.erase = on;
+    document.getElementById("paintBrushBtn").classList.toggle("tool-on", !on);
+    document.getElementById("paintEraseBtn").classList.toggle("tool-on", on);
+    updatePaintCursor();
+  }
+
+  // Only the viewport knows whether the pointer is a brush or a hand.
+  function updatePaintCursor() {
+    collageViewport.classList.toggle("painting", !!paintTarget());
+    updateBrushRing();
+  }
+
+  /* ---- brush size preview ----
+     Where the pointer last was, in client coordinates. Kept so the ring can
+     be re-sized in place when the brush, the zoom or the layer's own scale
+     changes — without it the new size wouldn't show until you moved. */
+  let brushHover = null;
+
+  function updateBrushRing() {
+    const ring = document.getElementById("brushCursor");
+    const clip = paintTarget();
+    if (!clip || !brushHover) { ring.hidden = true; return; }
+    /* Screen diameter, not stroke width: the brush is measured in the cel's
+       own units, so it has to go through the layer's scale and then the
+       viewport zoom to end up the size it will actually paint. */
+    const d = paintTool.size * (clip.scale || 1) * viewZoom;
+    const rect = collageViewport.getBoundingClientRect();
+    ring.hidden = false;
+    ring.classList.toggle("erasing", paintTool.erase);
+    ring.style.borderRadius = paintTool.shape === "square" ? "0" : "50%";
+    ring.style.width = ring.style.height = Math.max(3, d) + "px";
+    ring.style.left = (brushHover.x - rect.left) + "px";
+    ring.style.top = (brushHover.y - rect.top) + "px";
+  }
+
+  /* The listeners themselves are registered further down, with the rest of the
+     canvas input — collageCanvas isn't declared until well after this. */
+
+  document.getElementById("paintEnabled").addEventListener("change", (e) => {
+    paintTool.live = e.target.checked;
+    updatePaintCursor();
+    renderCollage();          // handles appear or vanish with it
+  });
+
+  document.getElementById("paintColor").addEventListener("input", (e) => {
+    paintTool.color = e.target.value;
+    setPaintErase(false);     // picking a color means you want to paint with it
+  });
+
+  document.getElementById("paintBrushBtn").addEventListener("click", () => setPaintErase(false));
+  document.getElementById("paintEraseBtn").addEventListener("click", () => setPaintErase(true));
+
+  /* One way in for the size, so the slider, the label and the ring can't get
+     out of step with each other however the size was changed. */
+  function setPaintSize(n) {
+    const el = document.getElementById("paintSize");
+    paintTool.size = Math.min(Number(el.max), Math.max(Number(el.min), Math.round(n)));
+    el.value = paintTool.size;
+    document.getElementById("paintSizeValue").textContent = paintTool.size;
+    updateBrushRing();      // the ring is the preview — it has to move with the size
+  }
+
+  document.getElementById("paintSize").addEventListener("input", (e) => {
+    setPaintSize(Number(e.target.value) || 1);
+  });
+
+  /* [ and ] resize the brush, as they do in every paint program.
+     Multiplied rather than stepped by a flat number, so it stays useful at
+     both ends — 1px at a time is sensible at hairline sizes and interminable
+     at 200. Dividing by the same factor on the way down is what makes it
+     reversible: an equal-and-opposite step of 15% *of the current size* would
+     land 24 -> 37 -> 22, because the way back is measured off a bigger brush.
+     The floor of 1 keeps small sizes moving, where the ratio rounds to nothing. */
+  const PAINT_STEP = 1.15;
+
+  function stepPaintSize(dir) {
+    const scaled = Math.round(dir > 0 ? paintTool.size * PAINT_STEP : paintTool.size / PAINT_STEP);
+    setPaintSize(scaled === paintTool.size ? paintTool.size + dir : scaled);
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "[" && e.key !== "]") return;
+    // Never while typing — [ is a character before it's a shortcut.
+    if (e.target instanceof Element && e.target.closest("input, textarea, select")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    /* Gated on the paint bar being usable rather than on the brush being
+       live: the keys can't collide with anything while a paint layer is the
+       selection, and resizing before you switch the brush back on is
+       reasonable. */
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || !clip.paint || clip.locked) return;
+    e.preventDefault();
+    stepPaintSize(e.key === "]" ? 1 : -1);
+  });
+
+  document.getElementById("paintShape").addEventListener("change", (e) => {
+    paintTool.shape = e.target.value;
+    updateBrushRing();
+  });
+
+  document.getElementById("paintClearBtn").addEventListener("click", () => {
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    if (!clip || !clip.paint || clip.locked || !clip.strokes?.length) return;
+    const n = clip.strokes.length;
+    if (!confirm(`Clear ${n} stroke${n === 1 ? "" : "s"} from this paint layer?`)) return;
+    clip.strokes = [];
+    repaintLayer(clip);
   });
 
   // ---------- source picker (custom dropdown w/ hover preview) ----------
@@ -2524,6 +2729,9 @@
     document.getElementById("zoomLabel").textContent = Math.round(viewZoom * 100) + "%";
     renderOverview();
     updateQuickActions();
+    // The ring is in screen pixels, so a zoom changes its size even though
+    // the brush itself hasn't changed.
+    updateBrushRing();
   }
 
   // ---------- overview / navigator thumbnail ----------
@@ -2988,6 +3196,17 @@
     filters.classList.toggle("inactive", !clip);
     const controls = [...panel.querySelectorAll("input, select, button"),
                      ...filters.querySelectorAll("input, button")];
+    const paintRow = document.getElementById("paintTools");
+    paintRow.hidden = !clip || !clip.paint;
+    [...paintRow.querySelectorAll("input, select, button")].forEach((el) => { el.disabled = !!clip?.locked; });
+    if (clip?.paint) {
+      document.getElementById("paintColor").value = paintTool.color;
+      document.getElementById("paintSize").value = paintTool.size;
+      document.getElementById("paintSizeValue").textContent = paintTool.size;
+      document.getElementById("paintShape").value = paintTool.shape;
+      document.getElementById("paintEnabled").checked = paintTool.live;
+    }
+    updatePaintCursor();
     if (!clip) {
       controls.forEach((el) => { el.disabled = true; });
       syncFilterInputs(null);
@@ -3461,6 +3680,16 @@
       document.getElementById("paletteStatus").textContent = "select an unlocked layer first";
       return;
     }
+    /* On a paint layer a swatch loads the brush instead of tinting the sheet.
+       Tinting a cel you painted yourself would recolor every stroke on it at
+       once, which is the opposite of what picking a color mid-paint means. */
+    if (clip.paint) {
+      paintTool.color = sw.dataset.color;
+      document.getElementById("paintColor").value = sw.dataset.color;
+      setPaintErase(false);
+      document.getElementById("paletteStatus").textContent = "brush color set";
+      return;
+    }
     document.getElementById("clipTint").value = sw.dataset.color;
     setTint(sw.dataset.color);
     document.getElementById("paletteStatus").textContent = "";
@@ -3540,6 +3769,8 @@
   function syncScaleInputs(value) {
     document.getElementById("clipScale").value = scaleToSlider(value);
     document.getElementById("clipScaleValue").textContent = value.toFixed(2);
+    // Scaling a paint cel scales the brush with it, so the preview follows.
+    updateBrushRing();
   }
 
   // Bounding center of a set of clips — the pivot a group scales about.
@@ -3711,7 +3942,7 @@
     return { canvas: off, w, h, pw, ph };
   }
 
-  /* A colour layer is the same polygon with paint behind it instead of a
+  /* A color layer is the same polygon with paint behind it instead of a
      photograph. No source, so nothing to load, no CORS, no resolution — the
      stamp is authored at 1:1 and scaled like any other clip.
 
@@ -3735,6 +3966,109 @@
     octx.fillStyle = color || "#ff5500";
     octx.fill(path, invert ? "evenodd" : "nonzero");
     return { canvas: off, w, h, pw: off.width, ph: off.height };
+  }
+
+  /* ---------- paint layers ----------
+     A cel: a transparent sheet the size of the canvas that you brush on
+     directly, rather than a shape cut from a photograph. Strokes are stored as
+     vectors — color, width, whether they add or rub out, and the points the
+     pointer traced — so the layer survives a save/load as a few kilobytes of
+     JSON instead of a megabyte of base64, and re-rasterises at whatever
+     resolution the export asks for.
+
+     Authored at canvas size but rasterised at PAINT_K times that, so a 2x or
+     4x PNG export still has clean brush edges. Everything above the stamp
+     works in the layer's own w/h, exactly as it does for a photo cut-out, so
+     scale, rotation and flip come for free. */
+  const PAINT_K = 2;
+
+  /* One brush, shared by every paint layer — switching layers keeps the
+     color and width you were working with, which is what a paint program
+     does. `live` is the escape hatch: with it off a paint layer goes back to
+     being an ordinary layer you can drag and scale on canvas. */
+  const paintTool = { color: "#ff5500", size: 24, shape: "round", erase: false, live: true };
+
+  // The selected layer, but only when it is actually accepting brush strokes.
+  function paintTarget() {
+    if (!paintTool.live) return null;
+    const clip = collage.clips.find((c) => c.id === selectedId);
+    return clip && clip.paint && !clip.locked && !clip.hidden ? clip : null;
+  }
+
+  /* Round caps and joins on a dense pointer trail read as a smooth brush, and
+     they let a live stroke draw only its newest segment onto the existing
+     bitmap — a segment appended this way is pixel-identical to the same
+     segment in a full rebuild, which is what keeps the incremental path and
+     the rebuild path from disagreeing. Curve fitting would not have that
+     property. */
+  function paintStyle(octx, stroke) {
+    octx.globalCompositeOperation = stroke.erase ? "destination-out" : "source-over";
+    octx.strokeStyle = octx.fillStyle = stroke.color || "#ffffff";
+    octx.lineWidth = Math.max(0.5, stroke.size || 1);
+    /* A square nib is a square cap and a mitred join — that combination is
+       what makes a stroke end flat and corner sharply, the way a chisel brush
+       or a flat marker does. Anything saved before shapes existed is round,
+       which is what it was drawn with. */
+    const square = stroke.shape === "square";
+    octx.lineCap = square ? "square" : "round";
+    octx.lineJoin = square ? "miter" : "round";
+  }
+
+  // `from` lets a live stroke redraw just its tail instead of the whole trail.
+  function paintStroke(octx, stroke, from = 0) {
+    const pts = stroke.pts;
+    if (!pts.length) return;
+    octx.save();
+    paintStyle(octx, stroke);
+    if (pts.length === 1) {
+      // A click with no drag is a dab, and a zero-length line strokes nothing
+      // — so the nib has to be filled by hand, in its own shape.
+      const rad = Math.max(0.25, (stroke.size || 1) / 2);
+      if (stroke.shape === "square") {
+        octx.fillRect(pts[0][0] - rad, pts[0][1] - rad, rad * 2, rad * 2);
+      } else {
+        octx.beginPath();
+        octx.arc(pts[0][0], pts[0][1], rad, 0, Math.PI * 2);
+        octx.fill();
+      }
+    } else {
+      octx.beginPath();
+      for (let i = Math.max(0, from); i < pts.length; i++) {
+        i === Math.max(0, from) ? octx.moveTo(pts[i][0], pts[i][1]) : octx.lineTo(pts[i][0], pts[i][1]);
+      }
+      octx.stroke();
+    }
+    octx.restore();
+  }
+
+  /* The 2d context is kept on the stamp so a live stroke can append to the
+     bitmap that is already on screen. Nothing else in here needs it, but
+     rebuilding a hundred strokes on every pointermove is the difference
+     between a brush and a slideshow. */
+  function buildPaintStamp(clip) {
+    const w = Math.max(1, clip.baseW || collage.canvas.width);
+    const h = Math.max(1, clip.baseH || collage.canvas.height);
+    const off = document.createElement("canvas");
+    off.width = Math.round(w * PAINT_K);
+    off.height = Math.round(h * PAINT_K);
+    const octx = off.getContext("2d");
+    octx.scale(PAINT_K, PAINT_K);
+    for (const s of clip.strokes || []) paintStroke(octx, s);
+    return { canvas: off, w, h, pw: off.width, ph: off.height, octx };
+  }
+
+  /* Canvas point -> a point on the cel, by undoing exactly what drawClip
+     does. Without this the brush would drift the moment the layer was moved,
+     scaled or turned. */
+  function canvasToPaint(clip, [px, py]) {
+    const rad = -clip.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const dx = px - clip.x, dy = py - clip.y;
+    const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
+    const sx = (clip.scale || 1) * (clip.flipX ? -1 : 1);
+    const sy = (clip.scale || 1) * (clip.flipY ? -1 : 1);
+    const w = clip.baseW || collage.canvas.width, h = clip.baseH || collage.canvas.height;
+    return [rx / sx + w / 2, ry / sy + h / 2];
   }
 
   /* A mask is stored in the coordinates of whichever file it was drawn
@@ -3772,7 +4106,17 @@
   }
 
   function hitTestClip(clip, stamp, pt) {
-    return pointInPolygon(pt, localCorners(stamp).map((c) => transformPoint(clip, c)));
+    if (!pointInPolygon(pt, localCorners(stamp).map((c) => transformPoint(clip, c)))) return false;
+    /* A paint cel is canvas-sized and mostly empty, so its bounding box would
+       swallow every click meant for something beneath it. Hit only where
+       there's actually ink — one pixel read, and only ever on paint layers. */
+    if (clip.paint) {
+      const [lx, ly] = canvasToPaint(clip, pt);
+      const px = Math.round(lx * PAINT_K), py = Math.round(ly * PAINT_K);
+      if (px < 0 || py < 0 || px >= stamp.pw || py >= stamp.ph) return false;
+      try { return stamp.octx.getImageData(px, py, 1, 1).data[3] > 8; } catch { return true; }
+    }
+    return true;
   }
 
   function getHandles(clip, stamp) {
@@ -3856,6 +4200,10 @@
     corners.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
     ctx.closePath();
     ctx.stroke();
+    /* While the brush is live the handles are unreachable — mousedown paints
+       before it ever gets to them — so drawing them would be a lie. The
+       outline stays: it's the edge of the sheet you're painting on. */
+    if (clip.paint && paintTool.live) { ctx.restore(); return; }
     const handles = getHandles(clip, stamp);
     ctx.beginPath();
     ctx.moveTo((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2);
@@ -3867,7 +4215,23 @@
   }
 
   async function ensureStamp(clip) {
-    /* Fills short-circuit the whole image path — no fetch, so a colour layer
+    /* Paint has no source either. rev is bumped only when the strokes array
+       is replaced wholesale — undo, clear, a loaded config — because a live
+       stroke draws itself straight onto the cached bitmap and must not
+       trigger a rebuild underneath its own brush. */
+    if (clip.paint) {
+      const key = clip.id + "|paint:" + (clip.baseW || 0) + "x" + (clip.baseH || 0)
+        + "|rev:" + (clip.rev || 0);
+      let stamp = stampCache.get(clip.id);
+      if (!stamp || stamp.key !== key) {
+        stamp = buildPaintStamp(clip);
+        stamp.key = key;
+        stampCache.set(clip.id, stamp);
+      }
+      return stamp;
+    }
+
+    /* Fills short-circuit the whole image path — no fetch, so a color layer
        renders on the first frame instead of after a network round trip. */
     if (clip.fill) {
       const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|fill:" + clip.fill
@@ -4120,7 +4484,9 @@
     const qa = document.getElementById("clipQuickActions");
     const clip = collage.clips.find((c) => c.id === selectedId);
     const stamp = clip && stampCache.get(clip.id);
-    if (!clip || !stamp || hideOutlines || clip.locked) { qa.hidden = true; return; }
+    // A live paint layer's bar would sit over the sheet you're brushing on and
+    // eat the strokes that land on it.
+    if (!clip || !stamp || hideOutlines || clip.locked || (clip.paint && paintTool.live)) { qa.hidden = true; return; }
     // Anchored below the bottom-left corner: outside the bounding box, and at
     // the far end from the rotate handle (which sits above the top edge).
     const [cornerX, cornerY] = transformPoint(clip, localCorners(stamp)[3]);
@@ -4146,8 +4512,63 @@
     return [(e.clientX - rect.left) * (collageCanvas.width / rect.width), (e.clientY - rect.top) * (collageCanvas.height / rect.height)];
   }
 
+  /* The stroke being laid down right now: the clip it belongs to, the stroke
+     object already pushed onto that clip, and how much of it has been drawn
+     onto the cached bitmap. */
+  let paintDrag = null;
+
+  function startStroke(clip, pt) {
+    const stroke = {
+      color: paintTool.color,
+      size: paintTool.size,
+      shape: paintTool.shape,
+      erase: paintTool.erase,
+      pts: [canvasToPaint(clip, pt)]
+    };
+    if (!clip.strokes) clip.strokes = [];
+    clip.strokes.push(stroke);
+    paintDrag = { clip, stroke, drawn: 0 };
+    paintTip();
+  }
+
+  function extendStroke(clip, pt) {
+    const p = canvasToPaint(clip, pt);
+    const last = paintDrag.stroke.pts[paintDrag.stroke.pts.length - 1];
+    // A pointermove that hasn't travelled anywhere adds a point that strokes
+    // nothing and bloats the saved JSON.
+    if (Math.abs(p[0] - last[0]) < 0.4 && Math.abs(p[1] - last[1]) < 0.4) return;
+    paintDrag.stroke.pts.push(p);
+    paintTip();
+  }
+
+  /* Appends only what's new to the bitmap already on screen. The stamp's key
+     is untouched, so ensureStamp hands back this same canvas rather than
+     rebuilding every stroke at 60fps — but the derived copies stampFace and
+     playbackProxy hold are now stale, and dropping their keys is what makes
+     the fresh paint show up under a filter or during playback. */
+  function paintTip() {
+    const stamp = stampCache.get(paintDrag.clip.id);
+    if (!stamp || !stamp.octx) return;
+    const { stroke } = paintDrag;
+    paintStroke(stamp.octx, stroke, Math.max(0, paintDrag.drawn - 1));
+    paintDrag.drawn = stroke.pts.length;
+    stamp.faceKey = null;
+    stamp.proxyKey = null;
+  }
+
   collageCanvas.addEventListener("mousedown", (e) => {
     const pt = getCollagePos(e);
+    /* Before anything else: with the brush live this canvas is a sheet of
+       paper, not a set of draggable objects. Nothing else can claim the
+       click — not the handles, not the layer underneath, and not the empty
+       -space deselect that would otherwise drop the very layer being painted. */
+    const target = paintTarget();
+    if (target) {
+      dragMode = "paint";
+      startStroke(target, pt);
+      renderCollage();
+      return;
+    }
     const sel = collage.clips.find((c) => c.id === selectedId);
     if (sel && !sel.locked) {
       const stamp = stampCache.get(sel.id);
@@ -4206,8 +4627,22 @@
     renderCollage(); renderLayerList(); updateClipProps();
   });
 
+  /* Its own listener rather than a branch in the drag handler below: the ring
+     has to track the pointer whether or not a drag is in progress, and that
+     handler returns immediately when there isn't one. */
+  collageCanvas.addEventListener("mousemove", (e) => {
+    brushHover = { x: e.clientX, y: e.clientY };
+    updateBrushRing();
+  });
+  // Off the canvas there is nowhere for a stroke to land, so the ring goes too.
+  collageCanvas.addEventListener("mouseleave", () => { brushHover = null; updateBrushRing(); });
+
   collageCanvas.addEventListener("mousemove", (e) => {
     if (!dragMode) return;
+    if (dragMode === "paint") {
+      if (paintDrag) { extendStroke(paintDrag.clip, getCollagePos(e)); renderCollage(); }
+      return;
+    }
     if (dragMode === "pan") {
       panX += e.movementX;
       panY += e.movementY;
@@ -4244,6 +4679,12 @@
   });
 
   window.addEventListener("mouseup", () => {
+    if (paintDrag) {
+      paintDrag = null;
+      // The stroke is only worth writing out once it's finished; doing it per
+      // move would re-serialise the whole config on every pixel.
+      syncTextarea();
+    }
     dragMode = null;
     scaleDrag = null;
     rotateDrag = null;
@@ -4292,8 +4733,9 @@
           <button data-action="lock" class="layer-lock ${c.locked ? "active" : ""}"
                   title="${c.locked ? "unlock" : "lock"}">${c.locked ? "&#9632;" : "&#9633;"}</button>
           <input type="text" class="layer-name" spellcheck="false"
-                 value="${escapeHtml(c.name || c.source || (c.fill ? "fill " + c.fill : ""))}"
-                 title="${c.fill ? `solid fill ${escapeHtml(c.fill)}` : `source: ${escapeHtml(c.source)}`}">
+                 value="${escapeHtml(c.name || c.source || (c.paint ? "paint" : c.fill ? "fill " + c.fill : ""))}"
+                 title="${c.paint ? `paint layer — ${(c.strokes || []).length} stroke(s)`
+                   : c.fill ? `solid fill ${escapeHtml(c.fill)}` : `source: ${escapeHtml(c.source)}`}">
           <span class="layer-z">z${c.z}</span>
           <input type="text" class="layer-link" list="linkGroups" placeholder="&#128279; group"
                  value="${escapeHtml(c.link || "")}" spellcheck="false"
@@ -4308,10 +4750,11 @@
           <button data-action="flipx" class="${c.flipX ? "active" : ""}" title="flip horizontal">&#8596;</button>
           <button data-action="flipy" class="${c.flipY ? "active" : ""}" title="flip vertical">&#8597;</button>
           <button data-action="guides" class="${c.guides ? "active" : ""}" title="alignment guides">&#128208;</button>
+          ${c.paint ? "" : `
           <button data-action="res" class="layer-res ${c.hires ? "active" : ""}"
                   title="${c.hires ? `high-res source: ${escapeHtml(c.hires)} — click for the web copy` : "click to use a high-res source if one exists"}">${c.hires ? "hi" : "lo"}</button>
           <button data-action="edit" title="edit mask">&#9998;</button>
-          <button data-action="star" title="save this layer to Clippings">&#9733;</button>
+          <button data-action="star" title="save this layer to Clippings">&#9733;</button>`}
           <button data-action="duplicate" title="duplicate">&#10697;</button>
           <button data-action="delete" title="delete">&#10005;</button>
         </div>
@@ -4350,9 +4793,11 @@
       ...clip,
       id: newId,
       // Deep copy: the copy owns its mask, so editing either one's polygon
-      // later never touches the other.
-      polygon: clip.polygon.map((p) => p.slice()),
-      name: (clip.name || clip.source) + " copy",
+      // later never touches the other. Strokes are the same argument — paint
+      // on the copy must not turn up on the original.
+      polygon: (clip.polygon || []).map((p) => p.slice()),
+      ...(clip.strokes ? { strokes: clip.strokes.map((s) => ({ ...s, pts: s.pts.map((p) => p.slice()) })) } : {}),
+      name: (clip.name || clip.source || (clip.paint ? "paint" : "")) + " copy",
       locked: false,
       // Lands exactly on top of the original — the copy is a stack, not an
       // offset, so anything aligned stays aligned until you move it.
@@ -4640,7 +5085,13 @@
   }
 
   function tidyClip(c) {
-    const out = { ...c, polygon: c.polygon.map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)]) };
+    const out = { ...c, polygon: (c.polygon || []).map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)]) };
+    /* Brush points come in at pointer resolution, which is already whole
+       pixels — one decimal is generous, and it roughly halves the size of a
+       heavily painted layer in the config. */
+    if (c.strokes) {
+      out.strokes = c.strokes.map((s) => ({ ...s, pts: s.pts.map(([x, y]) => [roundTo(x, 1), roundTo(y, 1)]) }));
+    }
     out.x = roundTo(c.x, 2);
     out.y = roundTo(c.y, 2);
     out.scale = roundTo(c.scale, 4);
@@ -4704,6 +5155,19 @@
     }
     ctx.scale(scale, scale);
     for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
+      // Paint and fill layers have no file to fetch — going down the image
+      // path would throw on an empty URL and drop them out of the thumbnail.
+      if (clip.paint) {
+        try { drawClip(ctx, clip, buildPaintStamp(clip)); } catch { /* skip a bad clip */ }
+        continue;
+      }
+      if (clip.fill) {
+        try {
+          drawClip(ctx, clip, buildFillStamp(clip.polygon, clip.fill, !!clip.invert,
+            clip.baseW || cw, clip.baseH || ch));
+        } catch { /* skip a bad clip */ }
+        continue;
+      }
       let img;
       try { img = await loadImage(clipUrl(clip)); } catch { continue; }
       try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img))); } catch { /* skip a bad clip */ }
@@ -4918,13 +5382,13 @@
   function libEntry(id) { return clipLibrary.find((e) => e.id === id); }
 
   /* Saves an existing layer to Clippings, whatever it is — a photo cut, an
-     inverted cut, or a solid colour shape. The clipper's own star can't do
+     inverted cut, or a solid color shape. The clipper's own star can't do
      this: mid-draw there's a path and a reference image but no answer to
      "did you mean a cut or a shape", whereas a placed layer already is one. */
   function starClipToLibrary(clip, shapeOnly) {
-    /* Shape only drops the source and the colour, keeping the outline alone —
-       that's what makes one entry reusable on any image, at any colour.
-       Placing it back builds a fill in the clipper's current colour. */
+    /* Shape only drops the source and the color, keeping the outline alone —
+       that's what makes one entry reusable on any image, at any color.
+       Placing it back builds a fill in the clipper's current color. */
     clipLibrary.push({
       id: "lib-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       /* Name the outline after whatever it was cut from, not after the word
@@ -4979,8 +5443,8 @@
         menu.appendChild(n);
       }
     };
-    item(clip.fill ? "Save colour shape" : "Save clip",
-         clip.fill ? "keeps the colour" : "keeps the source image",
+    item(clip.fill ? "Save color shape" : "Save clip",
+         clip.fill ? "keeps the color" : "keeps the source image",
          () => starClipToLibrary(clip, false));
     item("Shape only", "outline alone — reusable on any image",
          () => starClipToLibrary(clip, true));
@@ -5024,7 +5488,7 @@
     let stamp = libThumbCache.get(entry.id);
     if (!stamp) {
       if (entry.fill || entry.shapeOnly || !entry.source) {
-        // Grey for a bare outline: it has no colour of its own to show.
+        // Grey for a bare outline: it has no color of its own to show.
         stamp = buildFillStamp(entry.polygon, entry.fill || "#8a8a8a", !!entry.invert,
           entry.baseW || 1000, entry.baseH || 1000);
       } else {
@@ -5097,9 +5561,9 @@
       id, source: entry.source,
       polygon: entry.polygon.map((p) => p.slice()),
       baseW: entry.baseW, baseH: entry.baseH, useOriginal: !!entry.useOriginal,
-      /* A colour entry has no source to load; fill is what makes it draw.
+      /* A color entry has no source to load; fill is what makes it draw.
          A shape-only entry has neither, so it takes the clipper's current
-         colour — that's the point of storing the outline bare. */
+         color — that's the point of storing the outline bare. */
       fill: entry.fill || (entry.shapeOnly || !entry.source
         ? document.getElementById("fillColorInput").value : undefined),
       invert: !!entry.invert,
