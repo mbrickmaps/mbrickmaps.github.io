@@ -1464,6 +1464,26 @@
   // Every clip/library entry goes through this, so one place decides the URL.
   function clipUrl(c) { return resolveSourceUrl(c.source, c.useOriginal, c.hires); }
 
+  /* The smallest copy of a clip's source that exists, for callers that are
+     only ever going to draw it a few dozen pixels wide. Both tiers are keyed
+     on the same name as the copy the clip points at, so this is a rename
+     rather than a lookup. Returns null when there's no thumbnail tier for
+     this source — an arbitrary pasted URL has one size and that's it. */
+  function clipThumbUrl(c) {
+    const src = c.source || "";
+    if (isLibraryPhoto(src)) return src ? `../photos/edits/${src}-thumb.webp` : null;
+    const tier = /(?:^|\/)(?:lowres|full)\/([^/?#]+?)(?:_lowres)?\.avif$/i;
+    const m = tier.exec(src) || tier.exec(normalizeHires(c.hires) || "");
+    if (m) return SOURCE_TIER.thumb(decodeURIComponent(m[1]));
+    /* Older configs point straight at archive.org, whose filename is the same
+       plate number the sources/ tiers are keyed on — so a remote scan that was
+       later converted locally still has a thumbnail here, under a name we can
+       derive. Guessing is safe: the caller falls back to the real source when
+       the guess 404s. */
+    const plate = /\/(\d+)\.(?:jpe?g|png|avif|webp)(?:[?#]|$)/i.exec(src);
+    return plate ? SOURCE_TIER.thumb(plate[1]) : null;
+  }
+
   /* sources/ is now three tiers, built by sources/convert.sh from a plain
      numbered .jpg: full/{key}.avif, lowres/{key}_lowres.avif,
      thumbnails/{key}_thumb.avif — all keyed on the archive image number, e.g.
@@ -5201,22 +5221,27 @@
       ctx.fillRect(0, 0, c.width, c.height);
     }
     ctx.scale(scale, scale);
+    /* Sourceless layers — fills and paint cels — are deliberately skipped
+       here rather than drawn. Both build their stamp at authoring resolution:
+       an inverted fill allocates baseW x baseH, the whole source frame, which
+       on a high-res scan is a quarter of a gigabyte, and a paint cel allocates
+       four times the canvas area. That is an absurd price for a 72px
+       thumbnail, and paid once per project on every page load it locks the
+       page up. A thumbnail that is missing its flat colours is a far smaller
+       problem than a page that won't start. */
     for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
-      // Paint and fill layers have no file to fetch — going down the image
-      // path would throw on an empty URL and drop them out of the thumbnail.
-      if (clip.paint) {
-        try { drawClip(ctx, clip, buildPaintStamp(clip)); } catch { /* skip a bad clip */ }
-        continue;
-      }
-      if (clip.fill) {
-        try {
-          drawClip(ctx, clip, buildFillStamp(clip.polygon, clip.fill, !!clip.invert,
-            clip.baseW || cw, clip.baseH || ch));
-        } catch { /* skip a bad clip */ }
-        continue;
-      }
-      let img;
-      try { img = await loadImage(clipUrl(clip)); } catch { continue; }
+      if (clip.paint || clip.fill) continue;
+      /* The thumbnail tier, not the copy the clip actually points at. This is
+         a 72px picture: decoding a multi-megapixel scan for it — once per
+         clip, per project, on every page load — is what made the page take a
+         minute to become usable. buildStamp scales the cut by
+         img.naturalWidth / baseW, so a 300px thumb cuts the same shape from a
+         far smaller bitmap with no other change. Falls back to the real
+         source when a clip has no thumbnail tier. */
+      let img = null;
+      const thumb = clipThumbUrl(clip);
+      if (thumb) { try { img = await loadImage(thumb); } catch { img = null; } }
+      if (!img) { try { img = await loadImage(clipUrl(clip)); } catch { continue; } }
       try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img))); } catch { /* skip a bad clip */ }
     }
     return c;
