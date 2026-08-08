@@ -11629,3 +11629,5 @@ collage/collage-2000x2000-300dpi.png
 # not in the repo — 113 files at ~9MB each is 1GB, past Pages' artifact limit.
 /collage/sources/full
 /collage/recordings
+collage/collage-4000x2800-300dpi.png
+collage/collage-reveal.mp4
