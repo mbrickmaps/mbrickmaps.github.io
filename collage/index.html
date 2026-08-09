@@ -302,6 +302,10 @@
     .canvas-wrap { flex-direction: column; }
   }
   #collageViewport.panning { cursor: grabbing; }
+  #shapePreview {
+    width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 4px;
+    background: #0a0a0a; vertical-align: middle;
+  }
   #collageCanvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; outline: 1px solid #555; }
   #zoomLabel { font-size: 0.8rem; opacity: 0.7; width: 42px; text-align: center; }
   /* Zoom controls floated over each zoomable canvas, top-right. */
@@ -734,7 +738,8 @@
       <label class="inline-field">Shape
         <select id="shapePreset" title="replace the polygon with a preset cutter — Freeform leaves whatever you've drawn alone">
           <option value="">Freeform</option>
-        </select></label>
+        </select>
+        <canvas id="shapePreview" width="40" height="40" title="the cutter currently selected"></canvas></label>
       <label class="inline-field">Scale
         <input type="range" class="mini-range" id="pathScale" min="10" max="300" step="1" value="100"
                title="resize the clipping path about its centre — springs back to 100% so each drag adjusts from where you are">
@@ -744,6 +749,8 @@
                title="rotate the clipping path about its centre — springs back to 0&deg; so each drag turns from where you are">
         <span id="pathRotateValue">0&deg;</span>
         <button type="button" id="pathRotate90" title="turn a quarter turn clockwise">90&deg;</button></label>
+      <button id="subtractBtn" title="draw shapes that get punched out of the clipping path — drawn in blue">Subtract: off</button>
+      <button id="clearSubtractBtn" title="remove every subtracted shape">Clear subtract</button>
       <button id="addPointModeBtn">Add point mode: off</button>
       <button id="nodeColorBtn" title="fill each control point with the pixel color underneath it — a look, not a setting: it turns itself off when you clear or load another source">Peek nodes: off</button>
       <button id="clearPolyBtn">Clear</button>
@@ -1569,10 +1576,50 @@
     // Which side of the polygon survives. Unlike peek this IS a property of
     // the cut, so it travels onto the clip and back when one is reopened.
     invert: false,
+    /* Shapes punched out of the main path. Each is {pts, closed}; only the
+       last one is ever open, and that's the one clicks extend while Subtract
+       is on. Drawn blue, against the main path's orange, because at a glance
+       "which of these outlines is the hole" has to be answerable without
+       reading anything. */
+    subtract: [],
+    subtractMode: false,
+    // {ring, index} while dragging a node, {ring, whole:true} while moving one.
+    subDrag: null,
+
     // Peek is a way of looking at the polygon, not a property of it — never
     // persisted, and cleared whenever the source changes.
     peekNodes: false
   };
+
+  const SUBTRACT_INK = "#3aa0ff";
+
+  // The ring clicks currently extend: the last open one, or a fresh one.
+  function openSubRing(create) {
+    const last = editor.subtract[editor.subtract.length - 1];
+    if (last && !last.closed) return last;
+    if (!create) return null;
+    const ring = { pts: [], closed: false };
+    editor.subtract.push(ring);
+    return ring;
+  }
+
+  // Only closed rings are real holes; an in-progress one isn't a shape yet.
+  function subRings() {
+    return editor.subtract.filter((r) => r.closed && r.pts.length >= 3).map((r) => r.pts);
+  }
+
+  /* Every point the clipper is holding, main path and holes alike. The path
+     transforms use this so a scale or a turn moves the holes with the shape
+     they're cut from — transforming them separately, each about its own
+     centre, would slide them out of position. */
+  function allEditorPaths() {
+    return [editor.points, ...editor.subtract.map((r) => r.pts)];
+  }
+
+  function clearSubtract() {
+    editor.subtract = [];
+    editor.subDrag = null;
+  }
 
   /* Reads one source pixel. A 1x1 scratch canvas rather than a full-size copy
      of the image: a full-resolution scan can be tens of megapixels, and the
@@ -1670,6 +1717,7 @@
       editor.points = presetPoints.map((p) => p.slice());
       editor.closed = true;
     } else if (!editor.editingClipId) {
+      clearSubtract();
       editor.points = [];
       editor.closed = false;
     }
@@ -1827,6 +1875,33 @@
         sctx.stroke();
       });
     }
+    /* Holes, over the main path so a ring sitting inside it stays visible.
+       The fill is deliberately faint and the outline solid: the tint says
+       "this area goes", the outline is what you actually grab. */
+    editor.subtract.forEach((ring) => {
+      if (!ring.pts.length) return;
+      sctx.beginPath();
+      ring.pts.forEach(([x, y], i) => i === 0 ? sctx.moveTo(x, y) : sctx.lineTo(x, y));
+      if (ring.closed) {
+        sctx.closePath();
+        sctx.fillStyle = "rgba(58,160,255,0.25)";
+        sctx.fill();
+      }
+      sctx.strokeStyle = SUBTRACT_INK;
+      sctx.lineWidth = srcPx(2);
+      sctx.stroke();
+      ring.pts.forEach(([x, y], i) => {
+        sctx.beginPath();
+        sctx.arc(x, y, srcPx(5), 0, Math.PI * 2);
+        // Same convention as the main path: the first node of an open ring is
+        // the one that closes it, so it's the one marked.
+        sctx.fillStyle = i === 0 && !ring.closed ? "#33ff33" : "#fff";
+        sctx.fill();
+        sctx.strokeStyle = i === 0 && !ring.closed ? "#33ff33" : SUBTRACT_INK;
+        sctx.lineWidth = srcPx(1.5);
+        sctx.stroke();
+      });
+    });
     document.getElementById("addToCollageBtn").disabled = !(editor.closed && editor.points.length >= 3);
     updateEditorQuickActions();
   }
@@ -1876,6 +1951,39 @@
     }
     if (e.button !== 0) return;
     const [dx, dy] = getSourceCanvasPos(e);
+    /* Subtract owns the click entirely while it's on. Falling through to the
+       main path would mean a stray click somewhere ambiguous silently edited
+       the shape instead of the hole. */
+    if (editor.subtractMode) {
+      const grab = srcPx(9);
+      // A node on any ring, newest first — the one you just drew is the one
+      // you're most likely reaching for.
+      for (let r = editor.subtract.length - 1; r >= 0; r--) {
+        const i = editor.subtract[r].pts.findIndex(([x, y]) => Math.hypot(x - dx, y - dy) < grab);
+        if (i === -1) continue;
+        const ring = editor.subtract[r];
+        // On an open ring, its first node closes it rather than dragging.
+        if (!ring.closed && i === 0 && ring.pts.length >= 3) {
+          ring.closed = true; renderEditor(); return;
+        }
+        editor.subDrag = { ring, index: i };
+        return;
+      }
+      const open = openSubRing(false);
+      if (!open) {
+        // No ring in progress: clicking inside a finished hole moves it.
+        for (let r = editor.subtract.length - 1; r >= 0; r--) {
+          const ring = editor.subtract[r];
+          if (ring.closed && pointInPolygon([dx, dy], ring.pts)) {
+            editor.subDrag = { ring, whole: true, start: [dx, dy] };
+            return;
+          }
+        }
+      }
+      openSubRing(true).pts.push([dx, dy]);
+      renderEditor();
+      return;
+    }
     if (editor.closed) {
       const hitIndex = findPointNear(dx, dy);
       if (hitIndex !== -1) { editor.dragIndex = hitIndex; return; }
@@ -1901,6 +2009,19 @@
       srcPanX += e.movementX;
       srcPanY += e.movementY;
       applySourceView();
+      return;
+    }
+    if (editor.subDrag) {
+      const [cx, cy] = getSourceCanvasPos(e);
+      const d = editor.subDrag;
+      if (d.whole) {
+        const dx = cx - d.start[0], dy = cy - d.start[1];
+        d.ring.pts = d.ring.pts.map(([x, y]) => [x + dx, y + dy]);
+        d.start = [cx, cy];
+      } else {
+        d.ring.pts[d.index] = [cx, cy];
+      }
+      renderEditor();
       return;
     }
     if (editor.dragPolygon) {
@@ -1934,6 +2055,7 @@
   window.addEventListener("mouseup", () => {
     editor.dragIndex = -1;
     editor.dragPolygon = false;
+    editor.subDrag = null;
     srcPanning = false;
     sourceViewport.classList.remove("panning");
   });
@@ -2072,6 +2194,28 @@
   document.getElementById("closePathBtn").addEventListener("click", () => {
     if (editor.points.length >= 3) { editor.closed = true; renderEditor(); }
   });
+  function setSubtractMode(on) {
+    const btn = document.getElementById("subtractBtn");
+    editor.subtractMode = !!on;
+    btn.textContent = `Subtract: ${on ? "on" : "off"}`;
+    btn.classList.toggle("active", !!on);
+    if (!on) {
+      // An unfinished ring isn't a shape; leaving it would draw a stray line.
+      const open = openSubRing(false);
+      if (open) editor.subtract.pop();
+    }
+    editor.subDrag = null;
+    drawShapePreview(allShapes().find((s) => s.id === document.getElementById("shapePreset").value));
+    renderEditor();
+  }
+
+  document.getElementById("subtractBtn").addEventListener("click", () => setSubtractMode(!editor.subtractMode));
+
+  document.getElementById("clearSubtractBtn").addEventListener("click", () => {
+    clearSubtract();
+    renderEditor();
+  });
+
   document.getElementById("addPointModeBtn").addEventListener("click", (e) => {
     editor.addPointMode = !editor.addPointMode;
     e.target.textContent = `Add point mode: ${editor.addPointMode ? "on" : "off"}`;
@@ -2107,18 +2251,77 @@
       .then((data) => {
         if (!Array.isArray(data)) return;
         presetShapes = data.filter((s) => s && s.id && Array.isArray(s.points) && s.points.length >= 3);
-        const sel = document.getElementById("shapePreset");
-        for (const s of presetShapes) {
-          const opt = document.createElement("option");
-          opt.value = s.id;
-          opt.textContent = s.name || s.id;
-          sel.appendChild(opt);
-        }
+        renderShapeOptions();
       })
       .catch(() => { /* no shapes.json — the dropdown just stays Freeform */ });
   }
 
 
+
+  /* Every clipping path in play on the canvas, normalised into the same unit
+     box the presets live in so one code path fits both. Divided by the LONGER
+     side, so a tall mask stays tall instead of being squashed square. */
+  function layerShapes() {
+    const out = [];
+    for (const c of collage.clips) {
+      if (c.paint || !c.polygon || c.polygon.length < 3) continue;
+      const xs = c.polygon.map((p) => p[0]), ys = c.polygon.map((p) => p[1]);
+      const minX = Math.min(...xs), minY = Math.min(...ys);
+      const pw = Math.max(...xs) - minX, ph = Math.max(...ys) - minY;
+      const side = Math.max(pw, ph);
+      if (!(side > 0)) continue;
+      const ox = (1 - pw / side) / 2, oy = (1 - ph / side) / 2;
+      out.push({
+        id: "layer:" + c.id,
+        name: (c.name || c.source || (c.fill ? "fill " + c.fill : "layer")) + ` (${c.polygon.length} pts)`,
+        points: c.polygon.map(([x, y]) => [ox + (x - minX) / side, oy + (y - minY) / side])
+      });
+    }
+    return out;
+  }
+
+  function allShapes() { return [...presetShapes, ...layerShapes()]; }
+
+  let shapeOptionsKey = "";
+
+  function renderShapeOptions() {
+    const sel = document.getElementById("shapePreset");
+    if (!sel) return;
+    const layers = layerShapes();
+    const key = presetShapes.map((s) => s.id).join() + "|" + layers.map((s) => s.id + s.name).join();
+    if (key === shapeOptionsKey) return;   // rebuilding closes an open dropdown
+    shapeOptionsKey = key;
+    const keep = sel.value;
+    const group = (label, items) => items.length
+      ? `<optgroup label="${escapeHtml(label)}">` +
+        items.map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name || s.id)}</option>`).join() +
+        `</optgroup>`
+      : "";
+    sel.innerHTML = `<option value="">Freeform</option>`
+      + group("Cutters", presetShapes)
+      + group("From layers", layers);
+    sel.value = [...sel.options].some((o) => o.value === keep) ? keep : "";
+  }
+
+  function drawShapePreview(shape) {
+    const cv = document.getElementById("shapePreview");
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (!shape) return;
+    const pad = 4, span = cv.width - pad * 2;
+    ctx.beginPath();
+    shape.points.forEach(([x, y], i) => {
+      const px = pad + x * span, py = pad + y * span;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+    ctx.fillStyle = editor.subtractMode ? "rgba(58,160,255,0.25)" : "rgba(255,85,0,0.25)";
+    ctx.fill();
+    ctx.strokeStyle = editor.subtractMode ? SUBTRACT_INK : "#ff5500";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
 
   function shapePoints(shape, w, h) {
     const side = Math.min(w, h);
@@ -2132,14 +2335,24 @@
      select still held that value. */
   function resetShapeSelect() {
     const sel = document.getElementById("shapePreset");
-    if (sel && sel.value) sel.value = "";
+    if (sel && sel.value) { sel.value = ""; drawShapePreview(null); }
   }
 
   document.getElementById("shapePreset").addEventListener("change", (e) => {
-    const shape = presetShapes.find((s) => s.id === e.target.value);
+    const shape = allShapes().find((s) => s.id === e.target.value);
+    drawShapePreview(shape);
     if (!shape || !editor.image) return;
-    editor.points = shapePoints(shape, editor.naturalW, editor.naturalH);
-    editor.closed = true;
+    const pts = shapePoints(shape, editor.naturalW, editor.naturalH);
+    if (editor.subtractMode) {
+      // The cutter becomes a hole rather than the outline, so picking one
+      // while Subtract is on punches instead of recutting.
+      const open = openSubRing(false);
+      if (open) editor.subtract.pop();
+      editor.subtract.push({ pts, closed: true });
+    } else {
+      editor.points = pts;
+      editor.closed = true;
+    }
     // Same as Clip All: leaves editingClipId alone, so this also works as
     // "recut this existing layer with a cookie cutter".
     renderEditor();
@@ -2166,7 +2379,21 @@
   const pathScaleInput = document.getElementById("pathScale");
   const pathScaleValue = document.getElementById("pathScaleValue");
 
-  const snapshotPath = () => { pathScaleBase = editor.points.map((p) => p.slice()); };
+  const snapshotPath = () => {
+    pathScaleBase = editor.points.map((p) => p.slice());
+    subXformBase = editor.subtract.map((r) => r.pts.map((p) => p.slice()));
+  };
+  let subXformBase = null;
+
+  // Every ring moves about the main path's centre, never its own.
+  function applyToSubRings(base, fn) {
+    if (!base) return;
+    editor.subtract.forEach((ring, i) => { if (base[i]) ring.pts = fn(base[i]); });
+  }
+
+  function aboutPoint(points, cx, cy, map) {
+    return points.map(([x, y]) => map(x - cx, y - cy, cx, cy));
+  }
   pathScaleInput.addEventListener("pointerdown", snapshotPath);
   pathScaleInput.addEventListener("keydown", () => { if (!pathScaleBase) snapshotPath(); });
 
@@ -2174,13 +2401,17 @@
     const pct = Number(e.target.value);
     pathScaleValue.textContent = pct + "%";
     if (!pathScaleBase || pathScaleBase.length < 3) return;
-    editor.points = scalePath(pathScaleBase, pct / 100);
+    const f = pct / 100;
+    const [cx, cy] = centroidOf(pathScaleBase);
+    editor.points = aboutPoint(pathScaleBase, cx, cy, (dx, dy) => [cx + dx * f, cy + dy * f]);
+    applyToSubRings(subXformBase, (r) => aboutPoint(r, cx, cy, (dx, dy) => [cx + dx * f, cy + dy * f]));
     renderEditor();
   });
 
   // Springing back is what makes the "resize from here" model work.
   const releasePathScale = () => {
     pathScaleBase = null;
+    subXformBase = null;
     pathScaleInput.value = 100;
     pathScaleValue.textContent = "100%";
   };
@@ -2206,7 +2437,10 @@
   const pathRotateInput = document.getElementById("pathRotate");
   const pathRotateValue = document.getElementById("pathRotateValue");
 
-  const snapshotRotate = () => { pathRotateBase = editor.points.map((p) => p.slice()); };
+  const snapshotRotate = () => {
+    pathRotateBase = editor.points.map((p) => p.slice());
+    subXformBase = editor.subtract.map((r) => r.pts.map((p) => p.slice()));
+  };
   pathRotateInput.addEventListener("pointerdown", snapshotRotate);
   pathRotateInput.addEventListener("keydown", () => { if (!pathRotateBase) snapshotRotate(); });
 
@@ -2214,12 +2448,17 @@
     const deg = Number(e.target.value);
     pathRotateValue.textContent = deg + "°";
     if (!pathRotateBase || pathRotateBase.length < 3) return;
-    editor.points = rotatePath(pathRotateBase, deg);
+    const a = deg * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+    const [cx, cy] = centroidOf(pathRotateBase);
+    const turn = (r) => aboutPoint(r, cx, cy, (dx, dy) => [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]);
+    editor.points = turn(pathRotateBase);
+    applyToSubRings(subXformBase, turn);
     renderEditor();
   });
 
   const releasePathRotate = () => {
     pathRotateBase = null;
+    subXformBase = null;
     pathRotateInput.value = 0;
     pathRotateValue.textContent = "0°";
   };
@@ -2230,7 +2469,10 @@
      90, not 89. Applied straight to the live points, no baseline needed. */
   document.getElementById("pathRotate90").addEventListener("click", () => {
     if (editor.points.length < 3) return;
-    editor.points = rotatePath(editor.points, 90);
+    const [qx, qy] = centroidOf(editor.points);
+    const q = (r) => aboutPoint(r, qx, qy, (dx, dy) => [qx - dy, qy + dx]);
+    editor.points = q(editor.points);
+    editor.subtract.forEach((ring) => { ring.pts = q(ring.pts); });
     resetShapeSelect();
     renderEditor();
   });
@@ -2249,7 +2491,10 @@
   for (const [id, axis] of [["flipPathXBtn", "x"], ["flipPathYBtn", "y"]]) {
     document.getElementById(id).addEventListener("click", () => {
       if (editor.points.length < 3) return;
-      editor.points = flipPath(editor.points, axis);
+      const [fx, fy] = centroidOf(editor.points);
+      const mirror = (r) => r.map(([x, y]) => axis === "x" ? [2 * fx - x, y] : [x, 2 * fy - y]);
+      editor.points = mirror(editor.points);
+      editor.subtract.forEach((ring) => { ring.pts = mirror(ring.pts); });
       resetShapeSelect();
       renderEditor();
     });
@@ -2305,6 +2550,8 @@
     }
   });
   document.getElementById("clearPolyBtn").addEventListener("click", () => {
+    clearSubtract();
+    setSubtractMode(false);
     editor.points = []; editor.closed = false; editor.editingClipId = null;
     editor.editingUseOriginal = false;
     editor.editingHires = null;
@@ -2327,6 +2574,7 @@
         clip.baseH = editor.naturalH;
         clip.useOriginal = !!editor.editingUseOriginal;
         clip.invert = !!editor.invert;
+        clip.subtract = subRings().map((r) => r.map((q) => q.slice()));
         stampCache.delete(clip.id);
         selectOnly(clip.id);
       }
@@ -2343,6 +2591,7 @@
         // is actually created.
         hires: editor.editingHires || null,
         invert: !!editor.invert,
+        subtract: subRings().map((r) => r.map((q) => q.slice())),
         x: collage.canvas.width / 2, y: collage.canvas.height / 2,
         scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
       });
@@ -2352,6 +2601,8 @@
     editor.editingUseOriginal = false;
     editor.editingHires = null;
     setInvertClip(false);
+    setSubtractMode(false);
+    clearSubtract();
     syncHiresButton();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
@@ -2382,6 +2633,7 @@
       // to be "everything except" of, and this is the frame it was drawn in.
       baseW: editor.naturalW, baseH: editor.naturalH, useOriginal: false,
       hires: null, invert: !!editor.invert,
+      subtract: subRings().map((r) => r.map((q) => q.slice())),
       x: collage.canvas.width / 2, y: collage.canvas.height / 2,
       scale: 1, rotation: 0, flipX: false, flipY: false, blend: "source-over", z
     });
@@ -2676,6 +2928,29 @@
   // temporal-dead-zone error. It runs with the other init at the end instead.
   // This used to be hidden by meta.csv's fetch making the call asynchronous.
 
+  /* Borrows a layer's cut without touching the source you have open — the
+     difference from Edit, which reopens the layer's own file to re-cut it.
+     The path is stored against baseW, so it's scaled to whatever is currently
+     loaded, the same ratio buildStamp uses. Holes come with it. */
+  function borrowClipPath(clip) {
+    if (!editor.image || clip.paint || !clip.polygon || clip.polygon.length < 3) return false;
+    const k = clip.baseW ? editor.naturalW / clip.baseW : 1;
+    const scale = (pts) => pts.map(([x, y]) => [x * k, y * k]);
+    if (editor.subtractMode) {
+      const open = openSubRing(false);
+      if (open) editor.subtract.pop();
+      editor.subtract.push({ pts: scale(clip.polygon), closed: true });
+    } else {
+      editor.points = scale(clip.polygon);
+      editor.closed = true;
+      editor.subtract = (clip.subtract || []).map((r) => ({ pts: scale(r), closed: true }));
+    }
+    resetShapeSelect();
+    renderEditor();
+    fitSourceView();
+    return true;
+  }
+
   function editClipMask(clip) {
     editor.editingClipId = clip.id;
     document.getElementById("addToCollageBtn").textContent = "Update clip";
@@ -2692,6 +2967,7 @@
     syncHiresButton();
     // Reopening shows the cut as it was left, same as the hi-res toggle.
     setInvertClip(!!clip.invert);
+    editor.subtract = (clip.subtract || []).map((r) => ({ pts: r.map((q) => q.slice()), closed: true }));
     const authored = resolveSourceUrl(clip.source, clip.useOriginal);
     loadImage(authored)
       .then((img) => {
@@ -3926,7 +4202,7 @@
      times that. So swapping a clip between its web copy and a high-res one
      changes only how many pixels are inside the shape — the footprint, and
      therefore position, rotation, scale and handles, never move. */
-  function buildStamp(polygon, img, k = 1, invert = false) {
+  function buildStamp(polygon, img, k = 1, invert = false, subtract = null) {
     /* Inverted, the shape is a hole rather than the subject, so what's kept is
        the whole frame minus it — and the footprint has to be the whole frame
        too, not the polygon's box. rect + polygon under the even-odd rule
@@ -3944,6 +4220,7 @@
       path.closePath();
       octx.clip(path, "evenodd");
       octx.drawImage(img, 0, 0, w, h);
+      punchOut(octx, subtract, 0, 0, 1);
       return { canvas: off, w, h, pw, ph };
     }
 
@@ -3963,6 +4240,7 @@
     // Drawn at authoring size under the k scale, so it fills the canvas at
     // full native detail without the polygon having to know about k.
     octx.drawImage(img, -minX, -minY, img.naturalWidth / k, img.naturalHeight / k);
+    punchOut(octx, subtract, minX, minY, 1);
     return { canvas: off, w, h, pw, ph };
   }
 
@@ -3973,7 +4251,7 @@
      Inverted it needs a frame to be "everything except" of, which a fill has
      no natural size for. baseW/baseH — the source frame the path was drawn
      against — is that frame, which is why they're recorded even for fills. */
-  function buildFillStamp(polygon, color, invert, frameW, frameH) {
+  function buildFillStamp(polygon, color, invert, frameW, frameH, subtract) {
     const xs = polygon.map((p) => p[0]), ys = polygon.map((p) => p[1]);
     const minX = invert ? 0 : Math.min(...xs);
     const minY = invert ? 0 : Math.min(...ys);
@@ -3989,7 +4267,29 @@
     path.closePath();
     octx.fillStyle = color || "#ff5500";
     octx.fill(path, invert ? "evenodd" : "nonzero");
+    punchOut(octx, subtract, minX, minY, 1);
     return { canvas: off, w, h, pw: off.width, ph: off.height };
+  }
+
+  /* Removes each ring from whatever has already been drawn. destination-out
+     rather than an even-odd hole: even-odd only subtracts correctly when the
+     ring sits wholly inside the shape — one straddling the edge grows a spur
+     outside it, because the area covered by the ring alone counts as odd. */
+  function punchOut(octx, rings, minX, minY, k) {
+    if (!rings || !rings.length) return;
+    octx.save();
+    octx.globalCompositeOperation = "destination-out";
+    octx.fillStyle = "#000";
+    for (const ring of rings) {
+      if (!ring || ring.length < 3) continue;
+      octx.beginPath();
+      ring.forEach(([x, y], i) => i === 0
+        ? octx.moveTo((x - minX) * k, (y - minY) * k)
+        : octx.lineTo((x - minX) * k, (y - minY) * k));
+      octx.closePath();
+      octx.fill();
+    }
+    octx.restore();
   }
 
   /* ---------- paint layers ----------
@@ -4138,16 +4438,33 @@
     return inside;
   }
 
+  /* Alpha under a canvas point, in the stamp's own pixels. -1 if the point
+     falls outside the stamp or the read is refused. */
+  function stampAlphaAt(clip, stamp, pt) {
+    const rad = -clip.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const dx = pt[0] - clip.x, dy = pt[1] - clip.y;
+    const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
+    const sx = (clip.scale || 1) * (clip.flipX ? -1 : 1);
+    const sy = (clip.scale || 1) * (clip.flipY ? -1 : 1);
+    const lx = rx / sx + stamp.w / 2, ly = ry / sy + stamp.h / 2;
+    const px = Math.round(lx * (stamp.pw / stamp.w)), py = Math.round(ly * (stamp.ph / stamp.h));
+    if (px < 0 || py < 0 || px >= stamp.pw || py >= stamp.ph) return -1;
+    try {
+      const ctx = stamp.octx || stamp.canvas.getContext("2d");
+      return ctx.getImageData(px, py, 1, 1).data[3];
+    } catch { return -1; }
+  }
+
   function hitTestClip(clip, stamp, pt) {
     if (!pointInPolygon(pt, localCorners(stamp).map((c) => transformPoint(clip, c)))) return false;
-    /* A paint cel is canvas-sized and mostly empty, so its bounding box would
-       swallow every click meant for something beneath it. Hit only where
-       there's actually ink — one pixel read, and only ever on paint layers. */
-    if (clip.paint) {
-      const [lx, ly] = canvasToPaint(clip, pt);
-      const px = Math.round(lx * PAINT_K), py = Math.round(ly * PAINT_K);
-      if (px < 0 || py < 0 || px >= stamp.pw || py >= stamp.ph) return false;
-      try { return stamp.octx.getImageData(px, py, 1, 1).data[3] > 8; } catch { return true; }
+    /* A paint cel is canvas-sized and mostly empty, and a subtracted shape has
+       a real hole in it — in both cases the bounding box would swallow clicks
+       meant for what's underneath. One pixel read decides it, and only for
+       those two kinds of layer. */
+    if (clip.paint || (clip.subtract && clip.subtract.length)) {
+      const a = stampAlphaAt(clip, stamp, pt);
+      return a < 0 ? false : a > 8;
     }
     return true;
   }
@@ -4266,13 +4583,14 @@
 
     /* Fills short-circuit the whole image path — no fetch, so a color layer
        renders on the first frame instead of after a network round trip. */
+    const sub = clip.subtract && clip.subtract.length ? JSON.stringify(clip.subtract) : "";
     if (clip.fill) {
       const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|fill:" + clip.fill
-        + "|" + (clip.invert ? "inv" : "");
+        + "|" + (clip.invert ? "inv" : "") + "|sub:" + sub;
       let stamp = stampCache.get(clip.id);
       if (!stamp || stamp.key !== key) {
         stamp = buildFillStamp(clip.polygon, clip.fill, !!clip.invert,
-          clip.baseW || 1000, clip.baseH || 1000);
+          clip.baseW || 1000, clip.baseH || 1000, clip.subtract);
         stamp.key = key;
         stampCache.set(clip.id, stamp);
       }
@@ -4283,10 +4601,10 @@
     let img;
     try { img = await loadImage(url); } catch { return null; }
     const k = stampScale(clip, img);
-    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url + "|" + (clip.invert ? "inv" : "");
+    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url + "|" + (clip.invert ? "inv" : "") + "|sub:" + sub;
     let stamp = stampCache.get(clip.id);
     if (!stamp || stamp.key !== key) {
-      stamp = buildStamp(clip.polygon, img, k, !!clip.invert);
+      stamp = buildStamp(clip.polygon, img, k, !!clip.invert, clip.subtract);
       stamp.key = key;
       stampCache.set(clip.id, stamp);
     }
@@ -4782,6 +5100,7 @@
   }
 
   function renderLayerList() {
+    renderShapeOptions();
     // Layer count feeds the Record panel's duration estimate, and its names
     // and groups feed the jitter target list.
     updateRecEstimate();
@@ -4808,7 +5127,7 @@
                  value="${escapeHtml(c.link || "")}" spellcheck="false"
                  title="link group — clips sharing a name move together">
         </div>
-        <button data-action="preview" class="layer-preview-btn" title="hover to preview this layer">&#128444;&#65039;</button>
+        <button data-action="preview" class="layer-preview-btn" title="hover to preview this layer — click to load its clipping path into the clipper, keeping the source you have open">&#128444;&#65039;</button>
         <div class="layer-actions">
           <button data-action="visible" class="layer-visible ${c.hidden ? "" : "active"}"
                   title="${c.hidden ? "show" : "hide"}">&#128065;&#65039;</button>
@@ -4855,7 +5174,12 @@
 
   function duplicateClip(clip) {
     const newId = "clip-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const z = Math.max(...collage.clips.map((c) => c.z)) + 1;
+    /* Directly in front of the original rather than at the top of the stack:
+       the copy lands one row above its source in the layer list, where you
+       just asked for it. Everything already at or above that depth shifts up
+       to make room, which keeps the existing order intact. */
+    const z = clip.z + 1;
+    collage.clips.forEach((c) => { if (c.z >= z) c.z += 1; });
     collage.clips.push({
       ...clip,
       id: newId,
@@ -4863,6 +5187,7 @@
       // later never touches the other. Strokes are the same argument — paint
       // on the copy must not turn up on the original.
       polygon: (clip.polygon || []).map((p) => p.slice()),
+      ...(clip.subtract ? { subtract: clip.subtract.map((r) => r.map((p) => p.slice())) } : {}),
       ...(clip.strokes ? { strokes: clip.strokes.map((s) => ({ ...s, pts: s.pts.map((p) => p.slice()) })) } : {}),
       name: (clip.name || clip.source || (clip.paint ? "paint" : "")) + " copy",
       locked: false,
@@ -5019,6 +5344,9 @@
     } else if (action === "star") {
       openStarMenu(clip, e.target);
       return;
+    } else if (action === "preview") {
+      borrowClipPath(clip);
+      return;
     } else if (action === "flipx") {
       clip.flipX = !clip.flipX;
     } else if (action === "flipy") {
@@ -5156,6 +5484,9 @@
     /* Brush points come in at pointer resolution, which is already whole
        pixels — one decimal is generous, and it roughly halves the size of a
        heavily painted layer in the config. */
+    if (c.subtract && c.subtract.length) {
+      out.subtract = c.subtract.map((r) => r.map(([x, y]) => [roundTo(x, 2), roundTo(y, 2)]));
+    } else if ("subtract" in out) delete out.subtract;
     if (c.strokes) {
       out.strokes = c.strokes.map((s) => ({ ...s, pts: s.pts.map(([x, y]) => [roundTo(x, 1), roundTo(y, 1)]) }));
     }
@@ -5242,7 +5573,7 @@
       const thumb = clipThumbUrl(clip);
       if (thumb) { try { img = await loadImage(thumb); } catch { img = null; } }
       if (!img) { try { img = await loadImage(clipUrl(clip)); } catch { continue; } }
-      try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img))); } catch { /* skip a bad clip */ }
+      try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img), !!clip.invert, clip.subtract)); } catch { /* skip a bad clip */ }
     }
     return c;
   }
@@ -5471,6 +5802,7 @@
         : (clip.name || clip.source || (clip.fill ? "fill " + clip.fill : "shape")),
       source: shapeOnly ? "" : (clip.source || ""),
       polygon: clip.polygon.map((p) => p.slice()),
+      subtract: (clip.subtract || []).map((r) => r.map((q) => q.slice())),
       baseW: clip.baseW, baseH: clip.baseH,
       useOriginal: shapeOnly ? false : !!clip.useOriginal,
       fill: shapeOnly ? undefined : (clip.fill || undefined),
@@ -5562,11 +5894,11 @@
       if (entry.fill || entry.shapeOnly || !entry.source) {
         // Grey for a bare outline: it has no color of its own to show.
         stamp = buildFillStamp(entry.polygon, entry.fill || "#8a8a8a", !!entry.invert,
-          entry.baseW || 1000, entry.baseH || 1000);
+          entry.baseW || 1000, entry.baseH || 1000, entry.subtract);
       } else {
         let img;
         try { img = await loadImage(clipUrl(entry)); } catch { return; }
-        stamp = buildStamp(entry.polygon, img, stampScale(entry, img), !!entry.invert);
+        stamp = buildStamp(entry.polygon, img, stampScale(entry, img), !!entry.invert, entry.subtract);
       }
       libThumbCache.set(entry.id, stamp);
     }
@@ -5632,6 +5964,7 @@
     collage.clips.push({
       id, source: entry.source,
       polygon: entry.polygon.map((p) => p.slice()),
+      subtract: (entry.subtract || []).map((r) => r.map((q) => q.slice())),
       baseW: entry.baseW, baseH: entry.baseH, useOriginal: !!entry.useOriginal,
       /* A color entry has no source to load; fill is what makes it draw.
          A shape-only entry has neither, so it takes the clipper's current
