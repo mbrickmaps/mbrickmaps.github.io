@@ -5562,7 +5562,25 @@
        page up. A thumbnail that is missing its flat colours is a far smaller
        problem than a page that won't start. */
     for (const clip of [...(config.clips || [])].sort((a, b) => a.z - b.z)) {
-      if (clip.paint || clip.fill) continue;
+      // drawComposite filters these out; this has to agree with it, or a
+      // hidden layer turns up in the render and in every thumbnail.
+      if (clip.hidden) continue;
+      /* Sourceless layers cost real memory to build — an inverted fill
+         allocates baseW x baseH, and a paint cel four times the canvas area.
+         For a 72px card, once per project on every page load, that is what
+         locked the page up, so thumbnails go without them. A single full-size
+         render on demand can afford it, and has to: dropping the color layers
+         is exactly what made the reference not match the project. */
+      if (clip.paint || clip.fill) {
+        if (useThumbs) continue;
+        try {
+          drawClip(ctx, clip, clip.paint
+            ? buildPaintStamp(clip)
+            : buildFillStamp(clip.polygon, clip.fill, !!clip.invert,
+                clip.baseW || cw, clip.baseH || ch, clip.subtract));
+        } catch { /* skip a bad clip */ }
+        continue;
+      }
       /* The thumbnail tier, not the copy the clip actually points at. This is
          a 72px picture: decoding a multi-megapixel scan for it — once per
          clip, per project, on every page load — is what made the page take a
@@ -5584,8 +5602,6 @@
      and no longer — nothing here survives a reload, and a clip cut from one
      will not reload either. That is the deal: it is a working surface, not a
      source you can save against. */
-  const referenceUrls = [];
-
   async function openConfigInClipper(config, label) {
     const w = config.canvas?.width || 1000, h = config.canvas?.height || 700;
     exampleStatus.textContent = `rendering ${label}\u2026`;
@@ -5595,9 +5611,16 @@
     const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
     if (!blob) { exampleStatus.textContent = "render failed"; return; }
     const url = URL.createObjectURL(blob);
-    referenceUrls.push(url);
+    /* The URL is only a handle to hand the decoder. Once loadImage has
+       resolved, the decoded bitmap is held by imageCache and by editor.image,
+       and every later read — re-render, stamp rebuild, staging — comes off
+       that cache rather than the URL. So the blob's bytes can go back
+       immediately; keeping them would be a second copy of the PNG for nothing.
+       Revoked after the load, never before: revoking first would abort it. */
+    await loadImage(url);
     stageImage({ url, title: label + " (reference)", thumb: "", from: "reference" });
     selectSource(url);
+    URL.revokeObjectURL(url);
     exampleStatus.textContent =
       `${label} open in the clipper \u2014 ${w}\u00d7${h}, this session only`;
   }
