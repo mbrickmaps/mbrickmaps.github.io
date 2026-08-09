@@ -548,6 +548,7 @@
   #exampleList .ex-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   #exampleList .ex-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #exampleList .ex-sub { font-size: 0.7rem; opacity: 0.55; }
+  #exampleList .ex-ref { margin-left: auto; padding: 1px 6px; font-size: 0.7rem; flex: 0 0 auto; }
 
   #layerList { list-style: none; margin: 0; padding: 0; width: 100%; }
   #layerList li {
@@ -5540,7 +5541,7 @@
   /* Renders a project without touching any app state: buildStamp and drawClip
      both take everything they need as arguments, so the thumbnail is drawn by
      the same code that draws the real canvas. */
-  async function renderExampleThumb(config, boxW, boxH) {
+  async function renderExampleThumb(config, boxW, boxH, useThumbs = true) {
     const cw = config.canvas?.width || 1000, ch = config.canvas?.height || 700;
     const scale = Math.min(boxW / cw, boxH / ch);
     const c = document.createElement("canvas");
@@ -5570,12 +5571,35 @@
          far smaller bitmap with no other change. Falls back to the real
          source when a clip has no thumbnail tier. */
       let img = null;
-      const thumb = clipThumbUrl(clip);
+      const thumb = useThumbs ? clipThumbUrl(clip) : null;
       if (thumb) { try { img = await loadImage(thumb); } catch { img = null; } }
       if (!img) { try { img = await loadImage(clipUrl(clip)); } catch { continue; } }
       try { drawClip(ctx, clip, buildStamp(clip.polygon, img, stampScale(clip, img), !!clip.invert, clip.subtract)); } catch { /* skip a bad clip */ }
     }
     return c;
+  }
+
+  /* A finished project, flattened into one image and opened in the clipper so
+     you can cut shapes out of it. The blob URL lives as long as the tab does
+     and no longer — nothing here survives a reload, and a clip cut from one
+     will not reload either. That is the deal: it is a working surface, not a
+     source you can save against. */
+  const referenceUrls = [];
+
+  async function openConfigInClipper(config, label) {
+    const w = config.canvas?.width || 1000, h = config.canvas?.height || 700;
+    exampleStatus.textContent = `rendering ${label}\u2026`;
+    // Full size and full resolution — the thumbnail tier would be unusable to
+    // draw against at 1:1.
+    const canvas = await renderExampleThumb(config, w, h, false);
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+    if (!blob) { exampleStatus.textContent = "render failed"; return; }
+    const url = URL.createObjectURL(blob);
+    referenceUrls.push(url);
+    stageImage({ url, title: label + " (reference)", thumb: "", from: "reference" });
+    selectSource(url);
+    exampleStatus.textContent =
+      `${label} open in the clipper \u2014 ${w}\u00d7${h}, this session only`;
   }
 
   function loadExample(config, label) {
@@ -5607,7 +5631,8 @@
 
       const li = document.createElement("li");
       li.innerHTML = `<div class="ex-meta"><span class="ex-name">${escapeHtml(title)}</span>
-        <span class="ex-sub">loading&hellip;</span></div>`;
+        <span class="ex-sub">loading&hellip;</span></div>
+        <button type="button" class="ex-ref" title="flatten this project to one image and open it in the clipper to cut from &mdash; this session only">&#9986; clip</button>`;
       exampleList.appendChild(li);
 
       let config;
@@ -5624,7 +5649,10 @@
       li.querySelector(".ex-sub").textContent =
         `${config.canvas?.width || "?"}×${config.canvas?.height || "?"} · ${count} clip${count === 1 ? "" : "s"}`;
       li.title = `Load ${title} — replaces the current canvas`;
-      li.addEventListener("click", () => loadExample(config, title));
+      li.addEventListener("click", (e) => {
+        if (e.target.closest(".ex-ref")) { openConfigInClipper(config, title); return; }
+        loadExample(config, title);
+      });
 
       // A thumbnail failure must not cost the entry — the list still works.
       try { li.prepend(await renderExampleThumb(config, 72, 72)); }
