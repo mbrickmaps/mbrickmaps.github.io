@@ -4242,13 +4242,21 @@
      times that. So swapping a clip between its web copy and a high-res one
      changes only how many pixels are inside the shape — the footprint, and
      therefore position, rotation, scale and handles, never move. */
-  function buildStamp(polygon, img, k = 1, invert = false, subtract = null) {
+  function buildStamp(polygon, img, k = 1, invert = false, subtract = null, spanW = 0, spanH = 0) {
+    /* Two different things that used to be one. k is how many bitmap pixels
+       to spend per authoring unit; span is how many authoring units the
+       source image covers. They're equal only when the stamp is cut at the
+       source's native resolution — the moment k is clamped below that, the
+       image still has to be drawn across the same authoring frame, or the cut
+       lands on the wrong part of the picture. */
+    const sw = spanW || img.naturalWidth / k;
+    const sh = spanH || img.naturalHeight / k;
     /* Inverted, the shape is a hole rather than the subject, so what's kept is
        the whole frame minus it — and the footprint has to be the whole frame
        too, not the polygon's box. rect + polygon under the even-odd rule
        cancels the overlap, leaving everything outside the shape. */
     if (invert) {
-      const w = Math.max(1, img.naturalWidth / k), h = Math.max(1, img.naturalHeight / k);
+      const w = Math.max(1, sw), h = Math.max(1, sh);
       const pw = Math.max(1, Math.round(w * k)), ph = Math.max(1, Math.round(h * k));
       const off = document.createElement("canvas");
       off.width = pw; off.height = ph;
@@ -4259,7 +4267,7 @@
       polygon.forEach(([x, y], i) => i === 0 ? path.moveTo(x, y) : path.lineTo(x, y));
       path.closePath();
       octx.clip(path, "evenodd");
-      octx.drawImage(img, 0, 0, w, h);
+      octx.drawImage(img, 0, 0, sw, sh);
       punchOut(octx, subtract, 0, 0, 1);
       return { canvas: off, w, h, pw, ph };
     }
@@ -4279,7 +4287,7 @@
     octx.clip();
     // Drawn at authoring size under the k scale, so it fills the canvas at
     // full native detail without the polygon having to know about k.
-    octx.drawImage(img, -minX, -minY, img.naturalWidth / k, img.naturalHeight / k);
+    octx.drawImage(img, -minX, -minY, sw, sh);
     punchOut(octx, subtract, minX, minY, 1);
     return { canvas: off, w, h, pw, ph };
   }
@@ -4447,6 +4455,9 @@
   /* A mask is stored in the coordinates of whichever file it was drawn
      against, so cutting it from a bigger copy means scaling the cut, never the
      stored polygon. Anything that builds a stamp goes through this. */
+  // The largest the export dropdown offers; the ceiling on useful stamp detail.
+  const MAX_EXPORT_SCALE = 4;
+
   function stampScale(entry, img) {
     const r = entry.baseW ? img.naturalWidth / entry.baseW : 1;
     return isFinite(r) && r > 0 ? r : 1;
@@ -4640,11 +4651,27 @@
     const url = clipUrl(clip);
     let img;
     try { img = await loadImage(url); } catch { return null; }
-    const k = stampScale(clip, img);
-    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url + "|" + (clip.invert ? "inv" : "") + "|sub:" + sub;
+    const kNative = stampScale(clip, img);
+    /* A stamp only ever feeds two things: the editor canvas, and a PNG export
+       at up to MAX_EXPORT_SCALE. Anything finer than the larger of those is
+       memory nobody reads — which is how seven layers came to hold 1.6GB, at
+       24.7x more detail per axis than was ever drawn.
+       Banded to powers of two and always rounded UP, so the stamp is never
+       coarser than needed and a scale change inside one band reuses it
+       instead of re-cutting every frame. Scaling past the band rebuilds,
+       which is one drawImage from an already-decoded source. */
+    /* x2 headroom on top of the largest export. Cutting to exactly the output
+       size means the pixels are resampled twice at nearly 1:1 — once building
+       the stamp, once drawing it — and that measurably softened a 4x export
+       (mean edge gradient 0.75 -> 0.56). One extra band costs 4x the area of
+       the tight clamp and still leaves the stamp far below native. */
+    const need = Math.max(1 / 64, (Math.abs(clip.scale) || 1) * MAX_EXPORT_SCALE * 2);
+    const k = Math.min(kNative, Math.pow(2, Math.ceil(Math.log2(need))));
+    const key = clip.id + "|" + JSON.stringify(clip.polygon) + "|" + url + "|" + (clip.invert ? "inv" : "") + "|sub:" + sub + "|k:" + k;
     let stamp = stampCache.get(clip.id);
     if (!stamp || stamp.key !== key) {
-      stamp = buildStamp(clip.polygon, img, k, !!clip.invert, clip.subtract);
+      stamp = buildStamp(clip.polygon, img, k, !!clip.invert, clip.subtract,
+        img.naturalWidth / kNative, img.naturalHeight / kNative);
       stamp.key = key;
       stampCache.set(clip.id, stamp);
     }
@@ -4653,7 +4680,14 @@
 
   /* The composite alone — background plus clips, never any overlay. Shared by
      the editor canvas and the preview, so the preview can't inherit chrome. */
-  async function drawComposite(ctx, w, h) {
+  /* `proxy` swaps each stamp for a copy at roughly the size it actually
+     occupies, for the editor canvas only. A stamp is cut at its source's
+     resolution so the export stays sharp, which means a layer sitting at
+     scale 0.08 is a 9.7-megapixel bitmap being filtered down to 288px on
+     every single frame of a drag. Export and the preview still get the full
+     stamp — softening a saved file to make dragging smooth would be a bad
+     trade, and neither is redrawn per frame anyway. */
+  async function drawComposite(ctx, w, h, opts = {}) {
     /* Every stamp is resolved before anything is cleared, so the clear and
        the draw happen in one synchronous pass. Clearing first and awaiting
        inside the loop meant any await — even a cached stamp, which still
@@ -4669,7 +4703,14 @@
       ctx.fillStyle = collage.canvas.background;
       ctx.fillRect(0, 0, w, h);
     }
-    ordered.forEach((clip, i) => { if (stamps[i]) drawClip(ctx, clip, stamps[i]); });
+    ordered.forEach((clip, i) => {
+      if (!stamps[i]) return;
+      /* Quantised to eighths so a scale drag reuses one proxy across a range
+         of sizes instead of rebuilding a canvas every frame; rounded up, so
+         the proxy is never coarser than what's on screen. */
+      const q = Math.ceil(Math.abs(clip.scale || 1) * 8) / 8;
+      drawClip(ctx, clip, stamps[i], opts.proxy ? playbackProxy(clip, stamps[i], 1, q) : undefined);
+    });
   }
 
   /* ---------- snapping ----------
@@ -4860,7 +4901,7 @@
     if (collageCanvas.width !== collage.canvas.width) collageCanvas.width = collage.canvas.width;
     if (collageCanvas.height !== collage.canvas.height) collageCanvas.height = collage.canvas.height;
     const ctx = collageCanvas.getContext("2d");
-    await drawComposite(ctx, collageCanvas.width, collageCanvas.height);
+    await drawComposite(ctx, collageCanvas.width, collageCanvas.height, { proxy: true });
     if (!hideOutlines) { drawOverlayGuide(ctx); drawGuides(ctx); }
     const sel = collage.clips.find((c) => c.id === selectedId);
     if (sel && !hideOutlines) { const stamp = stampCache.get(sel.id); if (stamp) drawSelectionOverlay(ctx, sel, stamp); }
