@@ -4,7 +4,10 @@
 "examples/collage-config-3.json",
 "examples/collage-config-reflect.json",
 "examples/collage-config-flight.json",
+"examples/collage-config-flight-1.json",
 "examples/collage-config-flight2.json",
+"examples/collage-config-flight2-1.json",
 "examples/collage-config-mouse.json",
-"examples/collage-config-letsgo.json"
+"examples/collage-config-letsgo.json",
+"examples/collage-config-letsgo-2.json"
 ]
