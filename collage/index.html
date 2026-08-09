@@ -703,6 +703,8 @@
       </label>
       <input type="text" id="sourceUrl" placeholder="https://... image URL">
       <button id="loadUrlBtn">Load</button>
+      <button id="uploadImageBtn" title="open images from this computer — they stay in the browser, nothing is uploaded anywhere, and they last for this session only">&#128193; Open&hellip;</button>
+      <input type="file" id="uploadImageInput" accept="image/*" multiple style="display:none">
       <button id="stageCurrentBtn" title="add whatever the clipper is showing to the Image Stager">Stage</button>
       <button id="clipperHiresBtn" title="load the full-resolution copy, if one exists — draws against it directly, so the mask is accurate at export size">Hi-res</button>
     </div>
@@ -2869,6 +2871,43 @@
     loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
       .catch(() => console.error("failed to load source image", url));
   }
+
+  /* Local files, read straight from disk by the browser — nothing leaves the
+     machine. Same deal as a flattened reference: the blob URL is a handle for
+     the decoder and is revoked once the image is decoded, and the staged entry
+     is marked temp so a dead URL can't be restored after a reload. Clips cut
+     from one work all session and won't reload afterwards. */
+  async function openLocalFiles(files) {
+    const list = [...files].filter((f) => f.type.startsWith("image/"));
+    if (!list.length) return;
+    const made = [];
+    for (const file of list) {
+      const url = URL.createObjectURL(file);
+      try { await loadImage(url); } catch { URL.revokeObjectURL(url); continue; }
+      stageImage({ url, title: file.name, thumb: "", from: "local file", temp: true });
+      made.push(url);
+    }
+    if (!made.length) { sourceUrlHint.textContent = "could not read those files"; return; }
+    selectSource(made[0]);
+    // Only the handles this call created, and only once they're decoded.
+    made.forEach((u) => URL.revokeObjectURL(u));
+  }
+
+  document.getElementById("uploadImageBtn").addEventListener("click", () =>
+    document.getElementById("uploadImageInput").click());
+
+  document.getElementById("uploadImageInput").addEventListener("change", (e) => {
+    openLocalFiles(e.target.files);
+    e.target.value = "";   // re-picking the same file must fire change again
+  });
+
+  // Dropping onto the clipper does the same thing.
+  sourceViewport.addEventListener("dragover", (e) => { e.preventDefault(); });
+  sourceViewport.addEventListener("drop", (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    openLocalFiles(e.dataTransfer.files);
+  });
 
   function loadTypedUrl() {
     editor.editingUseOriginal = false;
@@ -5618,7 +5657,9 @@
        immediately; keeping them would be a second copy of the PNG for nothing.
        Revoked after the load, never before: revoking first would abort it. */
     await loadImage(url);
-    stageImage({ url, title: label + " (reference)", thumb: "", from: "reference" });
+    // temp: saveStaged drops these, so a revoked blob URL can't come back as a
+    // dead entry after a reload.
+    stageImage({ url, title: label + " (reference)", thumb: "", from: "reference", temp: true });
     selectSource(url);
     URL.revokeObjectURL(url);
     exampleStatus.textContent =
