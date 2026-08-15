@@ -80,23 +80,12 @@
 
   .panel-head {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 6px; margin-bottom: 4px; flex-wrap: wrap; min-height: 0;
+    gap: 6px; margin-bottom: 4px; flex-wrap: wrap;
   }
-  /* Drag handle + collapse arrow as one flex item, so panel-head's
-     justify-content:space-between spreads it and the title/size-toggle
-     apart as two groups, not the handle and arrow apart from each other. */
+  /* Holds the drag handle as one flex item pinned to the left, so
+     panel-head's justify-content:space-between spreads it and the
+     title/size-toggle apart rather than spacing out its contents. */
   .panel-head-lead { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .panel-head-collapse {
-    flex-shrink: 0; padding: 0 3px; font-size: 0.6rem;
-    line-height: 1.2; opacity: 0.35; background: none; border: none;
-  }
-  .panel-head-collapse:hover { opacity: 1; }
-  /* Everything but the lead group (drag handle + arrow) and the board's
-     remove button disappears when collapsed — those stay reachable (you can
-     still grab, reopen, or remove a collapsed panel) while the title and
-     the rest of the controls go away. */
-  .panel-head.head-collapsed > *:not(.panel-head-lead):not(.tile-remove) { display: none; }
-  .panel-head.head-collapsed { margin-bottom: 4px; }
   body.mode-board .size-toggle { display: none; }
   /* min-width:0 lets a long title shrink rather than shoving the buttons past
      the panel edge; the toggle wraps to its own line when it still won't fit. */
@@ -163,6 +152,23 @@
   /* flex-basis 100% forces the wrap, so the label sits on its own line above
      the controls it names. */
   .section-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; flex: 0 0 100%; }
+  /* Sits inline in the section's own label, ahead of its text, so it's
+     obvious which section it closes. */
+  .section-label-collapse {
+    display: inline-block; margin-right: 5px; padding: 0 4px;
+    font-size: 0.6rem; line-height: 1.4; opacity: 0.5; vertical-align: middle;
+    background: #000; border: 1px solid var(--border); border-radius: 3px;
+  }
+  .section-label-collapse:hover { opacity: 1; border-color: var(--accent2); }
+  /* display:inline-block above would otherwise beat the UA's [hidden] rule. */
+  .section-label-collapse[hidden] { display: none; }
+  /* Every child but the label itself goes away, so the section reads as a
+     heading you can reopen.
+     !important because several sections set their children's display from
+     an ID-scoped rule (`#clipFilters label { display: flex }` and friends).
+     An ID beats any number of classes, so without this the collapse simply
+     loses the cascade in exactly those panels and appears to do nothing. */
+  .section-collapsed > *:not(.section-label) { display: none !important; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
   .hint a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid transparent; }
@@ -1012,6 +1018,7 @@
       </span>
     </div>
     <div class="row">
+      <span class="section-label">Settings</span>
       <select id="sizePreset">
         <option value="">Collage Size</option>
         <optgroup label="Generic">
@@ -3727,31 +3734,44 @@
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
   });
 
-  // Collapses the title row itself (not the content, that's minimize) —
-  // injected once for every panel rather than hand-edited into all twelve,
-  // so it's consistent and doesn't touch the markup above.
+  /* Drag handle pulled out of the title (<h2>) into its own leading slot,
+     so it sits at the far left of the header rather than beside the text.
+     Wrapped because panel-head's justify-content:space-between spreads its
+     direct children apart — the wrapper keeps this pinned left as one unit. */
   document.querySelectorAll(".panel-head").forEach((head) => {
-    const arrow = document.createElement("button");
-    arrow.type = "button";
-    arrow.className = "panel-head-collapse";
-    arrow.title = "hide the title row";
-    arrow.textContent = "▾";
-    arrow.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const collapsed = head.classList.toggle("head-collapsed");
-      arrow.title = collapsed ? "show the title row" : "hide the title row";
-      arrow.textContent = collapsed ? "▸" : "▾";
-    });
-    // Grouped with the drag handle in one flex item — panel-head's
-    // justify-content:space-between treats direct children as separate
-    // things to spread apart, which put ~75px of dead space between the
-    // handle and the arrow instead of keeping them together at the left edge.
+    const dragHandle = head.querySelector(".drag-handle");
+    if (!dragHandle) return;
     const lead = document.createElement("span");
     lead.className = "panel-head-lead";
-    const dragHandle = head.querySelector(".drag-handle");
-    if (dragHandle) lead.appendChild(dragHandle);
-    lead.appendChild(arrow);
+    lead.appendChild(dragHandle);
     head.insertBefore(lead, head.firstChild);
+  });
+
+  // Same idea, one level down: every labeled section ("Layer controls",
+  // "Filters", "Motions", "File"...) gets its own collapse toggle, sitting
+  // in the label and hiding that section's rows while the label stays put.
+  // Delegated on document (not a per-button listener) so it can't go stale
+  // if anything ever moves or rebuilds these rows.
+  document.addEventListener("click", (e) => {
+    const arrow = e.target.closest(".section-label-collapse");
+    if (!arrow) return;
+    e.stopPropagation();
+    const row = arrow.closest(".section-label").parentElement;
+    const collapsed = row.classList.toggle("section-collapsed");
+    arrow.title = collapsed ? "show this section" : "hide this section";
+    arrow.textContent = collapsed ? "▸" : "▾";
+  });
+  document.querySelectorAll(".section-label").forEach((label) => {
+    const arrow = document.createElement("button");
+    arrow.type = "button";
+    arrow.className = "section-label-collapse";
+    arrow.title = "hide this section";
+    arrow.textContent = "▾";
+    /* Inside the label, right before its text, so it reads as belonging to
+       the section it closes. Being a descendant also means it inherits the
+       row's hidden state for free (#paintTools and friends toggle that as
+       state changes) and needs no order/position juggling to stay put. */
+    label.insertBefore(arrow, label.firstChild);
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
@@ -3787,8 +3807,11 @@
     const filters = document.getElementById("clipFilters");
     panel.classList.toggle("inactive", !clip);
     filters.classList.toggle("inactive", !clip);
-    const controls = [...panel.querySelectorAll("input, select, button"),
-                     ...filters.querySelectorAll("input, button")];
+    /* :not(.section-label-collapse) — collapsing a section is a layout
+       choice, not something that acts on the selected layer, so it stays
+       usable when there's nothing selected and these controls go disabled. */
+    const controls = [...panel.querySelectorAll("input, select, button:not(.section-label-collapse)"),
+                     ...filters.querySelectorAll("input, button:not(.section-label-collapse)")];
     const paintRow = document.getElementById("paintTools");
     paintRow.hidden = !clip || !clip.paint;
     [...paintRow.querySelectorAll("input, select, button")].forEach((el) => { el.disabled = !!clip?.locked; });
