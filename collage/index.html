@@ -30,6 +30,10 @@
     grid-auto-flow: row dense;
     gap: var(--panel-gap); align-items: start;
   }
+  /* display:grid above is an author rule at the same specificity as the UA
+     stylesheet's [hidden] rule, and author beats UA — without this, setting
+     .hidden on the layout wouldn't actually hide it once Board takes over. */
+  .layout[hidden] { display: none; }
   .layout-col {
     display: flex; flex-direction: column; gap: var(--panel-gap);
     min-width: 0; grid-column: span 6;
@@ -78,6 +82,7 @@
     display: flex; justify-content: space-between; align-items: center;
     gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
   }
+  body.mode-board .size-toggle { display: none; }
   /* min-width:0 lets a long title shrink rather than shoving the buttons past
      the panel edge; the toggle wraps to its own line when it still won't fit. */
   .panel-head h2 {
@@ -135,6 +140,14 @@
   .section-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; flex: 0 0 100%; }
   input[type="number"] { width: 70px; }
   .hint { font-size: 0.75rem; opacity: 0.6; max-width: 480px; margin: 8px 0 0; }
+  .hint a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid transparent; }
+  .hint a:hover { border-bottom-color: var(--accent2); }
+  #v1Note {
+    position: fixed; top: 10px; right: 40px; margin: 0; z-index: 59;
+    font-size: 0.65rem; opacity: 0.35;
+  }
+  #v1Note a { color: inherit; border-bottom-color: currentColor; }
+  #v1Note:hover { opacity: 0.7; }
   /* Names a group of controls without competing with the panel's own heading. */
   .row-label {
     font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
@@ -671,11 +684,114 @@
   }
   .preview-controls:hover { opacity: 1; }
   #pvZoomLabel { font-size: 0.8rem; opacity: 0.8; width: 42px; text-align: center; }
+
+  /* ---------- board ---------- */
+
+  #board {
+    display: grid; gap: var(--panel-gap); position: relative;
+    grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr));
+    grid-auto-rows: var(--board-row, 220px);
+    padding-bottom: 40px;
+  }
+  #board[hidden] { display: none; }
+  /* Cells and tiles are BOTH explicitly placed, so neither can push the other
+     around via auto-flow — the grid is a coordinate space, not a queue. */
+  .board-cell {
+    border: 1px dashed #2e2e2e; border-radius: 6px; z-index: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #2e2e2e; font-size: 1.4rem; cursor: pointer; user-select: none;
+  }
+  .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
+  .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
+  .board-tile > .panel { flex: 1 1 auto; min-width: 0; overflow: auto; }
+  /* The footprint the drop would occupy. Never placed until mouseup. */
+  #boardGhost {
+    z-index: 2; pointer-events: none; border-radius: 6px;
+    border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
+  }
+  #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
+  #boardGhost[hidden] { display: none; }
+  .board-empty {
+    grid-column: 1 / -1; text-align: center; padding: 40px 10px;
+    color: var(--fg); opacity: 0.35; font-size: 0.85rem;
+  }
+  .tile-remove {
+    position: absolute; top: 6px; right: 6px; z-index: 5;
+    padding: 0 6px; font-size: 0.8rem; line-height: 1.4;
+  }
+
+  /* ---------- flyout ---------- */
+  #boardFlyoutWrap {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 290px; z-index: 60;
+    transform: translateX(100%); transition: transform 0.18s ease;
+  }
+  #boardFlyoutWrap.open { transform: none; }
+  #boardFlyoutWrap[hidden] { display: none; }
+  #boardFlyout {
+    position: absolute; inset: 0;
+    background: #131313; border-left: 1px solid var(--border);
+    padding: 10px; overflow-y: auto;
+  }
+  #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
+  #boardFlyout .row { gap: 6px; }
+  #boardFlyout label { font-size: 0.75rem; display: flex; align-items: center; gap: 4px; }
+  #boardFlyout input[type="number"] { width: 56px; }
+  #boardSearch { width: 100%; margin-bottom: 8px; }
+  /* Minified stacked cards — name plus the footprint it will occupy. */
+  .board-card {
+    display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--border); border-radius: 5px; background: #0d0d0d;
+    padding: 7px 9px; margin-bottom: 6px; cursor: grab; font-size: 0.8rem;
+  }
+  .board-card:hover { border-color: var(--accent2); }
+  .board-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.3; margin-left: 28px; }
+  .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .board-card .fp input[type="number"] { width: 30px; font-size: 0.7rem; padding: 1px 2px; }
+  .board-card .fp-add {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: #000; color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
+  }
+  .board-card .fp-add:hover { opacity: 1; border-color: var(--accent2); }
+  .board-card .fp-add svg { width: 12px; height: 12px; display: block; }
+  .board-card.dragging { opacity: 0.4; }
+  .board-group-heading {
+    margin: 12px 0 4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; opacity: 0.55;
+  }
+  .board-group-heading:first-child { margin-top: 0; }
+  #boardFlyoutTab {
+    position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
+    writing-mode: vertical-rl; padding: 12px 5px; font-size: 0.75rem;
+    border-radius: 6px 0 0 6px;
+  }
+
 </style>
 </head>
 <body>
 
 <h1>Collage</h1>
+<p id="v1Note" class="hint" hidden>Looking for v1? <a href="https://mbricknell.com/collage/?mode=classic">visit this URL</a>.</p>
+
+
+<div id="board" hidden></div>
+<div id="boardFlyoutWrap" hidden>
+  <button type="button" id="boardFlyoutTab" title="show/hide the panel list">Panels</button>
+  <div id="boardFlyout">
+    <h3>Panels</h3>
+    <div class="row">
+      <label>Columns <input type="number" id="boardCols" min="1" max="12" step="1" value="4"></label>
+      <label>Row px <input type="number" id="boardRowUnit" min="80" max="600" step="10" value="220"></label>
+      <button type="button" id="boardFlyoutClose" title="hide the list">&times;</button>
+    </div>
+    <input type="text" id="boardSearch" placeholder="search panels&hellip;" spellcheck="false">
+    <div id="boardCardList"></div>
+  </div>
+</div>
+<div id="panelStore" hidden></div>
 
 <div class="layout">
 
@@ -1848,16 +1964,26 @@
          outside the shape — rect + polygon under even-odd, the same trick
          buildStamp uses, so the preview can't disagree with the render. */
       if (editor.closed) {
-        sctx.fillStyle = "rgba(255,85,0,0.2)";
-        if (editor.invert) {
-          const p = new Path2D();
-          p.rect(0, 0, editor.naturalW, editor.naturalH);
-          editor.points.forEach(([x, y], i) => i === 0 ? p.moveTo(x, y) : p.lineTo(x, y));
-          p.closePath();
-          sctx.fill(p, "evenodd");
-        } else {
-          sctx.fill();
+        /* The tint marks what actually survives, holes included. Clip to the
+           kept region first, then fill the frame minus the rings: the clip
+           kills the spur even-odd would otherwise paint where a ring hangs
+           outside the shape, so this is exact for a ring in any position, and
+           for inverted cuts too. */
+        const region = new Path2D();
+        if (editor.invert) region.rect(0, 0, editor.naturalW, editor.naturalH);
+        editor.points.forEach(([x, y], i) => i === 0 ? region.moveTo(x, y) : region.lineTo(x, y));
+        region.closePath();
+        sctx.save();
+        sctx.clip(region, editor.invert ? "evenodd" : "nonzero");
+        const tint = new Path2D();
+        tint.rect(0, 0, editor.naturalW, editor.naturalH);
+        for (const ring of subRings()) {
+          ring.forEach(([x, y], i) => i === 0 ? tint.moveTo(x, y) : tint.lineTo(x, y));
+          tint.closePath();
         }
+        sctx.fillStyle = "rgba(255,85,0,0.2)";
+        sctx.fill(tint, "evenodd");
+        sctx.restore();
       }
       editor.points.forEach(([x, y], i) => {
         // Peek fills the node with what's under it. The node then has to be
@@ -2604,8 +2730,9 @@
     editor.editingUseOriginal = false;
     editor.editingHires = null;
     setInvertClip(false);
+    // Subtract mode goes off, but the rings stay — the main path isn't cleared
+    // on add either, and losing only half the cut is the surprising half.
     setSubtractMode(false);
-    clearSubtract();
     syncHiresButton();
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     renderCollage(); renderLayerList(); syncTextarea(); updateClipProps();
@@ -6131,7 +6258,14 @@
     document.getElementById("addToCollageBtn").textContent = "Add to collage";
     setSourceField(entry.source);
     loadImage(clipUrl(entry))
-      .then((img) => setEditorImage(img, entry.polygon))
+      .then((img) => {
+        setEditorImage(img, entry.polygon);
+        // setEditorImage clears the rings along with the old source, so the
+        // entry's holes go back on after it, not before.
+        setInvertClip(!!entry.invert);
+        editor.subtract = (entry.subtract || []).map((r) => ({ pts: r.map((q) => q.slice()), closed: true }));
+        renderEditor();
+      })
       .catch(() => { document.getElementById("libraryStatus").textContent = "source image failed to load"; });
   }
 
@@ -7940,15 +8074,486 @@
     previewOverlay.classList.remove("panning");
   });
 
+
+  // ================= BOARD (phase 1) =================
+  /* A second layout system, built alongside Classic rather than replacing
+     it: Classic's DOM (`.layout` > `.layout-col` > `.panel`) is left fully
+     intact, and the Board just reparents the same panel elements into grid
+     tiles while it's active. Switching modes is nothing but moving nodes
+     back and forth — neither system ever clones or rebuilds a panel, so the
+     230-odd getElementById calls scattered through the rest of the file
+     keep working unchanged in both modes. */
+  const BOARD_KEY = "collage.layout.v2";
+  const MODE_KEY = "collage.mode.v1";
+  const FOOTPRINTS_KEY = "collage.footprints.v1";
+
+  // w/h in board units. The only place panel footprints are defined.
+  const FOOTPRINTS = {
+    editorPanel:      { name: "Clipper",      w: 2, h: 2, group: "core",
+      desc: "Trace a mask around part of a source image, ready to stage or drop into the Collage." },
+    spotPanel:        { name: "Spot Check",   w: 1, h: 1, group: "helpers",
+      desc: "Pixel-level magnifier that follows the cursor over a source image." },
+    collagePanel:      { name: "Collage",      w: 4, h: 3, group: "core",
+      desc: "The composite canvas — move, scale, and rotate clips into the final layout." },
+    collectionsPanel: { name: "Collections",  w: 1, h: 2, group: "core",
+      desc: "Browse a curated, searchable set of source images." },
+    colorPanel:       { name: "Swatches",     w: 1, h: 1, group: "helpers",
+      desc: "Palettes of saved colors, organized into named collections." },
+    libraryPanel:     { name: "Clippings",    w: 1, h: 2, group: "core",
+      desc: "A saved clip mask, ready to go." },
+    selectorPanel:    { name: "Collect",      w: 1, h: 1, group: "core",
+      desc: "A favorite of a source image from Collections." },
+    actionsPanel:     { name: "Actions",      w: 1, h: 1, group: "animate",
+      desc: "Named motion paths (step sequences) you assign to layers for animation." },
+    statsPanel:       { name: "Stats",        w: 1, h: 1, group: "settings",
+      desc: "Live memory usage — what's actually cached and decoded in this session." },
+    examplesPanel:    { name: "Examples",     w: 1, h: 2, group: "settings",
+      desc: "Starter projects — click one to load it, replacing the current canvas." },
+    recordPanel:      { name: "Record",       w: 1, h: 1, group: "animate",
+      desc: "Plays layers in sequence and records the result to a .webm video file." },
+    configPanel:      { name: "Config",       w: 2, h: 1, group: "settings",
+      desc: "The project as JSON — save, load, download, or upload the whole collage." }
+  };
+  const FOOTPRINT_GROUPS = ["core", "helpers", "animate", "settings"];
+
+  function loadFootprints() {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(FOOTPRINTS_KEY) || "null"); } catch { raw = null; }
+    if (!raw || typeof raw !== "object") return;
+    for (const id of Object.keys(raw)) {
+      const fp = FOOTPRINTS[id];
+      const o = raw[id];
+      if (!fp || !o) continue;
+      const w = parseInt(o.w, 10), h = parseInt(o.h, 10);
+      if (Number.isFinite(w) && w >= 1) fp.w = w;
+      if (Number.isFinite(h) && h >= 1) fp.h = h;
+    }
+  }
+  function saveFootprints() {
+    const out = {};
+    for (const id of Object.keys(FOOTPRINTS)) out[id] = { w: FOOTPRINTS[id].w, h: FOOTPRINTS[id].h };
+    try { localStorage.setItem(FOOTPRINTS_KEY, JSON.stringify(out)); } catch { /* storage unavailable */ }
+  }
+
+  const boardEl = document.getElementById("board");
+  const flyoutWrapEl = document.getElementById("boardFlyoutWrap");
+  const flyoutTabEl = document.getElementById("boardFlyoutTab");
+  const ghostEl = document.createElement("div");
+  ghostEl.id = "boardGhost";
+  ghostEl.hidden = true;
+  boardEl.appendChild(ghostEl);
+
+  // Where each panel actually lives in Classic — captured once, at whatever
+  // its saved/default column happens to be, so leaving the board always
+  // restores it to the exact same spot rather than an approximation.
+  const classicSlot = new Map();
+  function captureClassicSlots() {
+    for (const p of layoutPanels()) {
+      if (!classicSlot.has(p.id)) classicSlot.set(p.id, { parent: p.parentElement, next: p.nextSibling });
+    }
+  }
+
+  let board = { cols: 4, rowUnit: 220, tiles: [] };
+
+  function loadBoard() {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); } catch { raw = null; }
+    if (!raw || typeof raw !== "object") return;
+    const cols = Math.max(1, Math.min(12, Math.round(raw.cols) || 4));
+    const rowUnit = Math.max(80, Math.min(600, Math.round(raw.rowUnit) || 220));
+    const seen = new Set();
+    const tiles = [];
+    for (const t of Array.isArray(raw.tiles) ? raw.tiles : []) {
+      if (!t || !FOOTPRINTS[t.id] || seen.has(t.id)) continue;
+      const fp = FOOTPRINTS[t.id];
+      const w = Math.max(1, Math.min(cols, Math.round(t.w) || fp.w));
+      const h = Math.max(1, Math.round(t.h) || fp.h);
+      const x = Math.max(0, Math.min(cols - w, Math.round(t.x) || 0));
+      const y = Math.max(0, Math.round(t.y) || 0);
+      // A corrupt board degrades to a partial one: an overlap is dropped
+      // rather than repaired, never left to render on top of another tile.
+      if (tiles.some((o) => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y)) continue;
+      seen.add(t.id);
+      tiles.push({ id: t.id, x, y, w, h });
+    }
+    board = { cols, rowUnit, tiles };
+  }
+
+  function saveBoard() {
+    try { localStorage.setItem(BOARD_KEY, JSON.stringify(board)); } catch { /* storage unavailable */ }
+  }
+
+  /* Classic shows every panel always, so "present" there is unconditional —
+     only Board actually withholds anything. This is what the expensive
+     per-panel renders below gate on, both at startup and when a card lands
+     on the board later. */
+  let currentMode = "classic";
+  function isOnBoard(id) { return currentMode !== "board" || board.tiles.some((t) => t.id === id); }
+
+  function boardRows() {
+    const maxY = board.tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0);
+    return maxY + 2;   // always two spare rows to drop into
+  }
+
+  function overlaps(a, x, y, w, h) {
+    return board.tiles.some((t) => t !== a && x < t.x + t.w && x + w > t.x && y < t.y + t.h && y + h > t.y);
+  }
+
+  /* Cols shrinking can strand a tile past the new edge. Repacked in reading
+     order with a simple skyline scan — first free slot wins — rather than
+     trying to preserve exact positions that no longer fit. This only runs on
+     an explicit column-count change, never on an ordinary drop. */
+  function repackForCols(cols) {
+    const ordered = [...board.tiles].sort((a, b) => a.y - b.y || a.x - b.x);
+    const placed = [];
+    for (const t of ordered) {
+      const w = Math.min(t.w, cols);
+      let x = 0, y = 0;
+      outer:
+      for (y = 0; y < 999; y++) {
+        for (x = 0; x <= cols - w; x++) {
+          const free = !placed.some((o) => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + t.h > o.y);
+          if (free) break outer;
+        }
+      }
+      placed.push({ id: t.id, x, y, w, h: t.h });
+    }
+    board.tiles = placed;
+  }
+
+  function renderBoardCells() {
+    [...boardEl.querySelectorAll(".board-cell")].forEach((c) => c.remove());
+    const rows = boardRows();
+    const frag = document.createDocumentFragment();
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < board.cols; x++) {
+        const cell = document.createElement("div");
+        cell.className = "board-cell";
+        cell.style.gridColumn = (x + 1) + " / span 1";
+        cell.style.gridRow = (y + 1) + " / span 1";
+        cell.textContent = "+";
+        cell.title = "open the panel list";
+        cell.addEventListener("click", () => flyoutWrapEl.classList.add("open"));
+        frag.appendChild(cell);
+      }
+    }
+    boardEl.insertBefore(frag, boardEl.firstChild);
+  }
+
+  function renderBoardTiles() {
+    /* Every placed panel is looked up before any wrapper is torn down.
+       .remove() below detaches the old wrapper AND the panel living inside
+       it in the same call — a detached node is invisible to
+       getElementById even though the object is still alive — so looking a
+       panel up afterwards silently lost it on every render past the first. */
+    const panels = new Map(board.tiles.map((t) => [t.id, document.getElementById(t.id)]));
+    [...boardEl.querySelectorAll(".board-tile")].forEach((t) => t.remove());
+    boardEl.style.setProperty("--board-cols", board.cols);
+    boardEl.style.setProperty("--board-row", board.rowUnit + "px");
+    for (const t of board.tiles) {
+      const panel = panels.get(t.id);
+      if (!panel) continue;
+      const wrap = document.createElement("div");
+      wrap.className = "board-tile";
+      wrap.dataset.id = t.id;
+      wrap.style.gridColumn = (t.x + 1) + " / span " + t.w;
+      wrap.style.gridRow = (t.y + 1) + " / span " + t.h;
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.className = "tile-remove"; rm.title = "remove from board";
+      rm.textContent = "✕";
+      rm.addEventListener("click", () => removeTile(t.id));
+      wrap.appendChild(rm);
+      wrap.appendChild(panel);
+      boardEl.appendChild(wrap);
+    }
+  }
+
+  function renderBoard() {
+    renderBoardCells();
+    renderBoardTiles();
+    const empty = boardEl.querySelector(".board-empty");
+    if (!board.tiles.length) {
+      if (!empty) {
+        const d = document.createElement("div");
+        d.className = "board-empty";
+        d.textContent = "Empty board — open Panels and drag one in.";
+        boardEl.appendChild(d);
+      }
+    } else if (empty) empty.remove();
+  }
+
+  function renderBoardCardList() {
+    const list = document.getElementById("boardCardList");
+    const q = document.getElementById("boardSearch").value.trim().toLowerCase();
+    const available = Object.keys(FOOTPRINTS).filter((id) => !isOnBoard(id));
+    list.innerHTML = "";
+    let shown = 0;
+    for (const group of FOOTPRINT_GROUPS) {
+      const ids = available.filter((id) => FOOTPRINTS[id].group === group);
+      if (!ids.length) continue;
+      const visibleIds = q ? ids.filter((id) => FOOTPRINTS[id].name.toLowerCase().includes(q)) : ids;
+      if (!visibleIds.length) continue;
+      const heading = document.createElement("h4");
+      heading.className = "board-group-heading";
+      heading.textContent = group;
+      list.appendChild(heading);
+      for (const id of visibleIds) {
+        const fp = FOOTPRINTS[id];
+        const card = document.createElement("div");
+        card.className = "board-card";
+        card.draggable = true;
+        card.dataset.id = id;
+        card.innerHTML = `<div class="board-card-row">
+            <button type="button" class="fp-add" title="add to board"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></button>
+            <span class="board-card-name">${escapeHtml(fp.name)}</span>
+            <span class="fp">
+              <input type="number" class="fp-w" min="1" max="12" step="1" value="${fp.w}" title="width (cells)">
+              <span>&times;</span>
+              <input type="number" class="fp-h" min="1" max="12" step="1" value="${fp.h}" title="height (cells)">
+            </span>
+          </div>
+          <div class="board-card-desc">${escapeHtml(fp.desc || "")}</div>`;
+        const wInput = card.querySelector(".fp-w");
+        const hInput = card.querySelector(".fp-h");
+        wInput.addEventListener("mousedown", (e) => e.stopPropagation());
+        hInput.addEventListener("mousedown", (e) => e.stopPropagation());
+        wInput.addEventListener("change", () => {
+          fp.w = Math.max(1, Math.min(12, parseInt(wInput.value, 10) || 1));
+          wInput.value = fp.w;
+          saveFootprints();
+        });
+        hInput.addEventListener("change", () => {
+          fp.h = Math.max(1, Math.min(12, parseInt(hInput.value, 10) || 1));
+          hInput.value = fp.h;
+          saveFootprints();
+        });
+        const addBtn = card.querySelector(".fp-add");
+        addBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+        addBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const slot = findFreeSlot(fp.w, fp.h);
+          addTile(id, slot.x, slot.y, fp.w, fp.h);
+        });
+        list.appendChild(card);
+        shown++;
+      }
+    }
+    if (!shown) {
+      const none = document.createElement("div");
+      none.className = "board-card";
+      none.style.cursor = "default";
+      none.textContent = board.tiles.length ? "everything is on the board" : "no match";
+      list.appendChild(none);
+    }
+  }
+
+  function addTile(id, x, y, w, h) {
+    const fp = FOOTPRINTS[id];
+    board.tiles.push({ id, x, y, w: Math.min(w || fp.w, board.cols), h: h || fp.h });
+    renderBoard();
+    renderBoardCardList();
+    saveBoard();
+    onTilePlaced(id);
+  }
+
+  function findFreeSlot(w, h) {
+    const cw = Math.min(w, board.cols);
+    for (let y = 0; y < 999; y++) {
+      for (let x = 0; x <= board.cols - cw; x++) {
+        if (!overlaps(null, x, y, cw, h)) return { x, y };
+      }
+    }
+    return { x: 0, y: 0 };
+  }
+
+  function moveTile(id, x, y) {
+    const t = board.tiles.find((k) => k.id === id);
+    if (!t) return;
+    t.x = x; t.y = y;
+    renderBoard();
+    saveBoard();
+  }
+
+  function removeTile(id) {
+    board.tiles = board.tiles.filter((t) => t.id !== id);
+    const slot = classicSlot.get(id);
+    const panel = document.getElementById(id);
+    if (slot && panel) slot.parent.insertBefore(panel, slot.next);
+    renderBoard();
+    renderBoardCardList();
+    saveBoard();
+  }
+
+  // Renderers that are expensive and panel-specific run only once their
+  // panel actually lands on the board — this is the whole of the page-load
+  // win, since off-board panels now do nothing at all until placed.
+  const onPlaceHandlers = { examplesPanel: renderExamples, libraryPanel: renderLibrary,
+    recordPanel: previewRecordStill };
+  const firedOnPlace = new Set();
+  // One gate shared by the startup calls and this: whichever runs first wins,
+  // and the other becomes a no-op instead of a second render.
+  function renderIfPresent(id, fn) {
+    if (firedOnPlace.has(id) || !isOnBoard(id)) return;
+    firedOnPlace.add(id);
+    fn();
+  }
+  function onTilePlaced(id) {
+    const fn = onPlaceHandlers[id];
+    if (fn) renderIfPresent(id, fn);
+    if (id === "editorPanel") requestAnimationFrame(fitSourceView);
+    if (id === "collagePanel") requestAnimationFrame(fitView);
+  }
+
+  // ---------- drag: card -> board, and tile -> board ----------
+  let boardDrag = null;   // { id, w, h, fromTileOrigin }
+
+  function boardCellUnderPoint(clientX, clientY) {
+    const r = boardEl.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(boardEl).columnGap) || 16;
+    const cellW = (r.width - gap * (board.cols - 1)) / board.cols;
+    const cellH = board.rowUnit;
+    const x = Math.floor((clientX - r.left) / (cellW + gap));
+    const y = Math.floor((clientY - r.top) / (cellH + gap));
+    return { x, y };
+  }
+
+  function updateGhost(clientX, clientY) {
+    if (!boardDrag) return;
+    const { x, y } = boardCellUnderPoint(clientX, clientY);
+    const cx = Math.max(0, Math.min(board.cols - boardDrag.w, x));
+    const cy = Math.max(0, y);
+    const bad = x < 0 || x > board.cols - boardDrag.w || y < 0 ||
+      overlaps(boardDrag.fromTile || null, cx, cy, boardDrag.w, boardDrag.h);
+    ghostEl.hidden = false;
+    ghostEl.classList.toggle("invalid", bad);
+    ghostEl.style.gridColumn = (cx + 1) + " / span " + boardDrag.w;
+    ghostEl.style.gridRow = (cy + 1) + " / span " + boardDrag.h;
+    boardDrag.valid = !bad;
+    boardDrag.cx = cx; boardDrag.cy = cy;
+  }
+
+  function endBoardDrag(commit) {
+    if (boardDrag && commit && boardDrag.valid) {
+      if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
+      else addTile(boardDrag.id, boardDrag.cx, boardDrag.cy, boardDrag.w, boardDrag.h);
+    }
+    ghostEl.hidden = true;
+    document.querySelectorAll(".board-card.dragging, .board-tile.dragging")
+      .forEach((el) => el.classList.remove("dragging"));
+    boardDrag = null;
+  }
+
+  document.getElementById("boardCardList").addEventListener("dragstart", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") { e.preventDefault(); return; }
+    const card = e.target.closest(".board-card[draggable]");
+    if (!card) return;
+    const fp = FOOTPRINTS[card.dataset.id];
+    if (!fp) return;
+    card.classList.add("dragging");
+    boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
+    e.dataTransfer.effectAllowed = "copy";
+    // Firefox needs data set to fire subsequent drag events at all.
+    e.dataTransfer.setData("text/plain", card.dataset.id);
+  });
+  document.getElementById("boardCardList").addEventListener("dragend", () => endBoardDrag(false));
+
+  boardEl.addEventListener("dragover", (e) => {
+    if (!boardDrag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = boardDrag.fromTile ? "move" : "copy";
+    updateGhost(e.clientX, e.clientY);
+  });
+  boardEl.addEventListener("drop", (e) => {
+    if (!boardDrag) return;
+    e.preventDefault();
+    endBoardDrag(true);
+  });
+
+  // Repositioning a tile already on the board — grabbed by its own header.
+  boardEl.addEventListener("mousedown", (e) => {
+    const head = e.target.closest(".panel-head");
+    const tile = e.target.closest(".board-tile");
+    if (!head || !tile || e.target.closest("button")) return;
+    const t = board.tiles.find((k) => k.id === tile.dataset.id);
+    if (!t) return;
+    tile.classList.add("dragging");
+    boardDrag = { id: t.id, w: t.w, h: t.h, fromTile: t, valid: false };
+    const onMove = (ev) => updateGhost(ev.clientX, ev.clientY);
+    const onUp = (ev) => {
+      updateGhost(ev.clientX, ev.clientY);
+      endBoardDrag(true);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+
+  // ---------- flyout + mode toggle ----------
+  document.getElementById("boardFlyoutTab").addEventListener("click", () => { flyoutWrapEl.classList.toggle("open"); });
+  document.getElementById("boardFlyoutClose").addEventListener("click", () => { flyoutWrapEl.classList.remove("open"); });
+  document.getElementById("boardSearch").addEventListener("input", renderBoardCardList);
+
+  document.getElementById("boardCols").addEventListener("change", (e) => {
+    const cols = Math.max(1, Math.min(12, Math.round(Number(e.target.value)) || 4));
+    e.target.value = cols;
+    if (cols !== board.cols) { board.cols = cols; repackForCols(cols); renderBoard(); saveBoard(); }
+  });
+  document.getElementById("boardRowUnit").addEventListener("change", (e) => {
+    const px = Math.max(80, Math.min(600, Math.round(Number(e.target.value)) || 220));
+    e.target.value = px;
+    board.rowUnit = px;
+    renderBoard();
+    saveBoard();
+    requestAnimationFrame(() => { fitView(); fitSourceView(); });
+  });
+
+  function setAppMode(mode) {
+    currentMode = mode;
+    const toBoard = mode === "board";
+    document.body.classList.toggle("mode-board", toBoard);
+    document.getElementById("v1Note").hidden = !toBoard;
+    document.querySelector(".layout").hidden = toBoard;
+    boardEl.hidden = !toBoard;
+    flyoutWrapEl.hidden = !toBoard;
+    flyoutTabEl.hidden = !toBoard;
+    if (!toBoard) flyoutWrapEl.classList.remove("open");
+    if (toBoard) {
+      for (const t of board.tiles) onTilePlaced(t.id);
+      renderBoard();
+      renderBoardCardList();
+    } else {
+      // Panels return to exactly the Classic slot captured at startup.
+      for (const [id, slot] of classicSlot) {
+        const p = document.getElementById(id);
+        if (p && p.parentElement !== slot.parent) slot.parent.insertBefore(p, slot.next);
+      }
+      requestAnimationFrame(() => { fitView(); fitSourceView(); });
+    }
+    try { localStorage.setItem(MODE_KEY, mode); } catch { /* storage unavailable */ }
+  }
+
+  function initBoard() {
+    captureClassicSlots();
+    loadFootprints();
+    loadBoard();
+    document.getElementById("boardCols").value = board.cols;
+    document.getElementById("boardRowUnit").value = board.rowUnit;
+    const params = new URLSearchParams(location.search);
+    const mode = params.get("mode") === "classic" ? "classic" : "board";
+    setAppMode(mode);
+  }
+
   restoreLayout();
   applyAutoSave();
   renderPalettes();
-  renderLibrary();
+  initBoard();          // sets currentMode before anything below asks isOnBoard
+  renderIfPresent("libraryPanel", renderLibrary);
   showExportSize();
-  previewRecordStill();
+  renderIfPresent("recordPanel", previewRecordStill);
   renderCollage();
   renderLayerList();
-  renderExamples();
+  renderIfPresent("examplesPanel", renderExamples);
   syncTextarea();
   fitView();
   updateClipProps();
