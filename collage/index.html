@@ -234,10 +234,18 @@
      large window and 25x would otherwise overflow it. */
   /* Its own panel now, so the panel supplies the frame — no nested card. */
   .spot-check { max-width: 100%; }
-  .spot-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.75rem; }
-  .spot-controls label { display: flex; gap: 4px; align-items: center; }
-  .spot-controls input[type="number"] { width: 56px; padding: 2px 4px; font-size: 0.75rem; }
-  .spot-controls select { padding: 2px 4px; font-size: 0.75rem; }
+  .hamburger-btn { padding: 0 6px; font-size: 0.85rem; line-height: 1.4; }
+  /* Plain flow content, not a floating overlay — toggled by the hamburger
+     button, appears right in the panel like any other row. Nothing to
+     position, nothing for a scrollable tile to clip. */
+  .spot-settings-panel {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding: 6px 8px; margin-bottom: 8px; font-size: 0.75rem;
+    border: 1px solid var(--border); border-radius: 5px; background: #0d0d0d;
+  }
+  .spot-settings-panel label { display: flex; gap: 4px; align-items: center; }
+  .spot-settings-panel input[type="number"] { width: 56px; padding: 2px 4px; font-size: 0.75rem; }
+  .spot-settings-panel select { padding: 2px 4px; font-size: 0.75rem; }
   .spot-view { overflow: auto; max-width: 100%; max-height: 460px; }
   #magnifier { border: 1px solid var(--border); display: block; }
   .spot-idle {
@@ -719,6 +727,23 @@
     position: absolute; top: 6px; right: 6px; z-index: 5;
     padding: 0 6px; font-size: 0.8rem; line-height: 1.4;
   }
+  /* Grow/shrink a placed tile by a column or row. Only shown on hover, and
+     only the buttons that are actually legal — a "+" never appears toward an
+     occupied neighbor or past the board edge. */
+  .tile-resize {
+    position: absolute; display: flex; gap: 2px; z-index: 4;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .board-tile:hover .tile-resize { opacity: 1; }
+  .tile-resize button {
+    width: 18px; height: 18px; padding: 0; font-size: 0.8rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: #000; color: var(--fg); cursor: pointer;
+  }
+  .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
 
   /* ---------- flyout ---------- */
   #boardFlyoutWrap {
@@ -878,7 +903,9 @@
 
   <section class="panel size-mini" id="spotPanel">
     <div class="panel-head">
-      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Spot Check <span class="help-icon" title="A nearest-neighbour magnifier of the source under the cursor. Window is how many source pixels are sampled; magnification is how many screen pixels each becomes.">&#9432;</span></h2>
+      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Spot Check
+        <button type="button" id="spotSettingsBtn" class="hamburger-btn" title="magnifier settings">&#9776;</button>
+        <span class="help-icon" title="A nearest-neighbour magnifier of the source under the cursor. Window is how many source pixels are sampled; magnification is how many screen pixels each becomes.">&#9432;</span></h2>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -891,7 +918,7 @@
       </span>
     </div>
     <div class="spot-check">
-      <div class="spot-controls">
+      <div class="spot-settings-panel" id="spotSettingsPanel" hidden>
         <label>Window
           <input type="number" id="spotWindow" min="10" max="500" step="10" value="30">px</label>
         <label>Magnification
@@ -3046,6 +3073,18 @@
     loadImage(resolveSourceUrl(url)).then((img) => setEditorImage(img))
       .catch((err) => console.error("failed to load source image", err));
   }
+
+  document.getElementById("spotSettingsBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("spotSettingsPanel").hidden = !document.getElementById("spotSettingsPanel").hidden;
+  });
+  // It's a menu: clicking anywhere else closes it, same as any dropdown.
+  // Capture phase so a click on something with its own stopPropagation
+  // (the tile resize +/- buttons, for one) still closes it first.
+  document.addEventListener("mousedown", (e) => {
+    const p = document.getElementById("spotSettingsPanel");
+    if (!p.hidden && e.target.id !== "spotSettingsBtn" && !p.contains(e.target)) p.hidden = true;
+  }, true);
 
   dropdownBtn.addEventListener("click", () => {
     // Rebuild on open so URLs from a just-loaded config are always present,
@@ -8304,8 +8343,50 @@
       rm.addEventListener("click", () => removeTile(t.id));
       wrap.appendChild(rm);
       wrap.appendChild(panel);
+      appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
+      appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
       boardEl.appendChild(wrap);
     }
+  }
+
+  function appendTileResize(wrap, t, dim, canGrow) {
+    const canShrink = (dim === "w" ? t.w : t.h) > 1;
+    if (!canGrow && !canShrink) return;
+    const box = document.createElement("div");
+    box.className = "tile-resize tile-resize-" + dim;
+    if (canGrow) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = "+";
+      b.title = dim === "w" ? "widen by one column" : "taller by one row";
+      b.addEventListener("click", (e) => { e.stopPropagation(); resizeTile(t.id, dim, 1); });
+      box.appendChild(b);
+    }
+    if (canShrink) {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = "−";
+      b.title = dim === "w" ? "narrow by one column" : "shorter by one row";
+      b.addEventListener("click", (e) => { e.stopPropagation(); resizeTile(t.id, dim, -1); });
+      box.appendChild(b);
+    }
+    wrap.appendChild(box);
+  }
+
+  function resizeTile(id, dim, delta) {
+    const t = board.tiles.find((k) => k.id === id);
+    if (!t) return;
+    if (dim === "w") {
+      const nw = t.w + delta;
+      if (nw < 1) return;
+      if (delta > 0 && (t.x + nw > board.cols || overlaps(t, t.x + t.w, t.y, delta, t.h))) return;
+      t.w = nw;
+    } else {
+      const nh = t.h + delta;
+      if (nh < 1) return;
+      if (delta > 0 && overlaps(t, t.x, t.y + t.h, t.w, delta)) return;
+      t.h = nh;
+    }
+    renderBoard();
+    saveBoard();
   }
 
   function renderBoard() {
