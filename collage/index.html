@@ -80,26 +80,51 @@
 
   .panel-head {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
+    gap: 6px; margin-bottom: 4px; flex-wrap: wrap; min-height: 0;
   }
+  /* Drag handle + collapse arrow as one flex item, so panel-head's
+     justify-content:space-between spreads it and the title/size-toggle
+     apart as two groups, not the handle and arrow apart from each other. */
+  .panel-head-lead { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .panel-head-collapse {
+    flex-shrink: 0; padding: 0 3px; font-size: 0.6rem;
+    line-height: 1.2; opacity: 0.35; background: none; border: none;
+  }
+  .panel-head-collapse:hover { opacity: 1; }
+  /* Everything but the lead group (drag handle + arrow) and the board's
+     remove button disappears when collapsed — those stay reachable (you can
+     still grab, reopen, or remove a collapsed panel) while the title and
+     the rest of the controls go away. */
+  .panel-head.head-collapsed > *:not(.panel-head-lead):not(.tile-remove) { display: none; }
+  .panel-head.head-collapsed { margin-bottom: 4px; }
   body.mode-board .size-toggle { display: none; }
   /* min-width:0 lets a long title shrink rather than shoving the buttons past
      the panel edge; the toggle wraps to its own line when it still won't fit. */
   .panel-head h2 {
     margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 0.68rem; font-weight: 500; opacity: 0.55; line-height: 1.3;
   }
-  .help-icon { cursor: help; opacity: 0.5; font-size: 0.85rem; font-weight: normal; }
+  /* Groups the title with any icons that must sit right next to it, as one
+     flex item — panel-head's justify-content:space-between only sees this
+     unit and size-toggle, so it stays glued to the left edge instead of
+     space-between spreading the icons out toward the middle. */
+  .panel-head-title { display: flex; align-items: center; min-width: 0; flex-shrink: 1; }
+  .help-icon { cursor: help; opacity: 0.35; font-size: 0.72rem; font-weight: normal; }
   .help-icon:hover { opacity: 1; }
+  /* flex-shrink:0 so this never gets pushed to its own line — the title
+     (h2, shrink+ellipsis) gives up space first, keeping these on the title's
+     row instead of wrapping separately below it. */
+  .panel-head-icons { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 0 6px; }
   /* Explicit grip, in addition to dragging the header itself. It's a plain
      span, so the existing .panel-head pointerdown picks it up unchanged. */
   .drag-handle {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; flex-shrink: 0; vertical-align: middle;
+    width: 15px; height: 15px; flex-shrink: 0; vertical-align: middle;
     border: 1px solid var(--border); border-radius: 3px;
-    background: #000; color: var(--fg); opacity: 0.5; cursor: grab;
+    background: #000; color: var(--fg); opacity: 0.35; cursor: grab;
   }
   .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
-  .drag-handle svg { width: 12px; height: 12px; display: block; }
+  .drag-handle svg { width: 10px; height: 10px; display: block; }
   .panel.is-dragged .drag-handle { cursor: grabbing; }
   .size-toggle { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
   .size-toggle button { padding: 1px 5px; font-size: 0.7rem; line-height: 1.5; }
@@ -233,12 +258,16 @@
      and unscaled; .spot-view scrolls instead of stretching the panel when a
      large window and 25x would otherwise overflow it. */
   /* Its own panel now, so the panel supplies the frame — no nested card. */
-  .spot-check { max-width: 100%; }
+  .spot-check { max-width: 100%; padding: 8px 0; }
   .hamburger-btn { padding: 0 6px; font-size: 0.85rem; line-height: 1.4; }
   /* Plain flow content, not a floating overlay — toggled by the hamburger
      button, appears right in the panel like any other row. Nothing to
      position, nothing for a scrollable tile to clip. */
-  .spot-settings-panel {
+  /* :not([hidden]) — an unconditional `display` here would always win over
+     the browser's native [hidden]{display:none}: author styles beat the
+     user-agent stylesheet regardless of specificity, so the element stayed
+     visually shown no matter what the hidden attribute said. */
+  .spot-settings-panel:not([hidden]) {
     display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
     padding: 6px 8px; margin-bottom: 8px; font-size: 0.75rem;
     border: 1px solid var(--border); border-radius: 5px; background: #0d0d0d;
@@ -246,9 +275,20 @@
   .spot-settings-panel label { display: flex; gap: 4px; align-items: center; }
   .spot-settings-panel input[type="number"] { width: 56px; padding: 2px 4px; font-size: 0.75rem; }
   .spot-settings-panel select { padding: 2px 4px; font-size: 0.75rem; }
-  .spot-view { overflow: auto; max-width: 100%; max-height: 460px; }
+  /* width:max-content — shrink-wrapped to the canvas, not stretched to the
+     panel's width, so the idle/swatch overlays (inset:0 / left:0;right:0)
+     match the canvas's actual footprint instead of the whole panel's. */
+  .spot-view {
+    position: relative; overflow: auto; width: max-content; max-width: 100%; max-height: 460px;
+    scrollbar-width: none; -ms-overflow-style: none; /* Firefox / old Edge */
+  }
+  .spot-view::-webkit-scrollbar { display: none; } /* Chrome / Safari / Edge */
   #magnifier { border: 1px solid var(--border); display: block; }
+  /* Sits directly on top of the magnifier canvas (same footprint, see
+     syncSpotSize) rather than swapping places in flow — covers it instead
+     of replacing it. */
   .spot-idle {
+    position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center; text-align: center;
     border: 1px solid var(--border); background: #151515; opacity: 0.5;
     font-size: 0.75rem; padding: 8px; box-sizing: border-box;
@@ -256,10 +296,15 @@
   /* These two swap via the hidden attribute, which an explicit display would
      otherwise beat on specificity. */
   #magnifier[hidden], .spot-idle[hidden] { display: none; }
-  /* Permanently in the layout — it goes blank rather than disappearing, so
+  /* Docked over the bottom edge of the magnifier rather than sitting below
+     it — permanently in the layout still (goes blank, doesn't disappear), so
      hovering the source can't change the panel's height and shove everything
      below it around. */
-  .spot-swatch { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.75rem; }
+  .spot-swatch {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+    display: flex; align-items: center; gap: 8px; font-size: 0.75rem;
+    padding: 6px; background: rgba(13,13,13,0.85); border-top: 1px solid var(--border);
+  }
   .spot-chip {
     width: 26px; height: 26px; flex-shrink: 0; border-radius: 4px;
     border: 1px solid var(--border); background: #000;
@@ -711,7 +756,11 @@
   }
   .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
-  .board-tile > .panel { flex: 1 1 auto; min-width: 0; overflow: auto; }
+  .board-tile > .panel {
+    flex: 1 1 auto; min-width: 0; overflow: auto;
+    scrollbar-width: none; -ms-overflow-style: none; /* Firefox / old Edge */
+  }
+  .board-tile > .panel::-webkit-scrollbar { display: none; } /* Chrome / Safari / Edge */
   /* The footprint the drop would occupy. Never placed until mouseup. */
   #boardGhost {
     z-index: 2; pointer-events: none; border-radius: 6px;
@@ -723,10 +772,10 @@
     grid-column: 1 / -1; text-align: center; padding: 40px 10px;
     color: var(--fg); opacity: 0.35; font-size: 0.85rem;
   }
-  .tile-remove {
-    position: absolute; top: 6px; right: 6px; z-index: 5;
-    padding: 0 6px; font-size: 0.8rem; line-height: 1.4;
-  }
+  /* Inline in the title row, not floating over it — an absolutely-positioned
+     corner button overlapped whatever happened to sit there, the info/menu
+     icons included. */
+  .tile-remove { order: 99; flex-shrink: 0; padding: 0 5px; font-size: 0.7rem; line-height: 1.4; }
   /* Grow/shrink a placed tile by a column or row. Only shown on hover, and
      only the buttons that are actually legal — a "+" never appears toward an
      occupied neighbor or past the board edge. */
@@ -903,9 +952,13 @@
 
   <section class="panel size-mini" id="spotPanel">
     <div class="panel-head">
-      <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Spot Check
-        <button type="button" id="spotSettingsBtn" class="hamburger-btn" title="magnifier settings">&#9776;</button>
-        <span class="help-icon" title="A nearest-neighbour magnifier of the source under the cursor. Window is how many source pixels are sampled; magnification is how many screen pixels each becomes.">&#9432;</span></h2>
+      <span class="panel-head-title">
+        <h2><span class="drag-handle" title="drag to move this panel"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1.5l2 2.5h-4zM8 14.5l2-2.5h-4zM1.5 8l2.5-2v4zM14.5 8l-2.5-2v4z" fill="currentColor"/></svg></span> Spot Check</h2>
+        <span class="panel-head-icons">
+          <span class="help-icon" title="A nearest-neighbour magnifier of the source under the cursor. Window is how many source pixels are sampled; magnification is how many screen pixels each becomes.">&#9432;</span>
+          <button type="button" id="spotSettingsBtn" class="hamburger-btn" title="magnifier settings">&#9776;</button>
+        </span>
+      </span>
       <span class="size-toggle">
         <button type="button" data-action="move-left" title="move panel left">&#8592;</button>
         <button type="button" data-action="move-right" title="move panel right">&#8594;</button>
@@ -920,7 +973,7 @@
     <div class="spot-check">
       <div class="spot-settings-panel" id="spotSettingsPanel" hidden>
         <label>Window
-          <input type="number" id="spotWindow" min="10" max="500" step="10" value="30">px</label>
+          <input type="number" id="spotWindow" min="10" max="500" step="1" value="30">px</label>
         <label>Magnification
           <select id="spotMag">
             <option value="4">4x</option>
@@ -932,13 +985,13 @@
       <div class="spot-view">
         <canvas id="magnifier"></canvas>
         <div class="spot-idle" id="spotIdle">Hover over source to magnify</div>
-      </div>
-      <!-- The pixel under the crosshair, not the middle of the window: near an
-           edge the window is clamped and the two are different pixels. -->
-      <div class="spot-swatch" id="spotSwatch">
-        <span class="spot-chip" id="spotChip"></span>
-        <span class="spot-hex" id="spotHex"></span>
-        <span class="spot-rgb" id="spotRgb"></span>
+        <!-- The pixel under the crosshair, not the middle of the window: near an
+             edge the window is clamped and the two are different pixels. -->
+        <div class="spot-swatch" id="spotSwatch">
+          <span class="spot-chip" id="spotChip"></span>
+          <span class="spot-hex" id="spotHex"></span>
+          <span class="spot-rgb" id="spotRgb"></span>
+        </div>
       </div>
     </div>
   </section>
@@ -2275,7 +2328,9 @@
 
   function showSpotIdle() {
     spot.at = null;
-    magCanvas.hidden = true;
+    // The canvas itself stays visible and in flow — it's what gives
+    // .spot-view its size — the idle label just covers it. Hiding the
+    // canvas here left nothing in flow to size the container against.
     spotIdle.hidden = false;
     // Stays in the layout and goes blank — leaving the last reading on screen
     // would look like the current sample.
@@ -3645,7 +3700,11 @@
     if (state.sourceViewport?.h) sourceViewport.style.height = state.sourceViewport.h;
   }
 
-  document.querySelector(".layout").addEventListener("click", (e) => {
+  // document, not .layout — a panel lives inside #board instead once it's on
+  // the board, and a listener scoped to .layout would never see clicks on it
+  // there (minimize is still reachable in board mode; the rest of these
+  // buttons aren't shown, so their branches below simply never fire from there).
+  document.addEventListener("click", (e) => {
     const btn = e.target.closest(".panel-head button");
     if (!btn) return;
     const panel = btn.closest(".panel");
@@ -3666,6 +3725,33 @@
     saveLayout();
     // Wait for layout to settle before re-measuring the viewports.
     requestAnimationFrame(() => { fitView(); fitSourceView(); });
+  });
+
+  // Collapses the title row itself (not the content, that's minimize) —
+  // injected once for every panel rather than hand-edited into all twelve,
+  // so it's consistent and doesn't touch the markup above.
+  document.querySelectorAll(".panel-head").forEach((head) => {
+    const arrow = document.createElement("button");
+    arrow.type = "button";
+    arrow.className = "panel-head-collapse";
+    arrow.title = "hide the title row";
+    arrow.textContent = "▾";
+    arrow.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const collapsed = head.classList.toggle("head-collapsed");
+      arrow.title = collapsed ? "show the title row" : "hide the title row";
+      arrow.textContent = collapsed ? "▸" : "▾";
+    });
+    // Grouped with the drag handle in one flex item — panel-head's
+    // justify-content:space-between treats direct children as separate
+    // things to spread apart, which put ~75px of dead space between the
+    // handle and the arrow instead of keeping them together at the left edge.
+    const lead = document.createElement("span");
+    lead.className = "panel-head-lead";
+    const dragHandle = head.querySelector(".drag-handle");
+    if (dragHandle) lead.appendChild(dragHandle);
+    lead.appendChild(arrow);
+    head.insertBefore(lead, head.firstChild);
   });
 
   // Keeps the overview rect and quick-actions honest when the viewport resizes.
@@ -8337,11 +8423,17 @@
       wrap.dataset.id = t.id;
       wrap.style.gridColumn = (t.x + 1) + " / span " + t.w;
       wrap.style.gridRow = (t.y + 1) + " / span " + t.h;
-      const rm = document.createElement("button");
-      rm.type = "button"; rm.className = "tile-remove"; rm.title = "remove from board";
-      rm.textContent = "✕";
-      rm.addEventListener("click", () => removeTile(t.id));
-      wrap.appendChild(rm);
+      // Reused across re-renders rather than recreated — panel-head survives
+      // (only the .board-tile wrapper around it gets torn down and rebuilt),
+      // so appending a fresh button every render would pile up duplicates.
+      let rm = panel.querySelector(".panel-head > .tile-remove");
+      if (!rm) {
+        rm = document.createElement("button");
+        rm.type = "button"; rm.className = "tile-remove"; rm.title = "remove from board";
+        rm.textContent = "✕";
+        rm.addEventListener("click", (e) => { e.stopPropagation(); removeTile(t.id); });
+        panel.querySelector(".panel-head").appendChild(rm);
+      }
       wrap.appendChild(panel);
       appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
       appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
@@ -8649,6 +8741,8 @@
         const p = document.getElementById(id);
         if (p && p.parentElement !== slot.parent) slot.parent.insertBefore(p, slot.next);
       }
+      // "remove from board" makes no sense once a panel isn't on the board.
+      document.querySelectorAll(".panel-head > .tile-remove").forEach((b) => b.remove());
       requestAnimationFrame(() => { fitView(); fitSourceView(); });
     }
     try { localStorage.setItem(MODE_KEY, mode); } catch { /* storage unavailable */ }
