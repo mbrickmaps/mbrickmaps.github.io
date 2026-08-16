@@ -2571,6 +2571,42 @@ function showRescan(on) {
 /* Dropping a folder straight onto the Pallet. webkitGetAsEntry is the only way
    to see that a dropped item is a directory at all; a plain file drop still
    works through the same path. */
+/*  Hosted piles.
+
+    Served from a static host, the .txt files sit next to this page but nothing
+    can find them: fetch has to be told a name, and a static host will not list
+    a directory. So `bricks/manifest.json` is the index — an array of filenames —
+    and the page reads it on load. Not merged automatically: they are listed in
+    the Pallet like any other folder, and you choose what to open.
+
+    Silent on file:// and data: URLs, where fetch is blocked; there is nothing
+    useful to say to someone opening the page from disk. */
+const MANIFEST = "bricks/manifest.json";
+
+async function loadHostedBricks() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  let names;
+  try {
+    const r = await fetch(MANIFEST, { cache: "no-cache" });
+    if (!r.ok) return;
+    names = await r.json();
+  } catch (e) { return; }
+  if (!Array.isArray(names) || !names.length) return;
+
+  const files = [];
+  for (const n of names) {
+    const name = typeof n === "string" ? n : (n && n.name);
+    if (!name || !isBrickFile(name)) continue;
+    try {
+      const r = await fetch("bricks/" + name, { cache: "no-cache" });
+      if (r.ok) files.push({ name: "bricks/" + name, text: await r.text() });
+    } catch (e) { /* one missing file must not lose the rest */ }
+  }
+  if (!files.length) return;
+  rememberFolder(files, "this site");
+  showMergeLog(files.length + " pile" + (files.length > 1 ? "s" : "") + " on this site — open or merge one");
+}
+
 let droppedImages = [];
 function entryFiles(entry, path, depth, out) {
   if (depth > 8) return Promise.resolve(out);
@@ -2813,6 +2849,9 @@ el("boardRowUnit").value = board.rowUnit;
 renderBoard();
 renderBoardCardList();
 booted = true;
+
+// Hosted piles, if this page is served rather than opened from disk.
+loadHostedBricks();
 
 /* ---------- flyout + board controls ---------- */
 el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
