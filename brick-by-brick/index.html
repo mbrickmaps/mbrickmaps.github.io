@@ -1,0 +1,2883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noimageindex">
+<title>Brick by Brick</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧱</text></svg>">
+<style>
+  /* Palette and board grammar deliberately match collage/index.html (v2). */
+  :root {
+    --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333;
+    --accent: #ff5500;      /* verified */
+    --accent2: #33ff33;     /* structural affordances */
+    --draft: #7a8a99;       /* the '-' status, used everywhere a brick is drawn */
+    --ghost: #b06a00;       /* referenced but never declared */
+    --bad: #f44336;
+    --panel-gap: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: system-ui, sans-serif; margin: 0; padding: 14px; font-size: 14px;
+  }
+  h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.02em; }
+  h1 .brickmark { color: var(--accent); }
+  .topbar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; flex: 1; min-width: 180px; }
+
+  /* ---------- THE BOARD ----------
+     A coordinate space, not a queue. Cells and tiles are BOTH explicitly
+     placed, so neither can push the other around via auto-flow. */
+  #board {
+    display: grid; gap: var(--panel-gap); position: relative;
+    grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr));
+    grid-auto-rows: var(--board-row, 220px);
+    padding-bottom: 40px;
+  }
+  .board-cell {
+    border: 1px dashed #2e2e2e; border-radius: 6px; z-index: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #2e2e2e; font-size: 1.4rem; cursor: pointer; user-select: none;
+  }
+  .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
+  .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
+  .board-tile > .panel {
+    flex: 1 1 auto; min-width: 0; overflow: auto;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .board-tile > .panel::-webkit-scrollbar { display: none; }
+  .board-tile.dragging { opacity: 0.4; }
+  /* The footprint a drop would occupy. Never placed until mouseup. */
+  #boardGhost {
+    z-index: 2; pointer-events: none; border-radius: 6px;
+    border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
+  }
+  #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
+  #boardGhost[hidden] { display: none; }
+  .board-empty {
+    grid-column: 1 / -1; text-align: center; padding: 40px 10px;
+    opacity: 0.35; font-size: 0.85rem;
+  }
+
+  /* Grow/shrink a placed tile by a column or row. Only the legal buttons are
+     shown — a "+" never appears toward an occupied neighbour or past the edge. */
+  .tile-resize { position: absolute; display: flex; gap: 2px; z-index: 4; opacity: 0; transition: opacity 0.15s; }
+  .board-tile:hover .tile-resize { opacity: 1; }
+  .tile-resize button {
+    width: 18px; height: 18px; padding: 0; font-size: 0.8rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 3px; background: #000; color: var(--fg); cursor: pointer;
+  }
+  .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
+  .tile-remove { order: 99; flex-shrink: 0; padding: 0 5px; font-size: 0.7rem; line-height: 1.4; }
+
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px 12px; min-width: 0;
+    /* Container query context: contents respond to the PANEL's width, not the
+       viewport's, so the same panel works at 1 cell and at 4. */
+    container-type: inline-size;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 6px; margin-bottom: 8px; flex-wrap: wrap; cursor: grab;
+  }
+  .board-tile.dragging .panel-head { cursor: grabbing; }
+  .panel-head-lead { display: flex; align-items: center; gap: 5px; min-width: 0; flex-shrink: 1; }
+  .panel-head h2 {
+    margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 0.66rem; font-weight: 500; opacity: 0.55; line-height: 1.3;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .drag-handle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: #000; opacity: 0.35; cursor: grab; font-size: 9px; line-height: 1;
+  }
+  .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
+  .help-icon { opacity: 0.3; font-size: 0.7rem; flex-shrink: 0; cursor: help; }
+  .help-icon:hover { opacity: 1; }
+
+  button, select, input[type=text], input[type=number] {
+    background: #000; color: var(--fg); border: 1px solid var(--border);
+    border-radius: 3px; padding: 3px 7px; font-size: 0.73rem; font-family: inherit; cursor: pointer;
+  }
+  button:hover, select:hover { border-color: var(--accent2); color: var(--accent2); }
+  input[type=text], input[type=number] { cursor: text; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .hint { font-size: 0.69rem; opacity: 0.45; line-height: 1.55; margin: 6px 0 0; }
+  code, .hint code { color: var(--accent2); font-family: var(--mono); }
+
+  /* ---------- flyout: the panel list ---------- */
+  #boardFlyoutWrap {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 300px; z-index: 60;
+    transform: translateX(100%); transition: transform 0.18s ease;
+  }
+  #boardFlyoutWrap.open { transform: none; }
+  #boardFlyout {
+    position: absolute; inset: 0; background: #131313;
+    border-left: 1px solid var(--border); padding: 10px; overflow-y: auto;
+  }
+  #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
+  #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
+  #boardFlyout input[type=number] { width: 54px; }
+  #boardSearch { width: 100%; margin-bottom: 8px; }
+  #boardFlyoutTab {
+    position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
+    padding: 8px 6px; font-size: 1.1rem; line-height: 1; border-radius: 6px 0 0 6px;
+  }
+  .board-card {
+    display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--border); border-radius: 5px; background: #0d0d0d;
+    padding: 7px 9px; margin-bottom: 6px; cursor: grab; font-size: 0.8rem;
+  }
+  .board-card:hover { border-color: var(--accent2); }
+  .board-card.dragging { opacity: 0.4; }
+  .board-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.35; margin-left: 28px; }
+  .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .board-card .fp input[type=number] { width: 30px; font-size: 0.7rem; padding: 1px 2px; }
+  .board-card .fp-add {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: #000; color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
+  }
+  .board-card .fp-add:hover { opacity: 1; border-color: var(--accent2); }
+  .board-group-heading {
+    margin: 12px 0 4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; opacity: 0.55;
+  }
+  .board-group-heading:first-child { margin-top: 0; }
+
+  /* ---------- panel bodies ---------- */
+  textarea {
+    width: 100%; flex: 1 1 auto; min-height: 96px; resize: none;
+    background: #000; color: var(--fg); border: 1px solid var(--border); border-radius: 3px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.55; padding: 8px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  #pallet .panel-body { display: flex; flex-direction: column; }
+
+  .lines { font-family: var(--mono); font-size: 11.5px; }
+  .ln { display: flex; align-items: baseline; gap: 8px; padding: 2px 8px; margin: 1px 0;
+        border-left: 3px solid var(--border); background: #0d0d0d; }
+  .ln.ok { border-left-color: var(--accent); }
+  .ln.ok.draft { border-left-color: var(--draft); }
+  .ln.bad { border-left-color: var(--bad); background: #1a0d0d; }
+  .ln.comment { border-left-color: #444; background: transparent; opacity: 0.55; }
+  .ln .num { width: 26px; text-align: right; opacity: 0.3; flex-shrink: 0; }
+  .ln .ico { width: 19px; flex-shrink: 0; }
+  .ln .body { flex: 1; min-width: 0; word-break: break-word; }
+  .ln .body .name { opacity: 0.55; font-style: italic; }
+  .ln.draft .body { color: var(--draft); }
+  .ln .tag { font-size: 9.5px; opacity: 0.5; background: #000; border: 1px solid var(--border);
+             padding: 0 5px; border-radius: 3px; flex-shrink: 0; text-transform: uppercase; }
+  /* At one cell wide the tag goes — the icon already says what it says. */
+  @container (max-width: 340px) { .ln .tag { display: none; } }
+
+  .ents { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ent { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 3px;
+         border: 1px solid var(--accent); color: var(--accent); background: #000; white-space: nowrap; }
+  /* Border STYLE carries the state as well as colour, so it survives greyscale
+     and colour-blind viewing. */
+  .ent.draft { border-color: var(--draft); color: var(--draft); border-style: dashed; }
+  .ent.ghost { border-color: var(--ghost); color: var(--ghost); border-style: dotted; }
+  .ent .n { opacity: 0.45; margin-left: 5px; }
+  .ent { cursor: pointer; }
+  .ent.focused { background: #051705; box-shadow: 0 0 0 1px var(--accent2); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 7px; }
+  .stat { background: #000; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
+  .stat .v { font-size: 1.1rem; font-family: var(--mono); line-height: 1.1; }
+  .stat .k { font-size: 0.6rem; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+  .issues { font-size: 11px; font-family: var(--mono); line-height: 1.7; }
+  .issues .warn { color: var(--ghost); }
+  .issues .err { color: var(--bad); }
+  .issues .none { opacity: 0.4; font-family: system-ui, sans-serif; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #262626; vertical-align: top; }
+  th { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.45; font-weight: 500; }
+  td.mono { font-family: var(--mono); color: var(--accent2); white-space: nowrap; }
+
+  /* ---------- filter ---------- */
+  .flt-group { margin-bottom: 8px; }
+  .flt-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.4; margin-bottom: 4px; }
+  .flt-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .flt-chips button { font-size: 0.7rem; padding: 2px 7px; }
+  .flt-chips button.on { border-color: var(--accent2); color: var(--accent2); background: #051705; }
+  .flt-chips button.on[data-status="verified"] { border-color: var(--accent); color: var(--accent); background: #170a05; }
+  .flt-chips button.on[data-status="draft"] { border-color: var(--draft); color: var(--draft); background: #0d1115; }
+  .flt-chips .count { opacity: 0.45; margin-left: 4px; font-size: 0.62rem; }
+  .flt-chips .lbl { margin-left: 4px; }
+  /* One cell wide there is no room for the words; the emoji still says it, and
+     the tooltip carries the rest. */
+  @container (max-width: 250px) { .flt-chips .lbl { display: none; } }
+  /* When a filter is on, every panel showing a subset says so — a filtered
+     count that looks like a total is how people misread their own data. */
+  .filtered-note {
+    font-size: 0.6rem; color: var(--accent2); opacity: 0.8;
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
+  }
+
+  /* ---------- document viewer ---------- */
+  .doc-pos { font-size: 0.65rem; opacity: 0.5; font-family: var(--mono); }
+  .doc-viewport {
+    position: relative; overflow: hidden; margin-bottom: 8px;
+    height: clamp(160px, 40cqh, 60vh);
+    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+    cursor: grab; touch-action: none;
+  }
+  .doc-viewport.panning { cursor: grabbing; }
+  .doc-viewport canvas { display: block; width: 100%; height: 100%; }
+  .doc-zoom {
+    position: absolute; left: 6px; bottom: 6px; display: flex; align-items: center; gap: 3px;
+    background: rgba(0,0,0,0.72); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px;
+  }
+  .doc-zoom button { padding: 1px 6px; font-size: 0.7rem; }
+  .doc-zoom span { font-size: 0.66rem; opacity: 0.65; width: 40px; text-align: center; font-family: var(--mono); }
+  .doc-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 14px; font-size: 0.72rem; opacity: 0.5; line-height: 1.6; pointer-events: none;
+  }
+  .doc-overlay.bad { color: var(--bad); opacity: 0.9; }
+  /* container-query unit above needs the panel as the container; the tile is
+     already one, so 40cqh tracks the panel's own height as it is resized. */
+  .doc-nosrc {
+    border: 1px dashed var(--border); border-radius: 4px; padding: 14px; margin-bottom: 8px;
+    font-size: 0.7rem; opacity: 0.45; text-align: center; line-height: 1.6;
+  }
+  .doc-raw {
+    font-family: var(--mono); font-size: 11.5px; background: #000; border-radius: 3px;
+    padding: 6px 8px; margin-bottom: 8px; word-break: break-all; line-height: 1.5;
+    border-left: 3px solid var(--accent);
+  }
+  .doc-raw.draft { border-left-color: var(--draft); color: var(--draft); }
+  .doc-meta { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 0.72rem; margin-bottom: 8px; }
+  .doc-meta dt { opacity: 0.4; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
+  .doc-meta dd { margin: 0; }
+  .doc-names { display: flex; flex-wrap: wrap; gap: 4px; }
+  .doc-names button { font-size: 0.7rem; padding: 1px 7px; }
+  .doc-names button.ghost { border-color: var(--ghost); color: var(--ghost); border-style: dotted; }
+
+  /* ---------- files ---------- */
+  .file-list { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; }
+  .file-item {
+    display: flex; align-items: center; gap: 6px; padding: 4px 7px;
+    border: 1px solid var(--border); border-radius: 3px; background: #000; font-size: 0.73rem;
+  }
+  .file-item.current { border-color: var(--accent); }
+  .file-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                   white-space: nowrap; font-family: var(--mono); font-size: 0.7rem; }
+  .file-item .meta { font-size: 0.62rem; opacity: 0.45; flex-shrink: 0; font-family: var(--mono); }
+  .file-item button { padding: 0 6px; font-size: 0.68rem; }
+  .file-empty { font-size: 0.7rem; opacity: 0.45; line-height: 1.6; }
+
+  /* ---------- brick builder ---------- */
+  .bld-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-bottom: 7px; }
+  .bld-type button { font-size: 0.9rem; padding: 2px 6px; line-height: 1.3; }
+  .bld-type button.active { border-color: var(--accent2); background: #051705; }
+  .bld-status button.active[data-st="+"] { border-color: var(--accent); color: var(--accent); }
+  .bld-status button.active[data-st="-"] { border-color: var(--draft); color: var(--draft); }
+  .bld-field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+  .bld-field label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.45; }
+  .bld-field input { width: 100%; font-family: var(--mono); font-size: 11.5px; padding: 4px 6px; }
+  .bld-field .sub { font-size: 0.63rem; opacity: 0.4; }
+  .bld-alias-wrap { display: flex; gap: 4px; }
+  .bld-alias-wrap input.num { width: 46px; flex-shrink: 0; }
+  /* Every uid already in the pile, visible and clickable — a datalist only
+     helps if you already know what you are looking for. */
+  .uid-picker { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; max-height: 108px; overflow: auto; }
+  .uid-picker button {
+    font-size: 0.66rem; padding: 1px 6px; font-family: var(--mono);
+    border-color: #2c2c2c; opacity: 0.8;
+  }
+  .uid-picker button:hover { opacity: 1; }
+  .uid-picker button.on { border-color: var(--accent2); color: var(--accent2); background: #051705; opacity: 1; }
+  .uid-picker button.ghost { border-style: dotted; color: var(--ghost); border-color: var(--ghost); }
+  .uid-picker .none { font-size: 0.65rem; opacity: 0.4; }
+  /* The line the builder will actually write. Shown before it is committed, so
+     the notation stays visible — the builder is a way into the text, not a
+     replacement for reading it. */
+  .bld-preview {
+    font-family: var(--mono); font-size: 11.5px; background: #000; border-radius: 3px;
+    padding: 6px 8px; margin: 8px 0 7px; word-break: break-all; line-height: 1.5;
+    border-left: 3px solid var(--accent);
+  }
+  .bld-preview.draft { border-left-color: var(--draft); color: var(--draft); }
+  .bld-preview.bad { border-left-color: var(--bad); color: var(--bad); }
+  /* Said before you commit, not after: a uid clash is easier to avoid than to
+     unpick once it is in the pile. */
+  .bld-clash {
+    font-size: 0.68rem; color: var(--bad); line-height: 1.5;
+    border: 1px dashed var(--bad); border-radius: 3px; padding: 5px 7px; margin-bottom: 7px;
+  }
+  .bld-editing { font-size: 0.65rem; color: var(--accent2); margin-bottom: 6px; }
+  /* Classification lines are clickable when the builder is available. */
+  .ln { cursor: pointer; }
+  .ln:hover { outline: 1px solid #444; }
+  .ln.editing { outline: 1px solid var(--accent2); }
+
+  .slot-empty { display: flex; flex-direction: column; gap: 9px; }
+  .slot-desc { font-size: 0.74rem; opacity: 0.5; }
+  .slot-note { font-size: 0.69rem; opacity: 0.45; border: 1px dashed var(--border);
+               border-radius: 4px; padding: 9px; line-height: 1.65; }
+  .feed { font-family: var(--mono); font-size: 11px; opacity: 0.75; line-height: 1.7; }
+  .feed b { color: var(--accent); font-weight: normal; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
+  <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.</p>
+</div>
+
+<div id="board"></div>
+
+<div id="boardFlyoutWrap">
+  <button type="button" id="boardFlyoutTab" title="show/hide the panel list">&#129520;</button>
+  <div id="boardFlyout">
+    <h3>Panels</h3>
+    <div class="row">
+      <label>Columns <input type="number" id="boardCols" min="1" max="12" step="1" value="4"></label>
+      <label>Row px <input type="number" id="boardRowUnit" min="80" max="600" step="10" value="220"></label>
+      <button type="button" id="boardFlyoutClose" title="hide the list">&times;</button>
+    </div>
+    <div class="row"><button type="button" id="boardReset" title="back to the starting board">reset board</button></div>
+    <input type="text" id="boardSearch" placeholder="search panels&hellip;" spellcheck="false">
+    <div id="boardCardList"></div>
+  </div>
+</div>
+
+<div id="panelStore" hidden></div>
+
+<template id="tpl-pallet">
+  <div class="row">
+    <button data-act="sample" title="replace the text with the bundled Bricknall sample">Sample</button>
+    <button data-act="clear" title="empty the pallet">Clear</button>
+    <button data-act="copy" title="copy the raw notation to the clipboard">Copy</button>
+    <button data-act="export" title="save the notation as a .txt file">Export</button>
+    <button data-act="import" title="open a .txt file of bricks — replaces what is here">Import</button>
+    <button data-act="merge" title="add one or more .txt files to this pile, keeping what is already here">Merge</button>
+    <button data-act="folder" title="read every .txt in a folder, including subfolders, and merge them in filename order">Folder…</button>
+    <button data-act="rescan" hidden title="read that folder again — duplicates are skipped, so only new bricks come in">Rescan</button>
+  </div>
+  <div class="hint" data-el="mergelog" hidden></div>
+  <!-- Above the editor: this is how you choose what goes ON the pallet. -->
+  <div class="file-list" data-el="files"></div>
+  <textarea data-el="text" spellcheck="false" placeholder="+|👤|<someone>|A description"></textarea>
+  <p class="hint"><code>[status]|[type]|[field]|[field]|[linkage]</code> — <code>+</code> verified, <code>-</code> draft.</p>
+</template>
+<template id="tpl-classification">
+  <div class="filtered-note" data-el="note" hidden></div>
+  <div class="lines" data-el="lines"></div>
+</template>
+<template id="tpl-entities">
+  <div class="ents" data-el="ents"></div>
+  <p class="hint">solid verified &middot; dashed draft &middot; dotted ghost</p>
+</template>
+<template id="tpl-builder">
+  <div class="bld-editing" data-el="editing" hidden></div>
+  <div class="bld-row bld-status" data-el="status"></div>
+  <div class="bld-row bld-type" data-el="type"></div>
+  <div data-el="fields"></div>
+  <div class="bld-preview" data-el="preview"></div>
+  <div class="bld-clash" data-el="clash" hidden></div>
+  <div class="bld-row">
+    <button data-act="commit">Add brick</button>
+    <button data-act="cancel" hidden>Cancel edit</button>
+    <button data-act="clearfields" title="empty the fields, keep the type">Clear</button>
+  </div>
+  <datalist data-el="aliases"></datalist>
+  <p class="hint">Click any line in Classification to load it here for editing.</p>
+</template>
+
+<template id="tpl-filter">
+  <div class="row">
+    <input type="text" data-el="text" placeholder="find in the text&hellip;" spellcheck="false" style="flex:1;min-width:90px">
+    <button data-act="clear" title="show everything again">reset</button>
+  </div>
+  <div class="flt-group"><div class="flt-label">Confidence</div><div class="flt-chips" data-el="status"></div></div>
+  <div class="flt-group"><div class="flt-label">Kind</div><div class="flt-chips" data-el="types"></div></div>
+  <div class="flt-group">
+    <div class="flt-label" data-el="sectionlabel">Your headings</div>
+    <div class="flt-chips" data-el="sections"></div>
+  </div>
+  <div class="flt-group" data-el="focuswrap" hidden>
+    <div class="flt-label">Focused on</div>
+    <div class="flt-chips" data-el="focus"></div>
+  </div>
+  <p class="hint" data-el="summary"></p>
+</template>
+
+<template id="tpl-document">
+  <div class="row">
+    <button data-act="prev" title="previous document">&larr;</button>
+    <span class="doc-pos" data-el="pos"></span>
+    <button data-act="next" title="next document">&rarr;</button>
+    <button data-act="open" hidden title="open the original in a new tab">open &#8599;</button>
+    <button data-act="edit" hidden title="load this brick into the Brick Builder">edit</button>
+  </div>
+  <div class="doc-viewport" data-el="viewport">
+    <canvas data-el="canvas"></canvas>
+    <div class="doc-zoom">
+      <button data-act="zoomout" title="zoom out">&minus;</button>
+      <span data-el="zoomlabel">100%</span>
+      <button data-act="zoomin" title="zoom in">+</button>
+      <button data-act="fit" title="fit the whole scan in the panel">Fit</button>
+      <button data-act="actual" title="actual pixels">1:1</button>
+    </div>
+    <div class="doc-overlay" data-el="overlay" hidden></div>
+  </div>
+  <div data-el="view"></div>
+</template>
+
+<template id="tpl-count"><div class="stats" data-el="stats"></div></template>
+<template id="tpl-notes"><div class="issues" data-el="issues"></div></template>
+<template id="tpl-reference"><div data-el="ref"></div></template>
+
+<script>
+"use strict";
+/* ==========================================================================
+   BRICK BY BRICK
+   --------------------------------------------------------------------------
+     1. PARSE   text   -> bricks[]                    (forgiving, positionless)
+     2. MODEL   bricks -> {entities, edges, stats}    (one object, handed on)
+     3. BOARD   a coordinate grid of tiles you place yourself
+     4. VIZ     a registry — every visualization is a panel you drop on the board
+
+   A visualization is not a tab or a mode. It is a panel like any other, given a
+   footprint on the board, so several can sit side by side reading the same
+   model at once. One pile of bricks, many simultaneous readings of it.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. PARSE
+   -------------------------------------------------------------------------- */
+
+const TYPES = {
+  person:   { icon: "👤", kind: "person",   label: "person"   },
+  birth:    { icon: "👶", kind: "event",    label: "birth"    },
+  marriage: { icon: "🔔", kind: "event",    label: "marriage" },
+  death:    { icon: "⚰️", kind: "event",    label: "death"    },
+  place:    { icon: "📍", kind: "place",    label: "location" },
+  document: { icon: "📜", kind: "document", label: "document" },
+  census:   { icon: "✏️", kind: "census",   label: "census"   },
+};
+
+// Emoji, full word and single letter are all first-class. This table is the
+// extension point: add a row and the parser, classifier, counts and every panel
+// pick it up with no other edit.
+const TOKENS = {
+  "👤": "person", person: "person", p: "person",
+  "👶": "birth", birth: "birth", b: "birth",
+  "🔔": "marriage", marriage: "marriage", m: "marriage",
+  "⚰️": "death", death: "death", d: "death",
+  "📍": "place", location: "place", place: "place", l: "place",
+  "📜": "document", document: "document", doc: "document",
+  "✏️": "census", census: "census", c: "census",
+};
+
+const RE_DATE = /^\d{4}(-\d{2})?(-\d{2})?$/;
+const RE_EST = /~\s*(\d{4})/;
+const RE_UNKNOWN = /^\?+$/;
+const RE_ALIAS = /<([^<>]*)>/g;
+
+/*  A coordinate pair, as your earlier spec wrote it: "56.463, -2.977".
+
+    Recognised by shape like everything else. It cannot be confused with a
+    linkage field (no '@'), a date (no comma) or a source (no dot-slash or
+    extension), so it needs no keyword. Latitude first, as every geographic
+    convention outside of a few APIs has it. */
+const RE_COORDS = /^\s*([-+]?\d{1,2}(?:\.\d+)?)\s*,\s*([-+]?\d{1,3}(?:\.\d+)?)\s*$/;
+function readCoords(field) {   // "56.463, -2.977" -> {lat, lng}
+  const m = String(field || "").match(RE_COORDS);
+  if (!m) return null;
+  const lat = Number(m[1]), lng = Number(m[2]);
+  // Out-of-range numbers are almost certainly something else that happens to
+  // have a comma in it, so they are left as text rather than silently wrong.
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+/*  A source reference: the actual scan, photo or page a document brick stands
+    for. Recognised by shape like everything else — a URL, a path, or a filename
+    with an image/pdf extension — so it can sit in any field position without a
+    keyword. Deliberately tight: '377/4/1' (a census reference) must NOT look
+    like a path, so a bare slash is not enough. */
+const RE_SOURCE = /^(https?:\/\/\S+|data:image\/\S+|\.{0,2}\/\S+|\S+\.(?:jpe?g|png|gif|webp|avif|svgz?|tiff?|pdf))(\?\S*)?$/i;
+function looksLikeSource(s) { return RE_SOURCE.test((s || "").trim()); }
+
+// Anything rendered as a link or an <img> passes through here first. A brick
+// file can be shared, and a shared file must not be able to run script in the
+// reader's page.
+function safeSrc(s) {
+  const t = (s || "").trim();
+  if (!t) return "";
+  if (/^\s*(javascript|vbscript|file):/i.test(t)) return "";
+  if (/^data:/i.test(t) && !/^data:image\//i.test(t)) return "";
+  return t;
+}
+function isImageSrc(s) {
+  return /^data:image\//i.test(s) || /\.(jpe?g|png|gif|webp|avif|svgz?|tiff?)(\?|$)/i.test(s);
+}
+
+function normalizeToken(tok) {
+  const t = (tok || "").trim();
+  return TOKENS[t] || TOKENS[t.toLowerCase()] || null;
+}
+
+// '<3><george>' -> {slug:'george', num:3}; a bare number is a disambiguator.
+function readAliases(field) {
+  const found = []; let m;
+  RE_ALIAS.lastIndex = 0;
+  while ((m = RE_ALIAS.exec(field)) !== null) found.push(m[1].trim());
+  if (!found.length) return null;
+  let num = null; const parts = [];
+  for (const f of found) { if (/^\d+$/.test(f)) num = Number(f); else parts.push(f); }
+  // Canonicalised here, not just in the builder: <George Isles> typed by hand
+  // and <george-isles> from the form must be the same uid. Two spellings of one
+  // uid is a duplicate uid, which the rules do not allow.
+  const slug = slugify(parts.join("-"));
+  return slug ? { slug, num } : null;
+}
+
+// Handles the real-world quirk: '@george,james,dora-edmed' types '@' once and
+// the rest of the comma list inherits it. Requiring '@' per token would
+// silently drop siblings.
+function readLinks(field) {
+  if (!field || field.indexOf("@") === -1) return [];
+  // Same canonicalisation as declarations, so @George Isles finds <george-isles>
+  // instead of quietly creating a ghost beside it.
+  return field.split(",")
+    .map(s => slugify(s.trim().replace(/^@/, "").replace(/[<>]/g, "")))
+    .filter(Boolean);
+}
+
+function looksLikeDate(s) {
+  const t = (s || "").trim();
+  return RE_DATE.test(t) || RE_UNKNOWN.test(t) || RE_EST.test(t);
+}
+/*  Type "George Isles" or "Rankie's Court" and get <george-isles> /
+    <rankies-court>. The uid is machine-facing — lowercase, hyphenated, no
+    punctuation — but nobody should have to type it that way. Apostrophes are
+    dropped rather than hyphenated, so "Rankie's" stays one word. */
+function slugify(s) {   // "St Clement" -> st-clement; canonical form of every uid
+  return String(s).trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/['\u2019]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function titleCase(slug) {
+  return String(slug).split("-").filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+function displayFor(a) {
+  if (!a) return "";
+  return a.num !== null && a.num !== undefined ? titleCase(a.slug) + " (" + a.num + ")" : titleCase(a.slug);
+}
+
+/*  Fields are read by SHAPE rather than by fixed position after the leading
+    slots. The real corpus is inconsistent — some census rows carry an extra
+    pipe, some documents put linkage where the spec puts a description — and a
+    notation whose premise is "you define the symbols" cannot then punish the
+    author for a stray column. Anything unplaceable becomes a note; the line
+    still parses. */
+function parseLine(raw, lineNumber, section) {
+  const trimmed = raw.trim();
+  const brick = {
+    lineNumber, raw, section, status: null, type: null, kind: null, icon: "",
+    alias: null, name: "", detail: "", src: "", url: "", coords: null, text: [], date: null, estimate: null,
+    age: null, links: [], valid: false, notes: [], empty: false, comment: false,
+  };
+
+  if (!trimmed) { brick.empty = true; return brick; }
+
+  if (trimmed.startsWith("#")) {
+    brick.comment = true; brick.valid = true; brick.kind = "comment";
+    brick.icon = "💬"; brick.name = trimmed.replace(/^#+\s*/, "");
+    return brick;
+  }
+  if (trimmed[0] !== "+" && trimmed[0] !== "-") {
+    brick.notes.push({ level: "err", msg: "no +/- status prefix" });
+    return brick;
+  }
+
+  const parts = trimmed.split("|").map(s => s.trim());
+  brick.status = parts[0] === "+" ? "verified" : "draft";
+
+  const type = normalizeToken(parts[1]);
+  if (!type) {
+    brick.notes.push({ level: "err", msg: "unknown type token “" + (parts[1] || "") + "”" });
+    brick.icon = "❓";
+    return brick;
+  }
+  brick.type = type; brick.kind = TYPES[type].kind; brick.icon = TYPES[type].icon; brick.valid = true;
+
+  const rest = parts.slice(2);
+  let start = 0;
+
+  if (brick.kind === "person" || brick.kind === "place") {
+    const a = readAliases(rest[0] || "");
+    if (a) { brick.alias = a; start = 1; }
+    else brick.notes.push({ level: "warn", msg: TYPES[type].label + " has no <uid>" });
+  } else if (brick.kind === "census") {
+    // '-|✏️|1891|George|22 1891-22 ~1869' — year, forename, then an age blob
+    // that may carry the author's own arithmetic. The working is part of the
+    // record, so the blob is kept verbatim too.
+    if (looksLikeDate(rest[0])) { brick.date = rest[0]; start = 1; }
+    if (rest[start] && !looksLikeDate(rest[start])) { brick.name = rest[start]; start++; }
+    // Everything left is the age blob EXCEPT a linkage field. Without this the
+    // '@george-isles' on the end got swallowed into the blob and the row
+    // attached to nobody — which is the whole point of putting it there.
+    const tail = rest.slice(start);
+    for (const f of tail) if (f.indexOf("@") !== -1) brick.links.push(...readLinks(f));
+    const blob = tail.filter(f => f.indexOf("@") === -1).join(" ");
+    const ageM = blob.match(/(?:^|\s)(\d{1,3})(?:\s|$)/);
+    if (ageM) brick.age = Number(ageM[1]);
+    const estM = blob.match(RE_EST);
+    if (estM) brick.estimate = Number(estM[1]);
+    // 1841 rounded adult ages down to the nearest five, so a derived year is a
+    // range, never a date. Record it as an estimate and say so.
+    else if (brick.age !== null && brick.date && RE_DATE.test(brick.date)) {
+      brick.estimate = Number(brick.date.slice(0, 4)) - brick.age;
+      brick.notes.push({ level: "warn", msg: "birth year " + brick.estimate + " derived from age, not recorded" });
+    }
+    if (blob) brick.text.push(blob);
+    start = rest.length;
+  } else if (brick.kind === "document") {
+    // A document may name itself, so it can be cited: an unciteable source is
+    // no source at all. The alias is checked before the subtype because
+    // '<birth-cert-1894>' would otherwise be swallowed as a subtype string.
+    const a = readAliases(rest[0] || "");
+    if (a) { brick.alias = a; start = 1; }
+    if (rest[start] && !looksLikeDate(rest[start]) && rest[start].indexOf("@") === -1) {
+      brick.subtype = normalizeToken(rest[start]) || rest[start];
+      start++;
+    }
+  } else if (brick.kind === "event") {
+    const a = readAliases(rest[0] || "");
+    if (a && !looksLikeDate(rest[0])) { brick.alias = a; start = 1; }
+  }
+
+  for (let i = start; i < rest.length; i++) {
+    const f = rest[i];
+    if (!f) continue;
+    if (f.indexOf("@") !== -1) { brick.links.push(...readLinks(f)); continue; }
+    if (!brick.coords) { const c = readCoords(f); if (c) { brick.coords = c; continue; } }
+    // Checked before the date, since a filename can contain a year.
+    // A scan and a citation URL are different things and a brick may carry both:
+    // the image is what you look at, the URL is where you got it.
+    if (looksLikeSource(f)) {
+      if (isImageSrc(f)) { if (!brick.src) { brick.src = f; continue; } }
+      else if (!brick.url) { brick.url = f; continue; }
+      if (!brick.src) { brick.src = f; continue; }
+    }
+    if (!brick.date && looksLikeDate(f)) {
+      brick.date = f;
+      const est = f.match(RE_EST);
+      if (est) brick.estimate = Number(est[1]);
+      continue;
+    }
+    brick.text.push(f);
+  }
+
+  // Field roles differ by type. For a PERSON the free text is a description or
+  // occupation ('Merchant Seaman'), so the name comes from the alias, or George
+  // Isles displays as "Powerloom Tender". For a PLACE the free text IS the
+  // proper name ('<longforgan>|Longforgan'), so it wins.
+  if (!brick.name) {
+    if (brick.kind === "person") {
+      brick.name = displayFor(brick.alias) || brick.text[0] || "";
+      if (brick.text[0]) brick.detail = brick.text[0];
+    } else {
+      brick.name = brick.text[0] || displayFor(brick.alias) || "";
+      if (brick.text[1]) brick.detail = brick.text[1];
+    }
+  }
+  if (brick.kind === "event" && !brick.date) {
+    brick.notes.push({ level: "warn", msg: TYPES[type].label + " has no date" });
+  }
+  return brick;
+}
+
+function parse(text) {
+  const out = []; let section = "";
+  const lines = String(text).split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const b = parseLine(lines[i], i + 1, section);
+    if (b.comment) section = b.name;   // a '#' heading scopes the bricks beneath it
+    out.push(b);
+  }
+  return out;
+}
+
+/* --------------------------------------------------------------------------
+   2. MODEL
+   -------------------------------------------------------------------------- */
+
+/*  A reference to an alias nobody declared is NOT an error. It becomes a ghost
+    entity — in genealogy that is the most interesting object in the pile:
+    someone who appears in one record and nowhere else. */
+function buildModel(bricks) {
+  const entities = new Map(), edges = [], issues = [];
+
+  function touch(slug, patch) {
+    if (!slug) return null;
+    let e = entities.get(slug);
+    if (!e) {
+      e = { slug, name: titleCase(slug), kind: "unknown", declared: false,
+            status: null, num: null, refs: 0, detail: "", bricks: [] };
+      entities.set(slug, e);
+    }
+    if (patch) Object.assign(e, patch);
+    return e;
+  }
+
+  for (const b of bricks) {
+    if (b.empty || b.comment) continue;
+    for (const n of b.notes) issues.push({ line: b.lineNumber, level: n.level, msg: n.msg });
+    if (!b.valid) continue;
+
+    // Any brick that names itself becomes a declared entity — including a
+    // document or an event, so a claim can point back at the thing that
+    // evidences it rather than at a phantom.
+    if (b.alias) {
+      const existing = entities.get(b.alias.slug);
+      /*  A uid is unique by definition — duplicate RECORDS are ordinary and
+          expected, duplicate uids are not. So the first declaration wins and
+          every later one is an error that changes nothing.
+
+          Letting a later declaration overwrite was silent data loss: declaring
+          <james> as a person and then as a place turned the man into a street,
+          with only a warning. First-wins means the pile keeps what it had and
+          tells you where the clash is. */
+      if (existing && existing.declared) {
+        issues.push({ line: b.lineNumber, level: "err",
+          msg: "<" + b.alias.slug + "> is already declared on line " + existing.declaredAt +
+               (existing.kind !== b.kind ? " as a " + existing.kind : "") + " — a uid must be unique" });
+        existing.bricks.push(b);
+      } else {
+        const e = touch(b.alias.slug, {
+          kind: b.kind, declared: true, declaredAt: b.lineNumber, status: b.status,
+          num: b.alias.num, name: b.name || displayFor(b.alias), coords: b.coords,
+        });
+        e.bricks.push(b);
+        if (b.detail) e.detail = b.detail;
+      }
+    }
+
+    for (const target of b.links) {
+      const e = touch(target);
+      e.refs++;
+      edges.push({ from: b.alias ? b.alias.slug : null, to: target, kind: b.kind,
+                   type: b.type, status: b.status, line: b.lineNumber, date: b.date });
+    }
+  }
+
+  for (const e of entities.values()) {
+    if (!e.declared) {
+      issues.push({ line: null, level: "warn",
+        msg: "“" + e.name + "” referenced " + e.refs + "× but never declared" });
+    }
+  }
+
+  const real = bricks.filter(b => !b.empty && !b.comment);
+  const byType = {};
+  for (const b of real) { const k = b.type || "unparsed"; byType[k] = (byType[k] || 0) + 1; }
+
+  const ents = [...entities.values()];
+  return {
+    bricks, records: real, entities: ents, edges, issues, byType,
+    sections: [...new Set(bricks.filter(b => b.comment).map(b => b.name))],
+    people: ents.filter(e => e.kind === "person"),
+    places: ents.filter(e => e.kind === "place"),
+    events: real.filter(b => b.kind === "event"),
+    documents: real.filter(b => b.kind === "document"),
+    census: real.filter(b => b.kind === "census"),
+    stats: {
+      bricks: real.length,
+      verified: real.filter(b => b.status === "verified").length,
+      draft: real.filter(b => b.status === "draft").length,
+      unparsed: real.filter(b => !b.valid).length,
+      entities: ents.length,
+      ghosts: ents.filter(e => !e.declared).length,
+      links: edges.length,
+      dated: real.filter(b => b.date && RE_DATE.test(b.date)).length,
+      estimated: real.filter(b => b.estimate !== null).length,
+      geocoded: ents.filter(e => e.kind === "place" && e.coords).length,
+    },
+  };
+}
+
+/* --------------------------------------------------------------------------
+   2b. VIEW — the filtered subset every panel actually draws
+   --------------------------------------------------------------------------
+   Sits between MODEL and the panels, so filtering is written once rather than
+   re-implemented in each one. A visualization renders `model.view` and inherits
+   every filter without knowing filters exist.
+
+   Ghost-ness is deliberately NOT recomputed here: whether an alias was ever
+   declared is a fact about the whole pile, not about what you are currently
+   looking at. Filtering to one family must not manufacture ghosts.
+   -------------------------------------------------------------------------- */
+function brickPasses(b, f) {
+  if (f.sections.size && !f.sections.has(b.section || "")) return false;
+  if (b.comment) return true;                       // headings give the list its shape
+  if (f.status !== "all" && b.status !== f.status) return false;
+  if (f.types.size && !f.types.has(b.type)) return false;
+  if (f.focus) {
+    const mine = (b.alias && b.alias.slug === f.focus) || b.links.includes(f.focus);
+    if (!mine) return false;
+  }
+  if (f.text) {
+    const q = f.text.toLowerCase();
+    if (!b.raw.toLowerCase().includes(q) && !(b.name || "").toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+
+function buildView(model) {
+  const f = state.filter;
+  const bricks = model.bricks.filter(b => b.empty ? false : brickPasses(b, f));
+  const records = bricks.filter(b => !b.comment);
+
+  // Entities present in what survived — reusing the objects from the full model
+  // so `declared` and `refs` keep their whole-pile meaning.
+  const slugs = new Set();
+  for (const b of records) {
+    if (b.alias) slugs.add(b.alias.slug);
+    for (const l of b.links) slugs.add(l);
+  }
+  const entities = model.entities.filter(e => slugs.has(e.slug));
+  const lines = new Set(records.map(b => b.lineNumber));
+
+  return {
+    active: filterIsActive(),
+    bricks, records, entities,
+    edges: model.edges.filter(e => lines.has(e.line)),
+    people: entities.filter(e => e.kind === "person"),
+    places: entities.filter(e => e.kind === "place"),
+    events: records.filter(b => b.kind === "event"),
+    documents: records.filter(b => b.kind === "document"),
+    census: records.filter(b => b.kind === "census"),
+    sections: [...new Set(bricks.filter(b => b.comment).map(b => b.name))],
+    all: model,                                     // the unfiltered pile, if a panel needs it
+    stats: {
+      bricks: records.length,
+      verified: records.filter(b => b.status === "verified").length,
+      draft: records.filter(b => b.status === "draft").length,
+      unparsed: records.filter(b => !b.valid).length,
+      entities: entities.length,
+      ghosts: entities.filter(e => !e.declared).length,
+      links: records.reduce((n, b) => n + b.links.length, 0),
+      dated: records.filter(b => b.date && RE_DATE.test(b.date)).length,
+      estimated: records.filter(b => b.estimate !== null).length,
+      geocoded: entities.filter(e => e.kind === "place" && e.coords).length,
+    },
+  };
+}
+
+// Every panel draws this. Falls back to the whole pile before the first parse.
+function V() { return (state.model && state.model.view) || state.model; }
+
+/* --------------------------------------------------------------------------
+   SHARED STATE — declared before the registry, because registering a panel
+   touches it and the boot-time registrations run before the view section.
+   -------------------------------------------------------------------------- */
+const TEXT_KEY = "brick-by-brick:text:v1";
+const BOARD_KEY = "brick-by-brick:board:v2";
+const FOOTPRINT_KEY = "brick-by-brick:footprints:v2";
+
+/*  The filter is not a separate database of categories. Every control it offers
+    is read back out of the text you wrote: your '#' headings are the groupings
+    (family, place, concept — whatever you decided a heading means), the type
+    tokens are the kinds, and '+/-' is the confidence. Nothing here invents a
+    taxonomy you did not type. */
+const state = {
+  text: "", model: null,
+  filter: { text: "", status: "all", types: new Set(), sections: new Set(), focus: null },
+};
+function filterIsActive() {
+  const f = state.filter;
+  return !!(f.text || f.status !== "all" || f.types.size || f.sections.size || f.focus);
+}
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* --------------------------------------------------------------------------
+   3. PANEL + FOOTPRINT REGISTRY
+   --------------------------------------------------------------------------
+   Everything on the board is a panel with a footprint — the w×h in grid cells
+   it occupies when placed. Core panels and visualization panels are the same
+   kind of object, so a viz gets every affordance a core panel has: place,
+   move, resize, remove.
+   -------------------------------------------------------------------------- */
+const panels = new Map();       // id -> {id, title, help, group, render, tpl}
+const FOOTPRINTS = {};          // id -> {name, desc, w, h, group}
+const GROUPS = ["Visualizations", "Data & structure"];
+
+function definePanel(cfg) {
+  panels.set(cfg.id, Object.assign({ group: "Data & structure", help: "" }, cfg));
+  FOOTPRINTS[cfg.id] = { name: cfg.title, desc: cfg.help, w: cfg.w || 1, h: cfg.h || 1,
+                         group: cfg.group || "Data & structure" };
+  return cfg.id;
+}
+
+/* --------------------------------------------------------------------------
+   4. VIZ REGISTRY — the drop-in point
+   --------------------------------------------------------------------------
+     Brick.viz.register("timeline", {
+       emoji: "🕰️", label: "Timeline", description: "…", w: 2, h: 2,
+       render(model, el) { ...draw into el... }
+     });
+
+   Registering creates a panel with a footprint. It appears in the flyout list
+   and you drag it onto the board wherever you want it. A slot receives the
+   model and an empty element — no access to the raw text, the editor, or its
+   neighbours — so a broken renderer can only break its own tile.
+   -------------------------------------------------------------------------- */
+const Brick = {
+  viz: {
+    slots: new Map(),
+    register(id, cfg) {
+      const slot = Object.assign({ id, emoji: "▫️", label: id, description: "" }, cfg);
+      this.slots.set(id, slot);
+      definePanel({
+        id: "viz-" + id,
+        title: slot.emoji + " " + slot.label,
+        help: slot.description,
+        group: "Visualizations",
+        w: slot.w || 2, h: slot.h || 2,
+        render(body) { renderSlotBody(slot, body); },
+      });
+      if (booted) { renderBoardCardList(); refreshPanel("viz-" + id); }
+      return this;
+    },
+    unregister(id) {
+      this.slots.delete(id);
+      const pid = "viz-" + id;
+      panels.delete(pid);
+      delete FOOTPRINTS[pid];
+      board.tiles = board.tiles.filter(t => t.id !== pid);
+      const node = document.getElementById(pid);
+      if (node) node.remove();
+      if (booted) { renderBoard(); renderBoardCardList(); saveBoard(); }
+    },
+    list() { return [...this.slots.values()]; },
+  },
+  get model() { return state.model; },
+  get bricks() { return state.model ? state.model.bricks : []; },
+  parse, buildModel,
+  // Drop a viz straight onto the board from the console.
+  place(id, w, h) {
+    const pid = panels.has(id) ? id : "viz-" + id;
+    if (!FOOTPRINTS[pid] || board.tiles.some(t => t.id === pid)) return false;
+    const fp = FOOTPRINTS[pid];
+    const slot = findFreeSlot(w || fp.w, h || fp.h);
+    addTile(pid, slot.x, slot.y, w || fp.w, h || fp.h);
+    return true;
+  },
+};
+window.Brick = Brick;
+
+let booted = false;
+
+/* ---------- core panels ---------- */
+definePanel({ id: "pallet", title: "The Pallet", tpl: "tpl-pallet", w: 1, h: 2,
+  help: "Your bricks. One record per line — the only source of truth on this page.",
+  render(body) {
+    const t = body.querySelector('[data-el="text"]');
+    if (t.value !== state.text) t.value = state.text;
+    renderFileList(body);
+  } });
+
+definePanel({ id: "builder", title: "Brick Builder", tpl: "tpl-builder", w: 1, h: 2,
+  help: "Compose a line without typing pipes or hunting for emoji. Fields change with the type; uids autocomplete from what you have already declared.",
+  render(body) { renderBuilder(body); } });
+
+definePanel({ id: "classification", title: "Classification", tpl: "tpl-classification", w: 1, h: 2,
+  help: "Every line as the parser sees it. Orange verified, grey dashed draft, red unparsed.",
+  render(body) {
+    renderClassification(body.querySelector('[data-el="lines"]'));
+    noteFiltered(body.querySelector('[data-el="note"]'));
+  } });
+
+definePanel({ id: "entities", title: "Bricks", tpl: "tpl-entities", w: 2, h: 1,
+  help: "Every uid in the pile — the alias in angle brackets that identifies a person or place. Dotted means a ghost: referenced but never declared. Click one to show only the records that name it.",
+  render(body) { renderEntities(body.querySelector('[data-el="ents"]')); } });
+
+definePanel({ id: "filter", title: "Filter", tpl: "tpl-filter", w: 1, h: 1,
+  help: "Narrow what every panel is showing. The groupings are your own '#' headings, so a family, a place or a concept all filter the same way — whatever you decided the heading means. Click a name in Bricks to focus on it.",
+  render(body) { renderFilter(body); } });
+
+definePanel({ id: "document", title: "Document", tpl: "tpl-document", w: 1, h: 2,
+  help: "One document at a time — its scan, what it says, and who it names. Step through with the arrows.",
+  render(body) { renderDocument(body); } });
+
+definePanel({ id: "count", title: "Count", tpl: "tpl-count", w: 1, h: 1,
+  help: "Live tally of the pile.",
+  render(body) { renderStats(body.querySelector('[data-el="stats"]')); } });
+
+definePanel({ id: "notes", title: "Red Flags", tpl: "tpl-notes", w: 1, h: 1,
+  help: "Everything the parser objects to: duplicate uids, ghosts, missing dates, derived years. Red is an error, amber a warning.",
+  render(body) { renderIssues(body.querySelector('[data-el="issues"]')); } });
+
+definePanel({ id: "reference", title: "Notation reference", tpl: "tpl-reference", w: 2, h: 1,
+  help: "The symbols the parser understands. Emoji, word and letter are interchangeable.",
+  render(body) { renderReference(body.querySelector('[data-el="ref"]')); } });
+
+// The seven slots carried over from the Observable registry. Deliberately
+// unimplemented — an empty slot that reports the shape of its input is more
+// useful than a placeholder pretending to draw.
+[
+  ["network",  "🕸️", "Network",  "Connections between records — the link graph the @ references already describe."],
+  ["timeline", "🕰️", "Timeline", "Records on a time axis, with derived years drawn as ranges rather than points."],
+  ["map",      "🗺️", "Map",      "Declared locations, once coordinates are attached to place bricks."],
+  ["list",     "📋", "List",     "The pile as a sortable, filterable table."],
+  ["calendar", "📅", "Calendar", "Dated events by day and month."],
+  ["chart",    "📊", "Chart",    "Distributions — ages, surname frequency, records per decade."],
+  ["global",   "🌍", "Global",   "Everything at once, for orientation rather than reading."],
+].forEach(([id, emoji, label, description]) => Brick.viz.register(id, { emoji, label, description }));
+
+/* --------------------------------------------------------------------------
+   THE BOARD
+   -------------------------------------------------------------------------- */
+const DEFAULT_BOARD = {
+  cols: 4, rowUnit: 220,
+  tiles: [
+    { id: "builder",        x: 0, y: 0, w: 1, h: 2 },
+    { id: "pallet",         x: 1, y: 0, w: 1, h: 2 },
+    { id: "classification", x: 2, y: 0, w: 1, h: 2 },
+    { id: "count",          x: 3, y: 1, w: 1, h: 1 },
+    { id: "filter",         x: 0, y: 2, w: 1, h: 1 },
+    { id: "entities",       x: 1, y: 2, w: 2, h: 1 },
+    { id: "notes",          x: 3, y: 2, w: 1, h: 1 },
+    { id: "document",       x: 0, y: 3, w: 1, h: 2 },
+    { id: "viz-network",    x: 1, y: 3, w: 1, h: 2 },
+    { id: "viz-timeline",   x: 2, y: 3, w: 2, h: 2 },
+    { id: "reference",      x: 0, y: 5, w: 4, h: 1 },
+  ],
+};
+
+let board = JSON.parse(JSON.stringify(DEFAULT_BOARD));
+
+const boardEl = () => el("board");
+const ghostEl = () => el("boardGhost");
+
+function loadBoard() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); } catch (e) { raw = null; }
+  if (!raw || typeof raw !== "object") return;
+  const cols = Math.max(1, Math.min(12, Math.round(raw.cols) || 4));
+  const rowUnit = Math.max(80, Math.min(600, Math.round(raw.rowUnit) || 220));
+  const seen = new Set(), tiles = [];
+  for (const t of Array.isArray(raw.tiles) ? raw.tiles : []) {
+    if (!t || !FOOTPRINTS[t.id] || seen.has(t.id)) continue;
+    const w = Math.max(1, Math.min(cols, Math.round(t.w) || FOOTPRINTS[t.id].w));
+    const h = Math.max(1, Math.round(t.h) || FOOTPRINTS[t.id].h);
+    const x = Math.max(0, Math.min(cols - w, Math.round(t.x) || 0));
+    const y = Math.max(0, Math.round(t.y) || 0);
+    // A corrupt board degrades to a partial one: an overlap is dropped rather
+    // than repaired, never left to render on top of another tile.
+    if (tiles.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y)) continue;
+    seen.add(t.id);
+    tiles.push({ id: t.id, x, y, w, h });
+  }
+  board = { cols, rowUnit, tiles };
+}
+
+function saveBoard() {
+  try { localStorage.setItem(BOARD_KEY, JSON.stringify(board)); } catch (e) { /* unavailable */ }
+}
+function saveFootprints() {
+  try {
+    const out = {};
+    for (const id in FOOTPRINTS) out[id] = { w: FOOTPRINTS[id].w, h: FOOTPRINTS[id].h };
+    localStorage.setItem(FOOTPRINT_KEY, JSON.stringify(out));
+  } catch (e) { /* unavailable */ }
+}
+function loadFootprints() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(FOOTPRINT_KEY) || "null"); } catch (e) { return; }
+  if (!raw) return;
+  for (const id in raw) {
+    if (!FOOTPRINTS[id]) continue;
+    FOOTPRINTS[id].w = Math.max(1, Math.min(12, Math.round(raw[id].w) || FOOTPRINTS[id].w));
+    FOOTPRINTS[id].h = Math.max(1, Math.min(12, Math.round(raw[id].h) || FOOTPRINTS[id].h));
+  }
+}
+
+function isOnBoard(id) { return board.tiles.some(t => t.id === id); }
+function boardRows() { return board.tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0) + 2; }
+function overlaps(a, x, y, w, h) {
+  return board.tiles.some(t => t !== a && x < t.x + t.w && x + w > t.x && y < t.y + t.h && y + h > t.y);
+}
+
+/* Cols shrinking can strand a tile past the new edge. Repacked in reading order
+   with a simple skyline scan — first free slot wins — rather than trying to
+   preserve exact positions that no longer fit. Only on an explicit column
+   change, never on an ordinary drop. */
+function repackForCols(cols) {
+  const ordered = [...board.tiles].sort((a, b) => a.y - b.y || a.x - b.x);
+  const placed = [];
+  for (const t of ordered) {
+    const w = Math.min(t.w, cols);
+    let x = 0, y = 0;
+    outer:
+    for (y = 0; y < 999; y++) {
+      for (x = 0; x <= cols - w; x++) {
+        if (!placed.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + t.h > o.y)) break outer;
+      }
+    }
+    placed.push({ id: t.id, x, y, w, h: t.h });
+  }
+  board.tiles = placed;
+}
+
+// Builds the panel element once; afterwards it is moved between tiles and the
+// store, never rebuilt, so an off-board panel keeps its scroll and its input.
+function buildPanel(def) {
+  let node = document.getElementById(def.id);
+  if (node) return node;
+
+  node = document.createElement("section");
+  node.className = "panel";
+  node.id = def.id;
+
+  const head = document.createElement("div");
+  head.className = "panel-head";
+  head.innerHTML =
+    '<span class="panel-head-lead">' +
+      '<span class="drag-handle" title="drag to move this tile">⠿</span>' +
+      "<h2>" + esc(def.title) + "</h2>" +
+      (def.help ? '<span class="help-icon" title="' + esc(def.help) + '">(?)</span>' : "") +
+    "</span>";
+  node.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "panel-body";
+  // A panel whose template is missing must fail as one broken tile, not as a
+  // blank page — the board is the only way back to everything else.
+  if (def.tpl) {
+    const tpl = el(def.tpl);
+    if (tpl) body.appendChild(tpl.content.cloneNode(true));
+    else body.innerHTML = '<p class="hint" style="color:var(--bad)">missing template “' + esc(def.tpl) + '”</p>';
+  }
+  node.appendChild(body);
+
+  wirePanelBody(def, body);
+  return node;
+}
+
+// Body wiring that must survive re-renders lives here, once per panel.
+function wirePanelBody(def, body) {
+  if (def.id === "pallet") {
+    const ta = body.querySelector('[data-el="text"]');
+    ta.addEventListener("input", e => { state.text = e.target.value; saveText(); update(); });
+    body.querySelectorAll("button[data-act]").forEach(b => { b.onclick = () => palletAction(b.dataset.act, ta); });
+    wireFolderDrop(body);
+  }
+}
+
+function renderBoardCells() {
+  const b = boardEl();
+  [...b.querySelectorAll(".board-cell")].forEach(c => c.remove());
+  const rows = boardRows();
+  const frag = document.createDocumentFragment();
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < board.cols; x++) {
+      const cell = document.createElement("div");
+      cell.className = "board-cell";
+      cell.style.gridColumn = (x + 1) + " / span 1";
+      cell.style.gridRow = (y + 1) + " / span 1";
+      cell.textContent = "+";
+      cell.title = "open the panel list";
+      cell.addEventListener("click", () => el("boardFlyoutWrap").classList.add("open"));
+      frag.appendChild(cell);
+    }
+  }
+  b.insertBefore(frag, b.firstChild);
+}
+
+function renderBoardTiles() {
+  const b = boardEl();
+  /* Every placed panel is looked up BEFORE any wrapper is torn down. .remove()
+     detaches the wrapper and the panel living inside it in the same call — a
+     detached node is invisible to getElementById even though the object is
+     still alive — so looking a panel up afterwards silently loses it on every
+     render past the first. */
+  const nodes = new Map(board.tiles.map(t => [t.id, document.getElementById(t.id) || buildPanel(panels.get(t.id))]));
+  [...b.querySelectorAll(".board-tile")].forEach(t => t.remove());
+  b.style.setProperty("--board-cols", board.cols);
+  b.style.setProperty("--board-row", board.rowUnit + "px");
+
+  for (const t of board.tiles) {
+    const panel = nodes.get(t.id);
+    if (!panel) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "board-tile";
+    wrap.dataset.id = t.id;
+    wrap.style.gridColumn = (t.x + 1) + " / span " + t.w;
+    wrap.style.gridRow = (t.y + 1) + " / span " + t.h;
+
+    // Reused across re-renders rather than recreated — the panel-head survives
+    // (only the wrapper is torn down), so appending a fresh button every render
+    // would pile up duplicates.
+    let rm = panel.querySelector(".panel-head > .tile-remove");
+    if (!rm) {
+      rm = document.createElement("button");
+      rm.type = "button"; rm.className = "tile-remove"; rm.title = "remove from board";
+      rm.textContent = "✕";
+      rm.addEventListener("click", e => { e.stopPropagation(); removeTile(t.id); });
+      panel.querySelector(".panel-head").appendChild(rm);
+    }
+    wrap.appendChild(panel);
+    appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
+    appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
+    b.appendChild(wrap);
+  }
+}
+
+// Only the legal buttons — a "+" never appears toward an occupied neighbour or
+// past the board edge.
+function appendTileResize(wrap, t, dim, canGrow) {
+  const canShrink = (dim === "w" ? t.w : t.h) > 1;
+  if (!canGrow && !canShrink) return;
+  const box = document.createElement("div");
+  box.className = "tile-resize tile-resize-" + dim;
+  const mk = (label, delta, title) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label; b.title = title;
+    b.addEventListener("click", e => { e.stopPropagation(); resizeTile(t.id, dim, delta); });
+    box.appendChild(b);
+  };
+  if (canGrow) mk("+", 1, dim === "w" ? "widen by one column" : "taller by one row");
+  if (canShrink) mk("−", -1, dim === "w" ? "narrow by one column" : "shorter by one row");
+  wrap.appendChild(box);
+}
+
+function resizeTile(id, dim, delta) {
+  const t = board.tiles.find(k => k.id === id);
+  if (!t) return;
+  if (dim === "w") {
+    const nw = t.w + delta;
+    if (nw < 1) return;
+    if (delta > 0 && (t.x + nw > board.cols || overlaps(t, t.x + t.w, t.y, delta, t.h))) return;
+    t.w = nw;
+  } else {
+    const nh = t.h + delta;
+    if (nh < 1) return;
+    if (delta > 0 && overlaps(t, t.x, t.y + t.h, t.w, delta)) return;
+    t.h = nh;
+  }
+  renderBoard(); saveBoard();
+}
+
+function renderBoard() {
+  renderBoardCells();
+  renderBoardTiles();
+  const b = boardEl();
+  const empty = b.querySelector(".board-empty");
+  if (!board.tiles.length) {
+    if (!empty) {
+      const d = document.createElement("div");
+      d.className = "board-empty";
+      d.textContent = "Empty board — open Panels and drag one in.";
+      b.appendChild(d);
+    }
+  } else if (empty) empty.remove();
+  refreshAll();
+}
+
+function renderBoardCardList() {
+  const list = el("boardCardList");
+  const q = el("boardSearch").value.trim().toLowerCase();
+  const available = Object.keys(FOOTPRINTS).filter(id => !isOnBoard(id));
+  list.innerHTML = "";
+  let shown = 0;
+
+  for (const group of GROUPS) {
+    const ids = available.filter(id => FOOTPRINTS[id].group === group);
+    const visible = q ? ids.filter(id => FOOTPRINTS[id].name.toLowerCase().includes(q)) : ids;
+    if (!visible.length) continue;
+    const heading = document.createElement("h4");
+    heading.className = "board-group-heading";
+    heading.textContent = group;
+    list.appendChild(heading);
+
+    for (const id of visible) {
+      const fp = FOOTPRINTS[id];
+      const card = document.createElement("div");
+      card.className = "board-card";
+      card.draggable = true;
+      card.dataset.id = id;
+      card.innerHTML =
+        '<div class="board-card-row">' +
+          '<button type="button" class="fp-add" title="add to board">+</button>' +
+          '<span class="board-card-name">' + esc(fp.name) + "</span>" +
+          '<span class="fp">' +
+            '<input type="number" class="fp-w" min="1" max="12" step="1" value="' + fp.w + '" title="width (cells)">' +
+            "<span>&times;</span>" +
+            '<input type="number" class="fp-h" min="1" max="12" step="1" value="' + fp.h + '" title="height (cells)">' +
+          "</span>" +
+        "</div>" +
+        '<div class="board-card-desc">' + esc(fp.desc || "") + "</div>";
+
+      const wIn = card.querySelector(".fp-w"), hIn = card.querySelector(".fp-h");
+      [wIn, hIn].forEach(i => i.addEventListener("mousedown", e => e.stopPropagation()));
+      wIn.addEventListener("change", () => { fp.w = Math.max(1, Math.min(12, parseInt(wIn.value, 10) || 1)); wIn.value = fp.w; saveFootprints(); });
+      hIn.addEventListener("change", () => { fp.h = Math.max(1, Math.min(12, parseInt(hIn.value, 10) || 1)); hIn.value = fp.h; saveFootprints(); });
+
+      const add = card.querySelector(".fp-add");
+      add.addEventListener("mousedown", e => e.stopPropagation());
+      add.addEventListener("click", e => {
+        e.stopPropagation();
+        const slot = findFreeSlot(fp.w, fp.h);
+        addTile(id, slot.x, slot.y, fp.w, fp.h);
+      });
+      list.appendChild(card);
+      shown++;
+    }
+  }
+  if (!shown) {
+    const none = document.createElement("div");
+    none.className = "board-card";
+    none.style.cursor = "default";
+    none.textContent = board.tiles.length ? "everything is on the board" : "no match";
+    list.appendChild(none);
+  }
+}
+
+function addTile(id, x, y, w, h) {
+  const fp = FOOTPRINTS[id];
+  if (!fp) return;
+  board.tiles.push({ id, x, y, w: Math.min(w || fp.w, board.cols), h: h || fp.h });
+  renderBoard(); renderBoardCardList(); saveBoard();
+}
+
+function findFreeSlot(w, h) {
+  const cw = Math.min(w, board.cols);
+  for (let y = 0; y < 999; y++) {
+    for (let x = 0; x <= board.cols - cw; x++) {
+      if (!overlaps(null, x, y, cw, h)) return { x, y };
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
+function moveTile(id, x, y) {
+  const t = board.tiles.find(k => k.id === id);
+  if (!t) return;
+  t.x = x; t.y = y;
+  renderBoard(); saveBoard();
+}
+
+function removeTile(id) {
+  board.tiles = board.tiles.filter(t => t.id !== id);
+  // Park the panel rather than destroying it, so its scroll and typed text
+  // survive a trip off the board.
+  const panel = document.getElementById(id);
+  if (panel) {
+    const rm = panel.querySelector(".panel-head > .tile-remove");
+    if (rm) rm.remove();
+    el("panelStore").appendChild(panel);
+  }
+  renderBoard(); renderBoardCardList(); saveBoard();
+}
+
+function resetBoard() {
+  board = JSON.parse(JSON.stringify(DEFAULT_BOARD));
+  renderBoard(); renderBoardCardList(); saveBoard();
+}
+
+/* ---------- drag: card -> board, and tile -> board ---------- */
+let boardDrag = null;
+
+function boardCellUnderPoint(clientX, clientY) {
+  const b = boardEl();
+  const r = b.getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(b).columnGap) || 14;
+  const cellW = (r.width - gap * (board.cols - 1)) / board.cols;
+  const cellH = board.rowUnit;
+  return { x: Math.floor((clientX - r.left) / (cellW + gap)),
+           y: Math.floor((clientY - r.top) / (cellH + gap)) };
+}
+
+function updateGhost(clientX, clientY) {
+  if (!boardDrag) return;
+  const { x, y } = boardCellUnderPoint(clientX, clientY);
+  const cx = Math.max(0, Math.min(board.cols - boardDrag.w, x));
+  const cy = Math.max(0, y);
+  const bad = x < 0 || x > board.cols - boardDrag.w || y < 0 ||
+              overlaps(boardDrag.fromTile || null, cx, cy, boardDrag.w, boardDrag.h);
+  const g = ghostEl();
+  g.hidden = false;
+  g.classList.toggle("invalid", bad);
+  g.style.gridColumn = (cx + 1) + " / span " + boardDrag.w;
+  g.style.gridRow = (cy + 1) + " / span " + boardDrag.h;
+  boardDrag.valid = !bad; boardDrag.cx = cx; boardDrag.cy = cy;
+}
+
+function endBoardDrag(commit) {
+  if (boardDrag && commit && boardDrag.valid) {
+    if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
+    else addTile(boardDrag.id, boardDrag.cx, boardDrag.cy, boardDrag.w, boardDrag.h);
+  }
+  ghostEl().hidden = true;
+  document.querySelectorAll(".board-card.dragging, .board-tile.dragging")
+    .forEach(n => n.classList.remove("dragging"));
+  boardDrag = null;
+}
+
+/* --------------------------------------------------------------------------
+   PANEL BODIES
+   -------------------------------------------------------------------------- */
+
+function renderSlotBody(slot, host) {
+  host.innerHTML = "";
+  if (typeof slot.render === "function") {
+    try { slot.render(V(), host); }
+    catch (err) {
+      // One bad renderer must not take the page down with it.
+      host.innerHTML = '<p class="hint" style="color:var(--bad)">Slot “' + esc(slot.id) +
+        "” threw: " + esc((err && err.message) || err) + "</p>";
+    }
+    return;
+  }
+  const m = V();
+  if (!m) return;
+  host.innerHTML =
+    '<div class="slot-empty">' +
+      '<div class="slot-desc">' + esc(slot.description) + "</div>" +
+      '<div class="feed">This tile would receive:<br>' +
+        "<b>" + m.stats.bricks + "</b> records &middot; <b>" + m.people.length + "</b> people &middot; " +
+        "<b>" + m.places.length + "</b> places &middot; <b>" + m.events.length + "</b> events &middot; " +
+        "<b>" + m.documents.length + "</b> documents &middot; <b>" + m.census.length + "</b> census<br>" +
+        "<b>" + m.entities.length + "</b> entities (" + m.stats.ghosts + " ghost) &middot; " +
+        "<b>" + m.edges.length + "</b> edges" +
+      "</div>" +
+      '<div class="slot-note">Fill this slot:<br><br>' +
+        "<code>Brick.viz.register(&quot;" + esc(slot.id) + "&quot;, {<br>" +
+        "&nbsp;&nbsp;emoji: &quot;" + slot.emoji + "&quot;, label: &quot;" + esc(slot.label) + "&quot;,<br>" +
+        "&nbsp;&nbsp;render(model, el) { /* draw into el */ }<br>});</code><br><br>" +
+        "The model is on <code>Brick.model</code>. A new id becomes a new card in the panel list." +
+      "</div>" +
+    "</div>";
+}
+
+/* ---------- filter ---------- */
+// A filtered count that looks like a total is how people misread their own
+// data, so any panel showing a subset says so.
+function noteFiltered(host) {
+  if (!host) return;
+  const v = V();
+  host.hidden = !v.active;
+  host.textContent = v.active ? "filtered — " + v.stats.bricks + " of " + state.model.stats.bricks : "";
+}
+
+function setFilter(mutate) {
+  mutate(state.filter);
+  state.model.view = buildView(state.model);
+  refreshAll();
+}
+function toggleIn(set, key) { set.has(key) ? set.delete(key) : set.add(key); }
+
+function renderFilter(body) {
+  if (!body.dataset.built) {
+    body.dataset.built = "1";
+    const t = body.querySelector('[data-el="text"]');
+    t.addEventListener("input", () => setFilter(f => { f.text = t.value; }));
+    body.querySelector('[data-act="clear"]').onclick = () => {
+      body.querySelector('[data-el="text"]').value = "";
+      setFilter(f => { f.text = ""; f.status = "all"; f.focus = null; f.types.clear(); f.sections.clear(); });
+    };
+  }
+  const f = state.filter, all = state.model, view = V();
+  const chip = (label, on, attrs, count) =>
+    "<button " + attrs + ' class="' + (on ? "on" : "") + '">' + label +
+    (count !== undefined ? '<span class="count">' + count + "</span>" : "") + "</button>";
+
+  // Confidence — the cut this whole project is about: what does the tree look
+  // like if I only believe what is verified?
+  body.querySelector('[data-el="status"]').innerHTML =
+    chip("all", f.status === "all", 'data-status="all"') +
+    chip("+ verified", f.status === "verified", 'data-status="verified"', all.stats.verified) +
+    chip("− draft", f.status === "draft", 'data-status="draft"', all.stats.draft);
+
+  // Emoji alone was not discoverable — the word goes on the chip, and only
+  // drops off when the panel is too narrow to hold it.
+  body.querySelector('[data-el="types"]').innerHTML = Object.keys(TYPES)
+    .filter(k => all.byType[k])
+    .map(k => chip(TYPES[k].icon + '<span class="lbl">' + esc(TYPES[k].label) + "</span>",
+                   f.types.has(k), 'data-type="' + k + '" title="only ' + esc(TYPES[k].label) + ' bricks"', all.byType[k]))
+    .join("");
+
+  // The headings are whatever you decided they mean — a family, a place, a line
+  // of thought. One mechanism, because it is all just text.
+  const secs = all.sections.filter(Boolean);
+  body.querySelector('[data-el="sectionlabel"]').textContent =
+    secs.length ? "Your headings (" + secs.length + ")" : "Your headings — none yet";
+  body.querySelector('[data-el="sections"]').innerHTML = secs.map(s => {
+    const n = all.records.filter(b => b.section === s).length;
+    const short = s.length > 26 ? s.slice(0, 25) + "…" : s;
+    return chip(esc(short), f.sections.has(s), 'data-section="' + esc(s) + '" title="' + esc(s) + '"', n);
+  }).join("");
+
+  const fw = body.querySelector('[data-el="focuswrap"]');
+  fw.hidden = !f.focus;
+  if (f.focus) {
+    const e = all.entities.find(x => x.slug === f.focus);
+    body.querySelector('[data-el="focus"]').innerHTML =
+      chip((e ? esc(e.name) : esc(f.focus)) + " ✕", true, 'data-focus="clear"');
+  }
+
+  body.querySelector('[data-el="summary"]').textContent = view.active
+    ? view.stats.bricks + " of " + all.stats.bricks + " bricks · " +
+      view.stats.entities + " of " + all.stats.entities + " entities"
+    : "Showing everything — " + all.stats.bricks + " bricks.";
+
+  body.querySelectorAll("[data-status]").forEach(b => b.onclick = () => setFilter(f2 => { f2.status = b.dataset.status; }));
+  body.querySelectorAll("[data-type]").forEach(b => b.onclick = () => setFilter(f2 => toggleIn(f2.types, b.dataset.type)));
+  body.querySelectorAll("[data-section]").forEach(b => b.onclick = () => setFilter(f2 => toggleIn(f2.sections, b.dataset.section)));
+  body.querySelectorAll('[data-focus="clear"]').forEach(b => b.onclick = () => setFilter(f2 => { f2.focus = null; }));
+}
+
+// Focusing on a person shows every record that names them — their family as the
+// records actually describe it, rather than as a tree asserts it.
+function focusEntity(slug) { setFilter(f => { f.focus = f.focus === slug ? null : slug; }); }
+
+/* ---------- document viewer ----------
+   One document, large: the scan on the left of your eye and what you wrote
+   about it underneath, so the claim and its evidence are on screen together.
+
+   Selection is by line number rather than by index, because the list of
+   documents changes shape as you filter and an index would silently point at a
+   different record. */
+let selectedDoc = null;   // line number, never an index into a filtered list
+
+/*  The scan on a canvas: wheel to zoom, drag to pan, Fit and 1:1.
+
+    Same zoom-to-cursor arithmetic as the collage clipper —
+    `pan = c - (z1/z0) * (c - pan)` keeps whatever is under the pointer
+    pinned there while the scale changes, which is the whole difference
+    between zooming and jumping.
+
+    The buffer is sized in device pixels so a census page at 1:1 shows the
+    ink, not a resampled blur — the entire reason for reading a scan at all. */
+const docView = { img: null, natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0, src: "", fitted: false };
+// Sources (a thumbnail grid of every scan) was removed — the Document panel and
+// its arrows are the only way to reach a scan now.
+
+function docCanvasEls(body) {
+  return { vp: body.querySelector('[data-el="viewport"]'), cv: body.querySelector('[data-el="canvas"]') };
+}
+
+function resizeDocCanvas(body) {
+  const { vp, cv } = docCanvasEls(body);
+  const dpr = window.devicePixelRatio || 1;
+  const w = vp.clientWidth, h = vp.clientHeight;
+  if (!w || !h) return false;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  return true;
+}
+
+function drawDoc(body) {
+  const { cv } = docCanvasEls(body);
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!docView.img) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.translate(docView.panX, docView.panY);
+  ctx.scale(docView.zoom, docView.zoom);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(docView.img, 0, 0);
+  const lab = body.querySelector('[data-el="zoomlabel"]');
+  if (lab) lab.textContent = Math.round(docView.zoom * 100) + "%";
+}
+
+function fitDoc(body) {
+  const { vp } = docCanvasEls(body);
+  const vw = vp.clientWidth, vh = vp.clientHeight;
+  if (!docView.img || !vw || !vh) { docView.zoom = 1; docView.panX = docView.panY = 0; return drawDoc(body); }
+  // Never fit *up*: a small thumbnail blown out to fill the panel just looks
+  // like a bad scan.
+  docView.zoom = Math.min(vw / docView.natW, vh / docView.natH, 1) || 1;
+  docView.panX = (vw - docView.natW * docView.zoom) / 2;
+  docView.panY = (vh - docView.natH * docView.zoom) / 2;
+  // A panel built while its tile has no width (off-screen, collapsed pane, a
+  // hidden board) would fit against zero and keep that bogus scale forever.
+  // Record whether this fit was real, so the resize observer can redo it.
+  docView.fitted = vw > 0 && vh > 0;
+  drawDoc(body);
+}
+
+function zoomDocBy(body, factor, ox, oy) {
+  const { vp } = docCanvasEls(body);
+  const cx = ox === undefined ? vp.clientWidth / 2 : ox;
+  const cy = oy === undefined ? vp.clientHeight / 2 : oy;
+  const z0 = docView.zoom;
+  const z1 = Math.min(16, Math.max(0.05, z0 * factor));
+  docView.panX = cx - (z1 / z0) * (cx - docView.panX);
+  docView.panY = cy - (z1 / z0) * (cy - docView.panY);
+  docView.zoom = z1;
+  drawDoc(body);
+}
+
+function loadDocImage(body, src) {
+  const overlay = body.querySelector('[data-el="overlay"]');
+  if (docView.src === src) return;          // same scan; keep the reader's zoom
+  docView.src = src;
+  const url = resolveSrc(src);
+  docView.img = null;
+  if (!src) {
+    overlay.hidden = false;
+    overlay.className = "doc-overlay";
+    overlay.textContent = "No scan attached. Add a URL or an image path to the brick and it appears here.";
+    drawDoc(body);
+    return;
+  }
+  overlay.hidden = false;
+  overlay.className = "doc-overlay";
+  overlay.textContent = "loading…";
+  const img = new Image();
+  // Deliberately NOT setting crossOrigin: it would make images fail to load
+  // from any host without CORS headers, and nothing here reads pixels back.
+  img.onload = () => {
+    if (docView.src !== src) return;        // a faster click won the race
+    docView.img = img;
+    docView.natW = img.naturalWidth; docView.natH = img.naturalHeight;
+    overlay.hidden = true;
+    resizeDocCanvas(body);
+    fitDoc(body);
+  };
+  img.onerror = () => {
+    if (docView.src !== src) return;
+    overlay.className = "doc-overlay bad";
+    overlay.textContent = "Source will not load: " + src;
+    drawDoc(body);
+  };
+  img.src = url;
+}
+
+function wireDocViewport(body) {
+  const { vp } = docCanvasEls(body);
+
+  vp.addEventListener("wheel", e => {
+    if (!docView.img) return;
+    e.preventDefault();
+    const r = vp.getBoundingClientRect();
+    zoomDocBy(body, e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  vp.addEventListener("pointerdown", e => {
+    if (!docView.img || e.button !== 0) return;
+    // The panel header drag moves the tile; this must not also start one.
+    e.stopPropagation();
+    vp.setPointerCapture(e.pointerId);
+    vp.classList.add("panning");
+    let lx = e.clientX, ly = e.clientY;
+    const move = ev => {
+      docView.panX += ev.clientX - lx;
+      docView.panY += ev.clientY - ly;
+      lx = ev.clientX; ly = ev.clientY;
+      drawDoc(body);
+    };
+    const up = () => {
+      vp.classList.remove("panning");
+      vp.removeEventListener("pointermove", move);
+      vp.removeEventListener("pointerup", up);
+      vp.removeEventListener("pointercancel", up);
+    };
+    vp.addEventListener("pointermove", move);
+    vp.addEventListener("pointerup", up);
+    vp.addEventListener("pointercancel", up);
+  });
+
+  vp.addEventListener("dblclick", () => fitDoc(body));
+
+  body.querySelector('[data-act="zoomin"]').onclick = () => zoomDocBy(body, 1.3);
+  body.querySelector('[data-act="zoomout"]').onclick = () => zoomDocBy(body, 1 / 1.3);
+  body.querySelector('[data-act="fit"]').onclick = () => fitDoc(body);
+  body.querySelector('[data-act="actual"]').onclick = () => {
+    const z0 = docView.zoom;
+    zoomDocBy(body, 1 / z0);               // back to exactly 100%, about the centre
+  };
+
+  // The tile can be resized by a column or a row at any time; the buffer has to
+  // follow or the scan goes soft.
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      if (!resizeDocCanvas(body)) return;
+      // First time it has a real size, fit properly rather than redrawing a
+      // scale that was computed against nothing.
+      if (docView.img && !docView.fitted) fitDoc(body);
+      else drawDoc(body);
+    }).observe(vp);
+  }
+}
+
+// The documents the viewer can step through — whatever the current filter left
+// standing, so the viewer obeys the filter like every other panel.
+function viewableDocs() {
+  return V().records.filter(b => b.kind === "document" || safeSrc(b.src));
+}
+
+function selectDocument(lineNumber) {
+  selectedDoc = lineNumber;
+  const panel = document.getElementById("document");
+  if (!panel || !panel.closest(".board-tile")) Brick.place("document");
+  refreshPanel("document");
+  const p = document.getElementById("document");
+  if (p) p.scrollIntoView({ block: "nearest" });
+}
+
+function stepDocument(dir) {
+  const docs = viewableDocs();
+  if (!docs.length) return;
+  const at = docs.findIndex(d => d.lineNumber === selectedDoc);
+  const next = at === -1 ? 0 : (at + dir + docs.length) % docs.length;
+  selectDocument(docs[next].lineNumber);
+}
+
+function renderDocument(body) {
+  if (!body.dataset.built) {
+    body.dataset.built = "1";
+    body.querySelector('[data-act="prev"]').onclick = () => stepDocument(-1);
+    body.querySelector('[data-act="next"]').onclick = () => stepDocument(1);
+    wireDocViewport(body);
+    resizeDocCanvas(body);
+  }
+  // ResizeObserver is the usual path, but its callbacks are throttled while the
+  // page is not being painted (hidden tab, collapsed pane), so a panel built in
+  // that state would keep a scale computed against zero width. Re-check on every
+  // render too: cheap, and it does not depend on the observer having run.
+  if (docView.img && !docView.fitted && resizeDocCanvas(body)) fitDoc(body);
+  const docs = viewableDocs();
+  const b = docs.find(d => d.lineNumber === selectedDoc) || docs[0] || null;
+  const view = body.querySelector('[data-el="view"]');
+  const openBtn = body.querySelector('[data-act="open"]');
+  const editBtn = body.querySelector('[data-act="edit"]');
+
+  if (!b) {
+    body.querySelector('[data-el="pos"]').textContent = "";
+    openBtn.hidden = editBtn.hidden = true;
+    loadDocImage(body, "");
+    body.querySelector('[data-el="overlay"]').textContent =
+      "No documents in view." + (V().active ? " The filter may be hiding them." : "");
+    view.innerHTML = "";
+    return;
+  }
+  // Keep the selection honest: if the filter removed what was selected, the
+  // viewer has moved on, and the position indicator must agree.
+  selectedDoc = b.lineNumber;
+  const at = docs.findIndex(d => d.lineNumber === b.lineNumber);
+  body.querySelector('[data-el="pos"]').textContent = (at + 1) + " / " + docs.length;
+
+  const src = safeSrc(b.src);
+  openBtn.hidden = !src;
+  openBtn.onclick = () => window.open(src, "_blank", "noopener,noreferrer");
+  editBtn.hidden = false;
+  editBtn.onclick = () => loadBrickIntoBuilder(b.lineNumber);
+
+  view.innerHTML = "";
+
+  // Only images go on the canvas. A PDF or a catalogue URL is still a source
+  // worth recording — it just gets a link rather than a viewport.
+  if (src && isImageSrc(src)) {
+    loadDocImage(body, src);
+  } else {
+    loadDocImage(body, "");
+    if (src) {
+      const o = body.querySelector('[data-el="overlay"]');
+      o.hidden = false;
+      o.className = "doc-overlay";
+      o.textContent = "Not an image — use “open ↗” for " + src;
+    }
+  }
+
+  const raw = document.createElement("div");
+  raw.className = "doc-raw" + (b.status === "draft" ? " draft" : "");
+  raw.textContent = b.raw.trim();
+  view.appendChild(raw);
+
+  const meta = document.createElement("dl");
+  meta.className = "doc-meta";
+  const rows = [
+    ["line", "L" + b.lineNumber],
+    ["status", b.status === "verified" ? "+ verified" : "− draft"],
+    ["kind", b.subtype ? (TYPES[b.subtype] ? TYPES[b.subtype].label : b.subtype) : TYPES[b.type].label],
+    ["source", b.detail || b.text[0] || "— (no citation recorded)"],
+    ["date", b.date || "—"],
+    ["heading", b.section || "—"],
+    ["cite as", b.alias ? "@" + b.alias.slug : "— (give it a uid to cite it)"],
+  ];
+  for (const [k, v] of rows) {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    meta.append(dt, dd);
+  }
+  // Where you got it, as a link you can actually follow back.
+  if (safeSrc(b.url)) {
+    const dt = document.createElement("dt"); dt.textContent = "source";
+    const dd = document.createElement("dd");
+    const a = document.createElement("a");
+    a.href = safeSrc(b.url);
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = b.url.replace(/^https?:\/\//, "").slice(0, 60);
+    a.style.color = "var(--accent2)";
+    dd.appendChild(a);
+    meta.append(dt, dd);
+  }
+  view.appendChild(meta);
+
+  if (b.links.length) {
+    const lab = document.createElement("dt");
+    lab.className = "flt-label";
+    lab.textContent = "names " + b.links.length + " " + (b.links.length === 1 ? "person" : "people");
+    const names = document.createElement("div");
+    names.className = "doc-names";
+    for (const slug of b.links) {
+      const e = state.model.entities.find(x => x.slug === slug);
+      const btn = document.createElement("button");
+      btn.textContent = e ? e.name : slug;
+      if (e && !e.declared) {
+        btn.classList.add("ghost");
+        btn.title = "ghost — named here but never declared";
+      } else btn.title = "show only records naming them";
+      btn.onclick = () => focusEntity(slug);
+      names.appendChild(btn);
+    }
+    view.append(lab, names);
+  }
+}
+
+/* ---------- brick builder ----------
+   A way INTO the notation, not a replacement for it: every change shows the
+   exact line it will write, and the line goes into the same pallet text that
+   everything else reads. Nothing here is a separate data store. */
+// Draft by default. A new brick is a claim you have just typed, not one you
+// have checked — defaulting to "+" quietly marks everything verified.
+const builder = { type: "person", status: "-", editing: null, values: {} };
+
+// Which fields each type offers, in the order they appear in the line.
+function fieldsFor(type) {
+  if (type === "comment") return [
+    { key: "name", label: "heading or note", ph: "LONGFORGAN",
+      sub: "becomes a '#' line, and a grouping chip in Filter" },
+  ];
+  const kind = TYPES[type].kind;
+  if (kind === "person") return [
+    { key: "alias", label: "uid (alias)", kind: "alias", ph: "George Isles",
+      sub: "type it however you like — it becomes kebab-case in the line" },
+    { key: "detail", label: "description / occupation", ph: "Powerloom Tender" },
+    { key: "links", label: "links", kind: "links", ph: "birth-cert-1869" },
+  ];
+  if (kind === "place") return [
+    { key: "alias", label: "uid (alias)", kind: "alias", ph: "Longforgan",
+      sub: "type it however you like — it becomes kebab-case in the line" },
+    { key: "name", label: "name", ph: "Longforgan" },
+    { key: "detail", label: "description", ph: "Village west of Dundee" },
+    { key: "coords", label: "coordinates", ph: "56.4647, -3.1200",
+      sub: "latitude, longitude — decimal degrees" },
+    { key: "links", label: "links", kind: "links", ph: "census-1891" },
+  ];
+  if (kind === "event") return [
+    { key: "date", label: "date", ph: "1894-06-29", sub: "???? if the question was asked and not answered" },
+    { key: "links", label: "participants", kind: "links", ph: "george,margaret-kinnear" },
+  ];
+  if (kind === "document") return [
+    // A document without a uid cannot be cited, and an uncitable source is no
+    // source at all — so it comes first, like it does for a person.
+    { key: "alias", label: "uid (alias)", kind: "alias", ph: "census 1891 longforgan",
+      sub: "how claims will cite this source" },
+    { key: "subtype", label: "subtype", ph: "census, or an emoji like 👶" },
+    { key: "date", label: "date", ph: "1891" },
+    /*  Three different things, deliberately three fields.
+
+        SOURCE is the record — it exists whether or not anything digital does,
+        and it is what you would write in a footnote. IMAGE is a surrogate of
+        it. URL is where you happened to reach a copy, and pointers rot. Losing
+        the URL should never lose the citation. */
+    { key: "detail", label: "source", ph: "1891 Census of Scotland, Longforgan, ED 4, p17 line 3",
+      sub: "the record itself — what you would write in a footnote" },
+    { key: "src", label: "image", ph: "images/1891-longforgan-p17.jpg",
+      sub: "a scan of it — a surrogate, not the record" },
+    { key: "url", label: "url", ph: "https://scotlandspeople.gov.uk/…",
+      sub: "where you reached a copy — optional, and the first thing to go stale" },
+    { key: "links", label: "links", kind: "links", ph: "george,margaret" },
+  ];
+  return [   // census
+    { key: "date", label: "year", ph: "1891" },
+    { key: "name", label: "forename", ph: "George" },
+    { key: "detail", label: "age", ph: "22 ~1869", sub: "keep your working — '22 1891-22 ~1869' is kept verbatim" },
+    // Without this a census row attaches to nobody, and census rows are the
+    // bulk of the evidence. The forename is what the enumerator wrote; the link
+    // is who you think it was — deliberately two different fields.
+    { key: "links", label: "who this is", kind: "links", ph: "George Isles",
+      sub: "leave empty until you know — an unattached row is an honest one" },
+  ];
+}
+
+// Assembles the line. Trailing empty fields are dropped rather than written as
+// bare pipes, so the builder produces the same shape a person would type.
+function builderLine() {
+  const v = builder.values;
+  // A comment is the one line with no status and no pipes.
+  if (builder.type === "comment") return "# " + (v.name || "").replace(/^#+\s*/, "");
+  const icon = TYPES[builder.type].icon;
+  const kind = TYPES[builder.type].kind;
+  const parts = [builder.status, icon];
+  // Links name uids too, so they get the same treatment.
+  const links = (v.links || "").split(",")
+    .map(x => slugify(x.trim().replace(/^@/, ""))).filter(Boolean);
+  const linkField = links.length ? "@" + links.join(",") : "";
+
+  if (kind === "person") {
+    const num = (v.num || "").trim();
+    parts.push((num ? "<" + num + ">" : "") + "<" + slugify(v.alias || "") + ">",
+               v.detail || "", linkField);
+  } else if (kind === "place") {
+    parts.push("<" + slugify(v.alias || "") + ">", v.name || "", v.detail || "",
+               (v.coords || "").trim(), linkField);
+  } else if (kind === "event") {
+    parts.push(v.date || "", linkField);
+  } else if (kind === "document") {
+    // Only emit the uid if there is one — an empty <> would declare a nameless
+    // source rather than an unnamed one.
+    const uid = slugify(v.alias || "");
+    if (uid) parts.push("<" + uid + ">");
+    parts.push(v.subtype || "", v.date || "", v.detail || "", v.src || "", v.url || "", linkField);
+  } else {
+    // Census: year, the forename as written, the age blob, then who you think
+    // it was. The link is a separate claim from the transcription.
+    parts.push(v.date || "", v.name || "", v.detail || "", linkField);
+  }
+  while (parts.length > 2 && !parts[parts.length - 1]) parts.pop();
+  return parts.join("|");
+}
+
+// Reverse: an existing brick back into the form, so a line can be corrected
+// rather than retyped.
+function loadBrickIntoBuilder(lineNumber) {
+  const b = state.model.bricks.find(x => x.lineNumber === lineNumber);
+  if (!b || b.empty || !b.valid) return;
+  if (b.comment) {
+    builder.type = "comment";
+    builder.editing = lineNumber;
+    builder.values = { name: b.name };
+    const p0 = document.getElementById("builder");
+    if (!p0 || !p0.closest(".board-tile")) Brick.place("builder");
+    refreshPanel("builder");
+    renderClassification(document.querySelector('#classification [data-el="lines"]'));
+    return;
+  }
+  builder.type = b.type;
+  builder.status = b.status === "verified" ? "+" : "-";
+  builder.editing = lineNumber;
+  const v = builder.values = {};
+  v.links = b.links.join(",");
+  v.date = b.date || "";
+  if (b.alias) { v.alias = b.alias.slug; v.num = b.alias.num !== null && b.alias.num !== undefined ? String(b.alias.num) : ""; }
+  const kind = b.kind;
+  if (kind === "person") v.detail = b.detail || "";
+  else if (kind === "place") {
+    v.name = b.text[0] || ""; v.detail = b.text[1] || "";
+    v.coords = b.coords ? b.coords.lat + ", " + b.coords.lng : "";
+  }
+  else if (kind === "document") {
+    v.subtype = b.subtype || ""; v.detail = b.text[0] || "";
+    v.src = b.src || ""; v.url = b.url || "";
+  }
+  else if (kind === "census") { v.name = b.name || ""; v.detail = b.text[0] || ""; }
+
+  const panel = document.getElementById("builder");
+  if (!panel || !panel.closest(".board-tile")) Brick.place("builder");
+  refreshPanel("builder");
+  const p = document.getElementById("builder");
+  if (p) p.scrollIntoView({ block: "nearest" });
+  renderClassification(document.querySelector('#classification [data-el="lines"]'));
+}
+
+function commitBuilder() {
+  const line = builderLine();
+  const lines = state.text.split("\n");
+  if (builder.editing !== null && lines[builder.editing - 1] !== undefined) {
+    lines[builder.editing - 1] = line;
+    state.text = lines.join("\n");
+    builder.editing = null;
+  } else {
+    // Appended to the end of the pile. A brick is added to the pile, not
+    // inserted into a structure — that is the whole premise.
+    state.text = state.text.replace(/\s*$/, "") + "\n" + line;
+  }
+  builder.values = {};
+  saveText();
+  update();
+  refreshPanel("pallet");
+}
+
+function renderBuilder(body) {
+  // Built once. Re-rendering the whole form on every keystroke elsewhere would
+  // blow away whatever is half-typed in it.
+  if (!body.dataset.built) {
+    body.dataset.built = "1";
+
+    const st = body.querySelector('[data-el="status"]');
+    st.innerHTML = '<button data-st="+" title="verified">+ verified</button>' +
+                   '<button data-st="-" title="draft / unverified">− draft</button>';
+    st.querySelectorAll("button").forEach(b => b.onclick = () => {
+      builder.status = b.dataset.st; renderBuilderState(body);
+    });
+
+    const ty = body.querySelector('[data-el="type"]');
+    // Comment is not in TYPES — it has no status and no fields — but it is a
+    // line you write constantly, and your '#' headings are what the filter
+    // groups by, so it needs a button like everything else.
+    ty.innerHTML = Object.keys(TYPES).map(k =>
+      '<button data-ty="' + k + '" title="' + esc(TYPES[k].label) + '">' + TYPES[k].icon + "</button>").join("") +
+      '<button data-ty="comment" title="a # heading or note — this is what the filter groups by">💬</button>';
+    ty.querySelectorAll("button").forEach(b => b.onclick = () => {
+      builder.type = b.dataset.ty;
+      buildBuilderFields(body);
+      renderBuilderState(body);
+    });
+
+    body.querySelector('[data-act="commit"]').onclick = () => { commitBuilder(); renderBuilderState(body); };
+    body.querySelector('[data-act="cancel"]').onclick = () => {
+      // Leaving an edit returns to the resting state, which is draft — the
+      // status of the brick you were editing must not stick to the next one.
+      builder.editing = null; builder.values = {}; builder.status = "-";
+      renderBuilderState(body);
+      renderClassification(document.querySelector('#classification [data-el="lines"]'));
+    };
+    body.querySelector('[data-act="clearfields"]').onclick = () => {
+      builder.values = {}; buildBuilderFields(body); renderBuilderState(body);
+    };
+    buildBuilderFields(body);
+  }
+  // The field set depends on the type, which can change via loadBrickIntoBuilder
+  // as well as via the type buttons.
+  // Also covers the comment pseudo-type, which is not a key of TYPES.
+  if (body.dataset.fieldsFor !== builder.type) buildBuilderFields(body);
+  renderBuilderState(body);
+}
+
+function buildBuilderFields(body) {
+  const host = body.querySelector('[data-el="fields"]');
+  body.dataset.fieldsFor = builder.type;
+  const listId = "bld-aliases";
+  body.querySelector('[data-el="aliases"]').id = listId;
+
+  host.innerHTML = fieldsFor(builder.type).map(f => {
+    const val = esc(builder.values[f.key] || "");
+    const input = f.kind === "alias"
+      ? '<div class="bld-alias-wrap">' +
+          '<input data-k="alias" list="' + listId + '" placeholder="' + esc(f.ph) + '" value="' + val + '">' +
+          '<input class="num" data-k="num" placeholder="no." value="' + esc(builder.values.num || "") + '" title="optional disambiguator, e.g. 4 for <4><george-isles>">' +
+        "</div>"
+      : '<input data-k="' + f.key + '"' + (f.kind === "links" ? ' list="' + listId + '"' : "") +
+        ' placeholder="' + esc(f.ph) + '" value="' + val + '">' +
+        (f.kind === "links" ? '<div class="uid-picker" data-picker="1"></div>' : "");
+    return '<div class="bld-field"><label>' + esc(f.label) + (f.kind === "links" ? " (comma separated)" : "") +
+      "</label>" + input + (f.sub ? '<span class="sub">' + esc(f.sub) + "</span>" : "") + "</div>";
+  }).join("");
+
+  host.querySelectorAll("input[data-k]").forEach(i => {
+    i.addEventListener("input", () => {
+      builder.values[i.dataset.k] = i.value;
+      renderUidPicker(body);
+      renderBuilderPreview(body);
+    });
+  });
+  renderUidPicker(body);
+}
+
+function renderBuilderState(body) {
+  body.querySelectorAll('[data-el="status"] button').forEach(b =>
+    b.classList.toggle("active", b.dataset.st === builder.status));
+  body.querySelectorAll('[data-el="type"] button').forEach(b =>
+    b.classList.toggle("active", b.dataset.ty === builder.type));
+
+  // Values can be set programmatically (editing an existing line), so push them
+  // back into the inputs.
+  body.querySelectorAll("input[data-k]").forEach(i => {
+    const v = builder.values[i.dataset.k] || "";
+    if (i.value !== v) i.value = v;
+  });
+
+  // A comment cannot be verified or draft, so the confidence row steps aside.
+  const isComment = builder.type === "comment";
+  body.querySelector('[data-el="status"]').style.display = isComment ? "none" : "";
+
+  const ed = body.querySelector('[data-el="editing"]');
+  ed.hidden = builder.editing === null;
+  ed.textContent = builder.editing === null ? "" : "editing line " + builder.editing;
+  body.querySelector('[data-act="cancel"]').hidden = builder.editing === null;
+  body.querySelector('[data-act="commit"]').textContent =
+    builder.editing === null ? "Add brick" : "Update line " + builder.editing;
+
+  // Aliases already declared, offered to every alias and link field.
+  const list = body.querySelector("datalist");
+  if (list && state.model) {
+    list.innerHTML = state.model.entities
+      .map(e => '<option value="' + esc(e.slug) + '">' + esc(e.name) + "</option>").join("");
+  }
+  renderBuilderPreview(body);
+}
+
+function renderBuilderPreview(body) {
+  const pre = body.querySelector('[data-el="preview"]');
+  const line = builderLine();
+  showUidClash(body);
+  // Parsed with the real parser rather than trusted — if the builder can emit
+  // something the parser rejects, that is a bug worth seeing immediately.
+  const test = parseLine(line, 0, "");
+  pre.textContent = line;
+  pre.classList.toggle("draft", builder.status === "-");
+  pre.classList.toggle("bad", !test.valid);
+}
+
+/*  Warn while typing, not after committing. Editing the very line that declared
+    the uid is not a clash, so the check ignores the line being edited. */
+/*  Every uid in the pile, as buttons. Click to attach or detach — the links
+    field stays plain text, so anything typed by hand still works and the
+    buttons are only a faster way to type it. */
+function renderUidPicker(body) {   // rebuilt whenever the links field changes
+  const host = body.querySelector("[data-picker]");
+  if (!host) return;
+  const chosen = new Set((builder.values.links || "").split(",")
+    .map(x => slugify(x.trim().replace(/^@/, ""))).filter(Boolean));
+
+  // Never offer the brick its own uid: a record linking to itself says nothing.
+  const self = slugify(builder.values.alias || "");
+  const list = state.model.entities
+    .filter(e => e.slug !== self)
+    .sort((a, b) => (a.declared === b.declared ? a.name.localeCompare(b.name) : (a.declared ? -1 : 1)));
+
+  if (!list.length) { host.innerHTML = '<span class="none">No uids declared yet.</span>'; return; }
+  host.innerHTML = "";
+  for (const e of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    const icon = e.kind === "place" ? "📍" : e.kind === "person" ? "👤"
+               : e.kind === "document" ? "📜" : e.kind === "event" ? "🔔" : "❔";
+    b.textContent = icon + " " + e.slug;
+    b.title = e.declared ? e.kind + (e.detail ? " · " + e.detail : "") + " · line " + e.declaredAt
+                         : "ghost — referenced " + e.refs + "×, never declared";
+    if (!e.declared) b.classList.add("ghost");
+    if (chosen.has(e.slug)) b.classList.add("on");
+    b.onclick = () => {
+      chosen.has(e.slug) ? chosen.delete(e.slug) : chosen.add(e.slug);
+      builder.values.links = [...chosen].join(",");
+      const input = body.querySelector('input[data-k="links"]');
+      if (input) input.value = builder.values.links;
+      renderUidPicker(body);
+      renderBuilderPreview(body);
+    };
+    host.appendChild(b);
+  }
+}
+
+function showUidClash(body) {   // called on every keystroke in the builder
+  const box = body.querySelector('[data-el="clash"]');
+  if (!box) return;
+  const slug = slugify(builder.values.alias || "");
+  const kind = builder.type === "comment" ? null : TYPES[builder.type].kind;
+  if (!slug || (kind !== "person" && kind !== "place" && kind !== "document" && kind !== "event")) {
+    box.hidden = true; return;
+  }
+  const e = state.model.entities.find(x => x.slug === slug && x.declared);
+  if (!e || e.declaredAt === builder.editing) { box.hidden = true; return; }
+  box.hidden = false;
+  box.textContent = "<" + slug + "> is already declared on line " + e.declaredAt +
+    " as a " + e.kind + (e.detail ? " (" + e.detail + ")" : "") +
+    ". A uid must be unique — committing this makes a clash.";
+}
+
+function renderClassification(host) {
+  if (!host) return;
+  const rows = V().bricks;
+  if (!rows.length) { host.innerHTML = '<p class="hint">Nothing on the pallet.</p>'; return; }
+  host.innerHTML = rows.map(b => {
+    const cls = ["ln"];
+    if (b.comment) cls.push("comment");
+    else if (!b.valid) cls.push("bad");
+    else { cls.push("ok"); if (b.status === "draft") cls.push("draft"); }
+    const tag = b.comment ? "section" : (b.valid ? (b.type || "") : "unparsed");
+    const name = (!b.comment && b.name && b.name !== b.raw.trim())
+      ? '<br><span class="name">&rarr; ' + esc(b.name) + (b.estimate ? " · ~" + b.estimate : "") +
+        (b.links.length ? " · " + b.links.length + " link" + (b.links.length > 1 ? "s" : "") : "") + "</span>"
+      : "";
+    if (b.lineNumber === builder.editing) cls.push("editing");
+    return '<div class="' + cls.join(" ") + '" data-line="' + b.lineNumber + '"' +
+      (b.valid && !b.comment ? ' title="click to edit this line in the Brick Builder"' : "") +
+      '><span class="num">' + b.lineNumber + "</span>" +
+      '<span class="ico">' + b.icon + '</span><span class="body">' + esc(b.raw.trim()) + name +
+      '</span><span class="tag">' + esc(tag) + "</span></div>";
+  }).join("");
+
+  // Delegated, so it survives every re-render of the list above.
+  if (!host.dataset.wired) {
+    host.dataset.wired = "1";
+    host.addEventListener("click", e => {
+      const row = e.target.closest(".ln[data-line]");
+      if (row) loadBrickIntoBuilder(Number(row.dataset.line));
+    });
+  }
+}
+
+function renderEntities(host) {
+  if (!host) return;
+  const ents = V().entities.slice().sort((a, b) =>
+    a.declared !== b.declared ? (a.declared ? -1 : 1) : a.name.localeCompare(b.name));
+  if (!ents.length) { host.innerHTML = '<p class="hint">No aliases yet.</p>'; return; }
+  host.innerHTML = ents.map(e => {
+    const cls = ["ent"];
+    if (!e.declared) cls.push("ghost");
+    else if (e.status === "draft") cls.push("draft");
+    const icon = e.kind === "place" ? "📍" : e.kind === "person" ? "👤"
+               : e.kind === "document" ? "📜" : e.kind === "event" ? "🔔" : "❔";
+    const title = e.declared
+      ? e.kind + (e.status === "draft" ? ", draft" : ", verified") +
+        (e.detail ? " · " + e.detail : "") + " · referenced " + e.refs + "×"
+      : "ghost — referenced " + e.refs + "×, never declared";
+    // Coordinates show in the tooltip only. One icon per kind — a second pin
+    // emoji was not a distinction anyone could read.
+    const geo = e.coords ? " · " + e.coords.lat + ", " + e.coords.lng : "";
+    const on = state.filter.focus === e.slug;
+    return '<span class="' + cls.join(" ") + (on ? " focused" : "") + '" data-slug="' + esc(e.slug) +
+      '" title="' + esc(title + geo) + ' — click to show only records naming them">' +
+      icon + " " +
+      esc(e.name) + (e.refs ? '<span class="n">' + e.refs + "</span>" : "") + "</span>";
+  }).join("");
+
+  if (!host.dataset.wired) {
+    host.dataset.wired = "1";
+    host.addEventListener("click", ev => {
+      const chip = ev.target.closest(".ent[data-slug]");
+      if (chip) focusEntity(chip.dataset.slug);
+    });
+  }
+}
+
+function renderStats(host) {
+  if (!host) return;
+  const s = V().stats;
+  const cells = [["bricks", s.bricks], ["verified", s.verified], ["draft", s.draft],
+                 ["entities", s.entities], ["ghosts", s.ghosts], ["links", s.links],
+                 ["dated", s.dated], ["estimated", s.estimated], ["geocoded", s.geocoded],
+                 ["unparsed", s.unparsed]];
+  host.innerHTML = cells.map(([k, v]) => {
+    const colour = (k === "unparsed" && v > 0) ? "var(--bad)"
+                 : (k === "ghosts" && v > 0) ? "var(--ghost)"
+                 : k === "draft" ? "var(--draft)" : k === "verified" ? "var(--accent)" : "inherit";
+    return '<div class="stat"><div class="v" style="color:' + colour + '">' + v +
+           '</div><div class="k">' + k + "</div></div>";
+  }).join("");
+}
+
+function renderIssues(host) {
+  if (!host) return;
+  const list = state.model.issues;
+  if (!list.length) { host.innerHTML = '<span class="none">No red flags. Every line landed somewhere.</span>'; return; }
+  host.innerHTML = list.map(i => '<div class="' + (i.level === "err" ? "err" : "warn") + '">' +
+    (i.line ? "L" + String(i.line).padStart(3, "0") + " " : "···· ") + esc(i.msg) + "</div>").join("");
+}
+
+function renderReference(host) {
+  if (!host) return;
+  const rows = Object.keys(TYPES).map(k => {
+    const toks = Object.keys(TOKENS).filter(t => TOKENS[t] === k && t !== TYPES[k].icon);
+    return "<tr><td>" + TYPES[k].icon + "</td><td>" + esc(TYPES[k].label) + "</td>" +
+      '<td class="mono">' + esc(toks.join("  ·  ")) + '</td><td class="mono">' + esc(exampleFor(k)) + "</td></tr>";
+  }).join("");
+  host.innerHTML = "<table><thead><tr><th>icon</th><th>type</th><th>also accepts</th><th>example</th></tr></thead><tbody>" +
+    rows + '<tr><td>💬</td><td>comment</td><td class="mono">#</td><td class="mono"># PEOPLE</td></tr></tbody></table>' +
+    '<p class="hint">Add a row to <code>TOKENS</code> in this file and the parser, the classifier, the counts and every ' +
+    "panel pick it up with no other edit. That is the whole extension mechanism.</p>";
+}
+
+function exampleFor(k) {
+  return {
+    person: "+|👤|<charles-alexander>|Assistant Registrar",
+    birth: "+|👶|1894-06-29|@george",
+    marriage: "-|🔔|????|@james,margaret-kinnear",
+    death: "-|⚰️|1901|@james",
+    place: "-|📍|<longforgan>|Longforgan|West of Dundee",
+    document: "+|📜|census|1891|@george,margaret",
+    census: "-|✏️|1891|George|22 ~1869",
+  }[k] || "";
+}
+
+function palletAction(act, ta) {
+  if (act === "sample") return setText(SAMPLE);
+  if (act === "clear") {
+    if (confirm("Empty the pallet? Your bricks are only stored in this browser.")) setText("");
+    return;
+  }
+  if (act === "copy") { navigator.clipboard.writeText(state.text).catch(() => ta.select()); return; }
+  if (act === "export") {
+    const blob = new Blob([state.text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return;
+  }
+  if (act === "import" || act === "merge") return pickFiles(act === "merge");
+  if (act === "folder") return openFolder();
+  if (act === "rescan") return rescanFolder();
+}
+
+/*  Reading a whole folder.
+
+    A page cannot watch a folder — there is no filesystem access without a user
+    gesture, so this is "open" and "rescan", never live sync. Three routes,
+    because support differs and this file has to work from a plain file:// too:
+
+      1. showDirectoryPicker()  — Chromium. Keeps a handle, so Rescan re-reads
+         the same folder with no second prompt. Needs https or localhost.
+      2. <input webkitdirectory> — everywhere else. No handle survives, so
+         Rescan has to re-prompt.
+      3. dropping a folder onto the Pallet — uses the same reader as (2).
+
+    Every route ends in the same place: .txt files, sorted by name, folded in
+    with mergeText, so duplicates are skipped and the order is predictable. */
+let folderHandle = null;      // route 1 only
+let folderName = "";
+
+function isBrickFile(name) { return /\.txt$/i.test(name); }
+function isImageFile(name) { return /\.(jpe?g|png|gif|webp|avif|svgz?|tiff?)$/i.test(name); }
+
+/*  Images found in the opened folder, keyed by their path within it.
+
+    A brick says `images/birth-1894.jpg`. As an <img src> that would resolve
+    against the PAGE, not against your research folder — so a local scan would
+    never load. Indexing the folder's images and handing back a blob URL makes
+    the same brick file work both locally and hosted, with nothing uploaded. */
+const folderImages = new Map();   // path within the opened folder -> { file, url }
+
+function setFolderImages(list) {
+  for (const v of folderImages.values()) if (v.url) URL.revokeObjectURL(v.url);
+  folderImages.clear();
+  for (const f of list) folderImages.set(f.name, { file: f.file, url: "" });
+}
+
+/*  Matching is forgiving on purpose: you should not have to write the path
+    exactly as the folder happens to be nested. Exact path first, then a
+    suffix match, then the bare filename. */
+function resolveSrc(src) {
+  const t = (src || "").trim();
+  if (!t || /^(https?:|data:|blob:)/i.test(t)) return t;
+  const want = t.replace(/^\.\//, "");
+  let hit = folderImages.get(want);
+  if (!hit) {
+    const base = want.split("/").pop().toLowerCase();
+    for (const [path, v] of folderImages) {
+      const lower = path.toLowerCase();
+      if (lower.endsWith("/" + want.toLowerCase()) || lower === want.toLowerCase() ||
+          lower.split("/").pop() === base) { hit = v; break; }
+    }
+  }
+  if (!hit) return t;                       // fall through to the page-relative URL
+  if (!hit.url) hit.url = URL.createObjectURL(hit.file);
+  return hit.url;
+}
+
+// Recurses into subfolders. Depth-capped: a stray symlink or a deep tree should
+// not hang the page, and nobody nests a pile eight deep on purpose.
+async function filesFromDirectoryHandle(dir, path, depth, out, imgs) {
+  if (depth > 8) return out;
+  for await (const entry of dir.values()) {
+    if (entry.kind === "file" && isBrickFile(entry.name)) {
+      const f = await entry.getFile();
+      out.push({ name: path + entry.name, text: await f.text() });
+    } else if (entry.kind === "file" && isImageFile(entry.name) && imgs) {
+      imgs.push({ name: path + entry.name, file: await entry.getFile() });
+    } else if (entry.kind === "directory") {
+      await filesFromDirectoryHandle(entry, path + entry.name + "/", depth + 1, out, imgs);
+    }
+  }
+  return out;
+}
+
+/*  What the last folder read turned up. Kept so the Files panel can show what
+    is available rather than only what was merged — a folder read used to
+    dissolve every file into one pile and forget the parts. */
+let folderFiles = [];
+let currentFile = "";   // which file is on the pallet, when one was opened alone
+
+function rememberFolder(files, label) {
+  folderFiles = files.filter(f => isBrickFile(f.name))
+                     .sort((a, b) => a.name.localeCompare(b.name));
+  folderName = label || folderName;
+  refreshPanel("pallet");
+}
+
+// Open one file on its own, replacing the pallet — the pile IS the file.
+function openFile(name) {
+  const f = folderFiles.find(x => x.name === name);
+  if (!f) return;
+  currentFile = name;
+  setText(f.text);
+  refreshPanel("pallet");
+}
+
+function mergeFile(name) {
+  const f = folderFiles.find(x => x.name === name);
+  if (!f) return;
+  const r = mergeText(state.text, f.text, f.name);
+  setText(r.text);
+  showMergeLog(f.name + ": +" + r.added + (r.skipped ? " (" + r.skipped + " already here)" : ""));
+}
+
+/*  The folder's files, listed inside the Pallet rather than in a panel of their
+    own — they are what the pallet is loaded FROM, so they belong to it. */
+function renderFileList(body) {
+  const host = body.querySelector('[data-el="files"]');
+  if (!host) return;
+  if (!folderFiles.length) {
+    // An empty list that renders nothing is a feature nobody can find — say so
+    // rather than showing a blank gap.
+    host.innerHTML = '<div class="file-empty">No folder open — <b>Folder…</b> lists its ' +
+      "<code>.txt</code> piles here.</div>";
+    return;
+  }
+  host.innerHTML = "";
+  for (const f of folderFiles) {
+    // Counting bricks means parsing, which is cheap and tells you which files
+    // are worth opening without opening them.
+    const n = parse(f.text).filter(b => !b.empty && !b.comment).length;
+    const row = document.createElement("div");
+    row.className = "file-item" + (f.name === currentFile ? " current" : "");
+    row.innerHTML = '<span class="nm" title="' + esc(f.name) + '">' + esc(f.name) + "</span>" +
+                    '<span class="meta">' + n + "</span>";
+    const open = document.createElement("button");
+    open.textContent = "open"; open.title = "put this file on the pallet, replacing what is there";
+    open.onclick = () => openFile(f.name);
+    const merge = document.createElement("button");
+    merge.textContent = "+"; merge.title = "merge this file into what is on the pallet";
+    merge.onclick = () => mergeFile(f.name);
+    row.append(open, merge);
+    host.appendChild(row);
+  }
+}
+
+function foldFiles(files, label) {
+  const usable = files.filter(f => isBrickFile(f.name))
+                      .sort((a, b) => a.name.localeCompare(b.name));
+  if (!usable.length) {
+    showMergeLog("no .txt files found in " + label);
+    return;
+  }
+  let text = state.text, added = 0, skipped = 0, touched = 0;
+  for (const f of usable) {
+    const r = mergeText(text, f.text, f.name);
+    text = r.text; added += r.added; skipped += r.skipped;
+    if (r.added) touched++;
+  }
+  setText(text);
+  showMergeLog(label + ": " + usable.length + " file" + (usable.length > 1 ? "s" : "") +
+    " read, " + added + " new brick" + (added === 1 ? "" : "s") + " from " + touched +
+    " of them, " + skipped + " already here");
+}
+
+async function openFolder() {
+  if (window.showDirectoryPicker) {
+    try {
+      const dir = await window.showDirectoryPicker({ mode: "read" });
+      folderHandle = dir;
+      folderName = dir.name;
+      const imgs = [];
+      const files = await filesFromDirectoryHandle(dir, "", 0, [], imgs);
+      setFolderImages(imgs);
+      rememberFolder(files, folderName);
+      foldFiles(files, folderName);
+      showRescan(true);
+      return;
+    } catch (err) {
+      // AbortError is the user closing the picker — not worth reporting.
+      if (err && err.name === "AbortError") return;
+      showMergeLog("folder picker unavailable here (" + ((err && err.name) || err) + "), falling back");
+    }
+  }
+  // Fallback: the directory input. No handle survives it, so no Rescan.
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.webkitdirectory = true;
+  inp.multiple = true;
+  inp.onchange = () => {
+    const files = [...(inp.files || [])];
+    if (!files.length) return;
+    const label = (files[0].webkitRelativePath || "").split("/")[0] || "folder";
+    // Paths from a directory input include the chosen folder as their first
+    // segment; strip it so a brick can say "images/x.jpg" rather than
+    // "my-research/images/x.jpg".
+    const strip = n => n.split("/").slice(1).join("/") || n;
+    setFolderImages(files.filter(f => isImageFile(f.name))
+      .map(f => ({ name: strip(f.webkitRelativePath || f.name), file: f })));
+    Promise.all(files.filter(f => isBrickFile(f.name))
+      .map(f => f.text().then(t => ({ name: strip(f.webkitRelativePath || f.name), text: t }))))
+      .then(all => { rememberFolder(all, label); foldFiles(all, label); })
+      .catch(err => showMergeLog("could not read: " + ((err && err.message) || err)));
+  };
+  inp.click();
+}
+
+async function rescanFolder() {
+  if (!folderHandle) { showRescan(false); return openFolder(); }
+  try {
+    // Permission can lapse between sessions; ask again rather than failing.
+    if (folderHandle.queryPermission) {
+      const p = await folderHandle.queryPermission({ mode: "read" });
+      if (p !== "granted" && await folderHandle.requestPermission({ mode: "read" }) !== "granted") {
+        showMergeLog("permission to read " + folderName + " was declined");
+        return;
+      }
+    }
+    const imgs = [];
+    const files = await filesFromDirectoryHandle(folderHandle, "", 0, [], imgs);
+    setFolderImages(imgs);
+    rememberFolder(files, folderName);
+    foldFiles(files, folderName);
+  } catch (err) {
+    showMergeLog("could not re-read " + folderName + ": " + ((err && err.message) || err));
+  }
+}
+
+function showRescan(on) {
+  const b = document.querySelector('#pallet [data-act="rescan"]');
+  if (b) { b.hidden = !on; b.title = "read " + folderName + " again — duplicates are skipped"; }
+}
+
+/* Dropping a folder straight onto the Pallet. webkitGetAsEntry is the only way
+   to see that a dropped item is a directory at all; a plain file drop still
+   works through the same path. */
+let droppedImages = [];
+function entryFiles(entry, path, depth, out) {
+  if (depth > 8) return Promise.resolve(out);
+  if (entry.isFile) {
+    if (isImageFile(entry.name)) {
+      return new Promise(res => entry.file(f => {
+        droppedImages.push({ name: path + entry.name, file: f });
+        res(out);
+      }, () => res(out)));
+    }
+    if (!isBrickFile(entry.name)) return Promise.resolve(out);
+    return new Promise(res => entry.file(f => f.text()
+      .then(t => { out.push({ name: path + entry.name, text: t }); res(out); })
+      .catch(() => res(out))));
+  }
+  if (!entry.isDirectory) return Promise.resolve(out);
+  const reader = entry.createReader();
+  // readEntries returns at most 100 per call, so it must be drained in a loop.
+  const drain = () => new Promise(res => reader.readEntries(batch => {
+    if (!batch.length) return res(out);
+    Promise.all(batch.map(e => entryFiles(e, path + entry.name + "/", depth + 1, out)))
+      .then(() => drain().then(res));
+  }, () => res(out)));
+  return drain();
+}
+
+function wireFolderDrop(panelBody) {
+  const stop = e => { e.preventDefault(); e.stopPropagation(); };
+  panelBody.addEventListener("dragover", e => {
+    if (!e.dataTransfer || !e.dataTransfer.types.includes("Files")) return;
+    stop(e);
+    e.dataTransfer.dropEffect = "copy";
+  });
+  panelBody.addEventListener("drop", e => {
+    if (!e.dataTransfer || !e.dataTransfer.types.includes("Files")) return;
+    stop(e);
+    const items = [...(e.dataTransfer.items || [])]
+      .map(i => i.webkitGetAsEntry && i.webkitGetAsEntry())
+      .filter(Boolean);
+    if (!items.length) return;
+    const label = items.length === 1 ? items[0].name : items.length + " items";
+    // One shared collector, so every branch of the recursion appends to the
+    // same list rather than to a copy that is then discarded.
+    const out = [];
+    droppedImages = [];
+    Promise.all(items.map(en => entryFiles(en, "", 0, out)))
+      .then(() => {
+        setFolderImages(droppedImages);
+        rememberFolder(out, label);
+        foldFiles(out, label);
+      })
+      .catch(err => showMergeLog("could not read drop: " + ((err && err.message) || err)));
+  });
+}
+
+/*  Merging piles.
+
+    The premise of the notation is that a file is a pile of bricks, so several
+    small piles must be able to become one without anything being rewritten.
+    Merge therefore: keeps what is already here, marks where each file's bricks
+    came from with a '#' provenance line, and skips any brick already present
+    verbatim — the same person recorded in two piles should not become two
+    entities. Comments are never treated as duplicates, since the same '# PEOPLE'
+    heading legitimately appears in every file. */
+function mergeText(current, incoming, sourceName) {
+  const have = new Set(
+    current.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"))
+  );
+  const kept = [], skipped = [];
+  for (const raw of incoming.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (!line.startsWith("#") && have.has(line)) { skipped.push(line); continue; }
+    if (!line.startsWith("#")) have.add(line);
+    kept.push(raw);
+  }
+  // A block whose only new content is comments adds nothing but noise. Skipping
+  // it is what makes Rescan idempotent: reading the same folder twice brings in
+  // the bricks added since last time and nothing else.
+  const newBricks = kept.filter(l => !l.trim().startsWith("#")).length;
+  if (!newBricks) return { text: current, added: 0, skipped: skipped.length };
+  const block = "\n\n# --- merged from " + sourceName + " ---\n" + kept.join("\n");
+  return { text: current.replace(/\s*$/, "") + block, added: newBricks, skipped: skipped.length };
+}
+
+function pickFiles(merge) {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = ".txt,text/plain";
+  inp.multiple = merge;
+  inp.onchange = () => {
+    const files = [...(inp.files || [])];
+    if (!files.length) return;
+    if (!merge) {
+      const r = new FileReader();
+      r.onload = () => setText(String(r.result));
+      r.readAsText(files[0]);
+      return;
+    }
+    // Read every file first, then fold them in one after another, so the
+    // duplicate check sees each merge's result rather than racing on the
+    // original text.
+    Promise.all(files.map(f => f.text().then(t => ({ name: f.name, text: t }))))
+      .then(all => {
+        let text = state.text, added = 0, skipped = 0;
+        const report = [];
+        for (const f of all) {
+          const r = mergeText(text, f.text, f.name);
+          text = r.text; added += r.added; skipped += r.skipped;
+          report.push(f.name + ": +" + r.added + (r.skipped ? " (" + r.skipped + " already here)" : ""));
+        }
+        setText(text);
+        showMergeLog(report.join(" · ") + " — " + added + " lines added, " + skipped + " duplicates skipped");
+      })
+      .catch(err => showMergeLog("could not read: " + ((err && err.message) || err)));
+  };
+  inp.click();
+}
+
+function showMergeLog(msg) {
+  const log = document.querySelector('#pallet [data-el="mergelog"]');
+  if (!log) return;
+  log.hidden = false;
+  log.textContent = msg;
+  clearTimeout(showMergeLog.t);
+  showMergeLog.t = setTimeout(() => { log.hidden = true; }, 9000);
+}
+
+/* --------------------------------------------------------------------------
+   UPDATE — only tiles actually on the board render. An off-board panel does
+   nothing at all until placed, which is the whole page-load win.
+   -------------------------------------------------------------------------- */
+function refreshPanel(id) {
+  const def = panels.get(id);
+  const node = document.getElementById(id);
+  if (!def || !node || !def.render || !node.closest(".board-tile")) return;
+  const body = node.querySelector(".panel-body");
+  if (body) def.render(body);
+}
+function refreshAll() { for (const t of board.tiles) refreshPanel(t.id); }
+
+// Re-parsing the whole pallet on every keystroke is cheap at genealogical scale
+// and removes an entire class of stale-state bug incremental parsing invites.
+function update() {
+  state.model = buildModel(parse(state.text));
+  state.model.view = buildView(state.model);
+  refreshAll();
+}
+
+let saveTimer = null;
+function saveText() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(TEXT_KEY, state.text); } catch (e) { /* private mode */ }
+  }, 400);
+}
+function setText(t) { state.text = t; saveText(); update(); }
+
+/* --------------------------------------------------------------------------
+   SAMPLE — the user's own Bricknall research, verbatim, so the parser is always
+   exercised against real messy data rather than tidy fixtures.
+   -------------------------------------------------------------------------- */
+const SAMPLE = `# DOCUMENTS
++|📜|👶|1894-06-29|@george,james,dora-edmed,gib,charles-alexander
++|📜|🔔|1892-12-23|@george-isles,margaret-kinnear,james,charles-bricknall,dora-edmed,ada-edmed,william-edmed
+-|📜|✏️|1891|
+# PEOPLE
++|👤|<charles>
++|👤|<dora-edmed>
++|👤|<ada-edmed>
++|👤|<william-edmed>|Merchant Seaman
++|👤|<george-terry>
++|👤|<charles-alexander>|Assistant Registrar St Clements
++|👤|<3><george>
++|👤|<4><george-isles>|Powerloom Tender
++|👤|<5><james>|Mason
+# CENSUS - there is a whole thing about age estimates during the census, subtracting an age gives us an idea of birth year, but not a valid date.
+# longforgan Bricknals
+-|✏️|1891|George|22 1891-22 ~1869
+-|✏️|1891|Margaret|60 ~1831
+-|✏️|1891|Maggie|16 ~1875
+-|✏️|1891|Helen|20 ~1871
+-|✏️|1891|James|35 ~1856
+-|✏️|1891|Agnes|26 ~1865
+-|✏️|1891|Elizabeth|64 ~1827
+-|✏️|1891|James|64 ~1827
+-|✏️|1891|Charles|58 ~1833
+-|✏️|1891|John|32 ~1859
+# dundee Bricknals
+-|✏️|1891|Magaret|73|~1818
+-|✏️|1891|Alexander|40|~1851
+-|✏️|1891|Cathrine|35|~1856
+-|✏️|1891|Christina|19|~1872
+-|✏️|1891|George|14|~1877
+-|✏️|1891|James|58|~1833
+-|✏️|1891|Harry|21|~1870
+-|✏️|1891|Betsy|58|~1833
+-|✏️|1891|Betsy|16|~1875
+# EVENTS
++|👶|1894-06-10|@george
+-|👶|1876|@george-maloch
+-|🔔|????|@james,margaret-kinnear
+-|🔔|????|@george-isles,dora-edmed
+-|🔔|1898|@george-maloch,maggie-allan
+# LONGFORGAN
+-|📍|<longforgan>|Longforgan|Village to the west of Dundee|
+-|📍|<st-clement>|St Clement
+# DUNDEE
+-|📍|<dundee>|Dundee|About 40 miles (64 km) north of Edinburgh|
+-|📍|<rankines-court>|Rankie's Court|
+-|📍|<wesleyan-methodist>|Church|
+-|📍|<42-dudhope-crest>|42 Dundhope Crest Rd.|
+-|📍|<46-hilltown>|46 Hilltown|
+-|📍|<st-peter>|St Peter`;
+
+/* --------------------------------------------------------------------------
+   BOOT
+   -------------------------------------------------------------------------- */
+// The ghost lives inside the board grid so it can be placed in grid coordinates.
+(function makeGhost() {
+  const g = document.createElement("div");
+  g.id = "boardGhost";
+  g.hidden = true;
+  boardEl().appendChild(g);
+})();
+
+let savedText = null;
+try { savedText = localStorage.getItem(TEXT_KEY); } catch (e) { /* ignore */ }
+// null means this browser has never been here — show the sample. An empty
+// string means the pile was deliberately emptied, and must stay empty:
+// conflating the two resurrects the sample every time you start a new project.
+state.text = savedText !== null ? savedText : SAMPLE;
+state.model = buildModel(parse(state.text));
+state.model.view = buildView(state.model);
+
+loadFootprints();
+loadBoard();
+el("boardCols").value = board.cols;
+el("boardRowUnit").value = board.rowUnit;
+renderBoard();
+renderBoardCardList();
+booted = true;
+
+/* ---------- flyout + board controls ---------- */
+el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
+el("boardFlyoutClose").addEventListener("click", () => el("boardFlyoutWrap").classList.remove("open"));
+el("boardSearch").addEventListener("input", renderBoardCardList);
+el("boardReset").addEventListener("click", resetBoard);
+
+el("boardCols").addEventListener("change", e => {
+  const cols = Math.max(1, Math.min(12, Math.round(Number(e.target.value)) || 4));
+  e.target.value = cols;
+  if (cols !== board.cols) { board.cols = cols; repackForCols(cols); renderBoard(); saveBoard(); }
+});
+el("boardRowUnit").addEventListener("change", e => {
+  const px = Math.max(80, Math.min(600, Math.round(Number(e.target.value)) || 220));
+  e.target.value = px;
+  board.rowUnit = px;
+  renderBoard(); saveBoard();
+});
+
+/* ---------- drag wiring ---------- */
+el("boardCardList").addEventListener("dragstart", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") { e.preventDefault(); return; }
+  const card = e.target.closest(".board-card[draggable]");
+  if (!card) return;
+  const fp = FOOTPRINTS[card.dataset.id];
+  if (!fp) return;
+  card.classList.add("dragging");
+  boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
+  e.dataTransfer.effectAllowed = "copy";
+  // Firefox needs data set to fire subsequent drag events at all.
+  e.dataTransfer.setData("text/plain", card.dataset.id);
+});
+el("boardCardList").addEventListener("dragend", () => endBoardDrag(false));
+
+boardEl().addEventListener("dragover", e => {
+  if (!boardDrag) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = boardDrag.fromTile ? "move" : "copy";
+  updateGhost(e.clientX, e.clientY);
+});
+boardEl().addEventListener("drop", e => {
+  if (!boardDrag) return;
+  e.preventDefault();
+  endBoardDrag(true);
+});
+
+// Repositioning a tile already on the board — grabbed by its own header.
+boardEl().addEventListener("mousedown", e => {
+  const head = e.target.closest(".panel-head");
+  const tile = e.target.closest(".board-tile");
+  if (!head || !tile || e.target.closest("button")) return;
+  const t = board.tiles.find(k => k.id === tile.dataset.id);
+  if (!t) return;
+  tile.classList.add("dragging");
+  boardDrag = { id: t.id, w: t.w, h: t.h, fromTile: t, valid: false };
+  const onMove = ev => updateGhost(ev.clientX, ev.clientY);
+  const onUp = ev => {
+    updateGhost(ev.clientX, ev.clientY);
+    endBoardDrag(true);
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  };
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+});
+</script>
+</body>
+</html>

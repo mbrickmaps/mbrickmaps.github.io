@@ -1,0 +1,10 @@
+-|📜|<wikitree-moncur>|||||https://www.wikitree.com/wiki/Moncur-38
+-|👤|<robert-moncur>|Farmer, Robert immigrated to Utah in the John Tidwell Company in 1852|@wikitree-moncur
+-|👤|<robert-moncur-sr>||@wikitree-moncur
+-|👤|<helen-whitock>||@wikitree-moncur,robert-moncur-sr
+-|👤|<robert-mckell>||@helen-whitock
+-|👤|<frances-jolley>||@robert-moncur
+-|📍|<dundee-city>|Dundee
+-|📍|<acequia>|Acequia, Utah
+-|⚰️|1932-02-26|@robert-moncur
+-|👶|1839-02-24|@robert-moncur
