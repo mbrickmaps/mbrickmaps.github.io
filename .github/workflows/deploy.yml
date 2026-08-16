@@ -19,7 +19,7 @@ jobs:
       - name: Prepare site folder and resolve symlinks
         run: |
           mkdir -p _site
-          cp -r img mirror-mirror collage photos _site/
+          cp -r img mirror-mirror collage photos brick-by-brick _site/
 
           # Working material, never site content — copied in above by the
           # wholesale `cp -r collage`/`cp -r photos`, so it has to come back
