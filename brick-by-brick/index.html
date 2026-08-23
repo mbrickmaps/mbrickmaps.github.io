@@ -9,6 +9,11 @@
 <style>
   /* Palette and board grammar deliberately match collage/index.html (v2). */
   :root {
+    /* Tells the browser to paint its OWN widgets dark — number-input spinners,
+       select arrows, scrollbars, focus rings, autofill. Without it those stay
+       light no matter what the rules below say, which is what made the Brick
+       Builder fields look white. */
+    color-scheme: dark;
     --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333;
     --accent: #ff5500;      /* verified */
     --accent2: #33ff33;     /* structural affordances */
@@ -16,9 +21,23 @@
     --ghost: #b06a00;       /* referenced but never declared */
     --bad: #f44336;
     --panel-gap: 14px;
+    --panel-radius: 6px;
+    --close-size: 18px;
+    --panel-border: 1px;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  /*  Nothing is selectable by default — dragging a tile by its header, or
+      swiping across a list, was leaving blue selection smeared over the UI.
+      The exceptions below are the places where selecting text is the point:
+      the editor, and the read-only content you might want to copy out. */
+  body { user-select: none; -webkit-user-select: none; }
+  textarea, input, .lines, .doc-raw, .doc-meta, .issues, .feed,
+  .bld-preview, .slot-note, .gaz-static,
+  /* the reference table's examples are meant to be copied into the pallet */
+  #reference [data-el="ref"], #reference table {
+    user-select: text; -webkit-user-select: text;
+  }
   body {
     background: var(--bg); color: var(--fg);
     font-family: system-ui, sans-serif; margin: 0; padding: 14px; font-size: 14px;
@@ -27,6 +46,24 @@
   h1 .brickmark { color: var(--accent); }
   .topbar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; flex: 1; min-width: 180px; }
+  /*  Collapsed to the glass until wanted. Width, not display, so it can
+      animate and so the input keeps focus through the transition. */
+  .topsearch { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .topsearch input {
+    width: 0; padding: 3px 0; border-width: 0; opacity: 0;
+    transition: width 0.15s ease, opacity 0.15s ease, padding 0.15s ease;
+  }
+  .topsearch.open input { width: 170px; padding: 3px 7px; border-width: 1px; opacity: 1; }
+  .topsearch.active input { border-color: var(--accent2); }
+  /* A round button to match the panels' corner control, and large enough to
+     read as the primary way in rather than a minor toggle. */
+  #topsearchBtn {
+    width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 1rem; line-height: 1;
+  }
+  /* A filter that is on but collapsed would be invisible; the glass stays lit. */
+  .topsearch.active #topsearchBtn { border-color: var(--accent2); color: var(--accent2); }
 
   /* ---------- THE BOARD ----------
      A coordinate space, not a queue. Cells and tiles are BOTH explicitly
@@ -44,11 +81,23 @@
   }
   .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
+  /* Raise a tile while its label is the thing being read, so a neighbouring
+     tile's background cannot paint over the overhanging cartouche. */
+  .board-tile:hover { z-index: 3; }
+  /*  Scrolling belongs to the BODY, not the panel. With overflow:auto on the
+      panel, the half of the cartouche that hangs above the top border was
+      clipped away — an element cannot overflow a scroll container it lives
+      inside. The body scrolls; the panel stays visible so the label can sit
+      proud of the frame. */
   .board-tile > .panel {
-    flex: 1 1 auto; min-width: 0; overflow: auto;
+    flex: 1 1 auto; min-width: 0; overflow: visible;
+    display: flex; flex-direction: column;
+  }
+  .board-tile > .panel > .panel-body {
+    flex: 1 1 auto; min-height: 0; overflow: auto;
     scrollbar-width: none; -ms-overflow-style: none;
   }
-  .board-tile > .panel::-webkit-scrollbar { display: none; }
+  .board-tile > .panel > .panel-body::-webkit-scrollbar { display: none; }
   .board-tile.dragging { opacity: 0.4; }
   /* The footprint a drop would occupy. Never placed until mouseup. */
   #boardGhost {
@@ -56,7 +105,11 @@
     border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
   }
   #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
+  /* A swap is a different move, so it reads as a different colour: solid, not
+     dashed, because the outcome is certain rather than provisional. */
+  #boardGhost.swap { border-style: solid; border-color: var(--accent); background: rgba(255,85,0,0.14); }
   #boardGhost[hidden] { display: none; }
+  .board-tile.swap-target > .panel { outline: 2px solid var(--accent); outline-offset: -2px; }
   .board-empty {
     grid-column: 1 / -1; text-align: center; padding: 40px 10px;
     opacity: 0.35; font-size: 0.85rem;
@@ -74,12 +127,34 @@
   .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
   .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
   .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
-  .tile-remove { order: 99; flex-shrink: 0; padding: 0 5px; font-size: 0.7rem; line-height: 1.4; }
+  /*  Sits on the top-right corner rather than in the header row, centred on
+      the corner arc's own centre of curvature — which is (radius, radius) in
+      from the corner, so the circle is offset half its width back from that
+      point. Derived from the variables, so changing the panel radius keeps it
+      centred without re-tuning any numbers. */
+  .tile-remove {
+    position: absolute; z-index: 3;
+    /* Less the border: absolute offsets are measured from the PADDING edge,
+       which is inside the border, while the corner arc lives on the border
+       box — without this the circle sits 1px off centre in both axes. */
+    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    right: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    width: var(--close-size); height: var(--close-size); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; line-height: 1; opacity: 0.5;
+  }
+  .tile-remove:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
+  /* Keeps any header control from sliding under the overlaid circle. */
+  .panel-head { padding-right: calc(var(--close-size) / 2 + 4px); }
 
   /* ---------- panels ---------- */
   .panel {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px 12px 12px; min-width: 0;
+    background: var(--panel); border: var(--panel-border) solid var(--border);
+    border-radius: var(--panel-radius);
+    /* Extra top padding is the room the cartouche occupies where it straddles
+       the border; the label is pulled up into it rather than adding a row. */
+    padding: 14px 12px 12px; min-width: 0; position: relative;
     /* Container query context: contents respond to the PANEL's width, not the
        viewport's, so the same panel works at 1 cell and at 4. */
     container-type: inline-size;
@@ -88,27 +163,76 @@
     display: flex; justify-content: space-between; align-items: center;
     gap: 6px; margin-bottom: 8px; flex-wrap: wrap; cursor: grab;
   }
+  /*  The title as a cartouche: lifted out of the flow and set ON the top
+      border, like a label on a map's neatline. It reclaims the line the header
+      used to spend on itself, and the panel's own background masks the border
+      behind it so the rule appears to break cleanly around the text. */
+  /*  max-width was reserving 90px for header controls that are no longer in
+      the row — the close button is an overlay now — which squeezed every
+      1-cell title to zero width. The title gets the room; only the drag
+      handle, badge and a small margin come out of it. */
+  .panel-head-lead {
+    position: absolute; top: -7px; left: 10px; z-index: 2;
+    display: flex; align-items: center; gap: 5px; max-width: calc(100% - 34px);
+    background: var(--panel); padding: 0 6px; border-radius: 3px;
+  }
+  /* Without an explicit min-width a flex child may collapse entirely rather
+     than ellipsise; 3ch keeps at least a stub of the title visible. */
+  .panel-head-lead h2 { min-width: 3ch; }
+  .panel-head-lead h2 { opacity: 0.75; }
+  /* One letter, quiet by default — it is a property of the panel, not a
+     control, so it should not compete with the title. */
+  .role-badge {
+    flex-shrink: 0; font-size: 0.56rem; line-height: 1; padding: 2px 3px;
+    border: 1px solid var(--border); border-radius: 2px; opacity: 0.45;
+    font-family: var(--mono); cursor: default;
+  }
+  .role-badge:hover { opacity: 1; }
+  .role-badge + .role-badge { margin-left: -3px; }
+  /*  In a one-cell panel the handle and badge left the title about 46px — the
+      name matters more than the annotation, so the badge stands down. The
+      panel is the query container (container-type: inline-size). */
+  @container (max-width: 210px) { .role-badge { display: none; } }
+  .role-write  { color: var(--accent); border-color: var(--accent); }
+  .role-filter { color: var(--accent2); border-color: var(--accent2); }
+  /*  With the title absolutely positioned it is no longer a flex item, so
+      space-between has nothing to push against and the controls collapse to
+      the left — directly under the cartouche. Pin them right instead, and hold
+      the row open so it does not lose its height entirely. */
+  .panel-head { min-height: 16px; justify-content: flex-end; flex-wrap: nowrap; }
   .board-tile.dragging .panel-head { cursor: grabbing; }
-  .panel-head-lead { display: flex; align-items: center; gap: 5px; min-width: 0; flex-shrink: 1; }
   .panel-head h2 {
     margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     font-size: 0.66rem; font-weight: 500; opacity: 0.55; line-height: 1.3;
     text-transform: uppercase; letter-spacing: 0.07em;
   }
+  /* A four-way move glyph rather than the braille grip dots — it names the
+     action instead of implying only a texture to grab. */
   .drag-handle {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 15px; height: 15px; flex-shrink: 0;
+    width: 17px; height: 17px; flex-shrink: 0;
     border: 1px solid var(--border); border-radius: 3px;
-    background: #000; opacity: 0.35; cursor: grab; font-size: 9px; line-height: 1;
+    /* cursor:move states the affordance; the glyph needs a touch more size
+       than the grip dots did to stay legible at this scale. */
+    background: #000; opacity: 0.35; cursor: move; font-size: 12px; line-height: 1;
   }
   .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
-  .help-icon { opacity: 0.3; font-size: 0.7rem; flex-shrink: 0; cursor: help; }
-  .help-icon:hover { opacity: 1; }
 
-  button, select, input[type=text], input[type=number] {
+  button, select, input, textarea {
     background: #000; color: var(--fg); border: 1px solid var(--border);
     border-radius: 3px; padding: 3px 7px; font-size: 0.73rem; font-family: inherit; cursor: pointer;
   }
+  /* Chrome paints autofilled fields near-white via an internal shadow that
+     background alone cannot override; the inset shadow is the standard way to
+     repaint it, and the long delay keeps it from flashing back. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--fg);
+    -webkit-box-shadow: 0 0 0 1000px #000 inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+  input::placeholder, textarea::placeholder { color: var(--fg); opacity: 0.35; }
   button:hover, select:hover { border-color: var(--accent2); color: var(--accent2); }
   input[type=text], input[type=number] { cursor: text; }
   .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
@@ -164,7 +288,32 @@
     font-family: var(--mono); font-size: 12px; line-height: 1.55; padding: 8px;
   }
   textarea:focus { outline: none; border-color: var(--accent); }
-  #pallet .panel-body { display: flex; flex-direction: column; }
+  /*  The body must actually FILL the panel for the editor's flex:1 to mean
+      anything — otherwise the body is content-height, there is no spare space
+      to distribute, and the textarea sits at its min-height no matter how much
+      room collapsing the menu freed up. min-height:0 lets it shrink below
+      content size, which flex items otherwise refuse to do. */
+  #pallet .panel { display: flex; flex-direction: column; }
+  #pallet .panel-body {
+    display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;
+  }
+  .panel-head-btn { order: 98; flex-shrink: 0; padding: 0 6px; font-size: 0.7rem; line-height: 1.4; }
+  .panel-head-btn.on { border-color: var(--accent2); color: var(--accent2); }
+  .panel-head-btn[hidden] { display: none; }
+  /* The log shares the bar rather than owning a line of its own; it is
+     usually empty, and an empty element still reserved height. */
+  /* :empty so a quiet status line costs no height at all. */
+  .pallet-status {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 0.66rem; opacity: 0.5; margin-bottom: 5px;
+  }
+  .pallet-status:empty { display: none; }
+  .pallet-menu {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; padding: 7px;
+    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+  }
+  .pallet-menu[hidden] { display: none; }
+  .pallet-menu .hint { flex-basis: 100%; }
 
   .lines { font-family: var(--mono); font-size: 11.5px; }
   .ln { display: flex; align-items: baseline; gap: 8px; padding: 2px 8px; margin: 1px 0;
@@ -183,6 +332,11 @@
   /* At one cell wide the tag goes — the icon already says what it says. */
   @container (max-width: 340px) { .ln .tag { display: none; } }
 
+  .ent-controls { display: flex; gap: 4px; margin-bottom: 6px; }
+  .ent-controls input { flex: 1; min-width: 50px; }
+  .ent-kinds { display: flex; gap: 3px; flex-shrink: 0; }
+  .ent-controls button { padding: 1px 6px; font-size: 0.8rem; line-height: 1.3; flex-shrink: 0; opacity: 0.45; }
+  .ent-controls button.on { opacity: 1; border-color: var(--accent2); }
   .ents { display: flex; flex-wrap: wrap; gap: 5px; }
   .ent { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 3px;
          border: 1px solid var(--accent); color: var(--accent); background: #000; white-space: nowrap; }
@@ -224,6 +378,13 @@
   @container (max-width: 250px) { .flt-chips .lbl { display: none; } }
   /* When a filter is on, every panel showing a subset says so — a filtered
      count that looks like a total is how people misread their own data. */
+  .time-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .time-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .time-read {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--accent2);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .time-sub { font-size: 0.6rem; opacity: 0.4; flex-shrink: 0; width: 26px; }
   .filtered-note {
     font-size: 0.6rem; color: var(--accent2); opacity: 0.8;
     text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
@@ -272,15 +433,109 @@
   /* ---------- files ---------- */
   .file-list { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; }
   .file-item {
-    display: flex; align-items: center; gap: 6px; padding: 4px 7px;
+    display: flex; align-items: center; gap: 6px; padding: 4px 7px; flex-wrap: wrap;
     border: 1px solid var(--border); border-radius: 3px; background: #000; font-size: 0.73rem;
   }
   .file-item.current { border-color: var(--accent); }
-  .file-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  /*  min-width:0 let this shrink to 1px in a one-cell panel — the filename was
+      not truncated, it was gone. A floor keeps it readable, and the row wraps
+      rather than crushing it further. */
+  .file-item .nm { flex: 1 1 auto; min-width: 68px; overflow: hidden; text-overflow: ellipsis;
                    white-space: nowrap; font-family: var(--mono); font-size: 0.7rem; }
   .file-item .meta { font-size: 0.62rem; opacity: 0.45; flex-shrink: 0; font-family: var(--mono); }
   .file-item button { padding: 0 6px; font-size: 0.68rem; }
   .file-empty { font-size: 0.7rem; opacity: 0.45; line-height: 1.6; }
+  /* ---------- timeline ---------- */
+  #timeline .panel-body { display: flex; flex-direction: column; }
+  /* Reserves its line always (&nbsp;) so hovering does not shift the lanes. */
+  /*  Wraps rather than truncating: this line exists to show the detail, and a
+      source citation or a long description is exactly the case where it
+      matters. Capped at two lines so a verbose brick cannot push the lanes
+      around, and min-height still reserves the first line so hovering never
+      shifts the layout. */
+  .tl-detail {
+    /* Reserves BOTH lines it can grow to. At one line the box changed height
+       on hover and pushed every lane down — the marks moved out from under the
+       pointer, which is worse than the wasted line. */
+    font-size: 0.68rem; line-height: 1.4; min-height: 2.8em; margin-bottom: 4px;
+    color: var(--accent2); white-space: normal; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
+  /* Left margin matches .tl-name + its gap so the axis starts where the tracks
+     do; without it every tick sat left of the marks it labelled. */
+  .tl-scale {
+    position: relative; height: 11px; flex-shrink: 0;
+    border-bottom: 1px solid var(--border); margin: 0 0 3px 84px;
+    overflow: hidden;
+  }
+  .tl-tick {
+    position: absolute; top: 0; font-size: 8.5px; opacity: 0.4;
+    transform: translateX(-50%); white-space: nowrap;
+  }
+  .tl-lanes {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .tl-lanes::-webkit-scrollbar { display: none; }
+  /* min-height rather than height: a fixed height forces overflow the moment
+     anything inside rounds up a fraction of a pixel. */
+  .tl-lane { display: flex; align-items: center; gap: 6px; min-height: 15px; flex-shrink: 0; }
+  .tl-name {
+    width: 78px; max-width: 40%; flex-shrink: 0; font-size: 0.64rem; opacity: 0.6;
+    cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tl-name:hover { opacity: 1; color: var(--accent2); }
+  /* min-width:0 lets the track shrink inside the flex row instead of forcing
+     the lane wider than the panel. */
+  .tl-track { position: relative; flex: 1 1 auto; min-width: 0; height: 100%; }
+  /* The span of a life as recorded — first mark to last. */
+  .tl-span {
+    position: absolute; top: 50%; height: 1px; background: var(--border); transform: translateY(-50%);
+  }
+  .tl-dot {
+    position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--draft); transform: translate(-50%, -50%); cursor: pointer;
+  }
+  .tl-dot.verified { background: var(--accent); }
+  /* Hollow = the year came from prose, not a date field. */
+  .tl-dot.loose { background: none; border: 1px solid var(--draft); }
+  .tl-dot.loose.verified { border-color: var(--accent); }
+  .tl-dot:hover { box-shadow: 0 0 0 2px var(--accent2); z-index: 2; }
+  .tl-empty { font-size: 0.7rem; opacity: 0.45; }
+
+  /* ---------- gazetteer ---------- */
+  .gaz-list { display: flex; flex-direction: column; gap: 3px; max-height: 100%; overflow: auto; }
+  .gaz-row {
+    display: flex; align-items: center; gap: 5px; padding: 2px 6px;
+    border: 1px solid var(--border); border-radius: 3px; background: #000; font-size: 0.72rem;
+  }
+  .gaz-row:focus-within { border-color: var(--accent2); }
+  .gaz-row.locked { opacity: 0.6; }
+  .gaz-row.orphan { opacity: 0.5; }
+  .gaz-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer;
+  }
+  .gaz-name:hover { color: var(--accent2); }
+  .gaz-row input[type=number] {
+    width: 74px; flex-shrink: 0; font-family: var(--mono); font-size: 0.68rem; padding: 2px 4px;
+  }
+  .gaz-row input[type=number]:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gaz-static { font-size: 0.64rem; opacity: 0.6; font-family: var(--mono); flex-shrink: 0; }
+  .gaz-label { flex-shrink: 0; font-size: 0.64rem; padding: 1px 2px; max-width: 74px; }
+  .gaz-icon { width: 34px; flex-shrink: 0; text-align: center; padding: 1px 2px; }
+  .gaz-menu {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; padding: 7px;
+    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+  }
+  .gaz-menu[hidden] { display: none; }
+  .gaz-sub {
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.4;
+    margin: 8px 0 2px;
+  }
+  .gaz-add input[type=text] { flex: 1; min-width: 60px; }
+  .gaz-add input[type=number] { width: 66px; flex-shrink: 0; }
+
 
   /* ---------- brick builder ---------- */
   .bld-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-bottom: 7px; }
@@ -327,6 +582,68 @@
   .ln:hover { outline: 1px solid #444; }
   .ln.editing { outline: 1px solid var(--accent2); }
 
+  /* ---------- map ---------- */
+  /* Fill the panel rather than a fixed slice of it, so dragging the tile
+     taller actually gives the map the space. The panel body is the flex
+     parent; min-height keeps it usable in a 1-row tile. */
+  #viz-map .panel-body { display: flex; flex-direction: column; height: 100%; }
+  .map-shell { position: relative; flex: 1 1 auto; min-height: 200px; border-radius: 4px; overflow: hidden; }
+  /* width/height, not inset: MapLibre adds .maplibregl-map to this same
+     element and its own rules were collapsing it to height:0, which clipped
+     the whole map away under .map-shell's overflow:hidden. Explicit
+     dimensions win regardless of what the library sets. */
+  .map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  /* A marker is a plain DOM element the map positions — no source, no tiling,
+     no style dependency, and it survives a basemap switch untouched. */
+  .map-marker {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--draft); border: 1.5px solid #0d1317;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5); cursor: pointer; position: relative;
+  }
+  .map-marker.verified { background: var(--accent); }
+  /*  An icon marker drops the dot's own shape entirely and draws the glyph, so
+      the emoji is the mark rather than sitting on top of a circle. Status can
+      no longer be read from fill, so a coloured ring carries it instead. */
+  .map-marker.as-icon {
+    width: auto; height: auto; background: none; border: none; box-shadow: none;
+    font-size: 15px; line-height: 1; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
+    display: flex; align-items: center; justify-content: center;
+    transform: translateY(-2px);
+  }
+  .map-marker.as-icon::before { content: attr(data-glyph); }
+  .map-marker.as-icon.verified { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 50%; }
+  .map-marker-label {
+    position: absolute; font-size: 10px; line-height: 1.2; white-space: nowrap;
+    color: #cfd6dc; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317; pointer-events: none;
+  }
+  .lbl-bottom .map-marker-label { left: 50%; top: 13px; transform: translateX(-50%); }
+  .as-icon.lbl-bottom .map-marker-label { top: 17px; }
+  .as-icon.lbl-top .map-marker-label { bottom: 17px; }
+  .lbl-top    .map-marker-label { left: 50%; bottom: 13px; transform: translateX(-50%); }
+  .lbl-right  .map-marker-label { left: 15px; top: 50%; transform: translateY(-50%); }
+  .lbl-left   .map-marker-label { right: 15px; top: 50%; transform: translateY(-50%); }
+  .lbl-none   .map-marker-label { display: none; }
+  /* Deliberately tiny and non-interactive: a credit line, not a UI element. */
+  .map-attrib {
+    position: absolute; right: 4px; bottom: 3px; z-index: 2; pointer-events: none;
+    font-size: 8.5px; line-height: 1.4; letter-spacing: 0.01em;
+    color: #cfd6dc; opacity: 0.45; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
+  }
+  .map-attrib[hidden] { display: none; }
+  .map-note {
+    position: absolute; left: 8px; bottom: 8px; z-index: 2;
+    font-size: 0.68rem; background: rgba(0,0,0,0.75); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 8px; pointer-events: none;
+  }
+  /* MapLibre's own chrome, restyled to sit inside a dark panel rather than a
+     full-page map. */
+  .maplibregl-ctrl-top-right { top: 6px; right: 6px; }
+  .maplibregl-ctrl-group { background: #111 !important; border: 1px solid var(--border) !important; }
+  .maplibregl-ctrl-group button { background: transparent !important; }
+  .maplibregl-ctrl-attrib { background: rgba(0,0,0,0.6) !important; font-size: 10px !important; }
+  .maplibregl-ctrl-attrib a { color: #9fb0bd !important; }
+  .maplibregl-popup-content { background: #111 !important; color: var(--fg) !important; }
+
   .slot-empty { display: flex; flex-direction: column; gap: 9px; }
   .slot-desc { font-size: 0.74rem; opacity: 0.5; }
   .slot-note { font-size: 0.69rem; opacity: 0.45; border: 1px dashed var(--border);
@@ -340,6 +657,11 @@
 <div class="topbar">
   <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
   <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.</p>
+  <!-- Same filter state as the Filter panel's search, reachable without it. -->
+  <div class="topsearch" id="topsearch">
+    <input type="text" id="topsearchInput" placeholder="find in the text…" spellcheck="false">
+    <button id="topsearchBtn" title="search the pile">&#128269;</button>
+  </div>
 </div>
 
 <div id="board"></div>
@@ -362,7 +684,9 @@
 <div id="panelStore" hidden></div>
 
 <template id="tpl-pallet">
-  <div class="row">
+  <!-- One compact bar. The eight buttons and the syntax hint used to sit open
+       above the editor and cost more vertical space than the text itself. -->
+  <div class="pallet-menu" data-el="menu" hidden>
     <button data-act="sample" title="replace the text with the bundled Bricknall sample">Sample</button>
     <button data-act="clear" title="empty the pallet">Clear</button>
     <button data-act="copy" title="copy the raw notation to the clipboard">Copy</button>
@@ -371,20 +695,24 @@
     <button data-act="merge" title="add one or more .txt files to this pile, keeping what is already here">Merge</button>
     <button data-act="folder" title="read every .txt in a folder, including subfolders, and merge them in filename order">Folder…</button>
     <button data-act="rescan" hidden title="read that folder again — duplicates are skipped, so only new bricks come in">Rescan</button>
+    <p class="hint" style="margin:6px 0 0"><code>[status]|[type]|[field]|[field]|[linkage]</code><br><code>+</code> verified, <code>-</code> draft.</p>
   </div>
-  <div class="hint" data-el="mergelog" hidden></div>
+  <span class="pallet-status" data-el="mergelog"></span>
   <!-- Above the editor: this is how you choose what goes ON the pallet. -->
   <div class="file-list" data-el="files"></div>
   <textarea data-el="text" spellcheck="false" placeholder="+|👤|<someone>|A description"></textarea>
-  <p class="hint"><code>[status]|[type]|[field]|[field]|[linkage]</code> — <code>+</code> verified, <code>-</code> draft.</p>
 </template>
 <template id="tpl-classification">
   <div class="filtered-note" data-el="note" hidden></div>
   <div class="lines" data-el="lines"></div>
 </template>
 <template id="tpl-entities">
+  <div class="ent-controls">
+    <input type="text" data-el="local" placeholder="filter…" spellcheck="false">
+    <span class="ent-kinds" data-el="kinds"></span>
+  </div>
   <div class="ents" data-el="ents"></div>
-  <p class="hint">solid verified &middot; dashed draft &middot; dotted ghost</p>
+  <p class="hint" data-el="entnote">solid verified &middot; dashed draft &middot; dotted ghost</p>
 </template>
 <template id="tpl-builder">
   <div class="bld-editing" data-el="editing" hidden></div>
@@ -417,6 +745,11 @@
     <div class="flt-label">Focused on</div>
     <div class="flt-chips" data-el="focus"></div>
   </div>
+  <div class="flt-group">
+    <div class="flt-label">Time</div>
+    <div class="flt-chips" data-el="timemode"></div>
+    <div data-el="timebody"></div>
+  </div>
   <p class="hint" data-el="summary"></p>
 </template>
 
@@ -440,6 +773,30 @@
     <div class="doc-overlay" data-el="overlay" hidden></div>
   </div>
   <div data-el="view"></div>
+</template>
+
+<template id="tpl-gazetteer">
+  <!-- File actions live behind the header menu; only the row you actually
+       type into stays on show. -->
+  <div class="gaz-menu" data-el="menu" hidden>
+    <button data-act="load" title="add one or more gazetteer .csv files">Load&hellip;</button>
+    <button data-act="export" title="save the loaded gazetteer as a .csv file">Export</button>
+    <button data-act="clear" title="forget every loaded entry">Clear</button>
+  </div>
+  <div class="row gaz-add">
+    <input type="text" data-el="newname" placeholder="new place…" spellcheck="false">
+    <input type="number" step="any" data-el="newlat" placeholder="lat">
+    <input type="number" step="any" data-el="newlng" placeholder="lng">
+    <button data-act="add" title="declare this place and set its coordinates">Add</button>
+  </div>
+  <p class="hint" data-el="summary" style="margin:0 0 7px"></p>
+  <div class="gaz-list" data-el="list"></div>
+</template>
+
+<template id="tpl-timeline">
+  <div class="tl-detail" data-el="detail">&nbsp;</div>
+  <div class="tl-scale" data-el="scale"></div>
+  <div class="tl-lanes" data-el="lanes"></div>
 </template>
 
 <template id="tpl-count"><div class="stats" data-el="stats"></div></template>
@@ -772,7 +1129,9 @@ function buildModel(bricks) {
       } else {
         const e = touch(b.alias.slug, {
           kind: b.kind, declared: true, declaredAt: b.lineNumber, status: b.status,
-          num: b.alias.num, name: b.name || displayFor(b.alias), coords: b.coords,
+          num: b.alias.num, name: b.name || displayFor(b.alias),
+          coords: b.coords || (b.kind === "place" ? GAZETTEER.get(b.alias.slug) || null : null),
+          coordsFrom: b.coords ? "brick" : (GAZETTEER.has(b.alias.slug) ? "gazetteer" : null),
         });
         e.bricks.push(b);
         if (b.detail) e.detail = b.detail;
@@ -797,6 +1156,30 @@ function buildModel(bricks) {
   const real = bricks.filter(b => !b.empty && !b.comment);
   const byType = {};
   for (const b of real) { const k = b.type || "unparsed"; byType[k] = (byType[k] || 0) + 1; }
+
+  /*  Birth and death years per person, so an age can be worked out anywhere.
+
+      A birth EVENT is a recorded fact and wins. A census estimate ("22 ~1869")
+      is arithmetic done on a rounded age and is only ever approximate, so it
+      is kept separately and marked — an age derived from it is written "~22"
+      and must never be mistaken for one derived from a real date. */
+  for (const b of real) {
+    if (!b.valid) continue;
+    const y = b.date && /^\d{4}/.test(b.date) ? Number(b.date.slice(0, 4)) : null;
+    const targets = [];
+    if (b.alias && entities.has(b.alias.slug)) targets.push(entities.get(b.alias.slug));
+    for (const l of b.links) if (entities.has(l)) targets.push(entities.get(l));
+
+    for (const e of targets) {
+      if (e.kind !== "person") continue;
+      if (b.type === "birth" && y !== null) { e.birthYear = y; e.birthExact = true; }
+      else if (b.type === "death" && y !== null) { e.deathYear = y; e.deathExact = true; }
+      else if (b.kind === "census" && b.estimate !== null && b.estimate !== undefined) {
+        // Only fills a gap; never overrides a recorded birth.
+        if (e.birthYear === undefined) { e.birthYear = b.estimate; e.birthExact = false; }
+      }
+    }
+  }
 
   const ents = [...entities.values()];
   return {
@@ -833,6 +1216,104 @@ function buildModel(bricks) {
    declared is a fact about the whole pile, not about what you are currently
    looking at. Filtering to one family must not manufacture ghosts.
    -------------------------------------------------------------------------- */
+/*  The year a brick sits at, or null if it has none.
+
+    A record's own date wins; a census row falls back to its derived birth year
+    (`~1869`), which is the only year some of them carry. "????" is deliberately
+    a date that yields no year — the question was asked and not answered, which
+    is not the same as the record being undated. */
+function brickYear(b) {
+  if (b.date) {
+    const m = String(b.date).match(/^(\d{4})/);
+    if (m) return Number(m[1]);
+  }
+  return b.estimate !== null && b.estimate !== undefined ? b.estimate : null;
+}
+
+// The window the time filter currently describes, as [from, to].
+function timeWindow(t) {
+  if (!t || !t.on) return null;
+  if (t.mode === "decade") return [t.decade, t.decade + 9];
+  if (t.mode === "around") return [t.year - t.span, t.year + t.span];
+  return [t.min, t.max];
+}
+
+/*  A looser year than the filter uses: falls back to scanning the brick's own
+    free text and headings for a four-digit year. A note reading "moved to
+    Dundee 1893" carries a date even though no date FIELD does, and on a
+    timeline that is worth placing. Kept separate from brickYear() so the time
+    filter stays strict — silently filtering on a year mentioned in prose would
+    be surprising, whereas showing it on a timeline is the point.
+
+    Bounded to plausible record years so a house number or a reference like
+    "377/4/1" cannot masquerade as a date. */
+/*  An age at a given year, or "" when it cannot be worked out. Prefixed "~"
+    whenever the birth year is itself an estimate, and negative results are
+    suppressed — a record predating a birth is a data problem, not an age. */
+function ageAt(entity, year) {
+  if (!entity || year === null || entity.birthYear === undefined) return "";
+  const age = year - entity.birthYear;
+  if (age < 0 || age > 120) return "";
+  return (entity.birthExact ? "" : "~") + age;
+}
+
+// "b. 1869 · d. 1931 · ~62" — whatever of it is known.
+function lifeSummary(e) {
+  if (!e) return "";
+  const bits = [];
+  if (e.birthYear !== undefined) bits.push("b. " + (e.birthExact ? "" : "~") + e.birthYear);
+  if (e.deathYear !== undefined) bits.push("d. " + e.deathYear);
+  if (e.birthYear !== undefined && e.deathYear !== undefined) {
+    const a = ageAt(e, e.deathYear);
+    if (a !== "") bits.push("aged " + a);
+  }
+  return bits.join(" · ");
+}
+
+function timelineYear(b) {
+  const strict = brickYear(b);
+  if (strict !== null) return { year: strict, loose: false };
+  const hay = [b.name, b.detail, ...(b.text || []), b.section].filter(Boolean).join(" ");
+  const m = hay.match(/\b(1[0-9]{3}|20[0-2][0-9])\b/);
+  return m ? { year: Number(m[1]), loose: true } : null;
+}
+
+/*  One lane per person, their dated records in order, plus a lane for dated
+    records that name nobody. A record naming several people appears in each of
+    their lanes — it genuinely happened to all of them, and dropping it from
+    all but one would misrepresent the record. */
+function timelineLanes(model) {
+  const people = new Map(model.entities.filter(e => e.kind === "person").map(e => [e.slug, e]));
+  const lanes = new Map();
+  const loose = [];
+
+  for (const b of model.records) {
+    const ty = timelineYear(b);
+    if (!ty) continue;
+    const evt = { year: ty.year, loose: ty.loose, brick: b };
+    const named = [];
+    if (b.alias && people.has(b.alias.slug)) named.push(b.alias.slug);
+    for (const l of b.links) if (people.has(l)) named.push(l);
+
+    if (!named.length) { loose.push(evt); continue; }
+    for (const slug of new Set(named)) {
+      if (!lanes.has(slug)) lanes.set(slug, { entity: people.get(slug), events: [] });
+      lanes.get(slug).events.push(evt);
+    }
+  }
+
+  const out = [...lanes.values()];
+  for (const lane of out) lane.events.sort((a, b2) => a.year - b2.year);
+  // Ordered by when each life first appears in the record, so the panel reads
+  // top-to-bottom as the research does.
+  out.sort((a, b2) => a.events[0].year - b2.events[0].year);
+  if (loose.length) {
+    loose.sort((a, b2) => a.year - b2.year);
+    out.push({ entity: null, events: loose });
+  }
+  return out;
+}
+
 function brickPasses(b, f) {
   if (f.sections.size && !f.sections.has(b.section || "")) return false;
   if (b.comment) return true;                       // headings give the list its shape
@@ -845,6 +1326,14 @@ function brickPasses(b, f) {
   if (f.text) {
     const q = f.text.toLowerCase();
     if (!b.raw.toLowerCase().includes(q) && !(b.name || "").toLowerCase().includes(q)) return false;
+  }
+  /*  Time filters only what HAS a time. A place, a person, an undated record
+      is not "outside the window" — it has no position on the axis at all, and
+      hiding it would empty the map every time you touched the slider. */
+  const win = timeWindow(f.time);
+  if (win) {
+    const y = brickYear(b);
+    if (y !== null && (y < win[0] || y > win[1])) return false;
   }
   return true;
 }
@@ -900,19 +1389,48 @@ function V() { return (state.model && state.model.view) || state.model; }
 const TEXT_KEY = "brick-by-brick:text:v1";
 const BOARD_KEY = "brick-by-brick:board:v2";
 const FOOTPRINT_KEY = "brick-by-brick:footprints:v2";
+const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
 
 /*  The filter is not a separate database of categories. Every control it offers
     is read back out of the text you wrote: your '#' headings are the groupings
     (family, place, concept — whatever you decided a heading means), the type
     tokens are the kinds, and '+/-' is the confidence. Nothing here invents a
     taxonomy you did not type. */
+/*  Top-bar search elements and their sync, declared HERE rather than beside
+    their event wiring at the bottom: renderFilter() calls syncSearchInputs()
+    during the very first paint, and a `const` declared further down is still
+    in its temporal dead zone at that point — which threw and took the whole
+    boot with it. */
+function syncSearchInputs() {
+  const wrap = document.getElementById("topsearch");
+  const inp = document.getElementById("topsearchInput");
+  if (!wrap || !inp) return;
+  const text = state.filter.text || "";
+  if (document.activeElement !== inp && inp.value !== text) inp.value = text;
+  wrap.classList.toggle("active", !!text);
+  // A search with text in it must not collapse and hide what it is doing.
+  if (text) wrap.classList.add("open");
+}
+
 const state = {
   text: "", model: null,
-  filter: { text: "", status: "all", types: new Set(), sections: new Set(), focus: null },
+  filter: {
+    text: "", status: "all", types: new Set(), sections: new Set(), focus: null,
+    time: { on: false, mode: "range", min: 1800, max: 1900, decade: 1890, year: 1891, span: 5 },
+  },
 };
 function filterIsActive() {
   const f = state.filter;
-  return !!(f.text || f.status !== "all" || f.types.size || f.sections.size || f.focus);
+  return !!(f.text || f.status !== "all" || f.types.size || f.sections.size || f.focus ||
+            (f.time && f.time.on));
+}
+
+// The full span of years present, used to bound the sliders. Falls back to a
+// sane historical range when nothing is dated yet.
+function yearExtent(model) {
+  const ys = (model.records || []).map(brickYear).filter(y => y !== null);
+  if (!ys.length) return [1800, 1900];
+  return [Math.min(...ys), Math.max(...ys)];
 }
 const el = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -927,12 +1445,43 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
    -------------------------------------------------------------------------- */
 const panels = new Map();       // id -> {id, title, help, group, render, tpl}
 const FOOTPRINTS = {};          // id -> {name, desc, w, h, group}
+/*  What a panel does to state, not what it looks like.
+      write  — changes the pile (state.text / GAZETTEER)
+      filter — changes what is in view (state.filter)
+      read   — changes nothing
+    A panel is "filter" if using it can narrow the board: clicking a name in
+    Bricks, a lane in Timeline, a person in Document, a marker on the Map.
+    None of them own filter state — everything routes through setFilter — but
+    from the desk they ARE filter controls, and calling them R described the
+    plumbing rather than the panel. */
+const ROLES = {
+  write:  { badge: "W", label: "Write — changes the pile" },
+  read:   { badge: "R", label: "Read — changes nothing" },
+  filter: { badge: "F", label: "Filter — can change what is in view" },
+};
+const ROLE_RANK = ["write", "filter", "read"];
+const ROLE_ORDER = [
+  { role: "write",  title: "Write · changes the pile" },
+  { role: "filter", title: "Filter · changes the view" },
+  { role: "read",   title: "Read · changes nothing" },
+];
 const GROUPS = ["Visualizations", "Data & structure"];
 
 function definePanel(cfg) {
-  panels.set(cfg.id, Object.assign({ group: "Data & structure", help: "" }, cfg));
+  /*  Roles are a LIST: a panel often does more than one thing. The Gazetteer
+      edits coordinates and focuses a place; the Map draws and filters. Given
+      as a string or an array, always stored as an array, ordered W → F → R so
+      the badges read the same way on every panel. */
+  const def = Object.assign({ group: "Data & structure", help: "" }, cfg);
+  const given = cfg.roles || cfg.role || "read";
+  const list = (Array.isArray(given) ? given : [given]).filter(r => ROLES[r]);
+  def.roles = ROLE_RANK.filter(r => list.includes(r));
+  if (!def.roles.length) def.roles = ["read"];
+  def.role = def.roles[0];   // the primary, used for grouping
+  panels.set(cfg.id, def);
   FOOTPRINTS[cfg.id] = { name: cfg.title, desc: cfg.help, w: cfg.w || 1, h: cfg.h || 1,
-                         group: cfg.group || "Data & structure" };
+                         group: cfg.group || "Data & structure",
+                         role: panels.get(cfg.id).role };
   return cfg.id;
 }
 
@@ -956,6 +1505,10 @@ const Brick = {
       const slot = Object.assign({ id, emoji: "▫️", label: id, description: "" }, cfg);
       this.slots.set(id, slot);
       definePanel({
+        // A slot cannot reach state directly, but it can offer a filter — the
+        // map does, by clicking a marker. Declared per slot, so a purely
+        // passive chart still gets R.
+        roles: slot.roles || slot.role || "read",
         id: "viz-" + id,
         title: slot.emoji + " " + slot.label,
         help: slot.description,
@@ -996,7 +1549,10 @@ window.Brick = Brick;
 let booted = false;
 
 /* ---------- core panels ---------- */
-definePanel({ id: "pallet", title: "The Pallet", tpl: "tpl-pallet", w: 1, h: 2,
+definePanel({ role: "write", id: "pallet", title: "The Pallet", tpl: "tpl-pallet", w: 1, h: 2,
+  headButtons: [
+    { act: "menu", label: "\u2630", title: "pile actions" },
+  ],
   help: "Your bricks. One record per line — the only source of truth on this page.",
   render(body) {
     const t = body.querySelector('[data-el="text"]');
@@ -1004,53 +1560,358 @@ definePanel({ id: "pallet", title: "The Pallet", tpl: "tpl-pallet", w: 1, h: 2,
     renderFileList(body);
   } });
 
-definePanel({ id: "builder", title: "Brick Builder", tpl: "tpl-builder", w: 1, h: 2,
+definePanel({ role: "write", id: "builder", title: "Brick Builder", tpl: "tpl-builder", w: 1, h: 2,
   help: "Compose a line without typing pipes or hunting for emoji. Fields change with the type; uids autocomplete from what you have already declared.",
   render(body) { renderBuilder(body); } });
 
-definePanel({ id: "classification", title: "Classification", tpl: "tpl-classification", w: 1, h: 2,
+definePanel({ role: "read", id: "classification", title: "Classification", tpl: "tpl-classification", w: 1, h: 2,
   help: "Every line as the parser sees it. Orange verified, grey dashed draft, red unparsed.",
   render(body) {
     renderClassification(body.querySelector('[data-el="lines"]'));
     noteFiltered(body.querySelector('[data-el="note"]'));
   } });
 
-definePanel({ id: "entities", title: "Bricks", tpl: "tpl-entities", w: 2, h: 1,
+definePanel({ roles: ["read", "filter"], id: "entities", title: "Bricks", tpl: "tpl-entities", w: 2, h: 1,
   help: "Every uid in the pile — the alias in angle brackets that identifies a person or place. Dotted means a ghost: referenced but never declared. Click one to show only the records that name it.",
-  render(body) { renderEntities(body.querySelector('[data-el="ents"]')); } });
+  render(body) { renderEntities(body); } });
 
-definePanel({ id: "filter", title: "Filter", tpl: "tpl-filter", w: 1, h: 1,
+definePanel({ role: "filter", id: "filter", title: "Filter", tpl: "tpl-filter", w: 1, h: 1,
   help: "Narrow what every panel is showing. The groupings are your own '#' headings, so a family, a place or a concept all filter the same way — whatever you decided the heading means. Click a name in Bricks to focus on it.",
   render(body) { renderFilter(body); } });
 
-definePanel({ id: "document", title: "Document", tpl: "tpl-document", w: 1, h: 2,
+definePanel({ roles: ["read", "filter"], id: "document", title: "Document", tpl: "tpl-document", w: 1, h: 2,
   help: "One document at a time — its scan, what it says, and who it names. Step through with the arrows.",
   render(body) { renderDocument(body); } });
 
-definePanel({ id: "count", title: "Count", tpl: "tpl-count", w: 1, h: 1,
+definePanel({ roles: ["write", "filter"], id: "gazetteer", title: "Gazetteer", tpl: "tpl-gazetteer", w: 1, h: 1,
+  headButtons: [{ act: "gazmenu", label: "\u2630", title: "gazetteer file actions" }],
+  help: "Coordinates by uid, loaded from a gazetteer.csv rather than typed into every place brick. A place's own coordinates still override an entry here.",
+  render(body) { renderGazetteerPanel(body); } });
+
+definePanel({ roles: ["read", "filter"], id: "timeline", title: "Timeline", tpl: "tpl-timeline", w: 2, h: 2,
+  help: "Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn hollow. Hover a mark for the detail.",
+  render(body) { renderTimeline(body); } });
+
+definePanel({ role: "read", id: "count", title: "Count", tpl: "tpl-count", w: 1, h: 1,
   help: "Live tally of the pile.",
   render(body) { renderStats(body.querySelector('[data-el="stats"]')); } });
 
-definePanel({ id: "notes", title: "Red Flags", tpl: "tpl-notes", w: 1, h: 1,
+definePanel({ role: "read", id: "notes", title: "Red Flags", tpl: "tpl-notes", w: 1, h: 1,
   help: "Everything the parser objects to: duplicate uids, ghosts, missing dates, derived years. Red is an error, amber a warning.",
   render(body) { renderIssues(body.querySelector('[data-el="issues"]')); } });
 
-definePanel({ id: "reference", title: "Notation reference", tpl: "tpl-reference", w: 2, h: 1,
+definePanel({ role: "read", id: "reference", title: "Notation reference", tpl: "tpl-reference", w: 2, h: 1,
   help: "The symbols the parser understands. Emoji, word and letter are interchangeable.",
   render(body) { renderReference(body.querySelector('[data-el="ref"]')); } });
 
-// The seven slots carried over from the Observable registry. Deliberately
+// One slot: Map. The rest of the Observable registry named things that did not
+// exist yet. Deliberately
 // unimplemented — an empty slot that reports the shape of its input is more
 // useful than a placeholder pretending to draw.
-[
-  ["network",  "🕸️", "Network",  "Connections between records — the link graph the @ references already describe."],
-  ["timeline", "🕰️", "Timeline", "Records on a time axis, with derived years drawn as ranges rather than points."],
-  ["map",      "🗺️", "Map",      "Declared locations, once coordinates are attached to place bricks."],
-  ["list",     "📋", "List",     "The pile as a sortable, filterable table."],
-  ["calendar", "📅", "Calendar", "Dated events by day and month."],
-  ["chart",    "📊", "Chart",    "Distributions — ages, surname frequency, records per decade."],
-  ["global",   "🌍", "Global",   "Everything at once, for orientation rather than reading."],
-].forEach(([id, emoji, label, description]) => Brick.viz.register(id, { emoji, label, description }));
+Brick.viz.register("map", {
+  emoji: "🗺️", label: "Map", w: 3, h: 2,
+  roles: ["read", "filter"],   // draws the places, and a click focuses one
+  description: "Every place brick that carries coordinates. Click a marker to focus it.",
+  render: (model, el) => renderMap(model, el),
+});
+
+/* ==========================================================================
+   THE MAP
+   --------------------------------------------------------------------------
+   MapLibre over the user's own PMTiles basemap:
+   pmtiles://https://tiles.mbricknell.com/basemap.pmtiles — vector MVT, z0-9,
+   Natural Earth layers (ocean, coastline_land, admin0_land, admin1_land,
+   lakes, rivers).
+
+   Both libraries load from a CDN, and only when the Map tile is actually on
+   the board. Everything else on this page keeps working without them, and a
+   page opened from file:// simply says the map needs a connection rather than
+   failing silently.
+   ========================================================================== */
+const MAPLIBRE_JS  = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
+const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+const PMTILES_JS   = "https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js";
+const BASEMAP      = "pmtiles://https://tiles.mbricknell.com/basemap.pmtiles";
+// MapLibre's own public demo style — no key, no pmtiles, works from a plain
+// double-clicked file. Same "hosted vs local" test the manifest/gazetteer
+// fetches already use: the custom basemap only when actually served over
+// http(s), MapLibre's default everywhere else.
+const DEMO_STYLE   = "https://demotiles.maplibre.org/style.json";
+function isHostedContext() { return /^https?:$/.test(location.protocol); }
+
+function loadOnce(url, isCss) {
+  const key = (isCss ? "css:" : "js:") + url;
+  loadOnce.cache = loadOnce.cache || {};
+  if (loadOnce.cache[key]) return loadOnce.cache[key];
+  loadOnce.cache[key] = new Promise((res, rej) => {
+    const el = document.createElement(isCss ? "link" : "script");
+    if (isCss) { el.rel = "stylesheet"; el.href = url; }
+    else { el.src = url; el.async = true; }
+    el.onload = res;
+    el.onerror = () => rej(new Error("could not load " + url));
+    document.head.appendChild(el);
+  });
+  return loadOnce.cache[key];
+}
+
+/*  Dark, quiet, and matched to the panel it sits in. Land and ocean separate
+    by value rather than hue so the points are the only saturated thing on the
+    map -- the data should be the figure, the basemap the ground. */
+function basemapStyle() {
+  const OCEAN = "#0d1317", LAND = "#1b2126", COAST = "#39434a",
+        ADMIN0 = "#2f383f", ADMIN1 = "#252d33", LAKE = "#132029", RIVER = "#22303a";
+  return {
+    version: 8,
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources: { basemap: { type: "vector", url: BASEMAP } },
+    layers: [
+      { id: "bg", type: "background", paint: { "background-color": OCEAN } },
+      { id: "ocean", type: "fill", source: "basemap", "source-layer": "ocean",
+        paint: { "fill-color": OCEAN } },
+      { id: "land", type: "fill", source: "basemap", "source-layer": "coastline_land",
+        paint: { "fill-color": LAND } },
+      { id: "lakes", type: "fill", source: "basemap", "source-layer": "ne_10m_lakes",
+        paint: { "fill-color": LAKE } },
+      { id: "rivers", type: "line", source: "basemap",
+        "source-layer": "ne_10m_rivers_lake_centerlines",
+        paint: { "line-color": RIVER, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.3, 9, 1.1] } },
+      { id: "admin1", type: "line", source: "basemap", "source-layer": "admin1_land",
+        paint: { "line-color": ADMIN1, "line-width": 0.5 } },
+      { id: "admin0", type: "line", source: "basemap", "source-layer": "admin0_land",
+        paint: { "line-color": ADMIN0, "line-width": 0.8 } },
+      { id: "coast", type: "line", source: "basemap", "source-layer": "coastline_land",
+        paint: { "line-color": COAST, "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4, 9, 1.2] } },
+    ],
+  };
+}
+
+// Places in the current view that can actually be drawn.
+function placeFeatures(model) {
+  return (model.places || []).filter(p => p.coords).map(p => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [p.coords.lng, p.coords.lat] },
+    properties: {
+      slug: p.slug, name: p.name,
+      status: p.status || "draft",
+      refs: p.refs,
+      detail: p.detail || "",
+      labelPos: LABEL_POS.get(p.slug) || "",   // "" = follow the map default
+      icon: MARKER_ICON.get(p.slug) || "",     // "" = the plain status dot
+    },
+  }));
+}
+
+function renderMap(model, host) {
+  const fc = { type: "FeatureCollection", features: placeFeatures(model) };
+
+  // Already running: just push new data in. This is the whole reason a slot
+  // owns its element.
+  if (host._map) {
+    if (host._syncMarkers) host._syncMarkers();
+    else updateMapCount(host, fc.features.length, model);
+    return;
+  }
+  if (host._starting) return;
+  host._starting = true;
+
+  host.innerHTML = '<div class="map-shell">' +
+      '<div class="map-canvas"></div>' +
+
+      '<div class="map-note">loading basemap…</div>' +
+      '<div class="map-attrib"></div>' +
+    "</div>";
+  const canvas = host.querySelector(".map-canvas");
+  const note = host.querySelector(".map-note");
+
+  const attribEl = host.querySelector(".map-attrib");
+
+  const hosted = isHostedContext();
+  // Always load pmtiles, not just when hosted -- the dropdown lets you TRY the
+  // custom source from anywhere (e.g. picking "Your tiles" while opened from
+  // file://), not only in whatever context happened to be guessed at start.
+  const toLoad = [loadOnce(MAPLIBRE_CSS, true), loadOnce(MAPLIBRE_JS), loadOnce(PMTILES_JS)];
+
+  Promise.all(toLoad)
+    .then(() => {
+      // One protocol registration per page, not per panel.
+      if (!window.__pmtilesReady) {
+        const protocol = new window.pmtiles.Protocol();
+        window.maplibregl.addProtocol("pmtiles", protocol.tile);
+        window.__pmtilesReady = true;
+      }
+      const map = new window.maplibregl.Map({
+        container: canvas,
+        style: hosted ? basemapStyle() : DEMO_STYLE,
+        center: [-3.4, 56.4],
+        zoom: 7,
+        attributionControl: false,
+        // Default false clears the WebGL buffer right after each paint, which
+        // is invisible to the eye but means any screenshot/screen-recording
+        // tool grabs a blank frame even though the map is drawing correctly.
+        preserveDrawingBuffer: true,
+      });
+      host._map = map;
+      map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+      // 'style.load' fires after the INITIAL style AND after any later
+      // setStyle() call, so the same function adds the places layers whether
+      // this is the first load or a fallback swap — one place, not two.
+      //
+      // Recomputed HERE rather than using the `fc` closed over when renderMap
+      // was first called: script loading (MapLibre + PMTiles, ~1-2s) means an
+      // edit made in the Gazetteer panel while the map is still starting hits
+      // the "still starting, do nothing" branch below and would otherwise be
+      // silently lost — the map would open already stale, with no further
+      // update due until some unrelated later edit happened to trigger one.
+      /*  DOM markers, not a GeoJSON source with circle layers.
+
+          The source approach kept failing in ways that were slow to see: the
+          data went in (`_data` held the feature) but MapLibre never tiled it,
+          so `querySourceFeatures` returned 0 and nothing drew. setStyle() also
+          wipes sources and layers, so every basemap switch needed them rebuilt,
+          and 'style.load' does not fire reliably across quick successive swaps.
+
+          A Marker is a plain DOM element positioned by the map. It survives
+          setStyle untouched, needs no source, no tiling and no style to be
+          loaded, and appears the instant it is added. For a few dozen places
+          that is strictly better, and it removes the whole class of bug. */
+      let placesReady = true;
+      host._markers = [];
+      // Declared ABOVE syncMarkers, which reads it — a `let` further down would
+      // work on the first call and throw on every one after.
+      // The default a place falls back to; per-place overrides live in the
+      // Gazetteer, which is where the rest of a place's display settings are.
+      const labelPlacement = "bottom";
+
+      const syncMarkers = () => {
+        const feats = placeFeatures(V());
+        for (const m of host._markers) m.remove();
+        host._markers = [];
+        for (const f of feats) {
+          const elDot = document.createElement("div");
+          const glyph = f.properties.icon;
+          elDot.className = "map-marker" + (glyph ? " as-icon" : "") +
+                            (f.properties.status === "verified" ? " verified" : "");
+          if (glyph) elDot.dataset.glyph = glyph;
+          elDot.title = f.properties.name + (f.properties.detail ? " — " + f.properties.detail : "");
+          elDot.onclick = ev => { ev.stopPropagation(); focusEntity(f.properties.slug); };
+
+          const label = document.createElement("span");
+          label.className = "map-marker-label";
+          elDot.classList.add("lbl-" + (f.properties.labelPos || labelPlacement));
+          label.textContent = f.properties.name;
+          elDot.appendChild(label);
+
+          host._markers.push(
+            new window.maplibregl.Marker({ element: elDot })
+              .setLngLat(f.geometry.coordinates)
+              .addTo(map)
+          );
+        }
+        updateMapCount(host, feats.length, V());
+        return feats.length;
+      };
+
+      host._syncMarkers = syncMarkers;
+      host._ensurePlaces = syncMarkers;   // same job, kept for existing callers
+      syncMarkers();
+      // Markers survive a style swap, so this only refreshes the count/note.
+      map.on("style.load", () => { if (!usingFallback) note.hidden = true; });
+
+      /*  tiles.mbricknell.com currently sends no CORS header at all, so the
+          custom basemap fails from any origin, including the real hosted site
+          -- not just this environment. "auto" is the self-healing default:
+          try the custom tiles, and on the first failure swap to MapLibre's
+          public style automatically. "custom"/"demo" are explicit choices
+          from the dropdown -- once you have picked one, an error there is
+          just reported, never silently overridden again. */
+      /*  Credit belongs to whatever is actually drawing, not to the map widget.
+          Natural Earth is public domain and asks for nothing; the demo style
+          carries OpenStreetMap data, which is ODbL and does require credit.
+          Attributing both at all times would be wrong in one direction or the
+          other, so it follows the source. */
+      /*  Read off the archive's own tippecanoe command, not assumed: the land
+          and both admin levels (admin0_land, admin1_land, coastline_land) are
+          geoBoundaries CGAZ; the lakes, rivers and geographic lines are the
+          ne_* layers, Natural Earth. Crediting only one of them was wrong. */
+      const ATTRIB = {
+        custom: "geoBoundaries · Natural Earth",
+        demo: "© OpenStreetMap contributors",
+      };
+      const showAttrib = () => {
+        const text = ATTRIB[usingFallback ? "demo" : "custom"] || "";
+        attribEl.textContent = text;
+        attribEl.hidden = !text;
+      };
+
+      let sourceMode = hosted ? "auto" : "demo";
+      let usingFallback = !hosted;   // true once DEMO_STYLE is what's actually showing
+
+      function setSource(mode, { silent } = {}) {
+        sourceMode = mode;
+        usingFallback = mode === "demo";
+        if (!silent) note.hidden = true;
+        map.setStyle(mode === "demo" ? DEMO_STYLE : basemapStyle());
+        showAttrib();
+      }
+
+      showAttrib();
+
+      map.on("error", ev => {
+        const msg = (ev && ev.error && ev.error.message) || "unknown";
+        if (sourceMode === "auto" && !usingFallback && !placesReady) {
+          usingFallback = true;
+          map.setStyle(DEMO_STYLE);
+          showAttrib();
+          note.hidden = false;
+          note.textContent = "Using the default MapLibre basemap — tiles.mbricknell.com did not respond.";
+          return;
+        }
+        if (usingFallback) return;   // already on the fallback; a further tile error there is not worth reporting
+        note.hidden = false;
+        note.textContent = /fetch/i.test(msg)
+          ? "Could not reach tiles.mbricknell.com — check the connection."
+          : "map error: " + msg;
+      });
+
+      /*  Observe the SHELL and the panel, not the canvas. `.map-canvas` is
+          absolutely positioned and MapLibre sets its pixel size itself, so
+          watching it meant growing the tile never triggered a resize — the map
+          kept the height it had at startup. The shell is the element that
+          actually tracks the panel's box. */
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => map.resize());
+        ro.observe(host.querySelector(".map-shell"));
+        ro.observe(host);
+      }
+      // Same trap as the document canvas: a tile built while its column has no
+      // real width would otherwise leave MapLibre sized against zero forever.
+      requestAnimationFrame(() => map.resize());
+    })
+    .catch(err => {
+      host._starting = false;
+      note.hidden = false;
+      note.textContent = "The map needs a connection — " + err.message;
+    });
+}
+
+function fitToPlaces(map, fc) {
+  if (!fc.features.length) return;
+  const b = new window.maplibregl.LngLatBounds();
+  for (const f of fc.features) b.extend(f.geometry.coordinates);
+  map.fitBounds(b, { padding: 40, maxZoom: 9, duration: 0 });
+}
+
+function updateMapCount(host, shown, model) {
+  const note = host.querySelector(".map-note");
+  if (!note) return;
+  const total = (model.all || model).places.filter(p => p.coords).length;
+  if (shown) { note.hidden = true; return; }
+  note.hidden = false;
+  note.textContent = total
+    ? "No places in view — the filter is hiding all " + total + "."
+    : "No place bricks carry coordinates yet.";
+}
 
 /* --------------------------------------------------------------------------
    THE BOARD
@@ -1061,14 +1922,15 @@ const DEFAULT_BOARD = {
     { id: "builder",        x: 0, y: 0, w: 1, h: 2 },
     { id: "pallet",         x: 1, y: 0, w: 1, h: 2 },
     { id: "classification", x: 2, y: 0, w: 1, h: 2 },
+    { id: "gazetteer",      x: 3, y: 0, w: 1, h: 1 },
     { id: "count",          x: 3, y: 1, w: 1, h: 1 },
     { id: "filter",         x: 0, y: 2, w: 1, h: 1 },
     { id: "entities",       x: 1, y: 2, w: 2, h: 1 },
     { id: "notes",          x: 3, y: 2, w: 1, h: 1 },
     { id: "document",       x: 0, y: 3, w: 1, h: 2 },
-    { id: "viz-network",    x: 1, y: 3, w: 1, h: 2 },
-    { id: "viz-timeline",   x: 2, y: 3, w: 2, h: 2 },
-    { id: "reference",      x: 0, y: 5, w: 4, h: 1 },
+    { id: "viz-map",        x: 1, y: 3, w: 3, h: 2 },
+    { id: "timeline",       x: 0, y: 5, w: 4, h: 1 },
+    { id: "reference",      x: 0, y: 6, w: 4, h: 1 },
   ],
 };
 
@@ -1161,10 +2023,18 @@ function buildPanel(def) {
   head.className = "panel-head";
   head.innerHTML =
     '<span class="panel-head-lead">' +
-      '<span class="drag-handle" title="drag to move this tile">⠿</span>' +
+      '<span class="drag-handle" title="drag to move this tile">\u2725</span>' +
       "<h2>" + esc(def.title) + "</h2>" +
-      (def.help ? '<span class="help-icon" title="' + esc(def.help) + '">(?)</span>' : "") +
-    "</span>";
+      // After the title: the name identifies the panel, the role annotates it.
+      (def.roles || ["read"]).map(r =>
+        '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join("") +
+    "</span>" +
+    // Panel-declared controls share the header row with the × rather than
+    // costing the body a bar of its own.
+    (def.headButtons || []).map(b =>
+      '<button class="panel-head-btn" data-act="' + b.act + '"' +
+      (b.hidden ? " hidden" : "") + ' title="' + esc(b.title) + '">' +
+      b.label + "</button>").join("");
   node.appendChild(head);
 
   const body = document.createElement("div");
@@ -1178,6 +2048,19 @@ function buildPanel(def) {
   }
   node.appendChild(body);
 
+  // Header buttons sit outside .panel-body, so the body-scoped wiring below
+  // cannot see them; route them through the same action handler.
+  head.querySelectorAll(".panel-head-btn").forEach(btn => {
+    btn.onclick = () => {
+      if (def.id === "pallet") palletAction(btn.dataset.act, body.querySelector("textarea"));
+      else if (btn.dataset.act === "gazmenu") {
+        const menu = body.querySelector('[data-el="menu"]');
+        menu.hidden = !menu.hidden;
+        btn.classList.toggle("on", !menu.hidden);
+      }
+    };
+  });
+
   wirePanelBody(def, body);
   return node;
 }
@@ -1188,6 +2071,14 @@ function wirePanelBody(def, body) {
     const ta = body.querySelector('[data-el="text"]');
     ta.addEventListener("input", e => { state.text = e.target.value; saveText(); update(); });
     body.querySelectorAll("button[data-act]").forEach(b => { b.onclick = () => palletAction(b.dataset.act, ta); });
+    // Actions close the menu behind them; it is a menu, not a toolbar.
+    body.querySelectorAll('.pallet-menu button[data-act]').forEach(b => {
+      b.addEventListener("click", () => {
+        body.querySelector('[data-el="menu"]').hidden = true;
+        const mb = document.querySelector('#pallet .panel-head-btn[data-act="menu"]');
+        if (mb) mb.classList.remove("on");
+      });
+    });
     wireFolderDrop(body);
   }
 }
@@ -1224,7 +2115,13 @@ function renderBoardTiles() {
   b.style.setProperty("--board-cols", board.cols);
   b.style.setProperty("--board-row", board.rowUnit + "px");
 
-  for (const t of board.tiles) {
+  /*  Appended in visual order (top row first, then left to right), not in the
+      order the array happens to hold. Tiles all share z-index:1, so DOM order
+      decides who paints over whom — and a cartouche overhangs UP into the tile
+      above it, which must therefore already be on the page. Out of order, the
+      label of a lower tile was painted over by its upper neighbour. */
+  const painted = [...board.tiles].sort((a, c) => a.y - c.y || a.x - c.x);
+  for (const t of painted) {
     const panel = nodes.get(t.id);
     if (!panel) continue;
     const wrap = document.createElement("div");
@@ -1309,13 +2206,15 @@ function renderBoardCardList() {
   list.innerHTML = "";
   let shown = 0;
 
-  for (const group of GROUPS) {
-    const ids = available.filter(id => FOOTPRINTS[id].group === group);
+  // Grouped by what a panel does to state, which is a fact about it, rather
+  // than by the ad-hoc labels the list used before.
+  for (const group of ROLE_ORDER) {
+    const ids = available.filter(id => (FOOTPRINTS[id].role || "read") === group.role);
     const visible = q ? ids.filter(id => FOOTPRINTS[id].name.toLowerCase().includes(q)) : ids;
     if (!visible.length) continue;
     const heading = document.createElement("h4");
     heading.className = "board-group-heading";
-    heading.textContent = group;
+    heading.textContent = group.title;
     list.appendChild(heading);
 
     for (const id of visible) {
@@ -1385,6 +2284,19 @@ function moveTile(id, x, y) {
   renderBoard(); saveBoard();
 }
 
+/* Two tiles of identical footprint exchange positions. Same size is the whole
+   condition: neither can then overlap anything the other did not, so the
+   exchange needs no repack and can never half-fail. */
+function swapTiles(idA, idB) {
+  const a = board.tiles.find(k => k.id === idA);
+  const b = board.tiles.find(k => k.id === idB);
+  if (!a || !b || a === b || a.w !== b.w || a.h !== b.h) return;
+  const x = a.x, y = a.y;
+  a.x = b.x; a.y = b.y;
+  b.x = x;   b.y = y;
+  renderBoard(); saveBoard();
+}
+
 function removeTile(id) {
   board.tiles = board.tiles.filter(t => t.id !== id);
   // Park the panel rather than destroying it, so its scroll and typed text
@@ -1416,29 +2328,56 @@ function boardCellUnderPoint(clientX, clientY) {
            y: Math.floor((clientY - r.top) / (cellH + gap)) };
 }
 
+function tileAtCell(x, y) {
+  return board.tiles.find(t => x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h) || null;
+}
+
 function updateGhost(clientX, clientY) {
   if (!boardDrag) return;
   const { x, y } = boardCellUnderPoint(clientX, clientY);
-  const cx = Math.max(0, Math.min(board.cols - boardDrag.w, x));
-  const cy = Math.max(0, y);
-  const bad = x < 0 || x > board.cols - boardDrag.w || y < 0 ||
-              overlaps(boardDrag.fromTile || null, cx, cy, boardDrag.w, boardDrag.h);
+
+  /*  Dragging one tile onto another of the same footprint swaps them, instead
+      of being refused as an overlap. Only ever offered for a tile already on
+      the board — a card from the flyout has nowhere to send the displaced tile
+      back to. Different sizes still refuse: an unequal exchange would have to
+      shove a third tile somewhere, and a drop should do exactly what its ghost
+      showed. */
+  const under = boardDrag.fromTile ? tileAtCell(x, y) : null;
+  const swap = under && under !== boardDrag.fromTile &&
+               under.w === boardDrag.w && under.h === boardDrag.h ? under : null;
+
+  const cx = swap ? swap.x : Math.max(0, Math.min(board.cols - boardDrag.w, x));
+  const cy = swap ? swap.y : Math.max(0, y);
+  const bad = !swap &&
+              (x < 0 || x > board.cols - boardDrag.w || y < 0 ||
+               overlaps(boardDrag.fromTile || null, cx, cy, boardDrag.w, boardDrag.h));
   const g = ghostEl();
   g.hidden = false;
   g.classList.toggle("invalid", bad);
+  g.classList.toggle("swap", !!swap);
   g.style.gridColumn = (cx + 1) + " / span " + boardDrag.w;
   g.style.gridRow = (cy + 1) + " / span " + boardDrag.h;
+  // The ghost marks where the dragged tile lands; the outline marks the tile
+  // being sent the other way, so both halves of the exchange are visible.
+  boardEl().querySelectorAll(".board-tile.swap-target")
+    .forEach(n => n.classList.remove("swap-target"));
+  if (swap) {
+    const node = boardEl().querySelector('.board-tile[data-id="' + swap.id + '"]');
+    if (node) node.classList.add("swap-target");
+  }
   boardDrag.valid = !bad; boardDrag.cx = cx; boardDrag.cy = cy;
+  boardDrag.swapWith = swap ? swap.id : null;
 }
 
 function endBoardDrag(commit) {
   if (boardDrag && commit && boardDrag.valid) {
-    if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
+    if (boardDrag.swapWith) swapTiles(boardDrag.id, boardDrag.swapWith);
+    else if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
     else addTile(boardDrag.id, boardDrag.cx, boardDrag.cy, boardDrag.w, boardDrag.h);
   }
   ghostEl().hidden = true;
-  document.querySelectorAll(".board-card.dragging, .board-tile.dragging")
-    .forEach(n => n.classList.remove("dragging"));
+  document.querySelectorAll(".board-card.dragging, .board-tile.dragging, .board-tile.swap-target")
+    .forEach(n => n.classList.remove("dragging", "swap-target"));
   boardDrag = null;
 }
 
@@ -1447,7 +2386,10 @@ function endBoardDrag(commit) {
    -------------------------------------------------------------------------- */
 
 function renderSlotBody(slot, host) {
-  host.innerHTML = "";
+  /*  A renderer OWNS its element. It is called again on every model change, so
+      it must update what is there rather than assume an empty element — a map
+      or a canvas cannot be rebuilt sixty times while you type. Only the empty
+      placeholder clears the host. */
   if (typeof slot.render === "function") {
     try { slot.render(V(), host); }
     catch (err) {
@@ -1459,6 +2401,7 @@ function renderSlotBody(slot, host) {
   }
   const m = V();
   if (!m) return;
+  host.innerHTML = "";
   host.innerHTML =
     '<div class="slot-empty">' +
       '<div class="slot-desc">' + esc(slot.description) + "</div>" +
@@ -1492,6 +2435,9 @@ function setFilter(mutate) {
   mutate(state.filter);
   state.model.view = buildView(state.model);
   refreshAll();
+  // The top bar is not a panel, so refreshAll() does not reach it — and the
+  // Filter panel may not even be on the board.
+  if (typeof syncSearchInputs === "function") syncSearchInputs();
 }
 function toggleIn(set, key) { set.has(key) ? set.delete(key) : set.add(key); }
 
@@ -1502,7 +2448,10 @@ function renderFilter(body) {
     t.addEventListener("input", () => setFilter(f => { f.text = t.value; }));
     body.querySelector('[data-act="clear"]').onclick = () => {
       body.querySelector('[data-el="text"]').value = "";
-      setFilter(f => { f.text = ""; f.status = "all"; f.focus = null; f.types.clear(); f.sections.clear(); });
+      setFilter(f => {
+        f.text = ""; f.status = "all"; f.focus = null; f.types.clear(); f.sections.clear();
+        f.time.on = false;
+      });
     };
   }
   const f = state.filter, all = state.model, view = V();
@@ -1536,6 +2485,8 @@ function renderFilter(body) {
     return chip(esc(short), f.sections.has(s), 'data-section="' + esc(s) + '" title="' + esc(s) + '"', n);
   }).join("");
 
+  renderTimeFilter(body, all);
+
   const fw = body.querySelector('[data-el="focuswrap"]');
   fw.hidden = !f.focus;
   if (f.focus) {
@@ -1544,9 +2495,22 @@ function renderFilter(body) {
       chip((e ? esc(e.name) : esc(f.focus)) + " ✕", true, 'data-focus="clear"');
   }
 
+  /*  The panel's own box is created once and then never re-read the state, so
+      a search typed in the top bar left it stale and showing nothing. Push the
+      value in on every render, skipping it while focused so it cannot fight
+      what is being typed here. */
+  const panelSearch = body.querySelector('[data-el="text"]');
+  if (panelSearch && document.activeElement !== panelSearch &&
+      panelSearch.value !== (state.filter.text || "")) {
+    panelSearch.value = state.filter.text || "";
+  }
+  syncSearchInputs();
+
+  const win = timeWindow(state.filter.time);
   body.querySelector('[data-el="summary"]').textContent = view.active
     ? view.stats.bricks + " of " + all.stats.bricks + " bricks · " +
-      view.stats.entities + " of " + all.stats.entities + " entities"
+      view.stats.entities + " of " + all.stats.entities + " entities" +
+      (win ? " · " + win[0] + "–" + win[1] + " (undated kept)" : "")
     : "Showing everything — " + all.stats.bricks + " bricks.";
 
   body.querySelectorAll("[data-status]").forEach(b => b.onclick = () => setFilter(f2 => { f2.status = b.dataset.status; }));
@@ -1557,6 +2521,81 @@ function renderFilter(body) {
 
 // Focusing on a person shows every record that names them — their family as the
 // records actually describe it, rather than as a tree asserts it.
+/*  Three ways to ask a time question, because they are genuinely different
+    questions: a decade ("the 1890s"), an explicit span ("1841 to 1861"), or a
+    point with tolerance ("around 1869, give or take 5") — the last being the
+    one that matches how an estimated birth year actually behaves. */
+function renderTimeFilter(body, model) {
+  const t = state.filter.time;
+  const [lo, hi] = yearExtent(model);
+  // Keep the stored values inside whatever the data actually spans.
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  t.min = clamp(t.min, lo, hi); t.max = clamp(t.max, lo, hi);
+  if (t.min > t.max) t.min = t.max;
+  t.year = clamp(t.year, lo, hi);
+  t.decade = clamp(Math.floor(t.decade / 10) * 10, Math.floor(lo / 10) * 10, Math.floor(hi / 10) * 10);
+
+  const modes = body.querySelector('[data-el="timemode"]');
+  modes.innerHTML =
+    '<button data-tmode="off" class="' + (t.on ? "" : "on") + '">off</button>' +
+    '<button data-tmode="decade" class="' + (t.on && t.mode === "decade" ? "on" : "") + '">decade</button>' +
+    '<button data-tmode="range" class="' + (t.on && t.mode === "range" ? "on" : "") + '">range</button>' +
+    '<button data-tmode="around" class="' + (t.on && t.mode === "around" ? "on" : "") + '">± years</button>';
+  modes.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => setFilter(f => {
+    if (b.dataset.tmode === "off") f.time.on = false;
+    else { f.time.on = true; f.time.mode = b.dataset.tmode; }
+  }));
+
+  const host = body.querySelector('[data-el="timebody"]');
+  if (!t.on) { host.innerHTML = ""; return; }
+
+  const slider = (key, min, max, step, label) =>
+    '<div class="time-row"><span class="time-sub">' + label + "</span>" +
+    '<input type="range" data-tkey="' + key + '" min="' + min + '" max="' + max +
+    '" step="' + step + '" value="' + t[key] + '">' +
+    '<span class="time-read" data-tread="' + key + '"></span></div>';
+
+  if (t.mode === "decade") {
+    host.innerHTML = slider("decade", Math.floor(lo / 10) * 10, Math.floor(hi / 10) * 10, 10, "");
+  } else if (t.mode === "around") {
+    host.innerHTML = slider("year", lo, hi, 1, "yr") + slider("span", 0, 50, 1, "±");
+  } else {
+    host.innerHTML = slider("min", lo, hi, 1, "from") + slider("max", lo, hi, 1, "to");
+  }
+
+  const readouts = () => {
+    host.querySelectorAll("[data-tread]").forEach(el => {
+      const k = el.dataset.tread;
+      el.textContent = k === "decade" ? t.decade + "s" : k === "span" ? "±" + t.span : String(t[k]);
+    });
+  };
+  readouts();
+
+  host.querySelectorAll("[data-tkey]").forEach(inp => {
+    // 'input' so the map and lists move as the slider moves, not on release.
+    inp.addEventListener("input", () => {
+      const k = inp.dataset.tkey;
+      t[k] = Number(inp.value);
+      // from/to must not cross over each other.
+      if (k === "min" && t.min > t.max) t.max = t.min;
+      if (k === "max" && t.max < t.min) t.min = t.max;
+      readouts();
+      state.model.view = buildView(state.model);
+      refreshAllExcept("filter");
+      pushPlacesToMap();
+    });
+  });
+}
+
+/*  Everything except the panel holding the control being dragged. Re-rendering
+    the Filter panel mid-drag would replace the slider element under the
+    pointer and the drag would stop dead. */
+function refreshAllExcept(skipId) {
+  for (const node of document.querySelectorAll(".board-tile > .panel")) {
+    if (node.id !== skipId) refreshPanel(node.id);
+  }
+}
+
 function focusEntity(slug) { setFilter(f => { f.focus = f.focus === slug ? null : slug; }); }
 
 /* ---------- document viewer ----------
@@ -1868,6 +2907,370 @@ function renderDocument(body) {
   }
 }
 
+/* ---------- timeline panel ---------- */
+function renderTimeline(body) {
+  const model = V();
+  const lanes = timelineLanes(model);
+  const detail = body.querySelector('[data-el="detail"]');
+  const scale = body.querySelector('[data-el="scale"]');
+  const host = body.querySelector('[data-el="lanes"]');
+
+  if (!lanes.length) {
+    scale.innerHTML = "";
+    host.innerHTML = '<div class="tl-empty">Nothing dated in view.</div>';
+    return;
+  }
+
+  const years = lanes.flatMap(l => l.events.map(e => e.year));
+  let lo = Math.min(...years), hi = Math.max(...years);
+  // A single year would divide by zero; give it a nominal decade of room.
+  if (lo === hi) { lo -= 5; hi += 5; }
+  /*  Marks are positioned by their CENTRE, so a year at 0% or 100% would hang
+      half outside the track and get clipped. Plot into an inset band instead
+      of the full width, leaving room for the dot's radius at both ends. */
+  const PAD = 6;   // percent of track width reserved at each end
+  const pct = y => PAD + ((y - lo) / (hi - lo)) * (100 - PAD * 2);
+
+  // Round ticks so the axis reads in whole decades rather than at whatever
+  // years the data happens to start and end on.
+  const step = Math.max(10, Math.ceil((hi - lo) / 5 / 10) * 10);
+  let ticks = "";
+  for (let y = Math.ceil(lo / step) * step; y <= hi; y += step) {
+    ticks += '<span class="tl-tick" style="left:' + pct(y).toFixed(2) + '%">' + y + "</span>";
+  }
+  scale.innerHTML = ticks;
+
+  host.innerHTML = "";
+  for (const lane of lanes) {
+    const row = document.createElement("div");
+    row.className = "tl-lane";
+
+    // Computed before the name, which reports the span in its hover summary.
+    const first = lane.events[0].year, last = lane.events[lane.events.length - 1].year;
+
+    const name = document.createElement("span");
+    name.className = "tl-name";
+    name.textContent = lane.entity ? lane.entity.name : "— no person —";
+    if (lane.entity) {
+      const e = lane.entity;
+      const life = lifeSummary(e);
+      const summary = e.name + (life ? " · " + life : "") + " · " +
+                      lane.events.length + " dated record" +
+                      (lane.events.length === 1 ? "" : "s") +
+                      (last > first ? " · " + first + "–" + last : " · " + first) +
+                      " · click to focus";
+      name.onmouseenter = () => { detail.textContent = summary; };
+      name.onmouseleave = () => { detail.innerHTML = "&nbsp;"; };
+      name.onclick = () => focusEntity(e.slug);
+    } else {
+      name.onmouseenter = () => { detail.textContent = "dated records that name nobody"; };
+      name.onmouseleave = () => { detail.innerHTML = "&nbsp;"; };
+      name.style.cursor = "default";
+    }
+    row.appendChild(name);
+
+    const track = document.createElement("div");
+    track.className = "tl-track";
+    if (last > first) {
+      const span = document.createElement("div");
+      span.className = "tl-span";
+      span.style.left = pct(first).toFixed(2) + "%";
+      span.style.width = (pct(last) - pct(first)).toFixed(2) + "%";
+      track.appendChild(span);
+    }
+
+    for (const evt of lane.events) {
+      const b = evt.brick;
+      const dot = document.createElement("div");
+      dot.className = "tl-dot" + (b.status === "verified" ? " verified" : "") + (evt.loose ? " loose" : "");
+      dot.style.left = pct(evt.year).toFixed(2) + "%";
+      // Age is only meaningful in a person's own lane — in the "no person"
+      // lane there is nobody to be that age.
+      const age = lane.entity ? ageAt(lane.entity, evt.year) : "";
+      const text = evt.year + (evt.loose ? " (from a note)" : "") + " · " +
+                   (b.icon || "") + " " + (b.name || b.type) +
+                   (age !== "" ? " · aged " + age : "") +
+                   (b.detail ? " — " + b.detail : "");
+      // No title attribute: the browser's own tooltip duplicates the detail
+      // line, arrives late, and cannot be styled.
+      dot.onmouseenter = () => { detail.textContent = text; };
+      dot.onmouseleave = () => { detail.innerHTML = "&nbsp;"; };
+      dot.onclick = () => loadBrickIntoBuilder(b.lineNumber);
+      track.appendChild(dot);
+    }
+    row.appendChild(track);
+    host.appendChild(row);
+  }
+}
+
+/* ---------- gazetteer panel ---------- */
+// Reads and writes the same GAZETTEER map every folder/hosted route uses.
+
+/*  Google Maps' right-click "copy coordinates" puts one string on the
+    clipboard: "56.462857045769084, -2.971490044008239". The lat/lng fields
+    here are two separate number inputs (so each can be edited alone
+    afterwards), but a paste should not care which of the two you pasted
+    into — split it across both, using the same RE_COORDS/readCoords the
+    parser itself uses, so "what counts as a coordinate pair" is defined in
+    exactly one place. */
+function wireCoordPaste(latIn, lngIn, onDone) {
+  const handler = e => {
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    const c = readCoords(text);
+    if (!c) return;               // not a pair — let the normal single-number paste happen
+    e.preventDefault();
+    latIn.value = c.lat;
+    lngIn.value = c.lng;
+    if (onDone) onDone(c);
+  };
+  latIn.addEventListener("paste", handler);
+  lngIn.addEventListener("paste", handler);
+}
+
+function renderGazetteerPanel(body) {   // built once, refreshed on every update()
+  if (!body.dataset.built) {
+    body.dataset.built = "1";
+
+    const newName = body.querySelector('[data-el="newname"]');
+    const newLat = body.querySelector('[data-el="newlat"]');
+    const newLng = body.querySelector('[data-el="newlng"]');
+
+    const addPlace = () => {
+      const name = newName.value.trim();
+      if (!name) { newName.focus(); return; }
+      const uid = slugify(name);
+      if (!uid) return;
+
+      // Only a declared PLACE with this uid counts as "already exists" here —
+      // a clash with some other kind is still worth attempting, so the usual
+      // uid-uniqueness error surfaces in Red Flags rather than being hidden.
+      const isNewPlace = !state.model.entities.some(e => e.slug === uid && e.declared && e.kind === "place");
+      if (isNewPlace) {
+        state.text = state.text.replace(/\s*$/, "") + "\n" + "-|📍|<" + uid + ">|" + name;
+        saveText();
+      }
+      const lat = parseFloat(newLat.value), lng = parseFloat(newLng.value);
+      if (isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        GAZETTEER.set(uid, { lat, lng });
+        saveGazetteer();
+      }
+      update();
+      newName.value = ""; newLat.value = ""; newLng.value = "";
+      newName.focus();
+    };
+    body.querySelector('[data-act="add"]').onclick = addPlace;
+    [newName, newLat, newLng].forEach(inp =>
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") addPlace(); }));
+
+    // No click needed once there is enough to act on: a name plus a complete,
+    // valid coordinate pair adds the place ~0.4s after you stop typing —
+    // matching how the per-row edits below now behave. Typing only a name, or
+    // only coordinates, does nothing yet, so a place is never created off a
+    // single character.
+    let addTimer = null;
+    const maybeAutoAdd = () => {
+      const lat = parseFloat(newLat.value), lng = parseFloat(newLng.value);
+      if (!newName.value.trim() || !isFinite(lat) || !isFinite(lng) ||
+          Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+      clearTimeout(addTimer);
+      addTimer = setTimeout(addPlace, 400);
+    };
+    newLat.addEventListener("input", maybeAutoAdd);
+    newLng.addEventListener("input", maybeAutoAdd);
+    // A paste is already a complete, deliberate action, so it adds immediately
+    // rather than waiting out the debounce.
+    wireCoordPaste(newLat, newLng, () => { if (newName.value.trim()) addPlace(); });
+
+    body.querySelector('[data-act="load"]').onclick = () => {
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = ".csv"; inp.multiple = true;
+      inp.onchange = () => {
+        const files = [...(inp.files || [])];
+        Promise.all(files.map(f => f.text()))
+          .then(texts => {
+            const added = texts.reduce((n, t) => n + mergeGazetteerFile(t), 0);
+            if (added) { update(); showMergeLog(added + " gazetteer row" + (added === 1 ? "" : "s") + " loaded"); }
+          });
+      };
+      inp.click();
+    };
+    body.querySelector('[data-act="export"]').onclick = () => {
+      const rows = ["uid,lat,lng,label,icon"];
+      for (const [uid, c] of [...GAZETTEER.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        rows.push(uid + "," + c.lat + "," + c.lng + "," +
+                  (LABEL_POS.get(uid) || "") + "," + (MARKER_ICON.get(uid) || ""));
+      }
+      const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "gazetteer.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+    body.querySelector('[data-act="clear"]').onclick = () => {
+      if (!GAZETTEER.size) return;
+      if (!confirm("Forget all " + GAZETTEER.size + " loaded gazetteer entries? Places using them lose their coordinates.")) return;
+      GAZETTEER.clear();
+      LABEL_POS.clear();
+      MARKER_ICON.clear();
+      saveGazetteer();
+      update();
+    };
+
+  }
+  renderGazetteerList(body);
+}
+
+/*  The list is built from your declared PLACES, not from the CSV — the CSV is
+    just where numbers happen to be stored. Every declared place gets a row,
+    named, with its lat/lng editable right there; a brick's own inline
+    coordinates still win if it has any (that row is read-only, since editing
+    it here would silently disagree with the brick). Any gazetteer entry that
+    matches no declared place is listed underneath as unclaimed. */
+function renderGazetteerList(body) {
+  /*  Uses the one global search rather than a box of its own — a second search
+      field that filtered only this list was another thing to notice, keep in
+      sync, and wonder why it disagreed with everything else on the board. */
+  const q = (state.filter.text || "").trim().toLowerCase();
+  const list = body.querySelector('[data-el="list"]');
+  const all = state.model || { entities: [] };
+
+  const places = all.entities.filter(e => e.kind === "place" && e.declared);
+  const claimed = new Set(places.map(e => e.slug));
+  const orphans = [...GAZETTEER.keys()].filter(uid => !claimed.has(uid));
+
+  const matches = e => !q || e.slug.includes(q) || e.name.toLowerCase().includes(q);
+  const placeRows = places.filter(matches).sort((a, b) => a.name.localeCompare(b.name));
+  const orphanRows = orphans.filter(uid => !q || uid.includes(q)).sort();
+
+  const fromBrick = places.filter(e => e.coordsFrom === "brick").length;
+  const fromGaz = places.filter(e => e.coordsFrom === "gazetteer").length;
+  const none = places.length - fromBrick - fromGaz;
+  const searchNote = q ? ' · matching "' + q + '"' : "";
+  body.querySelector('[data-el="summary"]').textContent =
+    places.length
+      ? places.length + " place" + (places.length === 1 ? "" : "s") + " · " + fromGaz + " set here" +
+        (fromBrick ? " · " + fromBrick + " fixed in a brick" : "") +
+        (none ? " · " + none + " with no coordinates" : "") + searchNote
+      : "No places declared yet.";
+
+  list.innerHTML = "";
+  if (!placeRows.length && !orphanRows.length) {
+    list.innerHTML = '<div class="file-empty">' + (q ? "No match." : "No places declared yet.") + "</div>";
+    return;
+  }
+
+  for (const e of placeRows) {
+    const locked = e.coordsFrom === "brick";
+    const row = document.createElement("div");
+    row.className = "gaz-row" + (locked ? " locked" : "");
+    row.title = locked ? "coordinates are fixed in the brick itself (line " + e.declaredAt + ") — edit the brick to change them" : "";
+
+    const name = document.createElement("span");
+    name.className = "gaz-name";
+    name.textContent = e.name;
+    name.onclick = () => focusEntity(e.slug);
+    name.title = "click to focus <" + e.slug + ">";
+    row.appendChild(name);
+
+    const latIn = document.createElement("input");
+    latIn.type = "number"; latIn.step = "any"; latIn.placeholder = "lat";
+    latIn.value = e.coords ? e.coords.lat : "";
+    latIn.disabled = locked;
+
+    const lngIn = document.createElement("input");
+    lngIn.type = "number"; lngIn.step = "any"; lngIn.placeholder = "lng";
+    lngIn.value = e.coords ? e.coords.lng : "";
+    lngIn.disabled = locked;
+
+    const commit = () => {
+      const lat = parseFloat(latIn.value), lng = parseFloat(lngIn.value);
+      if (isFinite(lat) && isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        GAZETTEER.set(e.slug, { lat, lng });
+      } else if (!latIn.value && !lngIn.value) {
+        GAZETTEER.delete(e.slug);
+      } else {
+        return;   // half-typed or out of range: leave the map alone until it is valid
+      }
+      saveGazetteer();
+      update();     // rebuilds the model, which re-renders this panel too
+    };
+    // "change" alone meant nothing happened until you clicked away from the
+    // field — indistinguishable from broken. Debounced "input" commits ~0.4s
+    // after you stop typing, without needing a blur; "change" stays as an
+    // immediate backstop (spinner clicks, Enter, real blur). A plain re-render
+    // on every keystroke would kick focus out of the field mid-type, so the
+    // debounce is what makes typing continuously into it possible at all.
+    let commitTimer = null;
+    const commitSoon = () => { clearTimeout(commitTimer); commitTimer = setTimeout(commit, 400); };
+    latIn.addEventListener("input", commitSoon);
+    lngIn.addEventListener("input", commitSoon);
+    latIn.addEventListener("change", commit);
+    lngIn.addEventListener("change", commit);
+    // Pasting "56.4629, -2.9715" (Google Maps' copy-coordinates format) into
+    // either field fills both and commits immediately — setting .value in JS
+    // does not fire "change" on its own, so the paste handler commits directly.
+    wireCoordPaste(latIn, lngIn, commit);
+
+    // Per-place label position. "map default" is the empty value, so a place
+    // only overrides when you actually choose something for it.
+    const labelSel = document.createElement("select");
+    labelSel.className = "gaz-label";
+    labelSel.title = "where this place's label sits";
+    for (const [val, text] of [["", "default"], ["bottom", "below"], ["top", "above"],
+                               ["right", "right"], ["left", "left"], ["none", "hidden"]]) {
+      const o = document.createElement("option");
+      o.value = val; o.textContent = text;
+      labelSel.appendChild(o);
+    }
+    labelSel.value = LABEL_POS.get(e.slug) || "";
+    labelSel.onchange = () => {
+      if (labelSel.value) LABEL_POS.set(e.slug, labelSel.value);
+      else LABEL_POS.delete(e.slug);
+      saveGazetteer();
+      update();
+    };
+
+    // Any single emoji or character. Kept short deliberately — this is a map
+    // mark, not a caption; the name already has its own label.
+    const iconIn = document.createElement("input");
+    iconIn.type = "text";
+    iconIn.className = "gaz-icon";
+    iconIn.maxLength = 4;
+    iconIn.placeholder = "•";
+    iconIn.title = "marker icon — any emoji, blank for the plain dot";
+    iconIn.value = MARKER_ICON.get(e.slug) || "";
+    const commitIcon = () => {
+      const v = iconIn.value.trim();
+      if (v) MARKER_ICON.set(e.slug, v.slice(0, 4));
+      else MARKER_ICON.delete(e.slug);
+      saveGazetteer();
+      update();
+    };
+    iconIn.addEventListener("change", commitIcon);
+
+    row.append(latIn, lngIn, iconIn, labelSel);
+    list.appendChild(row);
+  }
+
+  if (orphanRows.length) {
+    const head = document.createElement("div");
+    head.className = "gaz-sub";
+    head.textContent = "not used by any declared place";
+    list.appendChild(head);
+    for (const uid of orphanRows) {
+      const c = GAZETTEER.get(uid);
+      const row = document.createElement("div");
+      row.className = "gaz-row orphan";
+      row.title = "in the gazetteer, but no place brick declares <" + uid + ">";
+      row.innerHTML = '<span class="gaz-name">' + esc(uid) + '</span><span class="gaz-static">' +
+        c.lat.toFixed(4) + ", " + c.lng.toFixed(4) + "</span>";
+      list.appendChild(row);
+    }
+  }
+}
+
+
 /* ---------- brick builder ----------
    A way INTO the notation, not a replacement for it: every change shows the
    exact line it will write, and the line goes into the same pallet text that
@@ -1895,7 +3298,7 @@ function fieldsFor(type) {
     { key: "name", label: "name", ph: "Longforgan" },
     { key: "detail", label: "description", ph: "Village west of Dundee" },
     { key: "coords", label: "coordinates", ph: "56.4647, -3.1200",
-      sub: "latitude, longitude — decimal degrees" },
+      sub: "optional — leave blank to use a gazetteer.csv entry for this uid" },
     { key: "links", label: "links", kind: "links", ph: "census-1891" },
   ];
   if (kind === "event") return [
@@ -2243,11 +3646,103 @@ function renderClassification(host) {
   }
 }
 
-function renderEntities(host) {
+/*  The Bricks panel's own filter.
+
+    Deliberately separate from state.filter: this hides chips in THIS panel and
+    nothing else. The global search narrows the whole board — every panel, the
+    map, the timeline — which is the wrong tool for "I just want to find a name
+    in this list". Kept out of state so it can never be mistaken for the real
+    filter, and so nothing else has to know it exists. */
+const entLocal = { text: "", kinds: new Set() };
+
+function renderEntities(body) {
+  // Tolerates being handed either the body or the list, since the panel used
+  // to pass the list directly.
+  const host = body.matches && body.matches('[data-el="ents"]')
+    ? body : body.querySelector('[data-el="ents"]');
+  const root = host.closest(".panel-body") || body;
+
+  const controls = root.querySelector(".ent-controls");
+  if (controls && !controls.dataset.wired) {
+    controls.dataset.wired = "1";
+    const input = controls.querySelector('[data-el="local"]');
+    input.addEventListener("input", () => {
+      entLocal.text = input.value;
+      renderEntities(root);          // only this panel repaints
+    });
+  }
+  if (controls) {
+    const input = controls.querySelector('[data-el="local"]');
+    if (document.activeElement !== input && input.value !== entLocal.text) input.value = entLocal.text;
+
+    /*  A toggle per kind actually present, rather than a hardcoded three.
+        Entities are not only people and places — a document or an event that
+        declares a uid is an entity too, and hardcoding meant those could never
+        be filtered for. Ghost is listed separately because it is a state
+        (never declared), not a kind. */
+    const KIND_ICON = { person: "👤", place: "📍", document: "📜", event: "🔔" };
+    const present = [...new Set(V().entities.filter(e => e.declared).map(e => e.kind))]
+      .filter(k => KIND_ICON[k]).sort();
+    const hasGhosts = V().entities.some(e => !e.declared);
+    // "persons" is what naive pluralisation gives; spell the labels out.
+    const KIND_LABEL = { person: "people", place: "places", document: "documents", event: "events" };
+    const wanted = present.map(k => [k, KIND_ICON[k], KIND_LABEL[k] || k + "s"])
+      .concat(hasGhosts ? [["ghost", "❔", "ghosts — referenced but never declared"]] : []);
+
+    const kindsHost = controls.querySelector('[data-el="kinds"]');
+    const signature = wanted.map(w => w[0]).join(",");
+    if (kindsHost.dataset.sig !== signature) {
+      kindsHost.dataset.sig = signature;
+      kindsHost.innerHTML = "";
+      for (const [k, icon, label] of wanted) {
+        const btn = document.createElement("button");
+        btn.dataset.kind = k;
+        btn.textContent = icon;
+        btn.title = "show " + label;
+        btn.onclick = () => {
+          entLocal.kinds.has(k) ? entLocal.kinds.delete(k) : entLocal.kinds.add(k);
+          renderEntities(root);
+        };
+        kindsHost.appendChild(btn);
+      }
+      // A kind that has vanished from the pile must not keep filtering it out.
+      for (const k of [...entLocal.kinds]) if (!wanted.some(w => w[0] === k)) entLocal.kinds.delete(k);
+    }
+    kindsHost.querySelectorAll("[data-kind]").forEach(b =>
+      b.classList.toggle("on", entLocal.kinds.has(b.dataset.kind)));
+  }
+  renderEntityChips(host, root);
+}
+
+function renderEntityChips(host, root) {
   if (!host) return;
-  const ents = V().entities.slice().sort((a, b) =>
+  const all = V().entities.slice().sort((a, b) =>
     a.declared !== b.declared ? (a.declared ? -1 : 1) : a.name.localeCompare(b.name));
-  if (!ents.length) { host.innerHTML = '<p class="hint">No aliases yet.</p>'; return; }
+
+  // Local visibility only — no effect on state.filter or any other panel.
+  const q = entLocal.text.trim().toLowerCase();
+  const kinds = entLocal.kinds;
+  const ents = all.filter(e => {
+    if (q && !e.slug.includes(q) && !e.name.toLowerCase().includes(q)) return false;
+    if (kinds.size) {
+      // "ghost" is a state, not a kind, so it is matched separately.
+      const isGhost = !e.declared;
+      const matches = (kinds.has("ghost") && isGhost) ||
+                      (kinds.has(e.kind) && !isGhost);
+      if (!matches) return false;
+    }
+    return true;
+  });
+
+  const note = root && root.querySelector('[data-el="entnote"]');
+  if (note) {
+    note.textContent = ents.length === all.length
+      ? "solid verified · dashed draft · dotted ghost"
+      : "showing " + ents.length + " of " + all.length + " — this panel only";
+  }
+
+  if (!all.length) { host.innerHTML = '<p class="hint">No aliases yet.</p>'; return; }
+  if (!ents.length) { host.innerHTML = '<p class="hint">Nothing matches here.</p>'; return; }
   host.innerHTML = ents.map(e => {
     const cls = ["ent"];
     if (!e.declared) cls.push("ghost");
@@ -2256,7 +3751,10 @@ function renderEntities(host) {
                : e.kind === "document" ? "📜" : e.kind === "event" ? "🔔" : "❔";
     const title = e.declared
       ? e.kind + (e.status === "draft" ? ", draft" : ", verified") +
-        (e.detail ? " · " + e.detail : "") + " · referenced " + e.refs + "×"
+        (e.detail ? " · " + e.detail : "") +
+        (lifeSummary(e) ? " · " + lifeSummary(e) : "") +
+        (e.coordsFrom === "gazetteer" ? " · coords from gazetteer" : "") +
+        " · referenced " + e.refs + "×"
       : "ghost — referenced " + e.refs + "×, never declared";
     // Coordinates show in the tooltip only. One icon per kind — a second pin
     // emoji was not a distinction anyone could read.
@@ -2327,6 +3825,14 @@ function exampleFor(k) {
 }
 
 function palletAction(act, ta) {
+  if (act === "menu") {
+    const panel = document.getElementById("pallet");
+    const menu = panel.querySelector('[data-el="menu"]');
+    menu.hidden = !menu.hidden;
+    const btn = panel.querySelector('.panel-head-btn[data-act="menu"]');
+    if (btn) btn.classList.toggle("on", !menu.hidden);
+    return;
+  }
   if (act === "sample") return setText(SAMPLE);
   if (act === "clear") {
     if (confirm("Empty the pallet? Your bricks are only stored in this browser.")) setText("");
@@ -2373,6 +3879,117 @@ function isImageFile(name) { return /\.(jpe?g|png|gif|webp|avif|svgz?|tiff?)$/i.
     against the PAGE, not against your research folder — so a local scan would
     never load. Indexing the folder's images and handing back a blob URL makes
     the same brick file work both locally and hosted, with nothing uploaded. */
+
+/*  Gazetteer: uid -> {lat, lng}, so coordinates do not have to live inside a
+    brick at all. A place brick declares identity; the gazetteer supplies
+    geometry, by the same uid. A brick's own trailing "lat, lng" still wins if
+    present -- the gazetteer is a fallback, not the only source. */
+const GAZETTEER = new Map();   // uid -> {lat, lng}
+/*  Label placement per place, kept in its own map rather than folded into the
+    coordinate object: a place can have a label preference with no coordinates
+    yet, or coordinates that come from its brick rather than the gazetteer, and
+    mixing the two would make a half-populated coords object that the map would
+    try to plot. Empty/absent means "use the map's default". */
+const LABEL_POS = new Map();   // uid -> "bottom"|"top"|"right"|"left"|"none"
+/*  Per-place marker glyph — any emoji or character. Empty/absent means the
+    plain status dot, which stays the default because it is the only marker
+    whose colour still carries the verified/draft distinction. */
+const MARKER_ICON = new Map();   // uid -> "⛪" etc.
+function isGazetteerFile(name) { return /gazetteer.*\.csv$/i.test(name); }
+
+function splitCsvRow(row) {
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < row.length; i++) {
+    const c = row[i];
+    if (q) { if (c === '"') { if (row[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === "," || c === ";") { out.push(cur); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Accepts "uid,lat,lng" or "name,lat,lng" (name is slugified to a uid) with or
+// without a header row -- `family/locations.csv` drops in unmodified.
+function parseGazetteerCSV(text) {
+  const lines = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const head = splitCsvRow(lines[0]).map(h => h.toLowerCase());
+  const uidCol = head.indexOf("uid") !== -1 ? head.indexOf("uid") : head.indexOf("name");
+  const latCol = head.indexOf("lat");
+  const lngCol = head.indexOf("lng") !== -1 ? head.indexOf("lng")
+               : head.indexOf("lon") !== -1 ? head.indexOf("lon") : head.indexOf("long");
+  const labelCol = head.indexOf("label");
+  const iconCol = head.indexOf("icon");
+  const hasHeader = uidCol !== -1 && latCol !== -1 && lngCol !== -1;
+  const c = hasHeader ? { uid: uidCol, lat: latCol, lng: lngCol, label: labelCol, icon: iconCol }
+                      : { uid: 0, lat: 1, lng: 2, label: 3, icon: 4 };
+  const out = [];
+  for (let i = hasHeader ? 1 : 0; i < lines.length; i++) {
+    const row = splitCsvRow(lines[i]);
+    if (row.length < 3) continue;
+    const uid = slugify(row[c.uid] || "");
+    const lat = Number(row[c.lat]), lng = Number(row[c.lng]);
+    if (!uid || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+    const label = c.label >= 0 ? (row[c.label] || "").trim().toLowerCase() : "";
+    const icon = c.icon >= 0 ? (row[c.icon] || "").trim().slice(0, 4) : "";
+    out.push([uid, { lat, lng }, LABEL_CHOICES.includes(label) ? label : "", icon]);
+  }
+  return out;
+}
+
+const LABEL_CHOICES = ["bottom", "top", "right", "left", "none"];
+
+/*  Coordinates you typed are work, and work should survive a reload. Stored as
+    one object holding both maps, since a label override without its coordinate
+    is meaningless on its own.
+
+    Deliberately NOT merged with a loaded gazetteer.csv on save: the CSV stays
+    the portable source, this is just the working copy. Anything typed here is
+    also exported by the panel's Export button, so nothing is trapped. */
+function saveGazetteer() {
+  try {
+    localStorage.setItem(GAZETTEER_KEY, JSON.stringify({
+      coords: [...GAZETTEER.entries()],
+      labels: [...LABEL_POS.entries()],
+      icons: [...MARKER_ICON.entries()],
+    }));
+  } catch (e) { /* private mode or quota: the session still works */ }
+}
+
+function loadGazetteer() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(GAZETTEER_KEY) || "null"); } catch (e) { return 0; }
+  if (!raw) return 0;
+  let n = 0;
+  for (const [uid, c] of Array.isArray(raw.coords) ? raw.coords : []) {
+    if (!uid || !c || !isFinite(c.lat) || !isFinite(c.lng)) continue;
+    if (Math.abs(c.lat) > 90 || Math.abs(c.lng) > 180) continue;
+    GAZETTEER.set(uid, { lat: c.lat, lng: c.lng });
+    n++;
+  }
+  for (const [uid, pos] of Array.isArray(raw.labels) ? raw.labels : []) {
+    if (uid && LABEL_CHOICES.includes(pos)) LABEL_POS.set(uid, pos);
+  }
+  for (const [uid, icon] of Array.isArray(raw.icons) ? raw.icons : []) {
+    if (uid && typeof icon === "string" && icon) MARKER_ICON.set(uid, icon.slice(0, 4));
+  }
+  return n;
+}
+
+function mergeGazetteerFile(text) {
+  let n = 0;
+  for (const [uid, coords, label, icon] of parseGazetteerCSV(text)) {
+    GAZETTEER.set(uid, coords);
+    if (label) LABEL_POS.set(uid, label);
+    if (icon) MARKER_ICON.set(uid, icon);
+    n++;
+  }
+  if (n) saveGazetteer();
+  return n;
+}
+
 const folderImages = new Map();   // path within the opened folder -> { file, url }
 
 function setFolderImages(list) {
@@ -2404,16 +4021,19 @@ function resolveSrc(src) {
 
 // Recurses into subfolders. Depth-capped: a stray symlink or a deep tree should
 // not hang the page, and nobody nests a pile eight deep on purpose.
-async function filesFromDirectoryHandle(dir, path, depth, out, imgs) {
+async function filesFromDirectoryHandle(dir, path, depth, out, imgs, gazCount) {
   if (depth > 8) return out;
   for await (const entry of dir.values()) {
-    if (entry.kind === "file" && isBrickFile(entry.name)) {
+    if (entry.kind === "file" && isGazetteerFile(entry.name)) {
+      const f = await entry.getFile();
+      gazCount.n += mergeGazetteerFile(await f.text());
+    } else if (entry.kind === "file" && isBrickFile(entry.name)) {
       const f = await entry.getFile();
       out.push({ name: path + entry.name, text: await f.text() });
     } else if (entry.kind === "file" && isImageFile(entry.name) && imgs) {
       imgs.push({ name: path + entry.name, file: await entry.getFile() });
     } else if (entry.kind === "directory") {
-      await filesFromDirectoryHandle(entry, path + entry.name + "/", depth + 1, out, imgs);
+      await filesFromDirectoryHandle(entry, path + entry.name + "/", depth + 1, out, imgs, gazCount);
     }
   }
   return out;
@@ -2468,7 +4088,10 @@ function renderFileList(body) {
     const n = parse(f.text).filter(b => !b.empty && !b.comment).length;
     const row = document.createElement("div");
     row.className = "file-item" + (f.name === currentFile ? " current" : "");
-    row.innerHTML = '<span class="nm" title="' + esc(f.name) + '">' + esc(f.name) + "</span>" +
+    // The folder prefix is the same on every row and only steals width; the
+    // full path stays in the tooltip.
+    const shortName = f.name.split("/").pop();
+    row.innerHTML = '<span class="nm" title="' + esc(f.name) + '">' + esc(shortName) + "</span>" +
                     '<span class="meta">' + n + "</span>";
     const open = document.createElement("button");
     open.textContent = "open"; open.title = "put this file on the pallet, replacing what is there";
@@ -2506,10 +4129,11 @@ async function openFolder() {
       const dir = await window.showDirectoryPicker({ mode: "read" });
       folderHandle = dir;
       folderName = dir.name;
-      const imgs = [];
-      const files = await filesFromDirectoryHandle(dir, "", 0, [], imgs);
+      const imgs = [], gaz = { n: 0 };
+      const files = await filesFromDirectoryHandle(dir, "", 0, [], imgs, gaz);
       setFolderImages(imgs);
       rememberFolder(files, folderName);
+      if (gaz.n) update();
       foldFiles(files, folderName);
       showRescan(true);
       return;
@@ -2534,6 +4158,8 @@ async function openFolder() {
     const strip = n => n.split("/").slice(1).join("/") || n;
     setFolderImages(files.filter(f => isImageFile(f.name))
       .map(f => ({ name: strip(f.webkitRelativePath || f.name), file: f })));
+    Promise.all(files.filter(f => isGazetteerFile(f.name)).map(f => f.text()))
+      .then(texts => { if (texts.some(t => mergeGazetteerFile(t))) update(); });
     Promise.all(files.filter(f => isBrickFile(f.name))
       .map(f => f.text().then(t => ({ name: strip(f.webkitRelativePath || f.name), text: t }))))
       .then(all => { rememberFolder(all, label); foldFiles(all, label); })
@@ -2553,10 +4179,11 @@ async function rescanFolder() {
         return;
       }
     }
-    const imgs = [];
-    const files = await filesFromDirectoryHandle(folderHandle, "", 0, [], imgs);
+    const imgs = [], gaz = { n: 0 };
+    const files = await filesFromDirectoryHandle(folderHandle, "", 0, [], imgs, gaz);
     setFolderImages(imgs);
     rememberFolder(files, folderName);
+    if (gaz.n) update();
     foldFiles(files, folderName);
   } catch (err) {
     showMergeLog("could not re-read " + folderName + ": " + ((err && err.message) || err));
@@ -2564,7 +4191,7 @@ async function rescanFolder() {
 }
 
 function showRescan(on) {
-  const b = document.querySelector('#pallet [data-act="rescan"]');
+  const b = document.querySelector('#pallet .pallet-menu [data-act="rescan"]');
   if (b) { b.hidden = !on; b.title = "read " + folderName + " again — duplicates are skipped"; }
 }
 
@@ -2582,6 +4209,14 @@ function showRescan(on) {
     Silent on file:// and data: URLs, where fetch is blocked; there is nothing
     useful to say to someone opening the page from disk. */
 const MANIFEST = "bricks/manifest.json";
+
+async function loadHostedGazetteer() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const r = await fetch("bricks/gazetteer.csv", { cache: "no-cache" });
+    if (r.ok && mergeGazetteerFile(await r.text())) update();
+  } catch (e) { /* optional */ }
+}
 
 async function loadHostedBricks() {
   if (!/^https?:$/.test(location.protocol)) return;
@@ -2604,10 +4239,35 @@ async function loadHostedBricks() {
   }
   if (!files.length) return;
   rememberFolder(files, "this site");
-  showMergeLog(files.length + " pile" + (files.length > 1 ? "s" : "") + " on this site — open or merge one");
+
+  /*  Listing the site's piles is not the same as loading them, and only
+      listing them meant a hosted page opened on the built-in SAMPLE — whose
+      places carry no coordinates and match no gazetteer uid — so the map was
+      correctly, but uselessly, empty.
+
+      Merge them in on first visit only. If there is already work on the
+      pallet (anything the user typed, or a restored autosave that differs
+      from the sample) it is left alone: silently concatenating the site's
+      piles into someone's own pile on every reload would be far worse than
+      an empty map. */
+  const untouched = !state.text.trim() || state.text === SAMPLE;
+  if (!untouched) {
+    showMergeLog(files.length + " pile" + (files.length > 1 ? "s" : "") + " on this site — open or merge one");
+    return;
+  }
+  let text = "", added = 0;
+  for (const f of files) {
+    const r = mergeText(text, f.text, f.name);
+    text = r.text; added += r.added;
+  }
+  if (!added) return;
+  setText(text);
+  currentFile = "";
+  showMergeLog(added + " bricks loaded from this site");
 }
 
 let droppedImages = [];
+let droppedGazetteerText = [];
 function entryFiles(entry, path, depth, out) {
   if (depth > 8) return Promise.resolve(out);
   if (entry.isFile) {
@@ -2616,6 +4276,11 @@ function entryFiles(entry, path, depth, out) {
         droppedImages.push({ name: path + entry.name, file: f });
         res(out);
       }, () => res(out)));
+    }
+    if (isGazetteerFile(entry.name)) {
+      return new Promise(res => entry.file(f => f.text()
+        .then(t => { droppedGazetteerText.push(t); res(out); })
+        .catch(() => res(out))));
     }
     if (!isBrickFile(entry.name)) return Promise.resolve(out);
     return new Promise(res => entry.file(f => f.text()
@@ -2651,12 +4316,14 @@ function wireFolderDrop(panelBody) {
     // One shared collector, so every branch of the recursion appends to the
     // same list rather than to a copy that is then discarded.
     const out = [];
-    droppedImages = [];
+    droppedImages = []; droppedGazetteerText = [];
     Promise.all(items.map(en => entryFiles(en, "", 0, out)))
       .then(() => {
         setFolderImages(droppedImages);
+        const gazAdded = droppedGazetteerText.reduce((n, t) => n + mergeGazetteerFile(t), 0);
         rememberFolder(out, label);
         foldFiles(out, label);
+        if (gazAdded) update();
       })
       .catch(err => showMergeLog("could not read drop: " + ((err && err.message) || err)));
   });
@@ -2729,10 +4396,12 @@ function pickFiles(merge) {
 function showMergeLog(msg) {
   const log = document.querySelector('#pallet [data-el="mergelog"]');
   if (!log) return;
-  log.hidden = false;
+  // Lives inline in the bar now, so it empties rather than hides — hiding it
+  // would collapse the bar's height and make the row jump.
   log.textContent = msg;
+  log.title = msg;
   clearTimeout(showMergeLog.t);
-  showMergeLog.t = setTimeout(() => { log.hidden = true; }, 9000);
+  showMergeLog.t = setTimeout(() => { log.textContent = ""; log.title = ""; }, 9000);
 }
 
 /* --------------------------------------------------------------------------
@@ -2746,7 +4415,15 @@ function refreshPanel(id) {
   const body = node.querySelector(".panel-body");
   if (body) def.render(body);
 }
-function refreshAll() { for (const t of board.tiles) refreshPanel(t.id); }
+/*  Driven off what is actually mounted, not off board.tiles. Those two can
+    drift — a board restored from localStorage that predates a panel, or a tile
+    added without a save — and when they did, that panel simply never received
+    updates again. Reading the DOM cannot drift from the DOM. */
+function refreshAll() {
+  for (const node of document.querySelectorAll(".board-tile > .panel")) {
+    refreshPanel(node.id);
+  }
+}
 
 // Re-parsing the whole pallet on every keystroke is cheap at genealogical scale
 // and removes an entire class of stale-state bug incremental parsing invites.
@@ -2754,6 +4431,20 @@ function update() {
   state.model = buildModel(parse(state.text));
   state.model.view = buildView(state.model);
   refreshAll();
+  pushPlacesToMap();
+}
+
+/*  The map gets its data directly, not only via the panel-refresh chain.
+    Markers failing to appear after typing a coordinate was the single most
+    reported problem with this panel, and every cause was some link in that
+    chain being skipped. This is one short, unconditional call: if a map exists
+    and has its source, it receives the current places, full stop. */
+function pushPlacesToMap() {
+  const node = document.getElementById("viz-map");
+  const host = node && node.querySelector(".panel-body");
+  const map = host && host._map;
+  if (!map) return;
+  if (host._syncMarkers) host._syncMarkers();
 }
 
 let saveTimer = null;
@@ -2839,6 +4530,12 @@ try { savedText = localStorage.getItem(TEXT_KEY); } catch (e) { /* ignore */ }
 // string means the pile was deliberately emptied, and must stay empty:
 // conflating the two resurrects the sample every time you start a new project.
 state.text = savedText !== null ? savedText : SAMPLE;
+
+// Must precede the first buildModel: a place takes its coordinates from the
+// gazetteer at build time, so restoring afterwards would leave every place
+// ungeocoded until some later edit happened to trigger a rebuild.
+loadGazetteer();
+
 state.model = buildModel(parse(state.text));
 state.model.view = buildView(state.model);
 
@@ -2850,8 +4547,40 @@ renderBoard();
 renderBoardCardList();
 booted = true;
 
-// Hosted piles, if this page is served rather than opened from disk.
-loadHostedBricks();
+// Hosted piles and gazetteer, if this page is served rather than opened from disk.
+loadHostedGazetteer().then(loadHostedBricks);
+
+/*  Top-bar search.
+
+    Writes the same state.filter.text the Filter panel's own box writes, so the
+    two are one search with two ways in rather than two searches. Kept in sync
+    on both sides: this one is not a panel, so refreshAll() never redraws it,
+    and the panel's box is redrawn constantly — each therefore updates the
+    other, skipping whichever currently has focus so neither fights your typing. */
+const topSearch = el("topsearch");
+const topSearchInput = el("topsearchInput");
+
+el("topsearchBtn").onclick = () => {
+  const open = topSearch.classList.toggle("open");
+  if (open) topSearchInput.focus();
+  else if (state.filter.text) setFilter(f => { f.text = ""; });   // collapsing clears
+};
+
+topSearchInput.addEventListener("input", () => {
+  setFilter(f => { f.text = topSearchInput.value; });
+});
+topSearchInput.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    topSearchInput.value = "";
+    setFilter(f => { f.text = ""; });
+    topSearch.classList.remove("open");
+    topSearchInput.blur();
+  }
+});
+// Collapse on blur only when it has nothing to show.
+topSearchInput.addEventListener("blur", () => {
+  if (!topSearchInput.value) topSearch.classList.remove("open");
+});
 
 /* ---------- flyout + board controls ---------- */
 el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
