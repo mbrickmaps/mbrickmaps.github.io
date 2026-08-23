@@ -15,11 +15,19 @@
        Builder fields look white. */
     color-scheme: dark;
     --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333;
+    --field: #0d0d0d;       /* inset surfaces: inputs, lists, code, canvases */
+    --border-soft: #2b2b2b; /* hairlines inside a panel, quieter than --border */
     --accent: #ff5500;      /* verified */
     --accent2: #33ff33;     /* structural affordances */
     --draft: #7a8a99;       /* the '-' status, used everywhere a brick is drawn */
     --ghost: #b06a00;       /* referenced but never declared */
     --bad: #f44336;
+    /*  The "on" washes, mixed from the colour they belong to rather than
+        hand-picked. One less thing for a theme to get wrong: change --accent2
+        and its wash follows, in any theme, light or dark. */
+    --tint: color-mix(in srgb, var(--accent2) 14%, var(--panel));
+    --tint-verified: color-mix(in srgb, var(--accent) 14%, var(--panel));
+    --tint-bad: color-mix(in srgb, var(--bad) 14%, var(--panel));
     --panel-gap: 14px;
     --panel-radius: 6px;
     --close-size: 18px;
@@ -75,9 +83,9 @@
     padding-bottom: 40px;
   }
   .board-cell {
-    border: 1px dashed #2e2e2e; border-radius: 6px; z-index: 0;
+    border: 1px dashed var(--border-soft); border-radius: 6px; z-index: 0;
     display: flex; align-items: center; justify-content: center;
-    color: #2e2e2e; font-size: 1.4rem; cursor: pointer; user-select: none;
+    color: var(--border-soft); font-size: 1.4rem; cursor: pointer; user-select: none;
   }
   .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
@@ -105,11 +113,12 @@
     border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
   }
   #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
-  /* A swap is a different move, so it reads as a different colour: solid, not
-     dashed, because the outcome is certain rather than provisional. */
-  #boardGhost.swap { border-style: solid; border-color: var(--accent); background: rgba(255,85,0,0.14); }
+  /* A swap is still a drop preview, so it stays green like every other
+     structural affordance. Solid rather than dashed is what separates it from
+     an ordinary move — the shape carries the difference, not the hue. */
+  #boardGhost.swap { border-style: solid; background: rgba(51,255,51,0.16); }
   #boardGhost[hidden] { display: none; }
-  .board-tile.swap-target > .panel { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .board-tile.swap-target > .panel { outline: 2px solid var(--accent2); outline-offset: -2px; }
   .board-empty {
     grid-column: 1 / -1; text-align: center; padding: 40px 10px;
     opacity: 0.35; font-size: 0.85rem;
@@ -122,7 +131,7 @@
   .tile-resize button {
     width: 18px; height: 18px; padding: 0; font-size: 0.8rem; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); border-radius: 3px; background: #000; color: var(--fg); cursor: pointer;
+    border: 1px solid var(--border); border-radius: 3px; background: var(--field); color: var(--fg); cursor: pointer;
   }
   .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
   .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
@@ -214,12 +223,12 @@
     border: 1px solid var(--border); border-radius: 3px;
     /* cursor:move states the affordance; the glyph needs a touch more size
        than the grip dots did to stay legible at this scale. */
-    background: #000; opacity: 0.35; cursor: move; font-size: 12px; line-height: 1;
+    background: var(--field); opacity: 0.35; cursor: move; font-size: 12px; line-height: 1;
   }
   .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
 
   button, select, input, textarea {
-    background: #000; color: var(--fg); border: 1px solid var(--border);
+    background: var(--field); color: var(--fg); border: 1px solid var(--border);
     border-radius: 3px; padding: 3px 7px; font-size: 0.73rem; font-family: inherit; cursor: pointer;
   }
   /* Chrome paints autofilled fields near-white via an internal shadow that
@@ -229,7 +238,7 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus {
     -webkit-text-fill-color: var(--fg);
-    -webkit-box-shadow: 0 0 0 1000px #000 inset;
+    -webkit-box-shadow: 0 0 0 1000px var(--field) inset;
     transition: background-color 9999s ease-in-out 0s;
   }
   input::placeholder, textarea::placeholder { color: var(--fg); opacity: 0.35; }
@@ -246,7 +255,7 @@
   }
   #boardFlyoutWrap.open { transform: none; }
   #boardFlyout {
-    position: absolute; inset: 0; background: #131313;
+    position: absolute; inset: 0; background: var(--field);
     border-left: 1px solid var(--border); padding: 10px; overflow-y: auto;
   }
   #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
@@ -259,7 +268,7 @@
   }
   .board-card {
     display: flex; flex-direction: column; gap: 4px;
-    border: 1px solid var(--border); border-radius: 5px; background: #0d0d0d;
+    border: 1px solid var(--border); border-radius: 5px; background: var(--field);
     padding: 7px 9px; margin-bottom: 6px; cursor: grab; font-size: 0.8rem;
   }
   .board-card:hover { border-color: var(--accent2); }
@@ -272,7 +281,7 @@
   .board-card .fp-add {
     display: inline-flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; flex-shrink: 0; border: 1px solid var(--border);
-    border-radius: 3px; background: #000; color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
+    border-radius: 3px; background: var(--field); color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
   }
   .board-card .fp-add:hover { opacity: 1; border-color: var(--accent2); }
   .board-group-heading {
@@ -284,7 +293,7 @@
   /* ---------- panel bodies ---------- */
   textarea {
     width: 100%; flex: 1 1 auto; min-height: 96px; resize: none;
-    background: #000; color: var(--fg); border: 1px solid var(--border); border-radius: 3px;
+    background: var(--field); color: var(--fg); border: 1px solid var(--border); border-radius: 3px;
     font-family: var(--mono); font-size: 12px; line-height: 1.55; padding: 8px;
   }
   textarea:focus { outline: none; border-color: var(--accent); }
@@ -310,24 +319,24 @@
   .pallet-status:empty { display: none; }
   .pallet-menu {
     display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; padding: 7px;
-    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--field);
   }
   .pallet-menu[hidden] { display: none; }
   .pallet-menu .hint { flex-basis: 100%; }
 
   .lines { font-family: var(--mono); font-size: 11.5px; }
   .ln { display: flex; align-items: baseline; gap: 8px; padding: 2px 8px; margin: 1px 0;
-        border-left: 3px solid var(--border); background: #0d0d0d; }
+        border-left: 3px solid var(--border); background: var(--field); }
   .ln.ok { border-left-color: var(--accent); }
   .ln.ok.draft { border-left-color: var(--draft); }
-  .ln.bad { border-left-color: var(--bad); background: #1a0d0d; }
-  .ln.comment { border-left-color: #444; background: transparent; opacity: 0.55; }
+  .ln.bad { border-left-color: var(--bad); background: var(--tint-bad); }
+  .ln.comment { border-left-color: var(--border-soft); background: transparent; opacity: 0.55; }
   .ln .num { width: 26px; text-align: right; opacity: 0.3; flex-shrink: 0; }
   .ln .ico { width: 19px; flex-shrink: 0; }
   .ln .body { flex: 1; min-width: 0; word-break: break-word; }
   .ln .body .name { opacity: 0.55; font-style: italic; }
   .ln.draft .body { color: var(--draft); }
-  .ln .tag { font-size: 9.5px; opacity: 0.5; background: #000; border: 1px solid var(--border);
+  .ln .tag { font-size: 9.5px; opacity: 0.5; background: var(--field); border: 1px solid var(--border);
              padding: 0 5px; border-radius: 3px; flex-shrink: 0; text-transform: uppercase; }
   /* At one cell wide the tag goes — the icon already says what it says. */
   @container (max-width: 340px) { .ln .tag { display: none; } }
@@ -339,17 +348,17 @@
   .ent-controls button.on { opacity: 1; border-color: var(--accent2); }
   .ents { display: flex; flex-wrap: wrap; gap: 5px; }
   .ent { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 3px;
-         border: 1px solid var(--accent); color: var(--accent); background: #000; white-space: nowrap; }
+         border: 1px solid var(--accent); color: var(--accent); background: var(--field); white-space: nowrap; }
   /* Border STYLE carries the state as well as colour, so it survives greyscale
      and colour-blind viewing. */
   .ent.draft { border-color: var(--draft); color: var(--draft); border-style: dashed; }
   .ent.ghost { border-color: var(--ghost); color: var(--ghost); border-style: dotted; }
   .ent .n { opacity: 0.45; margin-left: 5px; }
   .ent { cursor: pointer; }
-  .ent.focused { background: #051705; box-shadow: 0 0 0 1px var(--accent2); }
+  .ent.focused { background: var(--tint); box-shadow: 0 0 0 1px var(--accent2); }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 7px; }
-  .stat { background: #000; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
+  .stat { background: var(--field); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
   .stat .v { font-size: 1.1rem; font-family: var(--mono); line-height: 1.1; }
   .stat .k { font-size: 0.6rem; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
@@ -359,7 +368,7 @@
   .issues .none { opacity: 0.4; font-family: system-ui, sans-serif; }
 
   table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
-  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #262626; vertical-align: top; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
   th { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.45; font-weight: 500; }
   td.mono { font-family: var(--mono); color: var(--accent2); white-space: nowrap; }
 
@@ -368,8 +377,8 @@
   .flt-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.07em; opacity: 0.4; margin-bottom: 4px; }
   .flt-chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .flt-chips button { font-size: 0.7rem; padding: 2px 7px; }
-  .flt-chips button.on { border-color: var(--accent2); color: var(--accent2); background: #051705; }
-  .flt-chips button.on[data-status="verified"] { border-color: var(--accent); color: var(--accent); background: #170a05; }
+  .flt-chips button.on { border-color: var(--accent2); color: var(--accent2); background: var(--tint); }
+  .flt-chips button.on[data-status="verified"] { border-color: var(--accent); color: var(--accent); background: var(--tint-verified); }
   .flt-chips button.on[data-status="draft"] { border-color: var(--draft); color: var(--draft); background: #0d1115; }
   .flt-chips .count { opacity: 0.45; margin-left: 4px; font-size: 0.62rem; }
   .flt-chips .lbl { margin-left: 4px; }
@@ -395,7 +404,7 @@
   .doc-viewport {
     position: relative; overflow: hidden; margin-bottom: 8px;
     height: clamp(160px, 40cqh, 60vh);
-    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--field);
     cursor: grab; touch-action: none;
   }
   .doc-viewport.panning { cursor: grabbing; }
@@ -418,7 +427,7 @@
     font-size: 0.7rem; opacity: 0.45; text-align: center; line-height: 1.6;
   }
   .doc-raw {
-    font-family: var(--mono); font-size: 11.5px; background: #000; border-radius: 3px;
+    font-family: var(--mono); font-size: 11.5px; background: var(--field); border-radius: 3px;
     padding: 6px 8px; margin-bottom: 8px; word-break: break-all; line-height: 1.5;
     border-left: 3px solid var(--accent);
   }
@@ -434,7 +443,7 @@
   .file-list { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; }
   .file-item {
     display: flex; align-items: center; gap: 6px; padding: 4px 7px; flex-wrap: wrap;
-    border: 1px solid var(--border); border-radius: 3px; background: #000; font-size: 0.73rem;
+    border: 1px solid var(--border); border-radius: 3px; background: var(--field); font-size: 0.73rem;
   }
   .file-item.current { border-color: var(--accent); }
   /*  min-width:0 let this shrink to 1px in a one-cell panel — the filename was
@@ -507,7 +516,7 @@
   .gaz-list { display: flex; flex-direction: column; gap: 3px; max-height: 100%; overflow: auto; }
   .gaz-row {
     display: flex; align-items: center; gap: 5px; padding: 2px 6px;
-    border: 1px solid var(--border); border-radius: 3px; background: #000; font-size: 0.72rem;
+    border: 1px solid var(--border); border-radius: 3px; background: var(--field); font-size: 0.72rem;
   }
   .gaz-row:focus-within { border-color: var(--accent2); }
   .gaz-row.locked { opacity: 0.6; }
@@ -526,7 +535,7 @@
   .gaz-icon { width: 34px; flex-shrink: 0; text-align: center; padding: 1px 2px; }
   .gaz-menu {
     display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; padding: 7px;
-    border: 1px solid var(--border); border-radius: 4px; background: #0d0d0d;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--field);
   }
   .gaz-menu[hidden] { display: none; }
   .gaz-sub {
@@ -540,7 +549,7 @@
   /* ---------- brick builder ---------- */
   .bld-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-bottom: 7px; }
   .bld-type button { font-size: 0.9rem; padding: 2px 6px; line-height: 1.3; }
-  .bld-type button.active { border-color: var(--accent2); background: #051705; }
+  .bld-type button.active { border-color: var(--accent2); background: var(--tint); }
   .bld-status button.active[data-st="+"] { border-color: var(--accent); color: var(--accent); }
   .bld-status button.active[data-st="-"] { border-color: var(--draft); color: var(--draft); }
   .bld-field { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
@@ -554,17 +563,17 @@
   .uid-picker { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; max-height: 108px; overflow: auto; }
   .uid-picker button {
     font-size: 0.66rem; padding: 1px 6px; font-family: var(--mono);
-    border-color: #2c2c2c; opacity: 0.8;
+    border-color: var(--border-soft); opacity: 0.8;
   }
   .uid-picker button:hover { opacity: 1; }
-  .uid-picker button.on { border-color: var(--accent2); color: var(--accent2); background: #051705; opacity: 1; }
+  .uid-picker button.on { border-color: var(--accent2); color: var(--accent2); background: var(--tint); opacity: 1; }
   .uid-picker button.ghost { border-style: dotted; color: var(--ghost); border-color: var(--ghost); }
   .uid-picker .none { font-size: 0.65rem; opacity: 0.4; }
   /* The line the builder will actually write. Shown before it is committed, so
      the notation stays visible — the builder is a way into the text, not a
      replacement for reading it. */
   .bld-preview {
-    font-family: var(--mono); font-size: 11.5px; background: #000; border-radius: 3px;
+    font-family: var(--mono); font-size: 11.5px; background: var(--field); border-radius: 3px;
     padding: 6px 8px; margin: 8px 0 7px; word-break: break-all; line-height: 1.5;
     border-left: 3px solid var(--accent);
   }
@@ -579,7 +588,7 @@
   .bld-editing { font-size: 0.65rem; color: var(--accent2); margin-bottom: 6px; }
   /* Classification lines are clickable when the builder is available. */
   .ln { cursor: pointer; }
-  .ln:hover { outline: 1px solid #444; }
+  .ln:hover { outline: 1px solid var(--border-soft); }
   .ln.editing { outline: 1px solid var(--accent2); }
 
   /* ---------- map ---------- */
@@ -623,6 +632,85 @@
   .lbl-right  .map-marker-label { left: 15px; top: 50%; transform: translateY(-50%); }
   .lbl-left   .map-marker-label { right: 15px; top: 50%; transform: translateY(-50%); }
   .lbl-none   .map-marker-label { display: none; }
+  /*  Two places named by the same record, or by the same person, drawn as a
+      line between them. Dotted on purpose: this is inferred from the records,
+      not a surveyed route — nobody said anyone travelled it. Under the
+      markers, since the places are the figure and the link is the relation. */
+  .map-links {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 2; pointer-events: none; overflow: visible;
+  }
+  /* A record names both places outright, so it takes the verified colour the
+     rest of the page uses for a stated fact. */
+  .map-link { stroke: var(--accent); stroke-dasharray: 2 3; opacity: 0.55; }
+  /* Nobody stated this one — it is inferred through a shared person. So it
+     takes --draft, the same grey every unverified thing on this page wears,
+     rather than introducing a colour that means nothing anywhere else. */
+  .map-link.via { stroke: var(--draft); stroke-dasharray: 1.5 3.5; opacity: 0.5; }
+  #viz-map .maplibregl-marker { z-index: 3; }
+  /*  Which tiles are drawing. Small, in the corner, and only two options —
+      it is a choice you make once, not a toolbar. */
+  .map-source {
+    position: absolute; left: 6px; top: 6px; z-index: 4;
+    font: inherit; font-size: 0.62rem; color: #cfd6dc;
+    background: rgba(0,0,0,0.72); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 4px; cursor: pointer; max-width: 130px;
+  }
+  .map-source:focus { outline: none; border-color: var(--accent2); }
+  /* Greyed, not hidden: something is outranking it, and that should be visible. */
+  .map-source:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---------- theme ---------- */
+  .th-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+  .th-presets button { display: flex; align-items: center; gap: 5px; }
+  /* Each preset shows its own ground and both accents — you pick a theme by
+     looking at it, not by reading its name. */
+  .th-chip {
+    display: inline-flex; gap: 2px; align-items: center; justify-content: center;
+    width: 22px; height: 13px; border: 1px solid; border-radius: 2px;
+  }
+  .th-chip i { width: 4px; height: 4px; border-radius: 50%; }
+  /* A saved theme and its × read as one control, so they sit flush. */
+  .th-item { display: inline-flex; }
+  .th-item > button[data-theme] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .th-del {
+    border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    padding: 0 5px; opacity: 0.5; font-size: 0.8rem; line-height: 1;
+  }
+  .th-del:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
+  .th-presets input[type="text"] { min-width: 0; }
+  .th-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; }
+  .th-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; }
+  .th-row input[type="color"] {
+    width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+
+  /* ---------- map style ---------- */
+  #mapstyle .panel-body { display: flex; flex-direction: column; }
+  .ms-rows { display: flex; flex-direction: column; gap: 3px; }
+  /* Sized to survive a one-column tile, which is where this panel will
+     usually live: the name is the only part allowed to give up space. */
+  .ms-row { display: grid; grid-template-columns: auto auto minmax(46px, 1fr) 48px; align-items: center; gap: 6px; }
+  .ms-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-row input[type="color"] {
+    width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+  /* Controls, not data: green like every other affordance on the page. */
+  .ms-row input[type="range"] { width: 48px; accent-color: var(--accent2); }
+  .ms-row input[type="checkbox"] { accent-color: var(--accent2); cursor: pointer; }
+  .ms-name { font-size: 0.72rem; opacity: 0.8; }
+  .ms-bar { gap: 6px; margin-top: 9px; }
+  .ms-raw { margin-top: 8px; display: flex; flex-direction: column; }
+  .ms-raw[hidden] { display: none; }
+  .ms-text {
+    width: 100%; min-height: 150px; resize: vertical; font-family: var(--mono, monospace);
+    font-size: 0.66rem; line-height: 1.5; background: var(--field); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 4px; padding: 7px;
+  }
+  /* No :focus rule — the page already has one for every textarea, and a second
+     one here in a different colour is exactly the mismatch worth avoiding. */
   /* Deliberately tiny and non-interactive: a credit line, not a UI element. */
   .map-attrib {
     position: absolute; right: 4px; bottom: 3px; z-index: 2; pointer-events: none;
@@ -791,6 +879,37 @@
   </div>
   <p class="hint" data-el="summary" style="margin:0 0 7px"></p>
   <div class="gaz-list" data-el="list"></div>
+</template>
+
+<template id="tpl-theme">
+  <div class="th-presets" data-el="presets"></div>
+  <div class="ms-rows th-rows" data-el="rows"></div>
+  <div class="row ms-bar">
+    <input type="text" data-el="name" placeholder="save as…" spellcheck="false">
+    <button data-act="save" title="keep these colours under a name">Save</button>
+    <button data-act="reset" title="back to Night, the theme this page ships with">Reset</button>
+  </div>
+  <p class="hint" data-el="msg"></p>
+</template>
+
+<template id="tpl-mapstyle">
+  <div class="ms-rows" data-el="rows"></div>
+  <!-- Outside the fold: it explains why the controls above are greyed, so it
+       has to be visible when the style file editor is closed. -->
+  <p class="hint" data-el="msg"></p>
+  <div class="row ms-bar">
+    <button data-act="reset" title="back to the colours this page ships with">Reset</button>
+    <button data-act="edit" title="edit the style file these settings produce">Style file&hellip;</button>
+  </div>
+  <div class="ms-raw" data-el="raw" hidden>
+    <textarea class="ms-text" data-el="style" spellcheck="false"
+      placeholder="a MapLibre style file — version, sources, layers"></textarea>
+    <div class="row ms-bar">
+      <button data-act="apply">Apply</button>
+      <button data-act="current" title="load the style the map is drawing now">Current</button>
+      <button data-act="clear" title="drop the hand-edited file and go back to the settings above">Clear</button>
+    </div>
+  </div>
 </template>
 
 <template id="tpl-timeline">
@@ -1390,6 +1509,23 @@ const TEXT_KEY = "brick-by-brick:text:v1";
 const BOARD_KEY = "brick-by-brick:board:v2";
 const FOOTPRINT_KEY = "brick-by-brick:footprints:v2";
 const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
+const MAPSOURCE_KEY = "brick-by-brick:mapsource:v1";
+const THEME_KEY = "brick-by-brick:theme:v1";     // the one in use
+const THEMES_KEY = "brick-by-brick:themes:v1";   // the ones you saved
+const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
+const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
+
+// Which tiles the map draws. Remembered, because it is a preference about the
+// tool rather than anything about the pile — reopening should not silently
+// put you back on a basemap you already rejected.
+function saveMapSource(mode) {
+  try { localStorage.setItem(MAPSOURCE_KEY, mode); } catch (e) { /* unavailable */ }
+}
+function loadMapSource() {
+  let v;
+  try { v = localStorage.getItem(MAPSOURCE_KEY); } catch (e) { return null; }
+  return v === "custom" || v === "demo" ? v : null;
+}
 
 /*  The filter is not a separate database of categories. Every control it offers
     is read back out of the text you wrote: your '#' headings are the groupings
@@ -1588,6 +1724,17 @@ definePanel({ roles: ["write", "filter"], id: "gazetteer", title: "Gazetteer", t
   help: "Coordinates by uid, loaded from a gazetteer.csv rather than typed into every place brick. A place's own coordinates still override an entry here.",
   render(body) { renderGazetteerPanel(body); } });
 
+definePanel({ role: "read", id: "theme", title: "Theme", tpl: "tpl-theme", w: 1, h: 2,
+  help: "Four themes, or your own. Eight colours drive the whole page; the basemap keeps its own, in Map Style.",
+  render(body) { renderTheme(body); } });
+
+/*  Badged read: it changes how the map is drawn and nothing about the pile.
+    A brick means the same thing whatever colour the land is. */
+definePanel({ role: "read", id: "mapstyle", title: "Map Style", tpl: "tpl-mapstyle", w: 2, h: 2,
+  group: "Visualizations",
+  help: "A MapLibre style file. While one is applied it overrides the map's source dropdown; clear it to hand control back.",
+  render(body) { renderMapStyle(body); } });
+
 definePanel({ roles: ["read", "filter"], id: "timeline", title: "Timeline", tpl: "tpl-timeline", w: 2, h: 2,
   help: "Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn hollow. Hover a mark for the detail.",
   render(body) { renderTimeline(body); } });
@@ -1654,35 +1801,118 @@ function loadOnce(url, isCss) {
   return loadOnce.cache[key];
 }
 
+/*  The style is settings, and the settings are the style.
+
+    Each row is one layer of the basemap: its colour, whether it draws, and how
+    heavy its line is. The panel edits this object and the style is rebuilt
+    from it, so there is exactly one description of how the map looks — no
+    chance of a control saying one thing while the map draws another.
+
+    Ordered as they paint, bottom-up, which is also the order they are listed
+    in the panel: ocean, then land, then everything drawn on the land. */
+const MAP_LAYERS = [
+  { key: "ocean",  label: "Ocean",     type: "fill", def: "#0d1317" },
+  { key: "land",   label: "Land",      type: "fill", def: "#1b2126" },
+  { key: "lakes",  label: "Lakes",     type: "fill", def: "#132029" },
+  { key: "rivers", label: "Rivers",    type: "line", def: "#22303a", width: 1 },
+  { key: "admin1", label: "Regions",   type: "line", def: "#252d33", width: 0.5 },
+  { key: "admin0", label: "Countries", type: "line", def: "#2f383f", width: 0.8 },
+  { key: "coast",  label: "Coastline", type: "line", def: "#39434a", width: 1 },
+];
+
+function defaultMapSettings() {
+  const out = {};
+  for (const l of MAP_LAYERS) out[l.key] = { color: l.def, on: true, width: l.width || 1 };
+  return out;
+}
+let MAP_SETTINGS = defaultMapSettings();
+
+function loadMapSettings() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(MAPSTYLE_KEY) || "null"); } catch (e) { return; }
+  if (!raw || typeof raw !== "object") return;
+  // Read field by field: a settings file from an older version, or one with a
+  // key that no longer exists, must degrade to the default rather than
+  // handing MapLibre a colour it cannot parse.
+  for (const l of MAP_LAYERS) {
+    const s = raw[l.key];
+    if (!s || typeof s !== "object") continue;
+    if (/^#[0-9a-f]{6}$/i.test(s.color)) MAP_SETTINGS[l.key].color = s.color;
+    if (typeof s.on === "boolean") MAP_SETTINGS[l.key].on = s.on;
+    const w = Number(s.width);
+    if (w > 0 && w <= 8) MAP_SETTINGS[l.key].width = w;
+  }
+}
+function saveMapSettings() {
+  try { localStorage.setItem(MAPSTYLE_KEY, JSON.stringify(MAP_SETTINGS)); } catch (e) { /* unavailable */ }
+}
+
 /*  Dark, quiet, and matched to the panel it sits in. Land and ocean separate
     by value rather than hue so the points are the only saturated thing on the
     map -- the data should be the figure, the basemap the ground. */
-function basemapStyle() {
-  const OCEAN = "#0d1317", LAND = "#1b2126", COAST = "#39434a",
-        ADMIN0 = "#2f383f", ADMIN1 = "#252d33", LAKE = "#132029", RIVER = "#22303a";
+function basemapStyle(archive) {
+  const S = MAP_SETTINGS;
+  const vis = k => ({ visibility: S[k].on ? "visible" : "none" });
+  // A different archive, the same cartography — which is the whole point of
+  // pointing this at another .pmtiles: your design, someone else's extent.
+  const url = archive ? (/^pmtiles:/.test(archive) ? archive : "pmtiles://" + archive) : BASEMAP;
   return {
     version: 8,
     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-    sources: { basemap: { type: "vector", url: BASEMAP } },
+    sources: { basemap: { type: "vector", url } },
     layers: [
-      { id: "bg", type: "background", paint: { "background-color": OCEAN } },
+      { id: "bg", type: "background", paint: { "background-color": S.ocean.color } },
       { id: "ocean", type: "fill", source: "basemap", "source-layer": "ocean",
-        paint: { "fill-color": OCEAN } },
+        layout: vis("ocean"), paint: { "fill-color": S.ocean.color } },
       { id: "land", type: "fill", source: "basemap", "source-layer": "coastline_land",
-        paint: { "fill-color": LAND } },
+        layout: vis("land"), paint: { "fill-color": S.land.color } },
       { id: "lakes", type: "fill", source: "basemap", "source-layer": "ne_10m_lakes",
-        paint: { "fill-color": LAKE } },
+        layout: vis("lakes"), paint: { "fill-color": S.lakes.color } },
       { id: "rivers", type: "line", source: "basemap",
-        "source-layer": "ne_10m_rivers_lake_centerlines",
-        paint: { "line-color": RIVER, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.3, 9, 1.1] } },
+        "source-layer": "ne_10m_rivers_lake_centerlines", layout: vis("rivers"),
+        paint: { "line-color": S.rivers.color,
+                 "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.3 * S.rivers.width, 9, 1.1 * S.rivers.width] } },
       { id: "admin1", type: "line", source: "basemap", "source-layer": "admin1_land",
-        paint: { "line-color": ADMIN1, "line-width": 0.5 } },
+        layout: vis("admin1"), paint: { "line-color": S.admin1.color, "line-width": S.admin1.width } },
       { id: "admin0", type: "line", source: "basemap", "source-layer": "admin0_land",
-        paint: { "line-color": ADMIN0, "line-width": 0.8 } },
+        layout: vis("admin0"), paint: { "line-color": S.admin0.color, "line-width": S.admin0.width } },
       { id: "coast", type: "line", source: "basemap", "source-layer": "coastline_land",
-        paint: { "line-color": COAST, "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4, 9, 1.2] } },
+        layout: vis("coast"),
+        paint: { "line-color": S.coast.color,
+                 "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4 * S.coast.width, 9, 1.2 * S.coast.width] } },
     ],
   };
+}
+
+/*  The escape hatch: a hand-edited style file.
+
+    The controls cover the seven layers this basemap has. When you want
+    something they cannot express, edit the style file itself and apply it —
+    it then outranks both the controls and the source dropdown until cleared.
+    It is an ordinary MapLibre style, the same JSON you would put in a
+    style.json, and the editor starts from whatever the map is drawing now. */
+let MAP_STYLE_OVERRIDE = "";
+
+function loadStyleOverride() {
+  try { MAP_STYLE_OVERRIDE = localStorage.getItem(MAPOVERRIDE_KEY) || ""; }
+  catch (e) { MAP_STYLE_OVERRIDE = ""; }
+}
+function saveStyleOverride() {
+  try {
+    if (MAP_STYLE_OVERRIDE) localStorage.setItem(MAPOVERRIDE_KEY, MAP_STYLE_OVERRIDE);
+    else localStorage.removeItem(MAPOVERRIDE_KEY);
+  } catch (e) { /* unavailable */ }
+}
+/*  The parsed style, or null when there is nothing usable. Null is the signal
+    to fall back to the dropdown's choice — a style file with a typo in it must
+    never leave the map with nothing to draw. */
+function overrideStyle() {
+  const v = MAP_STYLE_OVERRIDE.trim();
+  if (!v) return null;
+  try {
+    const s = JSON.parse(v);
+    return s && typeof s === "object" && Array.isArray(s.layers) ? s : null;
+  } catch (e) { return null; }
 }
 
 // Places in the current view that can actually be drawn.
@@ -1701,6 +1931,70 @@ function placeFeatures(model) {
   }));
 }
 
+/*  Which places are connected, and why.
+
+    Two readings of "referenced together", both drawn:
+
+    1. Direct — one record names both places. Rare in this corpus but the
+       strongest claim, because the author wrote it down.
+    2. Through a person — a census in one parish and a marriage in another,
+       naming the same man. No single brick says these two places are related;
+       the pile does, and that is the whole point of the notation.
+
+    Undirected: a line between two parishes has no arrow, since the records
+    give an association, never a direction of travel. Pairs are keyed on the
+    sorted slugs so A-B and B-A are one line carrying a weight, not two lines
+    overdrawn.
+
+    Only places that can be drawn take part — an ungeocoded place is silently
+    not a node here, exactly as it is silently not a marker. */
+function placeLinks(model) {
+  const coord = new Map();
+  for (const p of model.places || []) {
+    if (p.coords) coord.set(p.slug, [p.coords.lng, p.coords.lat]);
+  }
+  if (coord.size < 2) return [];
+
+  const pairs = new Map();
+  const add = (a, b, via) => {
+    if (a === b) return;
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    const key = lo + "|" + hi;
+    let e = pairs.get(key);
+    if (!e) pairs.set(key, e = { a: lo, b: hi, via: new Set(), weight: 0, direct: false });
+    e.weight++;
+    if (via) e.via.add(via); else e.direct = true;
+  };
+
+  const reach = new Map();   // non-place uid -> places it is named alongside
+  for (const b of model.records || []) {
+    if (!b.valid) continue;
+    const named = [b.alias ? b.alias.slug : null, ...b.links].filter(Boolean);
+    const here = named.filter(s => coord.has(s));
+    if (!here.length) continue;
+    for (let i = 0; i < here.length; i++) {
+      for (let j = i + 1; j < here.length; j++) add(here[i], here[j], null);
+    }
+    for (const other of named) {
+      if (coord.has(other)) continue;
+      let set = reach.get(other);
+      if (!set) reach.set(other, set = new Set());
+      for (const p of here) set.add(p);
+    }
+  }
+  for (const [who, set] of reach) {
+    const list = [...set];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) add(list[i], list[j], who);
+    }
+  }
+
+  return [...pairs.values()].map(e => ({
+    a: e.a, b: e.b, weight: e.weight, direct: e.direct, via: [...e.via],
+    from: coord.get(e.a), to: coord.get(e.b),
+  }));
+}
+
 function renderMap(model, host) {
   const fc = { type: "FeatureCollection", features: placeFeatures(model) };
 
@@ -1716,7 +2010,10 @@ function renderMap(model, host) {
 
   host.innerHTML = '<div class="map-shell">' +
       '<div class="map-canvas"></div>' +
-
+      '<select class="map-source">' +
+        '<option value="custom">My tiles</option>' +
+        '<option value="demo">MapLibre</option>' +
+      "</select>" +
       '<div class="map-note">loading basemap…</div>' +
       '<div class="map-attrib"></div>' +
     "</div>";
@@ -1739,9 +2036,15 @@ function renderMap(model, host) {
         window.maplibregl.addProtocol("pmtiles", protocol.tile);
         window.__pmtilesReady = true;
       }
+      // Your last choice wins, and only falls back to the context guess when
+      // you have never made one. Decided BEFORE the map is built so a
+      // remembered preference is the first style loaded, not a second one
+      // swapped in a frame later.
+      const startMode = loadMapSource() || (hosted ? "custom" : "demo");
       const map = new window.maplibregl.Map({
         container: canvas,
-        style: hosted ? basemapStyle() : DEMO_STYLE,
+        // An applied override is what draws, from the first frame.
+        style: overrideStyle() || (startMode === "demo" ? DEMO_STYLE : basemapStyle()),
         center: [-3.4, 56.4],
         zoom: 7,
         attributionControl: false,
@@ -1775,13 +2078,53 @@ function renderMap(model, host) {
           setStyle untouched, needs no source, no tiling and no style to be
           loaded, and appears the instant it is added. For a few dozen places
           that is strictly better, and it removes the whole class of bug. */
-      let placesReady = true;
       host._markers = [];
       // Declared ABOVE syncMarkers, which reads it — a `let` further down would
       // work on the first call and throw on every one after.
       // The default a place falls back to; per-place overrides live in the
       // Gazetteer, which is where the rest of a place's display settings are.
       const labelPlacement = "bottom";
+
+      /*  Connections as an SVG overlay, projected from lng/lat — the same
+          decision as the DOM markers, for the same reason. A GeoJSON line
+          layer is wiped by every setStyle and can silently fail to tile; an
+          SVG line cannot fail to draw, and re-projecting on move keeps it
+          registered with the basemap under it.
+
+          Declared ABOVE syncMarkers because syncMarkers calls it, and it runs
+          once immediately — a const further down would throw on the first
+          call and work on every one after, which is the worst kind of bug. */
+      const linkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      linkSvg.setAttribute("class", "map-links");
+      canvas.appendChild(linkSvg);
+      let linkLines = [];
+
+      const drawLinks = () => {
+        for (const l of linkLines) {
+          const p = map.project(l.from), q = map.project(l.to);
+          l.el.setAttribute("x1", p.x); l.el.setAttribute("y1", p.y);
+          l.el.setAttribute("x2", q.x); l.el.setAttribute("y2", q.y);
+        }
+      };
+      const buildLinks = () => {
+        const links = placeLinks(V());
+        linkSvg.textContent = "";
+        linkLines = links.map(l => {
+          const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          // Direct beats inferred: if any record names both places outright,
+          // the line is drawn as the stronger of the two claims.
+          ln.setAttribute("class", "map-link" + (l.direct ? "" : " via"));
+          // Weight is how many records assert the pair, so a well-evidenced
+          // connection is heavier — capped, or one busy pair drowns the rest.
+          ln.setAttribute("stroke-width", Math.min(2.2, 0.7 + l.weight * 0.2).toFixed(2));
+          linkSvg.appendChild(ln);
+          return { el: ln, from: l.from, to: l.to };
+        });
+        drawLinks();
+        return linkLines.length;
+      };
+      map.on("move", drawLinks);
+      map.on("resize", drawLinks);
 
       const syncMarkers = () => {
         const feats = placeFeatures(V());
@@ -1808,6 +2151,9 @@ function renderMap(model, host) {
               .addTo(map)
           );
         }
+        // Same trigger as the markers: what is connected is a fact about the
+        // filtered view, so it is recomputed whenever the markers are.
+        buildLinks();
         updateMapCount(host, feats.length, V());
         return feats.length;
       };
@@ -1818,13 +2164,6 @@ function renderMap(model, host) {
       // Markers survive a style swap, so this only refreshes the count/note.
       map.on("style.load", () => { if (!usingFallback) note.hidden = true; });
 
-      /*  tiles.mbricknell.com currently sends no CORS header at all, so the
-          custom basemap fails from any origin, including the real hosted site
-          -- not just this environment. "auto" is the self-healing default:
-          try the custom tiles, and on the first failure swap to MapLibre's
-          public style automatically. "custom"/"demo" are explicit choices
-          from the dropdown -- once you have picked one, an error there is
-          just reported, never silently overridden again. */
       /*  Credit belongs to whatever is actually drawing, not to the map widget.
           Natural Earth is public domain and asks for nothing; the demo style
           carries OpenStreetMap data, which is ODbL and does require credit.
@@ -1839,38 +2178,70 @@ function renderMap(model, host) {
         demo: "© OpenStreetMap contributors",
       };
       const showAttrib = () => {
-        const text = ATTRIB[usingFallback ? "demo" : "custom"] || "";
+        // Your own style file is yours to credit — this page will not invent
+        // an attribution for tiles it knows nothing about.
+        const text = overrideStyle() ? "" : (ATTRIB[usingFallback ? "demo" : "custom"] || "");
         attribEl.textContent = text;
         attribEl.hidden = !text;
       };
 
-      let sourceMode = hosted ? "auto" : "demo";
-      let usingFallback = !hosted;   // true once DEMO_STYLE is what's actually showing
+      /*  Two sources, and the dropdown always names the one actually drawing.
+          There is no third "auto" mode to pick: falling back when the tiles do
+          not answer is behaviour, not a choice you should have to make. */
+      let usingFallback = startMode === "demo";   // true when DEMO_STYLE is what's actually showing
+
+      const sourceSel = host.querySelector(".map-source");
+
+      /*  One place decides what the map draws: a hand-edited style file if
+          there is one, otherwise the settings applied to whichever source the
+          dropdown names. The dropdown greys out while overridden rather than
+          vanishing, so it is clear the choice still exists and something is
+          currently outranking it. */
+      const applyStyle = ({ silent } = {}) => {
+        const ov = overrideStyle();
+        if (!silent) note.hidden = true;
+        map.setStyle(ov || (usingFallback ? DEMO_STYLE : basemapStyle()));
+        sourceSel.disabled = !!ov;
+        showAttrib();
+      };
+      host._applyStyle = applyStyle;
 
       function setSource(mode, { silent } = {}) {
-        sourceMode = mode;
         usingFallback = mode === "demo";
-        if (!silent) note.hidden = true;
-        map.setStyle(mode === "demo" ? DEMO_STYLE : basemapStyle());
-        showAttrib();
+        applyStyle({ silent });
       }
 
+      sourceSel.value = startMode;
+      sourceSel.disabled = !!overrideStyle();
+      sourceSel.onchange = () => { setSource(sourceSel.value); saveMapSource(sourceSel.value); };
       showAttrib();
 
       map.on("error", ev => {
         const msg = (ev && ev.error && ev.error.message) || "unknown";
-        if (sourceMode === "auto" && !usingFallback && !placesReady) {
+        /*  The tiles did not answer, so show something rather than markers
+            floating on nothing. The dropdown moves to MapLibre with it — the
+            control has to say what is on screen, or the next thing you do is
+            wonder why "My tiles" looks like OpenStreetMap.
+
+            This used to require a `placesReady` flag that was set true and
+            never cleared, so the fallback the whole design rests on could not
+            fire at all. */
+        // An applied style file is your decision; a tile error inside it gets
+        // reported, never quietly replaced with something you did not ask for.
+        if (!usingFallback && !overrideStyle()) {
           usingFallback = true;
           map.setStyle(DEMO_STYLE);
+          sourceSel.value = "demo";
           showAttrib();
           note.hidden = false;
-          note.textContent = "Using the default MapLibre basemap — tiles.mbricknell.com did not respond.";
+          note.textContent = "tiles.mbricknell.com did not respond — showing MapLibre's basemap.";
           return;
         }
-        if (usingFallback) return;   // already on the fallback; a further tile error there is not worth reporting
+        // Already on MapLibre's own tiles and they are failing too: that is the
+        // connection, not the basemap, and there is nowhere further to fall.
         note.hidden = false;
         note.textContent = /fetch/i.test(msg)
-          ? "Could not reach tiles.mbricknell.com — check the connection."
+          ? "Could not reach the tile server — check the connection."
           : "map error: " + msg;
       });
 
@@ -1911,6 +2282,361 @@ function updateMapCount(host, shown, model) {
   note.textContent = total
     ? "No places in view — the filter is hiding all " + total + "."
     : "No place bricks carry coordinates yet.";
+}
+
+/* --------------------------------------------------------------------------
+   THEMES
+   --------------------------------------------------------------------------
+   Eight colours and a light/dark flag. Everything else on the page is written
+   in terms of these, and the "on" washes are mixed from --accent/--accent2 at
+   render time, so a theme never has to name a tint and never has one drift out
+   of step with the colour it belongs to.
+
+   `color-scheme` is not decoration: without it the browser paints native
+   controls — checkboxes, sliders, scrollbars, the colour picker itself — for
+   the wrong side, which is what made the Brick Builder fields white.
+
+   Not covered here: the basemap. Its colours are cartography, not chrome, and
+   they live in the Map Style panel where they belong.
+   -------------------------------------------------------------------------- */
+const THEME_TOKENS = [
+  { key: "bg",      label: "Ground" },
+  { key: "panel",   label: "Panel" },
+  { key: "field",   label: "Field" },
+  { key: "fg",      label: "Text" },
+  { key: "border",  label: "Border" },
+  { key: "accent",  label: "Verified" },
+  { key: "accent2", label: "Controls" },
+  { key: "draft",   label: "Draft" },
+];
+
+const THEMES = [
+  { id: "night", name: "Night", scheme: "dark", tokens: {
+      bg: "#111111", panel: "#1a1a1a", field: "#0d0d0d", fg: "#eeeeee",
+      border: "#333333", accent: "#ff5500", accent2: "#33ff33", draft: "#7a8a99" } },
+  { id: "paper", name: "Paper", scheme: "light", tokens: {
+      bg: "#efece4", panel: "#faf8f3", field: "#ffffff", fg: "#22201d",
+      border: "#d3ccbe", accent: "#c2410c", accent2: "#15803d", draft: "#8b857b" } },
+  { id: "blueprint", name: "Blueprint", scheme: "dark", tokens: {
+      bg: "#0a1c33", panel: "#102844", field: "#08172a", fg: "#dce9fb",
+      border: "#1e3d66", accent: "#ffb703", accent2: "#7fdbff", draft: "#6f8bb0" } },
+  { id: "sepia", name: "Sepia", scheme: "light", tokens: {
+      bg: "#e8dcc4", panel: "#f4ecd9", field: "#fdf8ec", fg: "#3b2f21",
+      border: "#c9b895", accent: "#9a3412", accent2: "#4d7c0f", draft: "#8a7a60" } },
+];
+
+/*  Themes you have saved. Kept apart from the built-in four: those are code
+    and improve when the code does, these are yours and must never be rewritten
+    by a later version of this page. */
+let SAVED_THEMES = [];
+
+let THEME_ID = "night";
+let THEME = Object.assign({}, THEMES[0].tokens);
+
+// Saved themes answer to the same lookup as the built-in ones, so everything
+// downstream — applying, marking the active one, restoring on load — is
+// written once and does not care where a theme came from.
+function themeById(id) {
+  return THEMES.find(t => t.id === id) || SAVED_THEMES.find(t => t.id === id) || null;
+}
+
+function loadSavedThemes() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(THEMES_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  SAVED_THEMES = raw
+    .filter(t => t && t.name && t.tokens && !THEMES.some(b => b.id === t.id))
+    .map(t => {
+      const tokens = Object.assign({}, THEMES[0].tokens);
+      for (const k of THEME_TOKENS) {
+        if (/^#[0-9a-f]{6}$/i.test(t.tokens[k.key])) tokens[k.key] = t.tokens[k.key];
+      }
+      return { id: String(t.id), name: String(t.name), saved: true,
+               scheme: isLight(tokens.bg) ? "light" : "dark", tokens };
+    });
+}
+function saveSavedThemes() {
+  try { localStorage.setItem(THEMES_KEY, JSON.stringify(SAVED_THEMES)); }
+  catch (e) { /* unavailable */ }
+}
+
+/*  Written as inline properties on <html>, which outrank the :root block in
+    the stylesheet. That keeps the stylesheet as the honest default — open the
+    file with an empty localStorage and you get Night, exactly as written. */
+function applyTheme() {
+  const root = document.documentElement;
+  for (const t of THEME_TOKENS) root.style.setProperty("--" + t.key, THEME[t.key]);
+  const preset = themeById(THEME_ID);
+  root.style.colorScheme = preset ? preset.scheme : (isLight(THEME.bg) ? "light" : "dark");
+}
+
+// Perceived lightness, so a custom ground picks its own light/dark side rather
+// than making you tell it. sRGB luma is close enough for a yes/no.
+function isLight(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 140;
+}
+
+function saveTheme() {
+  try { localStorage.setItem(THEME_KEY, JSON.stringify({ id: THEME_ID, tokens: THEME })); }
+  catch (e) { /* unavailable */ }
+}
+function loadTheme() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(THEME_KEY) || "null"); } catch (e) { return; }
+  if (!raw || typeof raw !== "object") return;
+  const preset = themeById(raw.id);
+  // A named preset is re-read from the code, not from storage: editing a
+  // preset here should reach anyone who picked it, rather than being frozen at
+  // whatever it looked like the day they chose it.
+  if (preset && raw.id !== "custom") {
+    THEME_ID = preset.id;
+    THEME = Object.assign({}, preset.tokens);
+    return;
+  }
+  if (raw.tokens && typeof raw.tokens === "object") {
+    THEME_ID = "custom";
+    for (const t of THEME_TOKENS) {
+      const v = raw.tokens[t.key];
+      if (/^#[0-9a-f]{6}$/i.test(v)) THEME[t.key] = v;
+    }
+  }
+}
+
+function renderTheme(body) {
+  const presets = body.querySelector('[data-el="presets"]');
+  const rows = body.querySelector('[data-el="rows"]');
+  const msg = body.querySelector('[data-el="msg"]');
+
+  const name = body.querySelector('[data-el="name"]');
+
+  const chip = t =>
+    '<span class="th-chip" style="background:' + t.tokens.bg +
+      ';border-color:' + t.tokens.border + '">' +
+      '<i style="background:' + t.tokens.accent + '"></i>' +
+      '<i style="background:' + t.tokens.accent2 + '"></i>' +
+    "</span>";
+
+  // Saved themes sit in the same strip as the built-in ones, and carry a ×
+  // because they are the only ones you can delete.
+  const renderPresets = () => {
+    presets.innerHTML =
+      THEMES.map(t => '<button data-theme="' + t.id + '">' + chip(t) + esc(t.name) + "</button>").join("") +
+      SAVED_THEMES.map(t =>
+        '<span class="th-item">' +
+          '<button data-theme="' + esc(t.id) + '">' + chip(t) + esc(t.name) + "</button>" +
+          '<button class="th-del" data-del="' + esc(t.id) + '">&times;</button>' +
+        "</span>").join("");
+  };
+
+  const paint = () => {
+    presets.querySelectorAll("button[data-theme]").forEach(b => {
+      b.classList.toggle("on", b.dataset.theme === THEME_ID);
+    });
+    rows.querySelectorAll('input[type="color"]').forEach(i => { i.value = THEME[i.dataset.k]; });
+    const cur = themeById(THEME_ID);
+    msg.textContent = cur
+      ? cur.name + " — edit any swatch to make it yours."
+      : "Unsaved — give it a name to keep it.";
+  };
+
+  if (body._wired) { renderPresets(); paint(); return; }
+  body._wired = true;
+
+  renderPresets();
+
+  rows.innerHTML = THEME_TOKENS.map(t =>
+    '<div class="th-row">' +
+      '<input type="color" data-k="' + t.key + '" value="' + THEME[t.key] + '">' +
+      '<span class="ms-name">' + esc(t.label) + "</span>" +
+    "</div>").join("");
+
+  presets.addEventListener("click", e => {
+    const del = e.target.closest("button[data-del]");
+    if (del) {
+      SAVED_THEMES = SAVED_THEMES.filter(t => t.id !== del.dataset.del);
+      saveSavedThemes();
+      // Deleting the theme you are wearing leaves the colours on screen
+      // untouched — they simply stop having a name. Nothing should change
+      // appearance because you tidied a list.
+      if (THEME_ID === del.dataset.del) { THEME_ID = "custom"; saveTheme(); }
+      renderPresets(); paint();
+      return;
+    }
+    const b = e.target.closest("button[data-theme]");
+    if (!b) return;
+    const preset = themeById(b.dataset.theme);
+    if (!preset) return;
+    THEME_ID = preset.id;
+    THEME = Object.assign({}, preset.tokens);
+    applyTheme(); saveTheme(); paint();
+  });
+
+  // Editing any swatch makes it yours — the preset it started from is a
+  // starting point, not a thing you have to leave first.
+  rows.addEventListener("input", e => {
+    const i = e.target.closest('input[type="color"]');
+    if (!i) return;
+    THEME[i.dataset.k] = i.value;
+    THEME_ID = "custom";
+    applyTheme(); saveTheme(); paint();
+  });
+
+  const doSave = () => {
+    const label = name.value.trim();
+    if (!label) { msg.textContent = "Give it a name first."; name.focus(); return; }
+    if (THEMES.some(t => t.name.toLowerCase() === label.toLowerCase())) {
+      msg.textContent = "“" + label + "” is one of the built-in four — pick another name.";
+      return;
+    }
+    /*  Saving the same name twice updates that theme rather than making a
+        second one with the same label, the same rule the Gazetteer's Add row
+        follows. A list where two rows read alike and behave differently is
+        worse than no list. */
+    const existing = SAVED_THEMES.find(t => t.name.toLowerCase() === label.toLowerCase());
+    const tokens = Object.assign({}, THEME);
+    if (existing) {
+      existing.tokens = tokens;
+      existing.scheme = isLight(tokens.bg) ? "light" : "dark";
+      THEME_ID = existing.id;
+    } else {
+      const id = "saved-" + Date.now().toString(36);
+      SAVED_THEMES.push({ id, name: label, saved: true,
+                          scheme: isLight(tokens.bg) ? "light" : "dark", tokens });
+      THEME_ID = id;
+    }
+    saveSavedThemes(); saveTheme();
+    name.value = "";
+    renderPresets(); paint();
+  };
+
+  body.querySelector('button[data-act="save"]').onclick = doSave;
+  name.addEventListener("keydown", e => { if (e.key === "Enter") doSave(); });
+
+  body.querySelector('button[data-act="reset"]').onclick = () => {
+    THEME_ID = "night";
+    THEME = Object.assign({}, THEMES[0].tokens);
+    applyTheme(); saveTheme(); paint();
+  };
+
+  paint();
+}
+
+/* ---------- map style override ---------- */
+// The map slot owns its element, so the style panel reaches it the same way
+// anything else does: through the panel body, not through a global map object.
+function mapHost() {
+  const n = document.getElementById("viz-map");
+  return n ? n.querySelector(".panel-body") : null;
+}
+function currentMapStyle() {
+  const host = mapHost();
+  if (host && host._map) {
+    try { return host._map.getStyle(); } catch (e) { /* not loaded yet */ }
+  }
+  return basemapStyle();
+}
+function applyMapStyle() {
+  const host = mapHost();
+  if (host && host._applyStyle) host._applyStyle();
+}
+
+function renderMapStyle(body) {
+  const rows = body.querySelector('[data-el="rows"]');
+  const raw = body.querySelector('[data-el="raw"]');
+  const ta = body.querySelector('[data-el="style"]');
+  const msg = body.querySelector('[data-el="msg"]');
+  const say = (text, bad) => { msg.textContent = text; msg.style.color = bad ? "var(--bad)" : ""; };
+  const status = () => {
+    if (!MAP_STYLE_OVERRIDE.trim()) say("No style file applied — the settings above are what draws.");
+    else if (!overrideStyle()) say("Stored, but not valid style JSON — the map is ignoring it.", true);
+    else say("This file is drawing, and outranks the settings above.");
+  };
+  // The controls always work and always save. They describe your basemap, so
+  // what they change is visible whenever your basemap is the one drawing.
+  const syncEnabled = status;
+
+  // Wired once: re-rendering must never overwrite a colour you are dragging or
+  // a style file you are half way through editing.
+  if (body._wired) { syncEnabled(); return; }
+  body._wired = true;
+
+  rows.innerHTML = MAP_LAYERS.map(l => {
+    const s = MAP_SETTINGS[l.key];
+    return '<div class="ms-row" data-key="' + l.key + '">' +
+        '<input type="checkbox" data-f="on"' + (s.on ? " checked" : "") + ">" +
+        '<input type="color" data-f="color" value="' + esc(s.color) + '">' +
+        '<span class="ms-name">' + esc(l.label) + "</span>" +
+        (l.type === "line"
+          ? '<input type="range" data-f="width" min="0.25" max="4" step="0.25" value="' + s.width + '">'
+          : '<span class="ms-gap"></span>') +
+      "</div>";
+  }).join("");
+
+  // 'input', not 'change': a colour picker and a slider are both things you
+  // drag, and watching the map follow the drag is the entire point of having
+  // controls rather than a text field.
+  rows.addEventListener("input", e => {
+    const row = e.target.closest(".ms-row");
+    if (!row) return;
+    const s = MAP_SETTINGS[row.dataset.key];
+    const f = e.target.dataset.f;
+    if (f === "on") s.on = e.target.checked;
+    else if (f === "color") s.color = e.target.value;
+    else if (f === "width") s.width = Number(e.target.value);
+    saveMapSettings();
+    applyMapStyle();
+  });
+
+  ta.value = MAP_STYLE_OVERRIDE || JSON.stringify(currentMapStyle(), null, 2);
+  status();
+  syncEnabled();
+
+  body.querySelectorAll("button[data-act]").forEach(b => {
+    b.onclick = () => {
+      const act = b.dataset.act;
+      if (act === "reset") {
+        MAP_SETTINGS = defaultMapSettings();
+        saveMapSettings();
+        rows.querySelectorAll(".ms-row").forEach(r => {
+          const s = MAP_SETTINGS[r.dataset.key];
+          const set = (f, v) => { const i = r.querySelector('[data-f="' + f + '"]'); if (i) i.value = v; };
+          r.querySelector('[data-f="on"]').checked = s.on;
+          set("color", s.color); set("width", s.width);
+        });
+        applyMapStyle();
+      } else if (act === "edit") {
+        raw.hidden = !raw.hidden;
+        b.classList.toggle("on", !raw.hidden);
+        // Opening it on the current style means "edit what you see", never a
+        // stale copy from whenever the panel was last drawn.
+        if (!raw.hidden && !MAP_STYLE_OVERRIDE.trim()) {
+          ta.value = JSON.stringify(currentMapStyle(), null, 2);
+        }
+      } else if (act === "apply") {
+        const trial = ta.value.trim();
+        let ok = false;
+        try { const s = JSON.parse(trial); ok = !!s && Array.isArray(s.layers); }
+        catch (e) { ok = false; }
+        // Rejected before it is stored, so a typo cannot leave the map holding
+        // a style it will refuse to draw.
+        if (!ok) return say("Not applied — that is not a MapLibre style file (it needs at least version, sources and layers).", true);
+        MAP_STYLE_OVERRIDE = trial;
+        saveStyleOverride(); applyMapStyle(); status(); syncEnabled();
+      } else if (act === "current") {
+        ta.value = JSON.stringify(currentMapStyle(), null, 2);
+        say("Loaded the style the map is drawing — edit it, then Apply.");
+      } else if (act === "clear") {
+        MAP_STYLE_OVERRIDE = "";
+        saveStyleOverride(); applyMapStyle();
+        ta.value = JSON.stringify(currentMapStyle(), null, 2);
+        status(); syncEnabled();
+      }
+    };
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -4534,7 +5260,17 @@ state.text = savedText !== null ? savedText : SAMPLE;
 // Must precede the first buildModel: a place takes its coordinates from the
 // gazetteer at build time, so restoring afterwards would leave every place
 // ungeocoded until some later edit happened to trigger a rebuild.
+// First of all: the page should never paint in one theme and then flip.
+// Saved themes first, or restoring one by id finds nothing to restore.
+loadSavedThemes();
+loadTheme();
+applyTheme();
+
 loadGazetteer();
+// Both before the map can start: the style it opens with should be the one you
+// left it on, not the default swapped a moment later.
+loadMapSettings();
+loadStyleOverride();
 
 state.model = buildModel(parse(state.text));
 state.model.view = buildView(state.model);
