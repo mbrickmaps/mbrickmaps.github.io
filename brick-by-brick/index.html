@@ -531,7 +531,8 @@
   }
   .gaz-row input[type=number]:disabled { opacity: 0.5; cursor: not-allowed; }
   .gaz-static { font-size: 0.64rem; opacity: 0.6; font-family: var(--mono); flex-shrink: 0; }
-  .gaz-label { flex-shrink: 0; font-size: 0.64rem; padding: 1px 2px; max-width: 74px; }
+  /* Wide enough for "bottom right" — the longest of the nine choices. */
+  .gaz-label { flex-shrink: 0; font-size: 0.64rem; padding: 1px 2px; max-width: 92px; }
   .gaz-icon { width: 34px; flex-shrink: 0; text-align: center; padding: 1px 2px; }
   .gaz-menu {
     display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; padding: 7px;
@@ -605,33 +606,69 @@
   /* A marker is a plain DOM element the map positions — no source, no tiling,
      no style dependency, and it survives a basemap switch untouched. */
   .map-marker {
-    width: 11px; height: 11px; border-radius: 50%;
-    background: var(--draft); border: 1.5px solid #0d1317;
+    width: var(--mk); height: var(--mk); border-radius: 50%;
+    background: var(--fill, var(--draft)); border: 1.5px solid #0d1317;
     box-shadow: 0 0 0 1px rgba(0,0,0,0.5); cursor: pointer; position: relative;
+    /* Fill is the kind, so status has to be carried by something else. Weight
+       is the natural second channel: a draft mark is simply fainter, which
+       survives greyscale and colour-blind viewing the way a second hue does
+       not. */
+    opacity: 0.62;
   }
-  .map-marker.verified { background: var(--accent); }
+  .map-marker.verified { opacity: 1; }
   /*  An icon marker drops the dot's own shape entirely and draws the glyph, so
       the emoji is the mark rather than sitting on top of a circle. Status can
       no longer be read from fill, so a coloured ring carries it instead. */
   .map-marker.as-icon {
     width: auto; height: auto; background: none; border: none; box-shadow: none;
-    font-size: 15px; line-height: 1; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
+    /* A glyph reads smaller than a filled disc of the same measure, so it is
+       set a little larger than the dot it replaces. */
+    font-size: calc(var(--mk) * 1.4); line-height: 1;
+    text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
     display: flex; align-items: center; justify-content: center;
     transform: translateY(-2px);
   }
   .map-marker.as-icon::before { content: attr(data-glyph); }
-  .map-marker.as-icon.verified { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 50%; }
+  /* An emoji has its own colours, so the kind's colour rings it instead. */
+  .map-marker.as-icon.verified { outline: 2px solid var(--fill, var(--accent)); outline-offset: 2px; border-radius: 50%; }
   .map-marker-label {
     position: absolute; font-size: 10px; line-height: 1.2; white-space: nowrap;
     color: #cfd6dc; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317; pointer-events: none;
   }
-  .lbl-bottom .map-marker-label { left: 50%; top: 13px; transform: translateX(-50%); }
-  .as-icon.lbl-bottom .map-marker-label { top: 17px; }
-  .as-icon.lbl-top .map-marker-label { bottom: 17px; }
-  .lbl-top    .map-marker-label { left: 50%; bottom: 13px; transform: translateX(-50%); }
-  .lbl-right  .map-marker-label { left: 15px; top: 50%; transform: translateY(-50%); }
-  .lbl-left   .map-marker-label { right: 15px; top: 50%; transform: translateY(-50%); }
+  /*  The eight compass positions, plus hidden. Cardinals centre on the dot;
+      the diagonals are offset on both axes and, crucially, are NOT centred —
+      a corner label reads outward from the dot, so it is anchored by the
+      corner nearest the mark rather than by its middle. */
+  /*  Every offset is derived from one number, --lbl, so the whole sheet's
+      label spacing moves together from a single control. The constants that
+      remain are the RELATIONSHIPS between placements, not the distance:
+      a side label needs a touch more room than a stacked one, a corner label
+      needs a touch less because it clears the mark diagonally, and an emoji
+      mark is bigger than a dot so everything steps out around it. */
+  /*  --lbl is the gap from the EDGE of the mark, not from its centre, so
+      growing the marker pushes its name out with it and the spacing you set
+      stays the spacing you see. --r is just the mark's radius, named once. */
+  .map-shell { --mk: 11px; --lbl: 8px; --r: calc(var(--mk) / 2); }
+  .lbl-bottom .map-marker-label { left: 50%; top: calc(var(--r) + var(--lbl)); transform: translateX(-50%); }
+  .lbl-top    .map-marker-label { left: 50%; bottom: calc(var(--r) + var(--lbl)); transform: translateX(-50%); }
+  .lbl-right  .map-marker-label { left: calc(var(--r) + var(--lbl) + 2px);  top: 50%; transform: translateY(-50%); }
+  .lbl-left   .map-marker-label { right: calc(var(--r) + var(--lbl) + 2px); top: 50%; transform: translateY(-50%); }
+  .lbl-topright    .map-marker-label { left: calc(var(--r) + var(--lbl) - 3px);  bottom: calc(var(--r) + var(--lbl) - 4px); }
+  .lbl-topleft     .map-marker-label { right: calc(var(--r) + var(--lbl) - 3px); bottom: calc(var(--r) + var(--lbl) - 4px); }
+  .lbl-bottomright .map-marker-label { left: calc(var(--r) + var(--lbl) - 3px);  top: calc(var(--r) + var(--lbl) - 4px); }
+  .lbl-bottomleft  .map-marker-label { right: calc(var(--r) + var(--lbl) - 3px); top: calc(var(--r) + var(--lbl) - 4px); }
+  /* An emoji is set larger than the dot, so its name clears a wider mark. */
+  .as-icon.lbl-bottom .map-marker-label { top: calc(var(--r) + var(--lbl) + 4px); }
+  .as-icon.lbl-top    .map-marker-label { bottom: calc(var(--r) + var(--lbl) + 4px); }
+  .as-icon.lbl-right  .map-marker-label { left: calc(var(--r) + var(--lbl) + 5px); }
+  .as-icon.lbl-left   .map-marker-label { right: calc(var(--r) + var(--lbl) + 5px); }
+  .as-icon.lbl-topright    .map-marker-label { left: calc(var(--r) + var(--lbl) + 1px);  bottom: calc(var(--r) + var(--lbl)); }
+  .as-icon.lbl-topleft     .map-marker-label { right: calc(var(--r) + var(--lbl) + 1px); bottom: calc(var(--r) + var(--lbl)); }
+  .as-icon.lbl-bottomright .map-marker-label { left: calc(var(--r) + var(--lbl) + 1px);  top: calc(var(--r) + var(--lbl)); }
+  .as-icon.lbl-bottomleft  .map-marker-label { right: calc(var(--r) + var(--lbl) + 1px); top: calc(var(--r) + var(--lbl)); }
   .lbl-none   .map-marker-label { display: none; }
+  /* Vetted out: another name got there first. */
+  .map-marker-label.suppressed { display: none; }
   /*  Two places named by the same record, or by the same person, drawn as a
       line between them. Dotted on purpose: this is inferred from the records,
       not a surveyed route — nobody said anyone travelled it. Under the
@@ -640,14 +677,32 @@
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 2; pointer-events: none; overflow: visible;
   }
-  /* A record names both places outright, so it takes the verified colour the
-     rest of the page uses for a stated fact. */
-  .map-link { stroke: var(--accent); stroke-dasharray: 2 3; opacity: 0.55; }
+  /*  A record names both places outright, so it takes the verified colour the
+      rest of the page uses for a stated fact. Drawn with a dark casing under
+      it: a hairline over a mottled basemap disappears wherever the land
+      happens to be light, and a line you can only see half of is worse than
+      no line. The casing makes it legible over anything. */
+  .map-link { stroke: var(--accent); stroke-dasharray: 5 3; opacity: 0.95; }
   /* Nobody stated this one — it is inferred through a shared person. So it
      takes --draft, the same grey every unverified thing on this page wears,
      rather than introducing a colour that means nothing anywhere else. */
-  .map-link.via { stroke: var(--draft); stroke-dasharray: 1.5 3.5; opacity: 0.5; }
+  .map-link.via { stroke: var(--draft); stroke-dasharray: 2 3.5; opacity: 0.8; }
+  .map-link-case { stroke: #05080b; opacity: 0.55; }
   #viz-map .maplibregl-marker { z-index: 3; }
+  /*  Project context. Arrows and text sit above the marks because they are
+      annotation — the thing you drew to point AT the map. */
+  .map-annos {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 4; pointer-events: none; overflow: visible;
+  }
+  .map-anno-text { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: none; }
+  .proj-text {
+    position: absolute; top: 0; left: 0; transform-origin: 0 0;
+    font-size: 0.7rem; line-height: 1.35; padding: 4px 7px; border-radius: 3px;
+    color: #111; max-width: 220px; white-space: pre-wrap;
+  }
+  /* A reference point is not a record, so it does not wear a status. */
+  .map-marker.proj-point { opacity: 1; border-style: solid; }
   /*  Which tiles are drawing. Small, in the corner, and only two options —
       it is a choice you make once, not a toolbar. */
   .map-source {
@@ -659,6 +714,53 @@
   .map-source:focus { outline: none; border-color: var(--accent2); }
   /* Greyed, not hidden: something is outranking it, and that should be visible. */
   .map-source:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---------- map editor ---------- */
+  .map-canvas.arming, .map-canvas.arming canvas { cursor: crosshair; }
+  #mapeditor .panel-body { display: flex; flex-direction: column; }
+  .me-tools { flex-wrap: wrap; gap: 4px; }
+  .me-tools button { padding: 2px 7px; font-size: 0.8rem; }
+  .me-tools button.on { border-color: var(--accent2); color: var(--accent2); background: var(--tint); }
+  /* The digitizing surface. Given real height because tracing on a letterbox
+     is miserable; it grows with the tile like the viewer does. */
+  .me-shell {
+    position: relative; flex: 1 1 auto; min-height: 180px;
+    border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin: 4px 0;
+  }
+  .me-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  /* Square, so a handle never reads as one of your own round marks. */
+  .me-handle {
+    width: 9px; height: 9px; background: var(--accent2);
+    border: 1px solid #05080b; border-radius: 1px; cursor: grab;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
+  }
+  .me-handle:active { cursor: grabbing; }
+  #mapeditor .maplibregl-marker { z-index: 4; }
+  .me-list { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 7px; }
+  .me-item {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px;
+    align-items: center; padding: 2px 4px; border: 1px solid transparent;
+    border-radius: 3px; cursor: pointer; font-size: 0.7rem;
+  }
+  .me-item:hover { border-color: var(--border); }
+  .me-item.on { border-color: var(--accent2); background: var(--tint); }
+  .me-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me-del { border: 0; background: none; opacity: 0.4; padding: 0 3px; }
+  .me-del:hover { opacity: 1; color: var(--bad); }
+  .me-style {
+    display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;
+    padding-top: 7px; border-top: 1px solid var(--border-soft);
+  }
+  .me-style[hidden] { display: none; }
+  .me-field { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 7px; align-items: center; }
+  .me-field > span { font-size: 0.65rem; opacity: 0.55; }
+  .me-field input[type="color"] {
+    width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+  .me-field input[type="range"] { width: 100%; accent-color: var(--accent2); }
+  .me-field input[type="text"], .me-field select { width: 100%; font-size: 0.66rem; }
+  .me-base { margin-bottom: 7px; }
 
   /* ---------- theme ---------- */
   .th-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
@@ -679,8 +781,16 @@
   }
   .th-del:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
   .th-presets input[type="text"] { min-width: 0; }
-  .th-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; }
-  .th-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; }
+  /* One column: each swatch now carries a line of explanation, and two
+     columns of that is a wall of text in a one-cell tile. */
+  .th-rows { display: flex; flex-direction: column; gap: 3px; }
+  .th-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; }
+  .th-label { min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+  .th-label b { font-weight: normal; font-size: 0.72rem; opacity: 0.85; }
+  .th-label em {
+    font-style: normal; font-size: 0.6rem; opacity: 0.42;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .th-row input[type="color"] {
     width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
     border-radius: 3px; background: none; cursor: pointer;
@@ -691,16 +801,23 @@
   .ms-rows { display: flex; flex-direction: column; gap: 3px; }
   /* Sized to survive a one-column tile, which is where this panel will
      usually live: the name is the only part allowed to give up space. */
-  .ms-row { display: grid; grid-template-columns: auto auto minmax(46px, 1fr) 48px; align-items: center; gap: 6px; }
+  .ms-row { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) 42px 42px; align-items: center; gap: 5px; }
   .ms-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ms-row input[type="color"] {
     width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
     border-radius: 3px; background: none; cursor: pointer;
   }
   /* Controls, not data: green like every other affordance on the page. */
-  .ms-row input[type="range"] { width: 48px; accent-color: var(--accent2); }
+  .ms-row input[type="range"] { width: 42px; accent-color: var(--accent2); }
   .ms-row input[type="checkbox"] { accent-color: var(--accent2); cursor: pointer; }
   .ms-name { font-size: 0.72rem; opacity: 0.8; }
+  .ms-head { padding-bottom: 3px; border-bottom: 1px solid var(--border-soft); margin-bottom: 3px; }
+  .ms-col {
+    font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.06em;
+    opacity: 0.45; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Where the basemap layers end and the label controls begin. */
+  .ms-sep { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border-soft); }
   .ms-bar { gap: 6px; margin-top: 9px; }
   .ms-raw { margin-top: 8px; display: flex; flex-direction: column; }
   .ms-raw[hidden] { display: none; }
@@ -709,8 +826,20 @@
     font-size: 0.66rem; line-height: 1.5; background: var(--field); color: var(--fg);
     border: 1px solid var(--border); border-radius: 4px; padding: 7px;
   }
+  .ms-pick { width: 100%; margin-bottom: 6px; font-size: 0.66rem; }
+  .ms-pick[hidden] { display: none; }
   /* No :focus rule — the page already has one for every textarea, and a second
      one here in a different colour is exactly the mismatch worth avoiding. */
+  /*  Zoom and extent, in the order a project file wants them. Bottom-left,
+      out of the way, and monospaced so the digits do not jitter as you pan. */
+  .map-where {
+    position: absolute; left: 6px; bottom: 6px; z-index: 4; cursor: pointer;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: -0.01em;
+    color: #cfd6dc; opacity: 0.5; background: rgba(0,0,0,0.45);
+    border-radius: 3px; padding: 2px 5px; white-space: nowrap;
+  }
+  .map-where:hover { opacity: 0.95; }
+  .map-where.copied { color: var(--accent2); opacity: 1; }
   /* Deliberately tiny and non-interactive: a credit line, not a UI element. */
   .map-attrib {
     position: absolute; right: 4px; bottom: 3px; z-index: 2; pointer-events: none;
@@ -718,8 +847,9 @@
     color: #cfd6dc; opacity: 0.45; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
   }
   .map-attrib[hidden] { display: none; }
+  /* Sits above the coordinate readout, which owns the bottom-left corner. */
   .map-note {
-    position: absolute; left: 8px; bottom: 8px; z-index: 2;
+    position: absolute; left: 8px; bottom: 26px; z-index: 2;
     font-size: 0.68rem; background: rgba(0,0,0,0.75); border: 1px solid var(--border);
     border-radius: 4px; padding: 4px 8px; pointer-events: none;
   }
@@ -881,6 +1011,31 @@
   <div class="gaz-list" data-el="list"></div>
 </template>
 
+<template id="tpl-mapeditor">
+  <div class="row me-tools">
+    <button data-act="point" title="click the map to drop a reference point">📍</button>
+    <button data-act="line" title="click the map for each vertex, then Finish">╱</button>
+    <button data-act="poly" title="click the map for each corner, then Finish">⬠</button>
+    <button data-act="arrow" title="click the map twice: from, then to">➤</button>
+    <button data-act="curve" title="click twice for a curved arrow">↝</button>
+    <button data-act="text" title="click the map to place a note">🗨</button>
+    <button data-act="finish" hidden>Finish</button>
+    <button data-act="cancel" hidden>Cancel</button>
+  </div>
+  <p class="hint" data-el="tip"></p>
+  <!-- The digitizing surface. Deliberately its own map: no bricks, no
+       markers, no place labels — only the basemap and what you are drawing,
+       so nothing you did not put there can be clicked or read by mistake. -->
+  <div class="me-shell" data-el="shell"><div class="me-canvas"></div></div>
+  <div class="me-list" data-el="list"></div>
+  <div class="me-style" data-el="style" hidden></div>
+  <div class="row ms-bar">
+    <button data-act="view" title="store the map's current centre and zoom in the file">Capture view</button>
+    <button data-act="download" title="save this project file">Download</button>
+    <button data-act="wipe" title="throw the whole project file away">Clear</button>
+  </div>
+</template>
+
 <template id="tpl-theme">
   <div class="th-presets" data-el="presets"></div>
   <div class="ms-rows th-rows" data-el="rows"></div>
@@ -900,8 +1055,27 @@
   <div class="row ms-bar">
     <button data-act="reset" title="back to the colours this page ships with">Reset</button>
     <button data-act="edit" title="edit the style file these settings produce">Style file&hellip;</button>
+    <button data-act="proj" title="an Atlas project file — context drawn over the basemap">Project&hellip;</button>
+  </div>
+  <div class="ms-raw" data-el="projwrap" hidden>
+    <!-- Only shown once a folder has been opened and actually contains some. -->
+    <select class="ms-pick" data-el="projpick" hidden></select>
+    <textarea class="ms-text" data-el="project" spellcheck="false"
+      placeholder="an Atlas project file — view, points, polys, annotations"></textarea>
+    <p class="hint" data-el="projmsg"></p>
+    <div class="row ms-bar">
+      <button data-act="projapply">Apply</button>
+      <button data-act="projclear" title="remove the context and leave the basemap">Clear</button>
+    </div>
   </div>
   <div class="ms-raw" data-el="raw" hidden>
+    <!-- Where the basemap comes from: a hosted style, or one typed below.
+         Write {key} where the key goes; the key itself stays in this browser
+         and is substituted only when the style is handed to the map. -->
+    <input type="text" class="ms-pick" data-el="styleurl" spellcheck="false"
+      placeholder="style URL — https://api.maptiler.com/maps/…/style.json?key={key}">
+    <input type="password" class="ms-pick" data-el="tilekey" autocomplete="off"
+      spellcheck="false" placeholder="tile service key — stays on this machine">
     <textarea class="ms-text" data-el="style" spellcheck="false"
       placeholder="a MapLibre style file — version, sources, layers"></textarea>
     <div class="row ms-bar">
@@ -1512,6 +1686,9 @@ const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
 const MAPSOURCE_KEY = "brick-by-brick:mapsource:v1";
 const THEME_KEY = "brick-by-brick:theme:v1";     // the one in use
 const THEMES_KEY = "brick-by-brick:themes:v1";   // the ones you saved
+const MAPPROJECT_KEY = "brick-by-brick:mapproject:v1";    // an Atlas project file
+const TILEKEY_KEY = "brick-by-brick:tilekey:v1";          // MapTiler & friends
+const STYLEURL_KEY = "brick-by-brick:styleurl:v1";        // a hosted basemap style
 const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
 
@@ -1724,6 +1901,13 @@ definePanel({ roles: ["write", "filter"], id: "gazetteer", title: "Gazetteer", t
   help: "Coordinates by uid, loaded from a gazetteer.csv rather than typed into every place brick. A place's own coordinates still override an entry here.",
   render(body) { renderGazetteerPanel(body); } });
 
+/*  Read, like Map Style and Theme: it authors the project file, and a project
+    file is reference drawn over the basemap. Not one brick changes. */
+definePanel({ role: "read", id: "mapeditor", title: "Map Editor", tpl: "tpl-mapeditor", w: 1, h: 2,
+  group: "Visualizations",
+  help: "Draw context onto the map — points, shapes, arrows, notes — and it writes an Atlas project file. Needs the Map Viewer on the board to click into.",
+  render(body) { renderMapEditor(body); } });
+
 definePanel({ role: "read", id: "theme", title: "Theme", tpl: "tpl-theme", w: 1, h: 2,
   help: "Four themes, or your own. Eight colours drive the whole page; the basemap keeps its own, in Map Style.",
   render(body) { renderTheme(body); } });
@@ -1756,9 +1940,11 @@ definePanel({ role: "read", id: "reference", title: "Notation reference", tpl: "
 // unimplemented — an empty slot that reports the shape of its input is more
 // useful than a placeholder pretending to draw.
 Brick.viz.register("map", {
-  emoji: "🗺️", label: "Map", w: 3, h: 2,
+  emoji: "🗺️", label: "Map Viewer", w: 3, h: 2,
   roles: ["read", "filter"],   // draws the places, and a click focuses one
-  description: "Every place brick that carries coordinates. Click a marker to focus it.",
+  description: "Every place brick that carries coordinates. Click a marker to focus it. " +
+    "A line joins two places when one record names both (orange), or when the same person " +
+    "is named at both (grey — inferred, so it is drawn in the draft colour).",
   render: (model, el) => renderMap(model, el),
 });
 
@@ -1779,6 +1965,7 @@ const MAPLIBRE_JS  = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
 const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
 const PMTILES_JS   = "https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js";
 const BASEMAP      = "pmtiles://https://tiles.mbricknell.com/basemap.pmtiles";
+const HILLSHADE    = "pmtiles://https://tiles.mbricknell.com/hs.pmtiles";
 // MapLibre's own public demo style — no key, no pmtiles, works from a plain
 // double-clicked file. Same "hosted vs local" test the manifest/gazetteer
 // fetches already use: the custom basemap only when actually served over
@@ -1810,20 +1997,64 @@ function loadOnce(url, isCss) {
 
     Ordered as they paint, bottom-up, which is also the order they are listed
     in the panel: ocean, then land, then everything drawn on the land. */
+/*  Width belongs to lines; opacity belongs to everything. Kept as separate
+    fields rather than one overloaded slider, because "how heavy" and "how
+    present" are different questions and a layer often needs both answered —
+    a hairline coastline at full strength, a broad admin line at a whisper. */
 const MAP_LAYERS = [
-  { key: "ocean",  label: "Ocean",     type: "fill", def: "#0d1317" },
-  { key: "land",   label: "Land",      type: "fill", def: "#1b2126" },
-  { key: "lakes",  label: "Lakes",     type: "fill", def: "#132029" },
-  { key: "rivers", label: "Rivers",    type: "line", def: "#22303a", width: 1 },
-  { key: "admin1", label: "Regions",   type: "line", def: "#252d33", width: 0.5 },
-  { key: "admin0", label: "Countries", type: "line", def: "#2f383f", width: 0.8 },
-  { key: "coast",  label: "Coastline", type: "line", def: "#39434a", width: 1 },
+  { key: "ocean",  label: "Ocean",     type: "fill", def: "#0d1317", opacity: 1 },
+  // Raster, not terrain-DEM: hs.pmtiles holds pre-rendered WEBP shading, z0-8.
+  // No colour of its own to set.
+  { key: "hillshade", label: "Hillshade", type: "raster", def: "#000000", opacity: 0.5 },
+  // Below 1 by default: the hillshade is underneath it, and an opaque land
+  // fill would hide the thing it is meant to show.
+  { key: "land",   label: "Land",      type: "fill", def: "#1b2126", opacity: 0.75 },
+  { key: "lakes",  label: "Lakes",     type: "fill", def: "#132029", opacity: 1 },
+  { key: "rivers", label: "Rivers",    type: "line", def: "#22303a", width: 1,   opacity: 1 },
+  { key: "admin1", label: "Regions",   type: "line", def: "#252d33", width: 0.5, opacity: 1 },
+  { key: "admin0", label: "Countries", type: "line", def: "#2f383f", width: 0.8, opacity: 1 },
+  { key: "coast",  label: "Coastline", type: "line", def: "#39434a", width: 1,   opacity: 1 },
 ];
 
+/*  What can be on the map, and what colour it is.
+
+    A place brick is a place. An event brick becomes a mark too, but only when
+    it names somewhere with coordinates — a birth with no location is still a
+    fact, it just is not a point. Nothing is invented to fill the map.
+
+    Colour carries the KIND. Status moves to opacity, because a mark cannot say
+    two things with one fill, and "what is this" is the question you ask of a
+    map before "how sure are we". */
+const MARK_KINDS = [
+  { key: "place",    label: "Places",    def: "#7a8a99", glyph: "" },
+  { key: "birth",    label: "Births",    def: "#4ade80", glyph: "👶" },
+  { key: "death",    label: "Deaths",    def: "#f87171", glyph: "⚰️" },
+  { key: "marriage", label: "Marriages", def: "#c084fc", glyph: "💒" },
+];
+
+const LABEL_GAP_DEFAULT = 8;
+const MARKER_SIZE_DEFAULT = 11;
+
 function defaultMapSettings() {
-  const out = {};
-  for (const l of MAP_LAYERS) out[l.key] = { color: l.def, on: true, width: l.width || 1 };
+  const out = { labelGap: LABEL_GAP_DEFAULT, labelVet: true,
+                markerSize: MARKER_SIZE_DEFAULT, marks: {} };
+  for (const l of MAP_LAYERS) {
+    out[l.key] = { color: l.def, on: true, width: l.width || 1,
+                   opacity: l.opacity === undefined ? 1 : l.opacity };
+  }
+  for (const k of MARK_KINDS) out.marks[k.key] = { color: k.def, on: true };
   return out;
+}
+
+/*  Mark size and label spacing, both as CSS variables on the shell — so one
+    assignment restyles every marker at once, rather than the renderer walking
+    59 elements. One number each for the whole sheet, because consistent
+    spacing is what makes a set of marks read as one map. */
+function applyMarkerVars() {
+  const shell = document.querySelector("#viz-map .map-shell");
+  if (!shell) return;
+  shell.style.setProperty("--mk", MAP_SETTINGS.markerSize + "px");
+  shell.style.setProperty("--lbl", MAP_SETTINGS.labelGap + "px");
 }
 let MAP_SETTINGS = defaultMapSettings();
 
@@ -1834,6 +2065,19 @@ function loadMapSettings() {
   // Read field by field: a settings file from an older version, or one with a
   // key that no longer exists, must degrade to the default rather than
   // handing MapLibre a colour it cannot parse.
+  const gap = Number(raw.labelGap);
+  if (gap >= 2 && gap <= 30) MAP_SETTINGS.labelGap = gap;
+  if (typeof raw.labelVet === "boolean") MAP_SETTINGS.labelVet = raw.labelVet;
+  const mk = Number(raw.markerSize);
+  if (mk >= 4 && mk <= 32) MAP_SETTINGS.markerSize = mk;
+  if (raw.marks && typeof raw.marks === "object") {
+    for (const k of MARK_KINDS) {
+      const s = raw.marks[k.key];
+      if (!s || typeof s !== "object") continue;
+      if (/^#[0-9a-f]{6}$/i.test(s.color)) MAP_SETTINGS.marks[k.key].color = s.color;
+      if (typeof s.on === "boolean") MAP_SETTINGS.marks[k.key].on = s.on;
+    }
+  }
   for (const l of MAP_LAYERS) {
     const s = raw[l.key];
     if (!s || typeof s !== "object") continue;
@@ -1841,6 +2085,10 @@ function loadMapSettings() {
     if (typeof s.on === "boolean") MAP_SETTINGS[l.key].on = s.on;
     const w = Number(s.width);
     if (w > 0 && w <= 8) MAP_SETTINGS[l.key].width = w;
+    const o = Number(s.opacity);
+    // Zero is a legal opacity — a layer turned all the way down is not the
+    // same as one switched off, and both are worth being able to say.
+    if (o >= 0 && o <= 1) MAP_SETTINGS[l.key].opacity = o;
   }
 }
 function saveMapSettings() {
@@ -1859,30 +2107,268 @@ function basemapStyle(archive) {
   return {
     version: 8,
     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-    sources: { basemap: { type: "vector", url } },
+    sources: {
+      basemap: { type: "vector", url },
+      // 512px WEBP, worldwide, z0-8 — declared always, drawn only when on.
+      hillshade: { type: "raster", url: HILLSHADE, tileSize: 512, maxzoom: 8 },
+    },
+    /*  Paint order matters more than usual here.
+
+        The hillshade sits directly above the background, under everything
+        else. The land fill therefore has to let it through — which is what
+        its opacity slider is for, and why it defaults below 1. Terrain read
+        THROUGH the fill rather than laid over it: the shading tints the
+        colour instead of greying it.
+
+        The ocean is drawn after both, so the sea stays clean. The shading
+        covers the whole globe, and a relief-shaded ocean is the giveaway of a
+        hillshade dropped in without thought. */
     layers: [
       { id: "bg", type: "background", paint: { "background-color": S.ocean.color } },
-      { id: "ocean", type: "fill", source: "basemap", "source-layer": "ocean",
-        layout: vis("ocean"), paint: { "fill-color": S.ocean.color } },
+      { id: "hillshade", type: "raster", source: "hillshade",
+        layout: vis("hillshade"),
+        paint: { "raster-opacity": S.hillshade.opacity, "raster-fade-duration": 0 } },
       { id: "land", type: "fill", source: "basemap", "source-layer": "coastline_land",
-        layout: vis("land"), paint: { "fill-color": S.land.color } },
+        layout: vis("land"),
+        paint: { "fill-color": S.land.color, "fill-opacity": S.land.opacity } },
+      { id: "ocean", type: "fill", source: "basemap", "source-layer": "ocean",
+        layout: vis("ocean"),
+        paint: { "fill-color": S.ocean.color, "fill-opacity": S.ocean.opacity } },
       { id: "lakes", type: "fill", source: "basemap", "source-layer": "ne_10m_lakes",
-        layout: vis("lakes"), paint: { "fill-color": S.lakes.color } },
+        layout: vis("lakes"),
+        paint: { "fill-color": S.lakes.color, "fill-opacity": S.lakes.opacity } },
       { id: "rivers", type: "line", source: "basemap",
         "source-layer": "ne_10m_rivers_lake_centerlines", layout: vis("rivers"),
-        paint: { "line-color": S.rivers.color,
+        paint: { "line-color": S.rivers.color, "line-opacity": S.rivers.opacity,
                  "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.3 * S.rivers.width, 9, 1.1 * S.rivers.width] } },
       { id: "admin1", type: "line", source: "basemap", "source-layer": "admin1_land",
-        layout: vis("admin1"), paint: { "line-color": S.admin1.color, "line-width": S.admin1.width } },
+        layout: vis("admin1"),
+        paint: { "line-color": S.admin1.color, "line-opacity": S.admin1.opacity,
+                 "line-width": S.admin1.width } },
       { id: "admin0", type: "line", source: "basemap", "source-layer": "admin0_land",
-        layout: vis("admin0"), paint: { "line-color": S.admin0.color, "line-width": S.admin0.width } },
+        layout: vis("admin0"),
+        paint: { "line-color": S.admin0.color, "line-opacity": S.admin0.opacity,
+                 "line-width": S.admin0.width } },
       { id: "coast", type: "line", source: "basemap", "source-layer": "coastline_land",
         layout: vis("coast"),
-        paint: { "line-color": S.coast.color,
+        paint: { "line-color": S.coast.color, "line-opacity": S.coast.opacity,
                  "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4 * S.coast.width, 9, 1.2 * S.coast.width] } },
     ],
   };
 }
+
+/* ==========================================================================
+   PROJECT FILE — context on the basemap
+   --------------------------------------------------------------------------
+   Reads the Atlas project format as-is: `view`, `points`, `polys`,
+   `annotations`. Same three tiers, composited bottom to top — basemap style,
+   then the project file, then the bricks. Context is pure reference: it never
+   enters the model, never becomes an entity, and the timeline never touches
+   it. Your records and your reference stay separate things.
+
+   Supported, and the divergences from the sandbox, stated rather than
+   discovered:
+
+     view       center, zoom, lock, basemap, hide, hideFeatures, insertBelow
+     points     data[] with lng/lat/name/dir/style
+     polys      data[] with geometry (Polygon | LineString) or source (a URL),
+                style fill/stroke/dash, and per-entry insertBelow
+     annotations  straight-arrow, curved-arrow, text-area
+
+     NOT here:  refUid, because it addresses features in YOUR tiles by uid and
+                this basemap has different source layers. pattern fills, which
+                need a sprite this page does not carry. hillshade and inset.
+                Each is ignored rather than treated as an error, so a file that
+                uses them still draws everything else.
+   ========================================================================== */
+/*  A tile-service key — MapTiler, Stadia, whoever.
+
+    Kept in this browser and NEVER written into a project file. A style URL
+    stores the placeholder instead:
+
+      https://api.maptiler.com/maps/streets-v2/style.json?key={key}
+
+    so the file you hand someone, commit, or publish alongside the bricks
+    carries no credential. The substitution happens at the moment the style is
+    handed to MapLibre and nowhere else. A URL that has a real key typed into
+    it still works — it is just then a URL you should not share. */
+let TILE_KEY = "";
+
+function loadTileKey() {
+  try { TILE_KEY = localStorage.getItem(TILEKEY_KEY) || ""; } catch (e) { TILE_KEY = ""; }
+}
+function saveTileKey() {
+  try {
+    if (TILE_KEY) localStorage.setItem(TILEKEY_KEY, TILE_KEY);
+    else localStorage.removeItem(TILEKEY_KEY);
+  } catch (e) { /* unavailable */ }
+}
+function withKey(url) {
+  return typeof url === "string" ? url.replace(/\{key\}/g, encodeURIComponent(TILE_KEY)) : url;
+}
+
+/*  A hosted basemap style — MapTiler, Stadia, your own.
+
+    Deliberately NOT part of the project file. In the Atlas model the base
+    style is tier one and the project file is tier three; they are different
+    decisions. A project says what to draw ON a map, not which map. Keeping it
+    out also means the same context can be dropped over any basemap. */
+let STYLE_URL = "";
+
+function loadStyleUrl() {
+  try { STYLE_URL = localStorage.getItem(STYLEURL_KEY) || ""; } catch (e) { STYLE_URL = ""; }
+}
+function saveStyleUrl() {
+  try {
+    if (STYLE_URL) localStorage.setItem(STYLEURL_KEY, STYLE_URL);
+    else localStorage.removeItem(STYLEURL_KEY);
+  } catch (e) { /* unavailable */ }
+}
+function hostedStyle() {
+  const v = STYLE_URL.trim();
+  return /^https?:\/\//i.test(v) ? withKey(v) : null;
+}
+
+let MAP_PROJECT = "";
+
+function loadProject() {
+  try { MAP_PROJECT = localStorage.getItem(MAPPROJECT_KEY) || ""; }
+  catch (e) { MAP_PROJECT = ""; }
+}
+function saveProject() {
+  try {
+    if (MAP_PROJECT) localStorage.setItem(MAPPROJECT_KEY, MAP_PROJECT);
+    else localStorage.removeItem(MAPPROJECT_KEY);
+  } catch (e) { /* unavailable */ }
+}
+function projectObject() {
+  const v = MAP_PROJECT.trim();
+  if (!v) return null;
+  try {
+    const p = JSON.parse(v);
+    return p && typeof p === "object" ? p : null;
+  } catch (e) { return null; }
+}
+
+const DASHES = { solid: null, dashed: [2, 2], dotted: [0.6, 1.6] };
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/*  An arrowhead, in the arrow's own colour.
+
+    `fill="context-stroke"` would say that in one line, but only Firefox
+    implements it — everywhere else the head silently vanishes, which is why
+    arrows were drawing as plain lines. So each colour gets its own marker,
+    made once and reused, with the fill written out explicitly.
+
+    markerUnits="strokeWidth" ties the head's size to the line's weight, so a
+    heavier arrow gets a proportionate head instead of a pin on a plank. */
+function arrowMarker(svg, color) {
+  const id = "ah-" + String(color).replace(/[^a-z0-9]/gi, "") || "ah-default";
+  let defs = svg.querySelector("defs");
+  if (!defs) { defs = document.createElementNS(SVGNS, "defs"); svg.appendChild(defs); }
+  if (!defs.querySelector('marker[id="' + id + '"]')) {
+    const m = document.createElementNS(SVGNS, "marker");
+    m.setAttribute("id", id);
+    m.setAttribute("viewBox", "0 0 10 10");
+    m.setAttribute("refX", "8"); m.setAttribute("refY", "5");
+    m.setAttribute("markerWidth", "5"); m.setAttribute("markerHeight", "5");
+    m.setAttribute("orient", "auto-start-reverse");
+    m.setAttribute("markerUnits", "strokeWidth");
+    const tip = document.createElementNS(SVGNS, "path");
+    tip.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+    tip.setAttribute("fill", color);
+    m.appendChild(tip);
+    defs.appendChild(m);
+  }
+  return id;
+}
+
+// A style block from the file, read defensively — a missing key is a default,
+// never a crash, because a project file is hand-written.
+function paintLine(s) {
+  const out = { "line-color": s.stroke || "#000", "line-width": num(s["stroke-width"], 1) };
+  const dash = DASHES[s["stroke-dash"]];
+  if (dash) out["line-dasharray"] = dash;
+  if (s.opacity !== undefined) out["line-opacity"] = num(s.opacity, 1);
+  return out;
+}
+function num(v, d) { const n = Number(v); return isFinite(n) ? n : d; }
+
+/*  Everything the project adds is namespaced `proj-`, so tearing it down is a
+    matter of dropping anything with that prefix. setStyle wipes sources and
+    layers wholesale, so this runs again on every style load rather than
+    trying to survive one. */
+function clearProject(map) {
+  for (const l of map.getStyle().layers || []) {
+    if (l.id.startsWith("proj-")) map.removeLayer(l.id);
+  }
+  for (const id of Object.keys(map.getStyle().sources || {})) {
+    if (id.startsWith("proj-")) map.removeSource(id);
+  }
+}
+
+function applyProjectLayers(map, p) {
+  if (!p) return;
+  const view = p.view || {};
+
+  // view.basemap:false hides the drawn basemap but keeps the background, so
+  // the ground colour still comes from your style rather than going white.
+  if (view.basemap === false) {
+    for (const l of map.getStyle().layers || []) {
+      if (l.type !== "background" && !l.id.startsWith("proj-")) {
+        map.setLayoutProperty(l.id, "visibility", "none");
+      }
+    }
+  }
+  for (const id of view.hide || []) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+  }
+  for (const hf of view.hideFeatures || []) {
+    if (!hf || !map.getLayer(hf.layer)) continue;
+    // "hide these values" is the negation of a match, which is how the
+    // sandbox reads it: everything EXCEPT the listed features stays.
+    map.setFilter(hf.layer, ["!", ["in", ["get", hf.property], ["literal", hf.values || []]]]);
+  }
+
+  const below = view.insertBelow || {};
+  const under = (want) => (want && map.getLayer(want) ? want : undefined);
+
+  if (p.polys && p.polys.show !== false) {
+    (p.polys.data || []).forEach((entry, i) => {
+      if (!entry || (!entry.geometry && !entry.source)) return;   // refUid: not here
+      const id = "proj-poly-" + i;
+      const data = entry.source
+        ? entry.source
+        : { type: "Feature", geometry: entry.geometry, properties: {} };
+      map.addSource(id, { type: "geojson", data });
+      const s = entry.style || {};
+      const at = under(entry.insertBelow || below.polys);
+      const isLine = entry.geometry && /LineString/.test(entry.geometry.type);
+      if (!isLine && s.fill && s.fill !== "none") {
+        map.addLayer({ id: id + "-fill", type: "fill", source: id,
+          paint: { "fill-color": s.fill, "fill-opacity": num(s["fill-opacity"], 0.4) } }, at);
+      }
+      if (s.stroke && s.stroke !== "none") {
+        map.addLayer({ id: id + "-line", type: "line", source: id,
+          layout: { "line-join": s["line-join"] || "miter" },
+          paint: paintLine(s) }, at);
+      }
+    });
+  }
+}
+
+/*  Points and annotations are DOM, not style layers.
+
+    Deliberate: the sandbox draws point labels with a symbol layer and a named
+    font, and this page's glyph endpoint has two fonts in it. A DOM mark needs
+    no glyph server, gets the same eight-way label placement the bricks use,
+    and survives setStyle without being rebuilt. The cost is that
+    view.insertBelow cannot put an annotation under a basemap layer — they are
+    always above. That is the one place this diverges visibly. */
+const DIR_TO_POS = {
+  N: "top", S: "bottom", E: "right", W: "left",
+  NE: "topright", NW: "topleft", SE: "bottomright", SW: "bottomleft",
+};
 
 /*  The escape hatch: a hand-edited style file.
 
@@ -1995,6 +2481,54 @@ function placeLinks(model) {
   }));
 }
 
+/*  Everything the map draws: the places, plus any event that names a place
+    with coordinates.
+
+    An event has no coordinates of its own — it borrows them from the place it
+    names, which is the honest reading of "@george,longforgan": the record says
+    this happened at Longforgan, not at some point 40 metres east of it. Two
+    events at one parish therefore sit on the same point, and that is correct;
+    they are the same place.
+
+    Toggling a kind off here is a MAP decision, not a filter — the pile is
+    untouched and every other panel still shows the record. */
+function markFeatures(model) {
+  const out = [];
+  if (MAP_SETTINGS.marks.place.on) {
+    for (const f of placeFeatures(model)) {
+      f.properties.mark = "place";
+      out.push(f);
+    }
+  }
+  const byId = new Map((model.entities || []).map(e => [e.slug, e]));
+  for (const b of model.events || []) {
+    const kind = MARK_KINDS.find(k => k.key === b.type);
+    if (!kind || kind.key === "place" || !MAP_SETTINGS.marks[kind.key].on) continue;
+    const links = (b.links || []).map(s => byId.get(s)).filter(Boolean);
+    const where = links.filter(e => e.kind === "place" && e.coords);
+    if (!where.length) continue;   // a dateline with no location is not a point
+    const who = links.filter(e => e.kind === "person");
+    const year = b.date && /^\d{4}/.test(b.date) ? b.date.slice(0, 4) : "";
+    // Named for whoever it happened to — the place already has its own label,
+    // and repeating it here would just be the same word twice on one dot.
+    const name = [who.map(p => p.name).join(" & "), year].filter(Boolean).join(" ") ||
+                 kind.label;
+    for (const p of where) {
+      out.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [p.coords.lng, p.coords.lat] },
+        properties: {
+          mark: kind.key,
+          slug: (who[0] && who[0].slug) || p.slug,
+          name, status: b.status || "draft", refs: 0, detail: "",
+          labelPos: "", icon: kind.glyph,
+        },
+      });
+    }
+  }
+  return out;
+}
+
 function renderMap(model, host) {
   const fc = { type: "FeatureCollection", features: placeFeatures(model) };
 
@@ -2014,6 +2548,7 @@ function renderMap(model, host) {
         '<option value="custom">My tiles</option>' +
         '<option value="demo">MapLibre</option>' +
       "</select>" +
+      '<div class="map-where"></div>' +
       '<div class="map-note">loading basemap…</div>' +
       '<div class="map-attrib"></div>' +
     "</div>";
@@ -2043,8 +2578,10 @@ function renderMap(model, host) {
       const startMode = loadMapSource() || (hosted ? "custom" : "demo");
       const map = new window.maplibregl.Map({
         container: canvas,
-        // An applied override is what draws, from the first frame.
-        style: overrideStyle() || (startMode === "demo" ? DEMO_STYLE : basemapStyle()),
+        // An applied override, then a project's own basemap, then the
+        // dropdown — the same order applyStyle uses, from the first frame.
+        style: overrideStyle() || hostedStyle() ||
+               (startMode === "demo" ? DEMO_STYLE : basemapStyle()),
         center: [-3.4, 56.4],
         zoom: 7,
         attributionControl: false,
@@ -2102,23 +2639,33 @@ function renderMap(model, host) {
       const drawLinks = () => {
         for (const l of linkLines) {
           const p = map.project(l.from), q = map.project(l.to);
-          l.el.setAttribute("x1", p.x); l.el.setAttribute("y1", p.y);
-          l.el.setAttribute("x2", q.x); l.el.setAttribute("y2", q.y);
+          for (const el of l.els) {
+            el.setAttribute("x1", p.x); el.setAttribute("y1", p.y);
+            el.setAttribute("x2", q.x); el.setAttribute("y2", q.y);
+          }
         }
       };
       const buildLinks = () => {
         const links = placeLinks(V());
         linkSvg.textContent = "";
         linkLines = links.map(l => {
-          const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
-          // Direct beats inferred: if any record names both places outright,
-          // the line is drawn as the stronger of the two claims.
-          ln.setAttribute("class", "map-link" + (l.direct ? "" : " via"));
           // Weight is how many records assert the pair, so a well-evidenced
           // connection is heavier — capped, or one busy pair drowns the rest.
-          ln.setAttribute("stroke-width", Math.min(2.2, 0.7 + l.weight * 0.2).toFixed(2));
-          linkSvg.appendChild(ln);
-          return { el: ln, from: l.from, to: l.to };
+          const w = Math.min(3, 1.1 + l.weight * 0.3);
+          const line = cls => {
+            const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            ln.setAttribute("class", cls);
+            linkSvg.appendChild(ln);
+            return ln;
+          };
+          // Casing first so the coloured line paints on top of it.
+          const casing = line("map-link-case");
+          casing.setAttribute("stroke-width", (w + 2).toFixed(2));
+          // Direct beats inferred: if any record names both places outright,
+          // the line is drawn as the stronger of the two claims.
+          const ln = line("map-link" + (l.direct ? "" : " via"));
+          ln.setAttribute("stroke-width", w.toFixed(2));
+          return { els: [casing, ln], from: l.from, to: l.to };
         });
         drawLinks();
         return linkLines.length;
@@ -2126,21 +2673,304 @@ function renderMap(model, host) {
       map.on("move", drawLinks);
       map.on("resize", drawLinks);
 
+      /*  Where you are, in the numbers a project file wants.
+
+          Zoom to two places and the bounding box in west, south, east, north
+          order — the same order `view.bbox` takes, so what you read here can
+          be typed straight into a file without reshuffling it. Click it to
+          copy. Six decimal places is about 10cm, which is past the accuracy of
+          anything a parish register will ever give you. */
+      const whereEl = host.querySelector(".map-where");
+      const showWhere = () => {
+        const b = map.getBounds(), c = map.getCenter();
+        const f = n => n.toFixed(4);
+        whereEl.dataset.bbox = "[" + [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+          .map(n => +n.toFixed(6)).join(", ") + "]";
+        whereEl.dataset.center = "[" + [+c.lng.toFixed(6), +c.lat.toFixed(6)].join(", ") + "]";
+        whereEl.textContent = "z" + map.getZoom().toFixed(2) + "  " +
+          f(b.getWest()) + ", " + f(b.getSouth()) + " → " + f(b.getEast()) + ", " + f(b.getNorth());
+      };
+      whereEl.onclick = () => {
+        const text = '"center": ' + whereEl.dataset.center +
+                     ', "zoom": ' + map.getZoom().toFixed(2) +
+                     ', "bbox": ' + whereEl.dataset.bbox;
+        navigator.clipboard && navigator.clipboard.writeText(text);
+        whereEl.classList.add("copied");
+        setTimeout(() => whereEl.classList.remove("copied"), 700);
+      };
+      map.on("move", showWhere);
+      showWhere();
+
+      /*  Label vetting — the oldest rule in the trade: two names may not
+          occupy the same ink. Greedy placement in priority order, which is
+          what a hand-drawn sheet does and what every automated placer still
+          falls back to.
+
+          Priority is the map's own hierarchy, not the DOM order:
+            1. verified before draft — a confirmed place outranks a guess
+            2. more references before fewer — the busier the place in the
+               records, the more the reader needs its name
+            3. alphabetical last, purely so the outcome is STABLE. Without a
+               deterministic tiebreak the same two colliding labels trade
+               places every redraw and the map flickers as you pan.
+
+          Run on settle, not per frame: 59 getBoundingClientRect calls during a
+          pan would be a layout thrash for no gain, and labels holding their
+          last state mid-drag is invisible to the eye. */
+      const LABEL_PAD = 2;   // a hair of air, or neighbours read as one word
+
+      /*  Where a name goes when you have not said. Imhof's order, and the same
+          one every automatic placer since has used: upper right first, because
+          that is where the eye arrives after reading the mark; then the other
+          corners; then the sides; and the stacked positions last, since a name
+          directly above or below a dot is the hardest to tie back to it when
+          marks are close together. */
+      const AUTO_ORDER = ["topright", "topleft", "bottomright", "bottomleft",
+                          "right", "left", "top", "bottom"];
+
+      const setPos = (dot, pos) => {
+        for (const p of LABEL_CHOICES) dot.classList.remove("lbl-" + p);
+        dot.classList.add("lbl-" + pos);
+      };
+
+      const declutter = () => {
+        const box = canvas.getBoundingClientRect();
+        const items = [];
+        for (const m of host._markers) {
+          const dot = m.getElement();
+          const label = dot.querySelector(".map-marker-label");
+          if (!label) continue;
+          label.classList.remove("suppressed");
+          const fixed = dot.dataset.pos || "";   // "" means: you decide
+          if (fixed === "none") continue;
+          if (!MAP_SETTINGS.labelVet) {
+            // Nothing is being avoided, so an auto label has no reason to
+            // prefer one side; it takes the map's plain default and shows.
+            setPos(dot, fixed || labelPlacement);
+            continue;
+          }
+          const d = dot.getBoundingClientRect();
+          // A mark off the edge cannot collide with anything you can see, and
+          // letting it claim space would suppress a label that matters.
+          if (d.right < box.left || d.left > box.right ||
+              d.bottom < box.top || d.top > box.bottom) continue;
+          items.push({
+            dot, label, fixed,
+            verified: dot.classList.contains("verified") ? 1 : 0,
+            refs: Number(dot.dataset.refs) || 0,
+            name: dot.dataset.name || "",
+          });
+        }
+        items.sort((a, b) => b.verified - a.verified || b.refs - a.refs ||
+                             a.name.localeCompare(b.name));
+
+        const placed = [];
+        const clear = r => !placed.some(p =>
+          !(r.right + LABEL_PAD < p.left || r.left - LABEL_PAD > p.right ||
+            r.bottom + LABEL_PAD < p.top || r.top - LABEL_PAD > p.bottom));
+
+        for (const it of items) {
+          /*  A placement you chose is honoured or nothing — trying seven other
+              sides for you would quietly overrule the choice. Only a label on
+              auto gets to move. */
+          const tries = it.fixed ? [it.fixed] : AUTO_ORDER;
+          let done = false;
+          for (const pos of tries) {
+            setPos(it.dot, pos);
+            // Measured rather than computed: reading the rect back after the
+            // class is on cannot disagree with the CSS, and a duplicated copy
+            // of those offsets in JS eventually would.
+            const r = it.label.getBoundingClientRect();
+            if (clear(r)) { placed.push(r); done = true; break; }
+          }
+          if (!done) {
+            // Nowhere to put it. Put it back where it started so the hidden
+            // label is at least consistent, then drop it.
+            setPos(it.dot, it.fixed || AUTO_ORDER[0]);
+            it.label.classList.add("suppressed");
+          }
+        }
+      };
+      host._declutter = declutter;
+      map.on("moveend", declutter);
+      map.on("zoomend", declutter);
+
+      /* ---------- project file: points, annotations, view ---------- */
+      const annoSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      annoSvg.setAttribute("class", "map-annos");
+      canvas.appendChild(annoSvg);
+      const annoLayer = document.createElement("div");
+      annoLayer.className = "map-anno-text";
+      canvas.appendChild(annoLayer);
+
+      let projMarkers = [], annoItems = [];
+
+      const drawAnnos = () => {
+        for (const a of annoItems) {
+          if (a.kind === "text") {
+            const q = map.project(a.at);
+            a.el.style.transform = "translate(" + q.x + "px," + q.y + "px)";
+            continue;
+          }
+          const s = map.project(a.start), e = map.project(a.end);
+          if (a.bend) {
+            // Perpendicular offset at the midpoint — the same construction the
+            // sandbox uses, so a given `bend` curves the same way here.
+            const mx = (s.x + e.x) / 2, my = (s.y + e.y) / 2;
+            const dx = e.x - s.x, dy = e.y - s.y;
+            a.el.setAttribute("d", "M " + s.x + " " + s.y + " Q " +
+              (mx - dy * a.bend) + " " + (my + dx * a.bend) + " " + e.x + " " + e.y);
+          } else {
+            a.el.setAttribute("d", "M " + s.x + " " + s.y + " L " + e.x + " " + e.y);
+          }
+        }
+      };
+
+      const buildProject = () => {
+        for (const m of projMarkers) m.remove();
+        projMarkers = [];
+        annoItems = [];
+        annoLayer.textContent = "";
+        // Only the drawn lines — the arrowhead markers live in <defs> and are
+        // reused, so a blanket path sweep would gut them.
+        [...annoSvg.querySelectorAll("path.anno-line")].forEach(n => n.remove());
+
+        const p = projectObject();
+        if (!p) { drawAnnos(); return 0; }
+
+        if (p.points && p.points.show !== false) {
+          for (const pt of p.points.data || []) {
+            if (!pt || !isFinite(pt.lng) || !isFinite(pt.lat)) continue;
+            const s = pt.style || {};
+            const dot = document.createElement("div");
+            dot.className = "map-marker proj-point lbl-" +
+                            (DIR_TO_POS[String(pt.dir || "").toUpperCase()] || "bottom");
+            dot.style.setProperty("--fill", s.fill || "#ffffff");
+            dot.style.setProperty("--mk", num(s.size, 7) * 2 + "px");
+            if (s.stroke) dot.style.borderColor = s.stroke;
+            dot.style.borderWidth = num(s["stroke-width"], 1) + "px";
+            if (s.opacity !== undefined) dot.style.opacity = num(s.opacity, 1);
+            if (pt.name) {
+              const lab = document.createElement("span");
+              lab.className = "map-marker-label";
+              lab.textContent = pt.name;
+              if (s["label-color"]) lab.style.color = s["label-color"];
+              if (s["label-size"]) lab.style.fontSize = num(s["label-size"], 10) + "px";
+              if (s["label-halo-color"]) {
+                const w = num(s["label-halo-width"], 1);
+                lab.style.textShadow = "0 0 " + (w * 2) + "px " + s["label-halo-color"];
+              }
+              dot.appendChild(lab);
+            }
+            // Project points are reference, not records: they are not in the
+            // model, so they take no part in the label vetting that ranks
+            // bricks against each other, and nothing can suppress them.
+            projMarkers.push(new window.maplibregl.Marker({ element: dot })
+              .setLngLat([pt.lng, pt.lat]).addTo(map));
+          }
+        }
+
+        if (p.annotations && p.annotations.show !== false) {
+          for (const a of p.annotations.data || []) {
+            if (!a) continue;
+            const s = a.style || {};
+            if (a.type === "text-area" && Array.isArray(a.position)) {
+              const el = document.createElement("div");
+              el.className = "proj-text";
+              el.textContent = a.text || "";
+              if (s.fill) el.style.background = s.fill;
+              if (s["fill-opacity"] !== undefined && s.fill) {
+                el.style.background = s.fill;
+                el.style.opacity = num(s["fill-opacity"], 1);
+              }
+              if (s.stroke) el.style.border = num(s["stroke-width"], 1) + "px solid " + s.stroke;
+              if (s.align) el.style.textAlign = s.align;
+              annoLayer.appendChild(el);
+              annoItems.push({ kind: "text", el, at: a.position });
+              continue;
+            }
+            if (!Array.isArray(a.start) || !Array.isArray(a.end)) continue;
+            const path = document.createElementNS(SVGNS, "path");
+            path.setAttribute("class", "anno-line");
+            path.setAttribute("fill", "none");
+            const col = s.stroke || "#000";
+            path.setAttribute("stroke", col);
+            path.setAttribute("stroke-width", num(s["stroke-width"], 2));
+            const dash = DASHES[s["stroke-dash"]];
+            if (dash) path.setAttribute("stroke-dasharray", dash.map(n => n * 3).join(" "));
+            path.setAttribute("marker-end", "url(#" + arrowMarker(annoSvg, col) + ")");
+            annoSvg.appendChild(path);
+            annoItems.push({ kind: "arrow", el: path, start: a.start, end: a.end,
+                             bend: a.type === "curved-arrow" ? num(a.bend, 0.25) : 0 });
+          }
+        }
+        drawAnnos();
+        return projMarkers.length + annoItems.length;
+      };
+
+      // The style is rebuilt from scratch on every setStyle, so the project's
+      // sources and layers have to go back in each time; the DOM half does not.
+      const reapplyProject = () => {
+        const p = projectObject();
+        try { clearProject(map); } catch (e) { /* style not ready */ }
+        try { applyProjectLayers(map, p); } catch (e) { console.warn("project layers:", e); }
+      };
+      /*  A project may bring its own basemap, so changing the project can mean
+          changing the style underneath it. Only reloaded when the URL actually
+          differs — otherwise every colour tweak in the editor would throw the
+          whole basemap away and refetch it. */
+      let styleShowing = hostedStyle();   // what the map opened with
+      host._buildProject = () => {
+        const want = hostedStyle();
+        if (want !== styleShowing) {
+          styleShowing = want;
+          applyStyle({ silent: true });   // style.load re-adds the project layers
+        } else {
+          reapplyProject();
+        }
+        buildProject();
+      };
+
+      /*  Lets the Map Editor collect coordinates by clicking. It hands back
+          its own disarm function rather than exposing the map, so the editor
+          can never leave a listener behind it does not know how to remove. */
+      host._armMap = fn => {
+        const handler = e => fn([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]);
+        map.on("click", handler);
+        canvas.classList.add("arming");
+        return () => { map.off("click", handler); canvas.classList.remove("arming"); };
+      };
+      map.on("move", drawAnnos);
+      map.on("resize", drawAnnos);
+      map.on("style.load", reapplyProject);
+
       const syncMarkers = () => {
-        const feats = placeFeatures(V());
+        const feats = markFeatures(V());
         for (const m of host._markers) m.remove();
         host._markers = [];
         for (const f of feats) {
           const elDot = document.createElement("div");
           const glyph = f.properties.icon;
+          const mark = f.properties.mark || "place";
           elDot.className = "map-marker" + (glyph ? " as-icon" : "") +
+                            " mk-" + mark +
                             (f.properties.status === "verified" ? " verified" : "");
+          // Colour says WHICH KIND of thing this is. Set per element rather
+          // than per class so the swatches in Map Style drive it directly.
+          elDot.style.setProperty("--fill", MAP_SETTINGS.marks[mark].color);
           if (glyph) elDot.dataset.glyph = glyph;
+          // Carried on the element so the vetting pass can rank without
+          // going back to the model for every mark on every pan.
+          elDot.dataset.refs = f.properties.refs || 0;
+          elDot.dataset.name = f.properties.name;
           elDot.title = f.properties.name + (f.properties.detail ? " — " + f.properties.detail : "");
           elDot.onclick = ev => { ev.stopPropagation(); focusEntity(f.properties.slug); };
 
           const label = document.createElement("span");
           label.className = "map-marker-label";
+          // Empty means auto: the vetting pass will choose a side. The class
+          // set here is only the starting position it measures from.
+          elDot.dataset.pos = f.properties.labelPos || "";
           elDot.classList.add("lbl-" + (f.properties.labelPos || labelPlacement));
           label.textContent = f.properties.name;
           elDot.appendChild(label);
@@ -2154,9 +2984,33 @@ function renderMap(model, host) {
         // Same trigger as the markers: what is connected is a fact about the
         // filtered view, so it is recomputed whenever the markers are.
         buildLinks();
+        applyMarkerVars();
+        // A frame later: the labels have to be in the document and laid out
+        // before anything can measure whether they collide.
+        requestAnimationFrame(declutter);
         updateMapCount(host, feats.length, V());
         return feats.length;
       };
+
+      buildProject();
+      // view.center/zoom/lock is the file framing the map, so it is applied
+      // once at open rather than on every redraw — it must not fight you every
+      // time a brick changes.
+      (function applyProjectView() {
+        const p = projectObject();
+        const v = (p && p.view) || {};
+        if (Array.isArray(v.center) && v.center.length === 2) map.setCenter(v.center);
+        if (isFinite(v.zoom)) map.setZoom(v.zoom);
+        if (Array.isArray(v.bbox) && v.bbox.length === 4) {
+          map.fitBounds([[v.bbox[0], v.bbox[1]], [v.bbox[2], v.bbox[3]]], { duration: 0 });
+        }
+        if (v.lock) {
+          for (const h of ["dragPan", "scrollZoom", "boxZoom", "dragRotate",
+                           "keyboard", "doubleClickZoom", "touchZoomRotate"]) {
+            if (map[h]) map[h].disable();
+          }
+        }
+      })();
 
       host._syncMarkers = syncMarkers;
       host._ensurePlaces = syncMarkers;   // same job, kept for existing callers
@@ -2199,8 +3053,9 @@ function renderMap(model, host) {
           currently outranking it. */
       const applyStyle = ({ silent } = {}) => {
         const ov = overrideStyle();
+        const proj = hostedStyle();
         if (!silent) note.hidden = true;
-        map.setStyle(ov || (usingFallback ? DEMO_STYLE : basemapStyle()));
+        map.setStyle(ov || proj || (usingFallback ? DEMO_STYLE : basemapStyle()));
         sourceSel.disabled = !!ov;
         showAttrib();
       };
@@ -2251,7 +3106,9 @@ function renderMap(model, host) {
           kept the height it had at startup. The shell is the element that
           actually tracks the panel's box. */
       if (window.ResizeObserver) {
-        const ro = new ResizeObserver(() => map.resize());
+        // A resized tile moves every mark relative to every other, so the
+        // vetting has to be redone — a resize is a re-layout, not a repaint.
+        const ro = new ResizeObserver(() => { map.resize(); requestAnimationFrame(declutter); });
         ro.observe(host.querySelector(".map-shell"));
         ro.observe(host);
       }
@@ -2299,30 +3156,46 @@ function updateMapCount(host, shown, model) {
    Not covered here: the basemap. Its colours are cartography, not chrome, and
    they live in the Map Style panel where they belong.
    -------------------------------------------------------------------------- */
+/*  Each token says what it paints, in the words of the thing on screen rather
+    than the word in the stylesheet — "Behind the panels" is checkable by
+    looking, "--bg" is not. */
 const THEME_TOKENS = [
-  { key: "bg",      label: "Ground" },
-  { key: "panel",   label: "Panel" },
-  { key: "field",   label: "Field" },
-  { key: "fg",      label: "Text" },
-  { key: "border",  label: "Border" },
-  { key: "accent",  label: "Verified" },
-  { key: "accent2", label: "Controls" },
-  { key: "draft",   label: "Draft" },
+  { key: "bg",      label: "Board",    hint: "behind the panels" },
+  { key: "panel",   label: "Panels",   hint: "the tiles themselves" },
+  { key: "field",   label: "Inputs",   hint: "text boxes, lists, buttons" },
+  { key: "fg",      label: "Text",     hint: "every word on the page" },
+  { key: "border",  label: "Edges",    hint: "panel outlines and rules" },
+  { key: "accent",  label: "Verified", hint: "+ bricks, confirmed markers" },
+  { key: "accent2", label: "Active",   hint: "hover, focus, what is switched on" },
+  { key: "draft",   label: "Draft",    hint: "− bricks, unconfirmed things" },
 ];
 
 const THEMES = [
   { id: "night", name: "Night", scheme: "dark", tokens: {
       bg: "#111111", panel: "#1a1a1a", field: "#0d0d0d", fg: "#eeeeee",
       border: "#333333", accent: "#ff5500", accent2: "#33ff33", draft: "#7a8a99" } },
-  { id: "paper", name: "Paper", scheme: "light", tokens: {
-      bg: "#efece4", panel: "#faf8f3", field: "#ffffff", fg: "#22201d",
-      border: "#d3ccbe", accent: "#c2410c", accent2: "#15803d", draft: "#8b857b" } },
   { id: "blueprint", name: "Blueprint", scheme: "dark", tokens: {
       bg: "#0a1c33", panel: "#102844", field: "#08172a", fg: "#dce9fb",
       border: "#1e3d66", accent: "#ffb703", accent2: "#7fdbff", draft: "#6f8bb0" } },
-  { id: "sepia", name: "Sepia", scheme: "light", tokens: {
-      bg: "#e8dcc4", panel: "#f4ecd9", field: "#fdf8ec", fg: "#3b2f21",
-      border: "#c9b895", accent: "#9a3412", accent2: "#4d7c0f", draft: "#8a7a60" } },
+  // Dark, but warm rather than blue — the tobacco-and-lamplight end of an old
+  // map room. Easier on the eye than Night for a long session.
+  { id: "vellum", name: "Vellum", scheme: "dark", tokens: {
+      bg: "#171310", panel: "#211b16", field: "#120e0b", fg: "#e8ddcb",
+      border: "#3a2f25", accent: "#e07b39", accent2: "#c9a227", draft: "#8c7c66" } },
+  // Near-black with a green cast: a phosphor terminal, which is where this
+  // notation's ancestors were actually typed.
+  { id: "phosphor", name: "Phosphor", scheme: "dark", tokens: {
+      bg: "#0a0f0b", panel: "#111a13", field: "#070c08", fg: "#cfe8d4",
+      border: "#23342a", accent: "#ff7a1a", accent2: "#3ddc72", draft: "#6f8d7a" } },
+  // Cold and low-contrast, the quietest of the set — for when even Night's
+  // pure black feels like a hole in the screen.
+  { id: "slate", name: "Slate", scheme: "dark", tokens: {
+      bg: "#14181d", panel: "#1c2229", field: "#0f1317", fg: "#dbe2ea",
+      border: "#2c353f", accent: "#f0883e", accent2: "#58c8b0", draft: "#7d8a99" } },
+  // Deep aubergine — the same value range as Night, a different temperature.
+  { id: "plum", name: "Plum", scheme: "dark", tokens: {
+      bg: "#150f1a", panel: "#1f1727", field: "#100b14", fg: "#e6dcf0",
+      border: "#332844", accent: "#ff6b9d", accent2: "#a78bfa", draft: "#8b7fa0" } },
 ];
 
 /*  Themes you have saved. Kept apart from the built-in four: those are code
@@ -2451,7 +3324,8 @@ function renderTheme(body) {
   rows.innerHTML = THEME_TOKENS.map(t =>
     '<div class="th-row">' +
       '<input type="color" data-k="' + t.key + '" value="' + THEME[t.key] + '">' +
-      '<span class="ms-name">' + esc(t.label) + "</span>" +
+      '<span class="th-label"><b>' + esc(t.label) + "</b>" +
+        '<em>' + esc(t.hint) + "</em></span>" +
     "</div>").join("");
 
   presets.addEventListener("click", e => {
@@ -2525,6 +3399,528 @@ function renderTheme(body) {
   paint();
 }
 
+/* --------------------------------------------------------------------------
+   MAP EDITOR — authoring a project file by clicking the map
+   --------------------------------------------------------------------------
+   It edits the same object the loader reads, and every change is written
+   straight back through applyProject. So the preview is not a preview: it is
+   the real renderer drawing the real file. Nothing can look right here and
+   wrong when loaded, because there is only one path.
+   -------------------------------------------------------------------------- */
+// Same idiom the gazetteer and pallet exports use, named once.
+function downloadText(text, filename, mime) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: mime || "text/plain" }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+let ME_MODE = null;      // which tool is armed
+let ME_DISARM = null;    // how to un-arm it
+let ME_VERTS = [];       // vertices collected so far
+let ME_SEL = null;       // { bucket, index } of the entry being styled
+
+// The file, with its three buckets guaranteed present so nothing downstream
+// has to test for them.
+function projDraft() {
+  const p = projectObject() || {};
+  for (const k of ["points", "polys", "annotations"]) {
+    if (!p[k] || typeof p[k] !== "object") p[k] = { data: [] };
+    if (!Array.isArray(p[k].data)) p[k].data = [];
+  }
+  return p;
+}
+function commitDraft(p) {
+  // An empty file is no file: three empty buckets should leave the map clean
+  // rather than sitting there as a project that draws nothing.
+  const empty = !p.points.data.length && !p.polys.data.length &&
+                !p.annotations.data.length && !p.view;
+  MAP_PROJECT = empty ? "" : JSON.stringify(p, null, 2);
+  saveProject();
+  const h = mapHost();
+  if (h && h._buildProject) h._buildProject();
+  meDrawProject();
+  refreshPanel("mapstyle");
+  refreshPanel("mapeditor");
+}
+
+const ME_TOOLS = {
+  point: { tip: "Click the map to drop a point.", clicks: 1 },
+  line:  { tip: "Click each vertex, then Finish.", clicks: 0 },
+  poly:  { tip: "Click each corner, then Finish. It closes itself.", clicks: 0 },
+  arrow: { tip: "Click where the arrow starts, then where it points.", clicks: 2 },
+  curve: { tip: "Click start, then end — it will bow to one side.", clicks: 2 },
+  text:  { tip: "Click where the note should sit.", clicks: 1 },
+};
+
+function meDisarm() {
+  if (ME_DISARM) ME_DISARM();
+  ME_DISARM = null; ME_MODE = null; ME_VERTS = [];
+  refreshPanel("mapeditor");
+}
+
+/*  The editor's own map.
+
+    Separate from the Map Viewer on purpose. That one carries your records —
+    59 parish marks, their labels, the connector lines — and tracing over the
+    top of them means fighting for every click. This one shows the basemap and
+    the project file and nothing else, so what you draw is the only thing on
+    it.
+
+    It reads the same basemap settings, so the ground you digitize against is
+    the ground you will publish against. */
+let ME_MAP = null;
+let ME_SVG = null, ME_TEXTS = null, ME_PTS = [], ME_ANNOS = [], ME_HANDLES = [];
+
+/*  Draws the project onto the editor's map. The polys go in as real style
+    layers through the same applyProjectLayers the viewer uses, so a shape can
+    never look one way here and another there. Points and annotations are DOM,
+    same as the viewer.
+
+    `moveOnly` skips the rebuild and just re-projects — panning must not
+    reconstruct every element sixty times a second. */
+function meDrawProject(moveOnly) {
+  if (!ME_MAP || !ME_MAP.isStyleLoaded()) return;
+  const p = projectObject();
+
+  if (!ME_SVG) {
+    const c = ME_MAP.getCanvasContainer();
+    ME_SVG = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ME_SVG.setAttribute("class", "map-annos");
+    c.appendChild(ME_SVG);
+    ME_TEXTS = document.createElement("div");
+    ME_TEXTS.className = "map-anno-text";
+    c.appendChild(ME_TEXTS);
+  }
+
+  const reproject = () => {
+    for (const a of ME_ANNOS) {
+      if (a.kind === "text") {
+        const q = ME_MAP.project(a.at);
+        a.el.style.transform = "translate(" + q.x + "px," + q.y + "px)";
+      } else {
+        const s = ME_MAP.project(a.start), e = ME_MAP.project(a.end);
+        const mx = (s.x + e.x) / 2, my = (s.y + e.y) / 2;
+        const dx = e.x - s.x, dy = e.y - s.y;
+        a.el.setAttribute("d", a.bend
+          ? "M " + s.x + " " + s.y + " Q " + (mx - dy * a.bend) + " " + (my + dx * a.bend) +
+            " " + e.x + " " + e.y
+          : "M " + s.x + " " + s.y + " L " + e.x + " " + e.y);
+      }
+    }
+  };
+  if (moveOnly) { reproject(); return; }
+
+  try { clearProject(ME_MAP); } catch (e) { /* style not ready */ }
+  try { applyProjectLayers(ME_MAP, p); } catch (e) { /* a bad entry is not fatal */ }
+
+  for (const m of ME_PTS) m.remove();
+  ME_PTS = []; ME_ANNOS = [];
+  ME_TEXTS.textContent = "";
+  [...ME_SVG.querySelectorAll("path.anno-line")].forEach(n => n.remove());
+  if (!p) return;
+
+  for (const pt of (p.points && p.points.data) || []) {
+    if (!pt || !isFinite(pt.lng) || !isFinite(pt.lat)) continue;
+    const s = pt.style || {};
+    const dot = document.createElement("div");
+    dot.className = "map-marker proj-point lbl-" +
+                    (DIR_TO_POS[String(pt.dir || "").toUpperCase()] || "bottom");
+    dot.style.setProperty("--fill", s.fill || "#ffffff");
+    dot.style.setProperty("--mk", num(s.size, 7) * 2 + "px");
+    dot.style.setProperty("--lbl", "8px");
+    if (s.stroke) dot.style.borderColor = s.stroke;
+    if (pt.name) {
+      const lab = document.createElement("span");
+      lab.className = "map-marker-label";
+      lab.textContent = pt.name;
+      dot.appendChild(lab);
+    }
+    ME_PTS.push(new window.maplibregl.Marker({ element: dot })
+      .setLngLat([pt.lng, pt.lat]).addTo(ME_MAP));
+  }
+
+  for (const a of (p.annotations && p.annotations.data) || []) {
+    if (!a) continue;
+    const s = a.style || {};
+    if (a.type === "text-area" && Array.isArray(a.position)) {
+      const el = document.createElement("div");
+      el.className = "proj-text";
+      el.textContent = a.text || "";
+      if (s.fill) el.style.background = s.fill;
+      if (s.stroke) el.style.border = "1px solid " + s.stroke;
+      ME_TEXTS.appendChild(el);
+      ME_ANNOS.push({ kind: "text", el, at: a.position });
+      continue;
+    }
+    if (!Array.isArray(a.start) || !Array.isArray(a.end)) continue;
+    const path = document.createElementNS(SVGNS, "path");
+    path.setAttribute("class", "anno-line");
+    path.setAttribute("fill", "none");
+    const col = s.stroke || "#fff";
+    path.setAttribute("stroke", col);
+    path.setAttribute("stroke-width", num(s["stroke-width"], 2));
+    const dash = DASHES[s["stroke-dash"]];
+    if (dash) path.setAttribute("stroke-dasharray", dash.map(n => n * 3).join(" "));
+    path.setAttribute("marker-end", "url(#" + arrowMarker(ME_SVG, col) + ")");
+    ME_SVG.appendChild(path);
+    ME_ANNOS.push({ kind: "arrow", el: path, start: a.start, end: a.end,
+                    bend: a.type === "curved-arrow" ? num(a.bend, 0.25) : 0 });
+  }
+  reproject();
+  meHandles(p);
+}
+
+/*  Handles on the selected item, so a thing you placed is not final.
+
+    Every coordinate of the selected entry becomes a draggable square. Drop it
+    and the coordinate is written back and everything redraws. Only the
+    selection gets handles — putting them on all of it at once would bury the
+    drawing under its own controls.
+
+    A polygon's ring is closed, so its first and last coordinates are the same
+    point; dragging either moves both, or the ring tears open. */
+function meHandles(p) {
+  for (const h of ME_HANDLES) h.remove();
+  ME_HANDLES = [];
+  if (!ME_SEL || !p) return;
+  const item = p[ME_SEL.bucket] && p[ME_SEL.bucket].data[ME_SEL.index];
+  if (!item) return;
+
+  const spots = [];   // { at:[lng,lat], set(lngLat) }
+  if (ME_SEL.bucket === "points") {
+    spots.push({ at: [item.lng, item.lat], set: c => { item.lng = c[0]; item.lat = c[1]; } });
+  } else if (ME_SEL.bucket === "polys" && item.geometry) {
+    const g = item.geometry;
+    if (g.type === "LineString") {
+      g.coordinates.forEach((c, i) =>
+        spots.push({ at: c, set: v => { g.coordinates[i] = v; } }));
+    } else if (g.type === "Polygon") {
+      const ring = g.coordinates[0] || [];
+      ring.slice(0, -1).forEach((c, i) =>
+        spots.push({ at: c, set: v => {
+          ring[i] = v;
+          if (i === 0) ring[ring.length - 1] = v;   // keep the ring closed
+        } }));
+    }
+  } else if (ME_SEL.bucket === "annotations") {
+    if (item.type === "text-area") {
+      spots.push({ at: item.position, set: v => { item.position = v; } });
+    } else {
+      spots.push({ at: item.start, set: v => { item.start = v; } });
+      spots.push({ at: item.end, set: v => { item.end = v; } });
+    }
+  }
+
+  for (const s of spots) {
+    if (!Array.isArray(s.at)) continue;
+    const el = document.createElement("div");
+    el.className = "me-handle";
+    const m = new window.maplibregl.Marker({ element: el, draggable: true })
+      .setLngLat(s.at).addTo(ME_MAP);
+    m.on("drag", () => {
+      // Live while dragging: the shape follows the handle rather than jumping
+      // when you let go, which is the difference between editing and guessing.
+      const c = m.getLngLat();
+      s.set([+c.lng.toFixed(6), +c.lat.toFixed(6)]);
+      MAP_PROJECT = JSON.stringify(p, null, 2);
+      meRedrawOnly(p);
+    });
+    m.on("dragend", () => { commitDraft(p); });
+    ME_HANDLES.push(m);
+  }
+}
+
+// Geometry only, no handle rebuild — dragging must not destroy the handle
+// currently under the pointer.
+function meRedrawOnly(p) {
+  try { clearProject(ME_MAP); applyProjectLayers(ME_MAP, p); } catch (e) { /* mid-style */ }
+  const h = mapHost();
+  if (h && h._buildProject) h._buildProject();
+  meDrawAnnosOnly();
+}
+function meDrawAnnosOnly() {
+  const p = projectObject();
+  if (!p || !ME_ANNOS.length) return;
+  const data = (p.annotations && p.annotations.data) || [];
+  ME_ANNOS.forEach((a, i) => {
+    const d = data[i];
+    if (!d) return;
+    if (a.kind === "text" && d.position) a.at = d.position;
+    else { if (d.start) a.start = d.start; if (d.end) a.end = d.end; }
+  });
+  meDrawProject(true);
+}
+
+function meBoot(body) {
+  const shell = body.querySelector('[data-el="shell"]');
+  const canvas = shell.querySelector(".me-canvas");
+  if (ME_MAP || !window.maplibregl) return;
+  ME_MAP = new window.maplibregl.Map({
+    container: canvas,
+    style: overrideStyle() || hostedStyle() || basemapStyle(),
+    center: [-3.4, 56.4], zoom: 7,
+    attributionControl: false, preserveDrawingBuffer: true,
+  });
+  ME_MAP.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
+  // Falls back for the same reason the viewer does: an unreachable basemap
+  // must not leave you digitizing onto black.
+  ME_MAP.on("error", () => {
+    if (ME_MAP._fellBack) return;
+    ME_MAP._fellBack = true;
+    ME_MAP.setStyle(DEMO_STYLE);
+  });
+  ME_MAP.on("style.load", () => meDrawProject());
+  ME_MAP.on("move", () => meDrawProject(true));
+  if (window.ResizeObserver) new ResizeObserver(() => ME_MAP.resize()).observe(shell);
+  requestAnimationFrame(() => ME_MAP.resize());
+}
+
+function meArm(mode) {
+  if (!ME_MAP) return;
+  if (ME_MODE === mode) { meDisarm(); return; }   // clicking the tool again puts it down
+  if (ME_DISARM) ME_DISARM();
+  ME_MODE = mode; ME_VERTS = [];
+  const handler = e => {
+    ME_VERTS.push([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]);
+    const t = ME_TOOLS[mode];
+    if (t.clicks && ME_VERTS.length >= t.clicks) meFinish();
+    else refreshPanel("mapeditor");
+  };
+  ME_MAP.on("click", handler);
+  ME_MAP.getCanvasContainer().style.cursor = "crosshair";
+  ME_DISARM = () => {
+    ME_MAP.off("click", handler);
+    ME_MAP.getCanvasContainer().style.cursor = "";
+  };
+  refreshPanel("mapeditor");
+}
+
+function meFinish() {
+  const mode = ME_MODE, verts = ME_VERTS.slice();
+  const need = mode === "poly" ? 3 : mode === "line" ? 2 : (ME_TOOLS[mode] || {}).clicks || 1;
+  if (!mode || verts.length < need) { meDisarm(); return; }
+  const p = projDraft();
+
+  if (mode === "point") {
+    p.points.data.push({ name: "Point " + (p.points.data.length + 1),
+                         lng: verts[0][0], lat: verts[0][1], dir: "NE",
+                         style: { fill: "#ffcc00", size: 6, stroke: "#000000", "stroke-width": 1 } });
+    ME_SEL = { bucket: "points", index: p.points.data.length - 1 };
+  } else if (mode === "line" || mode === "poly") {
+    // A ring must close on itself; a line must not. Same clicks, one rule apart.
+    const coords = mode === "poly" ? [verts.concat([verts[0]])] : verts;
+    p.polys.data.push({
+      geometry: { type: mode === "poly" ? "Polygon" : "LineString", coordinates: coords },
+      style: mode === "poly"
+        ? { fill: "#ff5500", "fill-opacity": 0.25, stroke: "#ff5500", "stroke-width": 2, "stroke-dash": "solid" }
+        : { fill: "none", stroke: "#00e0ff", "stroke-width": 2, "stroke-dash": "solid" },
+    });
+    ME_SEL = { bucket: "polys", index: p.polys.data.length - 1 };
+  } else if (mode === "arrow" || mode === "curve") {
+    p.annotations.data.push({
+      type: mode === "curve" ? "curved-arrow" : "straight-arrow",
+      start: verts[0], end: verts[1],
+      ...(mode === "curve" ? { bend: 0.25 } : {}),
+      style: { stroke: "#ffffff", "stroke-width": 2, "stroke-dash": "solid" },
+    });
+    ME_SEL = { bucket: "annotations", index: p.annotations.data.length - 1 };
+  } else if (mode === "text") {
+    p.annotations.data.push({
+      type: "text-area", position: verts[0], text: "Note",
+      style: { fill: "#ffffff", "fill-opacity": 0.85, stroke: "#000000", "stroke-width": 1, align: "left" },
+    });
+    ME_SEL = { bucket: "annotations", index: p.annotations.data.length - 1 };
+  }
+  meDisarm();
+  commitDraft(p);
+}
+
+// One row per thing in the file, in the order it draws.
+function meEntries(p) {
+  const rows = [];
+  p.points.data.forEach((d, i) =>
+    rows.push({ bucket: "points", index: i, icon: "📍", label: d.name || "point" }));
+  p.polys.data.forEach((d, i) => {
+    const line = d.geometry && /LineString/.test(d.geometry.type);
+    rows.push({ bucket: "polys", index: i, icon: line ? "╱" : "⬠",
+                label: d.source || (line ? "line" : "shape") });
+  });
+  p.annotations.data.forEach((d, i) =>
+    rows.push({ bucket: "annotations", index: i,
+                icon: d.type === "text-area" ? "🗨" : d.type === "curved-arrow" ? "↝" : "➤",
+                label: d.type === "text-area" ? (d.text || "note") : "arrow" }));
+  return rows;
+}
+
+function renderMapEditor(body) {
+  // MapLibre comes from a CDN and only when a map is actually on the board.
+  if (!ME_MAP) {
+    Promise.all([loadOnce(MAPLIBRE_CSS, true), loadOnce(MAPLIBRE_JS), loadOnce(PMTILES_JS)])
+      .then(() => {
+        if (!window.__pmtilesReady && window.pmtiles) {
+          window.maplibregl.addProtocol("pmtiles", new window.pmtiles.Protocol().tile);
+          window.__pmtilesReady = true;
+        }
+        meBoot(body);
+      })
+      .catch(() => { body.querySelector('[data-el="tip"]').textContent = "The map needs a connection."; });
+  }
+  const tip = body.querySelector('[data-el="tip"]');
+  const list = body.querySelector('[data-el="list"]');
+  const styleBox = body.querySelector('[data-el="style"]');
+  const p = projDraft();
+  const entries = meEntries(p);
+
+  body.querySelectorAll(".me-tools button[data-act]").forEach(b => {
+    const a = b.dataset.act;
+    if (a === "finish" || a === "cancel") {
+      // Only offered for the tools that need telling when you are done.
+      b.hidden = !(ME_MODE && !ME_TOOLS[ME_MODE].clicks);
+      if (a === "cancel") b.hidden = !ME_MODE;
+    } else {
+      b.classList.toggle("on", ME_MODE === a);
+    }
+  });
+
+  tip.textContent = ME_MODE
+    ? ME_TOOLS[ME_MODE].tip + (ME_VERTS.length ? "  (" + ME_VERTS.length + " placed)" : "")
+    : entries.length
+      ? entries.length + " item" + (entries.length === 1 ? "" : "s") +
+        (p.view ? " · view captured" : "")
+      : "Pick a tool, then click the map.";
+
+  list.innerHTML = "";
+  for (const e of entries) {
+    const row = document.createElement("div");
+    const on = ME_SEL && ME_SEL.bucket === e.bucket && ME_SEL.index === e.index;
+    row.className = "me-item" + (on ? " on" : "");
+    row.innerHTML = '<span class="me-ic">' + e.icon + "</span>" +
+                    '<span class="me-nm">' + esc(e.label) + "</span>";
+    const del = document.createElement("button");
+    del.className = "me-del"; del.textContent = "×";
+    del.onclick = ev => {
+      ev.stopPropagation();
+      const d = projDraft();
+      d[e.bucket].data.splice(e.index, 1);
+      ME_SEL = null;
+      commitDraft(d);
+    };
+    row.appendChild(del);
+    row.onclick = () => {
+      ME_SEL = on ? null : { bucket: e.bucket, index: e.index };
+      refreshPanel("mapeditor");
+    };
+    list.appendChild(row);
+  }
+
+  /*  Style for whatever is selected. The fields offered follow the thing:
+      a line has no fill, a note has no stroke width worth setting. Showing
+      controls that do nothing is how a panel stops being trustworthy. */
+  const sel = ME_SEL && p[ME_SEL.bucket] && p[ME_SEL.bucket].data[ME_SEL.index];
+  styleBox.hidden = !sel;
+  /*  Rebuilt only when the SELECTION changes.
+
+      Every edit commits, and every commit re-renders this panel — so rebuilding
+      the controls here meant the slider you were dragging was destroyed and
+      replaced on its first input event. The drag then continued against a
+      detached element and nothing further reached the file. Which is why a
+      placed item felt uneditable: the first nudge worked and every one after
+      went nowhere. */
+  const selKey = sel ? ME_SEL.bucket + ":" + ME_SEL.index : "";
+  if (sel && styleBox.dataset.for !== selKey) {
+    styleBox.dataset.for = selKey;
+    const s = sel.style || (sel.style = {});
+    const isText = sel.type === "text-area";
+    const isPoint = ME_SEL.bucket === "points";
+    const isArrow = ME_SEL.bucket === "annotations" && !isText;
+    const isLine = sel.geometry && /LineString/.test(sel.geometry.type);
+    const fields = [];
+    if (isText || isPoint) fields.push(["text", "name", "Label"]);
+    if (!isLine && !isArrow) fields.push(["color", "fill", "Fill"]);
+    if (!isText) fields.push(["color", "stroke", "Stroke"]);
+    if (!isText) fields.push(["range", "stroke-width", "Width"]);
+    if (!isPoint && !isText) fields.push(["dash", "stroke-dash", "Dash"]);
+    if (isPoint) fields.push(["range", "size", "Size"]);
+    if (sel.type === "curved-arrow") fields.push(["range", "bend", "Bend"]);
+
+    styleBox.innerHTML = fields.map(([kind, key, label]) => {
+      const val = key === "name" ? (isText ? sel.text : sel.name) || ""
+                : key === "bend" ? (sel.bend !== undefined ? sel.bend : 0.25)
+                : s[key];
+      const input =
+        kind === "color" ? '<input type="color" data-k="' + key + '" value="' + esc(val || "#ffffff") + '">'
+        : kind === "text" ? '<input type="text" data-k="' + key + '" value="' + esc(val) + '">'
+        : kind === "dash" ? '<select data-k="' + key + '">' +
+            ["solid", "dashed", "dotted"].map(d =>
+              '<option' + (val === d ? " selected" : "") + ">" + d + "</option>").join("") + "</select>"
+        : '<input type="range" data-k="' + key + '" min="' +
+            (key === "bend" ? "-1" : key === "size" ? "2" : "0.5") + '" max="' +
+            (key === "bend" ? "1" : key === "size" ? "20" : "8") + '" step="' +
+            (key === "bend" ? "0.05" : key === "size" ? "1" : "0.5") + '" value="' +
+            (val === undefined ? 2 : val) + '">';
+      return '<div class="me-field"><span>' + label + "</span>" + input + "</div>";
+    }).join("");
+  }
+  if (!sel) styleBox.dataset.for = "";
+
+  if (body._wired) return;
+  body._wired = true;
+
+  body.querySelector(".me-tools").addEventListener("click", e => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    const a = b.dataset.act;
+    if (a === "finish") meFinish();
+    else if (a === "cancel") meDisarm();
+    else meArm(a);
+  });
+
+  // Live: a colour or a slider changes the file, which redraws the map. There
+  // is no Apply, because there is nothing to apply it to but itself.
+  styleBox.addEventListener("input", e => {
+    const i = e.target.closest("[data-k]");
+    if (!i || !ME_SEL) return;
+    const d = projDraft();
+    const item = d[ME_SEL.bucket].data[ME_SEL.index];
+    if (!item) return;
+    const k = i.dataset.k;
+    const v = i.type === "range" ? Number(i.value) : i.value;
+    if (k === "name") {
+      if (item.type === "text-area") item.text = v; else item.name = v;
+    } else if (k === "bend") { item.bend = v; }
+    else { (item.style = item.style || {})[k] = v; }
+    commitDraft(d);
+  });
+
+  body.querySelectorAll(".ms-bar button[data-act]").forEach(b => {
+    b.onclick = () => {
+      const d = projDraft();
+      if (b.dataset.act === "view") {
+        const h = mapHost();
+        if (!h || !h._map) return;
+        const c = h._map.getCenter();
+        d.view = Object.assign({}, d.view, {
+          center: [+c.lng.toFixed(5), +c.lat.toFixed(5)],
+          zoom: +h._map.getZoom().toFixed(2),
+        });
+        commitDraft(d);
+      } else if (b.dataset.act === "download") {
+        downloadText(MAP_PROJECT || "{}", "project.json", "application/json");
+      } else if (b.dataset.act === "wipe") {
+        ME_SEL = null;
+        MAP_PROJECT = "";
+        saveProject();
+        const h = mapHost();
+        if (h && h._buildProject) h._buildProject();
+        refreshPanel("mapstyle");
+        refreshPanel("mapeditor");
+      }
+    };
+  });
+}
+
 /* ---------- map style override ---------- */
 // The map slot owns its element, so the style panel reaches it the same way
 // anything else does: through the panel body, not through a global map object.
@@ -2548,6 +3944,30 @@ function renderMapStyle(body) {
   const rows = body.querySelector('[data-el="rows"]');
   const raw = body.querySelector('[data-el="raw"]');
   const ta = body.querySelector('[data-el="style"]');
+  const projWrap = body.querySelector('[data-el="projwrap"]');
+  const projTa = body.querySelector('[data-el="project"]');
+  const projMsg = body.querySelector('[data-el="projmsg"]');
+  const projPick = body.querySelector('[data-el="projpick"]');
+  // Rebuilt whenever the panel redraws, because a folder can be opened at any
+  // time — including while this fold is sitting open in front of you.
+  const projSources = () => {
+    projPick.hidden = !FOLDER_PROJECTS.length;
+    if (!FOLDER_PROJECTS.length) return;
+    const cur = FOLDER_PROJECTS.find(p => p.text === MAP_PROJECT);
+    projPick.innerHTML = '<option value="">— choose a project file —</option>' +
+      FOLDER_PROJECTS.map(p =>
+        '<option value="' + esc(p.name) + '">' + esc(p.name.split("/").pop()) + "</option>").join("");
+    projPick.value = cur ? cur.name : "";
+  };
+  const projStatus = () => {
+    projMsg.style.color = "";
+    const p = projectObject();
+    if (!MAP_PROJECT.trim()) { projMsg.textContent = "No project file — the basemap is on its own."; return; }
+    if (!p) { projMsg.textContent = "Stored, but not valid JSON — nothing is drawn from it."; projMsg.style.color = "var(--bad)"; return; }
+    const n = (arr) => (arr && arr.data ? arr.data.length : 0);
+    projMsg.textContent = n(p.points) + " points · " + n(p.polys) + " shapes · " +
+                          n(p.annotations) + " annotations";
+  };
   const msg = body.querySelector('[data-el="msg"]');
   const say = (text, bad) => { msg.textContent = text; msg.style.color = bad ? "var(--bad)" : ""; };
   const status = () => {
@@ -2561,20 +3981,88 @@ function renderMapStyle(body) {
 
   // Wired once: re-rendering must never overwrite a colour you are dragging or
   // a style file you are half way through editing.
-  if (body._wired) { syncEnabled(); return; }
+  if (body._wired) { syncEnabled(); projSources(); projStatus(); return; }
   body._wired = true;
 
-  rows.innerHTML = MAP_LAYERS.map(l => {
+  /*  A hosted style and its key. Debounced, because every keystroke of a URL
+      would otherwise ask MapLibre to fetch a half-typed address — a 404 per
+      character is a poor way to spend a tile quota. */
+  const styleUrlIn = body.querySelector('[data-el="styleurl"]');
+  const tileKeyIn = body.querySelector('[data-el="tilekey"]');
+  styleUrlIn.value = STYLE_URL;
+  tileKeyIn.value = TILE_KEY;
+  let styleTimer = null;
+  const restyle = () => {
+    clearTimeout(styleTimer);
+    styleTimer = setTimeout(() => {
+      STYLE_URL = styleUrlIn.value.trim(); saveStyleUrl();
+      TILE_KEY = tileKeyIn.value.trim(); saveTileKey();
+      applyMapStyle();
+    }, 600);
+  };
+  styleUrlIn.addEventListener("input", restyle);
+  tileKeyIn.addEventListener("input", restyle);
+
+  projPick.onchange = () => {
+    useFolderProject(projPick.value);
+    projTa.value = MAP_PROJECT;
+    projStatus();
+  };
+
+  // Column headings. Without them a swatch and a slider are just two controls
+  // and you have to guess which is the colour and which is the line weight.
+  rows.innerHTML =
+    '<div class="ms-row ms-head">' +
+      "<span></span>" +
+      '<span class="ms-col">fill</span>' +
+      '<span class="ms-col">layer</span>' +
+      '<span class="ms-col">width</span>' +
+      '<span class="ms-col">opacity</span>' +
+    "</div>" +
+    MAP_LAYERS.map(l => {
     const s = MAP_SETTINGS[l.key];
+    // The controls follow the layer, not a template: a raster has no colour,
+    // and only a line has a weight. Opacity is the one thing everything has.
     return '<div class="ms-row" data-key="' + l.key + '">' +
         '<input type="checkbox" data-f="on"' + (s.on ? " checked" : "") + ">" +
-        '<input type="color" data-f="color" value="' + esc(s.color) + '">' +
+        (l.type === "raster" ? "<span></span>"
+          : '<input type="color" data-f="color" value="' + esc(s.color) + '">') +
         '<span class="ms-name">' + esc(l.label) + "</span>" +
         (l.type === "line"
           ? '<input type="range" data-f="width" min="0.25" max="4" step="0.25" value="' + s.width + '">'
-          : '<span class="ms-gap"></span>') +
+          : "<span></span>") +
+        '<input type="range" data-f="opacity" min="0" max="1" step="0.05" value="' + s.opacity + '">' +
       "</div>";
-  }).join("");
+  }).join("") +
+    /*  The marks, in the same grammar as the layers above: the box shows or
+        hides, the swatch is the fill. Switching one off is a map decision —
+        the bricks stay in the pile and every other panel still lists them. */
+    MARK_KINDS.map(k => {
+      const s = MAP_SETTINGS.marks[k.key];
+      return '<div class="ms-row' + (k.key === "place" ? " ms-sep" : "") + '" data-mark="' + k.key + '">' +
+          '<input type="checkbox" data-f="mon"' + (s.on ? " checked" : "") + ">" +
+          '<input type="color" data-f="mcolor" value="' + esc(s.color) + '">' +
+          '<span class="ms-name">' + (k.glyph ? k.glyph + " " : "") + esc(k.label) + "</span>" +
+          "<span></span><span></span>" +
+        "</div>";
+    }).join("") +
+    // Not basemap layers, but they are map style and belong with the rest of
+    // it rather than in a panel of their own.
+    '<div class="ms-row ms-sep" data-key="labelVet">' +
+      '<input type="checkbox" data-f="vet"' + (MAP_SETTINGS.labelVet ? " checked" : "") + ">" +
+      "<span></span>" +
+      '<span class="ms-name">Hide overlaps</span><span></span><span></span>' +
+    "</div>" +
+    '<div class="ms-row" data-key="labelGap">' +
+      "<span></span><span></span>" +
+      '<span class="ms-name">Label offset</span><span></span>' +
+      '<input type="range" data-f="gap" min="2" max="30" step="1" value="' + MAP_SETTINGS.labelGap + '">' +
+    "</div>" +
+    '<div class="ms-row" data-key="markerSize">' +
+      "<span></span><span></span>" +
+      '<span class="ms-name">Marker size</span><span></span>' +
+      '<input type="range" data-f="mk" min="4" max="32" step="1" value="' + MAP_SETTINGS.markerSize + '">' +
+    "</div>";
 
   // 'input', not 'change': a colour picker and a slider are both things you
   // drag, and watching the map follow the drag is the entire point of having
@@ -2582,18 +4070,45 @@ function renderMapStyle(body) {
   rows.addEventListener("input", e => {
     const row = e.target.closest(".ms-row");
     if (!row) return;
-    const s = MAP_SETTINGS[row.dataset.key];
     const f = e.target.dataset.f;
+    // Marks are drawn as DOM elements, so nothing here touches the basemap
+    // style — it is a marker rebuild, which is far cheaper than a setStyle.
+    if (row.dataset.mark) {
+      const s = MAP_SETTINGS.marks[row.dataset.mark];
+      if (f === "mon") s.on = e.target.checked;
+      else if (f === "mcolor") s.color = e.target.value;
+      saveMapSettings();
+      const host = mapHost();
+      if (host && host._syncMarkers) host._syncMarkers();
+      return;
+    }
+    // Labels are drawn by the DOM, not by the style — so this one costs no
+    // setStyle, just a variable and a re-vet.
+    if (f === "gap" || f === "vet" || f === "mk") {
+      if (f === "gap") MAP_SETTINGS.labelGap = Number(e.target.value);
+      else if (f === "mk") MAP_SETTINGS.markerSize = Number(e.target.value);
+      else MAP_SETTINGS.labelVet = e.target.checked;
+      saveMapSettings();
+      applyMarkerVars();
+      const host = mapHost();
+      if (host && host._declutter) host._declutter();
+      return;
+    }
+    const s = MAP_SETTINGS[row.dataset.key];
     if (f === "on") s.on = e.target.checked;
     else if (f === "color") s.color = e.target.value;
     else if (f === "width") s.width = Number(e.target.value);
+    else if (f === "opacity") s.opacity = Number(e.target.value);
     saveMapSettings();
     applyMapStyle();
   });
 
   ta.value = MAP_STYLE_OVERRIDE || JSON.stringify(currentMapStyle(), null, 2);
+  projTa.value = MAP_PROJECT;
   status();
   syncEnabled();
+  projSources();
+  projStatus();
 
   body.querySelectorAll("button[data-act]").forEach(b => {
     b.onclick = () => {
@@ -2602,12 +4117,30 @@ function renderMapStyle(body) {
         MAP_SETTINGS = defaultMapSettings();
         saveMapSettings();
         rows.querySelectorAll(".ms-row").forEach(r => {
+          if (r.dataset.mark) {
+            const s = MAP_SETTINGS.marks[r.dataset.mark];
+            r.querySelector('[data-f="mon"]').checked = s.on;
+            r.querySelector('[data-f="mcolor"]').value = s.color;
+            return;
+          }
+          if (!r.dataset.key) return;   // the heading row holds no controls
           const s = MAP_SETTINGS[r.dataset.key];
           const set = (f, v) => { const i = r.querySelector('[data-f="' + f + '"]'); if (i) i.value = v; };
+          if (r.dataset.key === "labelGap") { set("gap", MAP_SETTINGS.labelGap); return; }
+          if (r.dataset.key === "markerSize") { set("mk", MAP_SETTINGS.markerSize); return; }
+          if (r.dataset.key === "labelVet") {
+            r.querySelector('[data-f="vet"]').checked = MAP_SETTINGS.labelVet;
+            return;
+          }
           r.querySelector('[data-f="on"]').checked = s.on;
-          set("color", s.color); set("width", s.width);
+          set("color", s.color); set("width", s.width); set("opacity", s.opacity);
         });
+        applyMarkerVars();
         applyMapStyle();
+        // Mark colours are baked into the elements, so they need a rebuild —
+        // restyling the basemap alone would leave them on the old palette.
+        const mh = mapHost();
+        if (mh && mh._syncMarkers) mh._syncMarkers();
       } else if (act === "edit") {
         raw.hidden = !raw.hidden;
         b.classList.toggle("on", !raw.hidden);
@@ -2626,6 +4159,30 @@ function renderMapStyle(body) {
         if (!ok) return say("Not applied — that is not a MapLibre style file (it needs at least version, sources and layers).", true);
         MAP_STYLE_OVERRIDE = trial;
         saveStyleOverride(); applyMapStyle(); status(); syncEnabled();
+      } else if (act === "proj") {
+        projWrap.hidden = !projWrap.hidden;
+        b.classList.toggle("on", !projWrap.hidden);
+      } else if (act === "projapply") {
+        const trial = projTa.value.trim();
+        let obj = null;
+        try { obj = JSON.parse(trial); } catch (e) { obj = null; }
+        if (trial && (!obj || typeof obj !== "object")) {
+          projMsg.textContent = "Not applied — that is not valid JSON.";
+          projMsg.style.color = "var(--bad)";
+          return;
+        }
+        MAP_PROJECT = trial;
+        saveProject();
+        const host2 = mapHost();
+        if (host2 && host2._buildProject) host2._buildProject();
+        projStatus();
+      } else if (act === "projclear") {
+        MAP_PROJECT = "";
+        saveProject();
+        projTa.value = "";
+        const host3 = mapHost();
+        if (host3 && host3._buildProject) host3._buildProject();
+        projStatus();
       } else if (act === "current") {
         ta.value = JSON.stringify(currentMapStyle(), null, 2);
         say("Loaded the style the map is drawing — edit it, then Apply.");
@@ -3938,13 +5495,18 @@ function renderGazetteerList(body) {
     // does not fire "change" on its own, so the paste handler commits directly.
     wireCoordPaste(latIn, lngIn, commit);
 
-    // Per-place label position. "map default" is the empty value, so a place
-    // only overrides when you actually choose something for it.
+    /*  Per-place label position. Empty is "auto", and auto is the default —
+        the map tries the eight positions and keeps the first that does not
+        collide. Choosing a side here opts OUT of that: it is honoured or the
+        label is dropped, never quietly moved somewhere else. */
     const labelSel = document.createElement("select");
     labelSel.className = "gaz-label";
     labelSel.title = "where this place's label sits";
-    for (const [val, text] of [["", "default"], ["bottom", "below"], ["top", "above"],
-                               ["right", "right"], ["left", "left"], ["none", "hidden"]]) {
+    for (const [val, text] of [["", "auto"], ["bottom", "bottom"], ["top", "top"],
+                               ["right", "right"], ["left", "left"],
+                               ["topright", "top right"], ["topleft", "top left"],
+                               ["bottomright", "bottom right"], ["bottomleft", "bottom left"],
+                               ["none", "hidden"]]) {
       const o = document.createElement("option");
       o.value = val; o.textContent = text;
       labelSel.appendChild(o);
@@ -4597,6 +6159,7 @@ let folderHandle = null;      // route 1 only
 let folderName = "";
 
 function isBrickFile(name) { return /\.txt$/i.test(name); }
+function isProjectFile(name) { return /\.json$/i.test(name); }
 function isImageFile(name) { return /\.(jpe?g|png|gif|webp|avif|svgz?|tiff?)$/i.test(name); }
 
 /*  Images found in the opened folder, keyed by their path within it.
@@ -4665,7 +6228,12 @@ function parseGazetteerCSV(text) {
   return out;
 }
 
-const LABEL_CHOICES = ["bottom", "top", "right", "left", "none"];
+/*  Ordered as they appear in the dropdown, not alphabetically: the four
+    cardinals first, then the corners, then hidden. A gazetteer.csv written by
+    an older version only ever names one of the first four, so widening this
+    list cannot invalidate a file you already have. */
+const LABEL_CHOICES = ["bottom", "top", "right", "left",
+                       "topright", "topleft", "bottomright", "bottomleft", "none"];
 
 /*  Coordinates you typed are work, and work should survive a reload. Stored as
     one object holding both maps, since a label override without its coordinate
@@ -4830,11 +6398,41 @@ function renderFileList(body) {
   }
 }
 
+/*  Project files found in the research folder.
+
+    Collected, never auto-applied. Which map you are looking at is a decision,
+    not something a folder scan should make for you — opening a folder that
+    happens to contain two .json files must not silently pick one and redraw
+    your map. They go in a list; you choose in the Project fold.
+
+    Only .json is looked at, so the bricks and the gazetteer .csv are
+    unaffected, and context never enters the pile either way. */
+let FOLDER_PROJECTS = [];   // [{ name, text }]
+
+function foldProject(files) {
+  const cands = files.filter(f => isProjectFile(f.name))
+                     .sort((a, b) => a.name.localeCompare(b.name));
+  FOLDER_PROJECTS = cands.map(f => ({ name: f.name, text: f.text }));
+  refreshPanel("mapstyle");
+  if (!cands.length) return "";
+  return ", " + cands.length + " project file" + (cands.length === 1 ? "" : "s") +
+         " — choose one in Map Style";
+}
+
+function useFolderProject(name) {
+  const f = FOLDER_PROJECTS.find(p => p.name === name);
+  MAP_PROJECT = f ? f.text : "";
+  saveProject();
+  const host = mapHost();
+  if (host && host._buildProject) host._buildProject();
+}
+
 function foldFiles(files, label) {
   const usable = files.filter(f => isBrickFile(f.name))
                       .sort((a, b) => a.name.localeCompare(b.name));
+  const projNote = foldProject(files);
   if (!usable.length) {
-    showMergeLog("no .txt files found in " + label);
+    showMergeLog("no .txt files found in " + label + projNote);
     return;
   }
   let text = state.text, added = 0, skipped = 0, touched = 0;
@@ -5271,6 +6869,9 @@ loadGazetteer();
 // left it on, not the default swapped a moment later.
 loadMapSettings();
 loadStyleOverride();
+loadProject();
+loadTileKey();
+loadStyleUrl();
 
 state.model = buildModel(parse(state.text));
 state.model.view = buildView(state.model);
