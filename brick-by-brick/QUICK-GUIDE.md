@@ -12,8 +12,9 @@ as you type.
 
 Five minutes. Everything after this is levelled off it.
 
-1. **Open the page.** A board of panels, with a small example pile already in
-   it. None of it is yours yet, so handle it roughly.
+1. **Open the page.** A board of panels and an empty Pallet. For something to
+   practise on, open the Pallet's **☰** menu and press **Sample** — it loads a
+   real pile, and none of it is yours, so handle it roughly.
 2. **Find The Pallet.** The panel full of text. That is the whole of your
    research; every other panel is a view of it.
 3. **Change a line.** Watch the rest of the board follow. Nothing to save,

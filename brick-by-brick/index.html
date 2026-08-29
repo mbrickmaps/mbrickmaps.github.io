@@ -3314,6 +3314,13 @@ function renderPromenadePixi(model, host) {
   const wasAt = new Map();
   for (const w of host._walkers || []) wasAt.set(w.slug, { x: w.node.x, y: w.node.y });
 
+  /*  Anything still held when a rebuild lands — a drag interrupted by a model
+      change, a timer, a resize — is on the stage, which nothing below clears.
+      Sweep it up here or it outlives the rebuild as a duplicate. */
+  if (host._lifted) {
+    if (host._lifted.parent) host._lifted.parent.removeChild(host._lifted);
+    host._lifted = null;
+  }
   world.removeChildren();
   host._walkers = [];
   host._ensureNameFor = new Map();
@@ -3734,6 +3741,14 @@ function renderPromenadePixi(model, host) {
           pen and dropped on the street, or back the other way. Held in world
           or pen coordinates it could never cross between them. */
       const gp0 = node.getGlobalPosition();
+      /*  Where they were standing before they were picked up. The stage is not
+          cleared by a rebuild — only world and pen are — so a figure left on it
+          survives the next render and the rebuilt cast draws a second copy of
+          the same person. Every path out of a drag has to put them back
+          somewhere that gets cleared. */
+      downAt.from = node.parent;
+      downAt.lx = node.x; downAt.ly = node.y;
+      host._lifted = node;
       app.stage.addChild(node);
       node.x = gp0.x; node.y = gp0.y;
       downAt.nx = node.x; downAt.ny = node.y;
@@ -3765,13 +3780,22 @@ function renderPromenadePixi(model, host) {
       if (me) me.held = false;
       node.scale.set(node.scale.x < 0 ? -1 : 1, 1);
 
-      if (!moved) toggleFocus(host, "person", p.slug);
+      if (!moved) {
+        // A click, not a drag. toggleFocus only changes opacity, so nothing
+        // re-parents them — they have to go back by hand or they stay on the
+        // stage and get doubled by the next rebuild.
+        if (downAt.from) { downAt.from.addChild(node); node.x = downAt.lx; node.y = downAt.ly; }
+        host._lifted = null;
+        toggleFocus(host, "person", p.slug);
+      }
       else if (me && host._penBox &&
                node.x >= host._penBox.x && node.x <= host._penBox.x + host._penBox.w &&
                node.y >= host._penBox.y && node.y <= host._penBox.y + host._penBox.h) {
         // Dropped back in the pen: you are saying you no longer know.
         host._pinned.delete(p.slug);
         host._savePins();
+        if (node.parent) node.parent.removeChild(node);
+        host._lifted = null;
         renderPromenadePixi(V(), host);
       }
       else if (me) {
@@ -3788,14 +3812,19 @@ function renderPromenadePixi(model, host) {
           // where they were rather than inventing a group.
           host._pinned.delete(p.slug);
           host._savePins();
+          if (node.parent) node.parent.removeChild(node);
+          host._lifted = null;
           renderPromenadePixi(V(), host);
           downAt = null;
           return;
         }
         host._pinned.set(p.slug, col);
         host._savePins();
-        // Back into the street, at the point it was released.
+        // Back into the street, at the point it was released. world is cleared
+        // by the next rebuild, so this hands the figure back to something that
+        // gets torn down.
         world.addChild(node);
+        host._lifted = null;
         node.x -= world.x;
         const mates = [...host._pinned.entries()].filter(([, v]) => v === col).map(([k]) => k);
         const rank = Math.max(0, mates.indexOf(p.slug));
@@ -9157,10 +9186,16 @@ const SAMPLE = `# DOCUMENTS
 
 let savedText = null;
 try { savedText = localStorage.getItem(TEXT_KEY); } catch (e) { /* ignore */ }
-// null means this browser has never been here — show the sample. An empty
-// string means the pile was deliberately emptied, and must stay empty:
-// conflating the two resurrects the sample every time you start a new project.
-state.text = savedText !== null ? savedText : SAMPLE;
+/*  A new project starts empty. The pile is the one thing on this page that is
+    yours, and opening on somebody else's research means every first session
+    begins by clearing it out — and risks a stray edit being saved over the top
+    as though it were your own work. ☰ → Sample loads it deliberately.
+
+    null and "" still have to stay distinct: null is a browser that has never
+    been here, "" is a pile deliberately emptied. Both start empty now, but
+    conflating them would let a later default resurrect itself over an empty
+    pile every time you started a new project. */
+state.text = savedText !== null ? savedText : "";
 
 // Must precede the first buildModel: a place takes its coordinates from the
 // gazetteer at build time, so restoring afterwards would leave every place
