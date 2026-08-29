@@ -1,0 +1,268 @@
+:root {
+    --ground:   #eceee9;
+    --raised:   #f6f7f4;
+    --sunk:     #e2e5df;
+    --ink:      #191d17;
+    --ink-soft: #4d554b;
+    --ink-faint:#7c847a;
+    --rule:     #ccd1c8;
+    --accent:   #35703c;
+    /* The wash behind an anchored panel — derived, so it follows the accent
+       into either theme rather than being pinned to one of them. */
+    --accent-wash: color-mix(in srgb, #35703c 14%, transparent);
+    --accent-soft: #e0ebdf;
+    --timber:   #6d5433;
+    --timber-soft: #efe6d8;
+    --warn:     #9a4a20;
+
+    --sky-1: #14202b;
+    --sky-2: #24333f;
+    --sod:   #1a1f18;
+
+    --measure: 66ch;
+    --step--1: 0.82rem;
+    --step-0:  1rem;
+    --step-1:  1.32rem;
+    --step-2:  1.78rem;
+    --step-3:  2.6rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #12150f;
+      --raised:   #1a1e17;
+      --sunk:     #0c0f0a;
+      --ink:      #e2e6de;
+      --ink-soft: #a8b0a4;
+      --ink-faint:#767e72;
+      --rule:     #2b3128;
+      --accent:   #7fc188;
+      --accent-wash: color-mix(in srgb, #7fc188 16%, transparent);
+      --accent-soft: #1d2a1e;
+      --timber:   #c9a877;
+      --timber-soft: #241d13;
+      --warn:     #d98a5c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #12150f;
+    --raised:   #1a1e17;
+    --sunk:     #0c0f0a;
+    --ink:      #e2e6de;
+    --ink-soft: #a8b0a4;
+    --ink-faint:#767e72;
+    --rule:     #2b3128;
+    --accent:   #7fc188;
+    --accent-wash: color-mix(in srgb, #7fc188 16%, transparent);
+    --accent-soft: #1d2a1e;
+    --timber:   #c9a877;
+    --timber-soft: #241d13;
+    --warn:     #d98a5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+  /* ---------- masthead: the street itself ---------- */
+  /*  Full-bleed by being a body child, not by negative margins: it has no
+      padded parent to cancel, so -1.5rem sides pushed it 24px wider than the
+      viewport and scrolled the whole page sideways. */
+  .head {
+    position: relative;
+    margin: 0 0 3.5rem;
+    padding: 3.5rem 1.5rem 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 100%);
+    color: #e8ece6;
+  }
+  /*  Reserves the strip the street stands in. It has to clear the TALLEST
+      thing down there, which is a signpost's label (post 40px + label 20px +
+      the 0.9rem the row is lifted off the bottom), or the labels ride up into
+      the tagline. */
+  .head-inner { max-width: 78rem; margin: 0 auto; padding-bottom: 6.5rem; position: relative; z-index: 2; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: var(--step--1); letter-spacing: 0.14em; text-transform: uppercase;
+    color: #9fb39c; margin: 0 0 0.6rem;
+  }
+  .head h1 {
+    font-family: Bitter, Georgia, serif; font-weight: 700;
+    font-size: clamp(2.2rem, 6vw, var(--step-3));
+    line-height: 1.05; margin: 0 0 0.9rem; text-wrap: balance;
+    color: #f2f5ef;
+  }
+  .head p {
+    margin: 0; max-width: 46ch; color: #b9c4b6; font-size: var(--step-1);
+    line-height: 1.45;
+  }
+  /* ground line + a row of figures, drawn rather than described */
+  /*  Tall enough to contain the whole street — figures AND the signpost labels
+      standing above them. At 3.25rem the band cut off below the labels, so they
+      read as chips floating in the sky rather than as signs on posts. */
+  .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 5.5rem; background: var(--sod); border-top: 2px solid #2b3327; z-index: 1; }
+  .figures { position: absolute; left: 0; right: 0; bottom: 0.9rem; height: 3rem; z-index: 2; display: flex; align-items: flex-end; gap: 2.6rem; padding-left: 1.5rem; opacity: 0.9; }
+  .fig { width: 16px; height: 24px; position: relative; flex: none; image-rendering: pixelated; }
+  .fig i { position: absolute; display: block; }
+  .fig .coat { left: 4px; bottom: 6px; width: 8px; height: 10px; }
+  .fig .head-px { left: 5px; bottom: 16px; width: 6px; height: 6px; background: #c9a689; }
+  .fig .leg { bottom: 0; width: 3px; height: 6px; }
+  .fig .l { left: 5px; } .fig .r { left: 9px; }
+  .fig .hat { left: 4px; bottom: 21px; width: 8px; height: 3px; background: #16181c; }
+  /*  Wider and lighter than the ground it stands on, or a 2px near-black post
+      on a near-black band is invisible and its label looks unattached. */
+  .post { width: 3px; height: 40px; background: #6b573a; align-self: flex-end; flex: none; position: relative; }
+  .post span {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+    background: #4a3b28; color: #e8dcc4; border: 1px solid #2c2318;
+    font-family: "IBM Plex Mono", monospace; font-size: 9px; padding: 2px 5px; white-space: nowrap;
+  }
+
+  /* ---------- contents ---------- */
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem;
+    font-family: "IBM Plex Mono", monospace; font-size: var(--step--1);
+    padding-bottom: 1.6rem; margin-bottom: 3rem; border-bottom: 1px solid var(--rule);
+  }
+  .toc a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid transparent; }
+  .toc a:hover, .toc a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---------- sections ---------- */
+  section { margin-bottom: 4rem; }
+  h2 {
+    font-family: Bitter, Georgia, serif; font-weight: 600; font-size: var(--step-2);
+    margin: 0 0 0.4rem; text-wrap: balance; scroll-margin-top: 1.5rem;
+  }
+  h3 {
+    font-family: Bitter, Georgia, serif; font-weight: 600; font-size: var(--step-1);
+    margin: 2.2rem 0 0.5rem; text-wrap: balance;
+  }
+  .lede { color: var(--ink-soft); max-width: var(--measure); margin: 0 0 1.6rem; }
+  p, ul, ol { max-width: var(--measure); }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.1rem; }
+  li { margin-bottom: 0.35rem; }
+  strong { font-weight: 600; }
+  em.term { font-style: normal; font-family: "IBM Plex Mono", monospace; font-size: 0.92em; color: var(--accent); }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.88em;
+    background: var(--sunk); padding: 0.1em 0.36em; border-radius: 3px;
+  }
+  pre {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: var(--step--1);
+    background: var(--sunk); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 1rem 1.1rem; overflow-x: auto; line-height: 1.55; margin: 0 0 1.2rem;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
+  th, td { text-align: left; padding: 0.5rem 0.9rem 0.5rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-weight: 500; font-size: var(--step--1);
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
+    border-bottom-width: 2px;
+  }
+  td.k { font-family: "IBM Plex Mono", monospace; white-space: nowrap; color: var(--ink); }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- callout ---------- */
+  .note {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 0.9rem 1.1rem; margin: 0 0 1.4rem; max-width: var(--measure);
+    border-radius: 0 4px 4px 0;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note.caution { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--ground)); }
+
+  /* ---------- the sheet diagram ---------- */
+  .sheet {
+    background: var(--raised); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 1.4rem; margin: 0 0 1.4rem; overflow-x: auto;
+  }
+  .sheet-grid { display: grid; grid-template-columns: repeat(4, 88px); gap: 0; width: max-content; border: 1px solid var(--rule); }
+  .cell {
+    width: 88px; height: 132px; position: relative;
+    background: repeating-conic-gradient(var(--sunk) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+    border-right: 1px dashed var(--rule);
+  }
+  .cell:last-child { border-right: 0; }
+  .cell figure { position: absolute; inset: 0; margin: 0; }
+  .frame-no {
+    position: absolute; top: 4px; left: 6px; z-index: 3;
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--ink-faint);
+  }
+  .cell .fig { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%) scale(4); transform-origin: bottom center; }
+  .sheet-foot {
+    display: flex; flex-wrap: wrap; gap: 1.2rem; margin-top: 1rem;
+    font-family: "IBM Plex Mono", monospace; font-size: var(--step--1); color: var(--ink-soft);
+  }
+  .swatch { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .chip { width: 13px; height: 13px; border: 1px solid rgba(0,0,0,0.35); border-radius: 2px; flex: none; }
+  .baseline { margin-top: 0.7rem; font-family: "IBM Plex Mono", monospace; font-size: var(--step--1); color: var(--warn); }
+
+  /* ---------- key colour table ---------- */
+  .keys { display: grid; gap: 0.5rem; max-width: var(--measure); margin: 0 0 1.4rem; }
+  .key-row {
+    display: grid; grid-template-columns: 2rem 9rem 1fr; gap: 0.8rem; align-items: center;
+    padding: 0.5rem 0.7rem; background: var(--raised); border: 1px solid var(--rule); border-radius: 4px;
+  }
+  .key-row .chip { width: 20px; height: 20px; }
+  .key-row .hex { font-family: "IBM Plex Mono", monospace; font-size: var(--step--1); }
+  .key-row .what { color: var(--ink-soft); font-size: 0.94rem; }
+
+  /* ---------- two-up ---------- */
+  .cols { display: grid; grid-template-columns: 1fr; gap: 1.6rem; }
+  @media (min-width: 62rem) { .cols { grid-template-columns: 1fr 1fr; } .cols p, .cols ul { max-width: none; } }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 1.4rem; color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace; font-size: var(--step--1);
+  }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- shared doc chrome ---------- */
+.docnav {
+  max-width: 78rem; margin: 0 auto; padding: 0.9rem 1.5rem 0;
+  font-family: "IBM Plex Mono", monospace; font-size: var(--step--1);
+  display: flex; gap: 0.55rem; align-items: baseline; color: var(--ink-faint);
+}
+.docnav a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid transparent; }
+.docnav a:hover, .docnav a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); }
+.docnav strong { font-weight: 600; color: var(--ink); }
+
+/* A panel entry: badge, name, then what it does. */
+.panel-h { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin: 2.6rem 0 0.4rem; }
+.panel-h h3 { margin: 0; }
+.badge {
+  font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; font-weight: 500;
+  letter-spacing: 0.06em; padding: 0.1rem 0.4rem; border-radius: 3px;
+  border: 1px solid currentColor; line-height: 1.5;
+}
+.badge.w { color: var(--warn); }
+.badge.f { color: var(--accent); }
+.badge.r { color: var(--ink-faint); }
+
+.why {
+  border-left: 2px solid var(--rule); padding-left: 0.9rem; margin: 0 0 1rem;
+  color: var(--ink-soft); font-size: 0.95rem; max-width: var(--measure);
+}
+.why strong { color: var(--ink); }
+
+.field { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
+@media (min-width: 60rem) { .field { grid-template-columns: repeat(2, 1fr); } .field p, .field ul { max-width: none; } }

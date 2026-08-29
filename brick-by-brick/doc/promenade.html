@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="How to manage the Promenade panel in Brick by Brick, and how to make its place scenes and occupation costumes.">
+<title>The Promenade — Brick by Brick</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<link rel="stylesheet" href="doc.css">
+
+</head>
+<body>
+<nav class="docnav"><a href="quick-guide.html">Quick guide</a><span>/</span><a href="documentation.html">Full documentation</a><span>/</span><strong>The Promenade</strong></nav>
+<header class="head">
+  <div class="head-inner">
+    <p class="eyebrow">Brick by Brick · visualization</p>
+    <h1>The Promenade</h1>
+    <p>Your people, walking the ground their records put them on — and how to dress them.</p>
+  </div>
+  <div class="horizon"></div>
+  <div class="figures" aria-hidden="true">
+    <span class="fig"><i class="hat"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="background:#4a5568"></i><i class="leg r" style="background:#4a5568"></i></span>
+    <span class="post"><span>Longforgan</span></span>
+    <span class="fig"><i class="hat"></i><i class="head-px"></i><i class="coat" style="background:#4a3b2a"></i><i class="leg l" style="background:#6d5942"></i><i class="leg r" style="background:#6d5942"></i></span>
+    <span class="fig"><i class="head-px"></i><i class="coat" style="background:#3a4a3a"></i><i class="leg l" style="background:#556b55"></i><i class="leg r" style="background:#556b55"></i></span>
+    <span class="post"><span>Perth</span></span>
+    <span class="fig"><i class="hat"></i><i class="head-px"></i><i class="coat" style="background:#5a4632"></i><i class="leg l" style="background:#7a6247"></i><i class="leg r" style="background:#7a6247"></i></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="Contents">
+    <a href="#what">What it shows</a>
+    <a href="#views">Street &amp; grid</a>
+    <a href="#placing">Placing people</a>
+    <a href="#finding">Finding</a>
+    <a href="#saving">Saving</a>
+    <a href="#assets">Assets</a>
+    <a href="#sheet">Sprite sheets</a>
+    <a href="#eras">Era bands</a>
+    <a href="#controls">Control reference</a>
+  </nav>
+
+  <section id="what">
+    <h2>What it shows</h2>
+    <p class="lede">A side-on scene you walk along. Every declared person is one figure; every place with coordinates is a column with a signpost over it.</p>
+
+    <p>The horizontal axis is <strong>longitude</strong> — west on the left, the same order you would meet these parishes crossing Perthshire. A person stands among the places their records actually name, so someone recorded at both Perth and Scone stands between the two.</p>
+
+    <p>A record that names a person <em>and</em> a place puts that person there. That is the same rule the map's connector lines and the event markers use, so the two can never disagree about who was where.</p>
+
+    <div class="note">
+      <p><strong>Nothing here is invented.</strong> A person no record places does not get parked somewhere plausible — they wait in the pen, and stay there until you say otherwise. "We don't know where he was" is a finding, not a gap to fill.</p>
+    </div>
+  </section>
+
+  <section id="views">
+    <h2>Street and grid</h2>
+    <div class="cols">
+      <div>
+        <h3 style="margin-top:0">Street</h3>
+        <p>Geography. Distance between two figures means something, columns sit where the parishes sit, and everyone paces about where they stood. This is the view for <em class="term">where</em>.</p>
+      </div>
+      <div>
+        <h3 style="margin-top:0">Grid</h3>
+        <p>An isotype board — one figure per person, ranked and counted. Distance means nothing, so it can be sorted however you like. This is the view for <em class="term">how many, and when</em>.</p>
+      </div>
+    </div>
+    <p>Switching between them is a walk, not a cut: everyone keeps their position and travels to the new one, so you can follow a particular person across and see where they landed.</p>
+    <p>Sorting only appears in the grid. On the street the order <em>is</em> the geography — offering to re-sort it would be offering to move Perth.</p>
+  </section>
+
+  <section id="placing">
+    <h2>Placing people</h2>
+    <p class="lede">Each place is a column. Drop somebody anywhere inside one and they belong to that column.</p>
+
+    <p><strong>Pick a figure up</strong> and they lift out of the line. Dotted frames appear over every column, full height, and the one you are over brightens — nobody should have to guess which frame is about to catch them.</p>
+
+    <p><strong>Let go</strong> and they fall to the ground, sliding sideways into the middle of their column on the way down. You are not placing a figure at a coordinate; you are putting a person in a group. The x you released at only decides which.</p>
+
+    <p><strong>Columns grow.</strong> A place holding ten people is wider than one holding two, and everything east of it shifts along. Roughly 110px for one or two, 160 for five, 270 for ten.</p>
+
+    <h3>The pen</h3>
+    <p>People with no recorded place wait in a dotted box centred over the street. It doesn't scroll — it stays put while the street slides past behind it, so it is the same distance from every column you might want to drop someone into.</p>
+    <p>They stand about in a loose huddle rather than a grid, because a grid would say these people have an order and nothing is known about them yet. Drag someone <strong>back into the pen</strong> to say you no longer know where they were.</p>
+
+    <div class="note caution">
+      <p><strong>None of this writes to your bricks.</strong> No brick, no coordinate, no gazetteer entry. Placing someone is how you have chosen to look at your records, not a claim about them.</p>
+    </div>
+  </section>
+
+  <section id="finding">
+    <h2>Finding</h2>
+    <p class="lede">Two boxes, stacked under the pen, doing deliberately different jobs.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Box</th><th scope="col">Searches</th><th scope="col">Does</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">find someone unplaced</td>
+            <td>Only people in the pen, by name or uid</td>
+            <td>Lights matches and names them; dims the rest. Removes nobody, so you can still see how many you are choosing from.</td>
+          </tr>
+          <tr>
+            <td class="k">filter to a place</td>
+            <td>Place names and uids</td>
+            <td>Narrows the street. <code>dun</code> leaves Dunblane, Dunkeld, Dunning, Little Dunkeld and Dunbarney — five columns instead of fifty-nine.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Someone already standing in a column can be found by looking at the column, which is why the first box ignores them. Placements survive the second: anyone pinned to a filtered-out column waits in the pen and returns when you clear the box.</p>
+
+    <p><strong>Click a figure</strong> to single them out — the rest of the scene dims and their parishes stay lit. <strong>Click a signpost</strong> for the reverse: that place, and everyone recorded there. Click bare ground to clear.</p>
+  </section>
+
+  <section id="saving">
+    <h2>Saving</h2>
+    <p class="lede">Placements and column colours persist in the browser, and travel as a file.</p>
+
+    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it.</p>
+
+    <p>For anything more durable, <strong>save</strong> hands you a <code>brick.json</code>:</p>
+
+<pre><code>{
+  "brickByBrick": 1,
+  "saved": "2026-08-29T17:11:03.366Z",
+  "promenade": { "pins": [["robert-moncur", "perth"], …] },
+  "columns":   { "tints": [["perth", { "from": "#5b2c6f",
+                                       "to":   "#c05a2a",
+                                       "alpha": 0.6 }], …] }
+}</code></pre>
+
+    <p>Drop it in your research folder beside <code>bricks/</code> and it is read automatically whenever you open that folder — the merge log reports how many placements and colours it found. <strong>load</strong> takes one from anywhere.</p>
+
+    <p>It is deliberately not your bricks. A brick is what a document says; this is how you have chosen to look at them. Delete it and you lose an arrangement, never a record.</p>
+
+    <h3>Colouring a column</h3>
+    <p>Click a signpost and a bar appears naming that place, with two gradient stops, an opacity slider and a <code>×</code>. The gradient fills that column's <strong>sky</strong> and stops at the horizon — the ground is one continuous plane that everybody stands on, and cutting it into coloured stretches would make neighbours look like they were standing on different surfaces.</p>
+  </section>
+
+  <section id="assets">
+    <h2>Assets</h2>
+    <p class="lede">Found by filename, never configured. Name a file after the thing and it appears.</p>
+
+<pre><code>my-research/
+├── bricks/                    the piles — *.txt
+├── images/
+│   ├── places/
+│   │   └── longforgan.png     stands behind that parish
+│   └── occupations/
+│       └── mill-worker.png    worn by anyone of that trade
+└── brick.json                 placements and colours</code></pre>
+
+    <p>Two folders rather than one because the names collide otherwise: a parish called Mason and a mason are different pictures. The same layout works from an opened folder and from a hosted site — matching is on the directory as well as the filename, so nothing needs renaming when you publish.</p>
+
+    <h3>Place scenes</h3>
+    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centred in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
+    <p>A place without a picture gets nothing at all: no frame, no placeholder, no gap.</p>
+
+    <h3>Occupation costumes</h3>
+    <p>Named for the trade, taken from the <strong>first clause of the detail field</strong>:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Brick detail</th><th scope="col">Looks for</th></tr></thead>
+        <tbody>
+          <tr><td>Powerloom Tender</td><td class="k">occupations/powerloom-tender.png</td></tr>
+          <tr><td>Farmer, immigrated to Utah in 1852</td><td class="k">occupations/farmer.png</td></tr>
+          <tr><td>Assistant Registrar (Perth)</td><td class="k">occupations/assistant-registrar.png</td></tr>
+          <tr><td>Mill worker; later a carter</td><td class="k">occupations/mill-worker.png</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>It stops at the first comma, semicolon, full stop or bracket, and gives up past 28 characters rather than inventing a filename out of a sentence. No file means the ordinary figure — so you can draw one uniform, or none, and nothing breaks either way.</p>
+  </section>
+
+  <section id="sheet">
+    <h2>Sprite sheets</h2>
+    <p class="lede">One strip, 64 × 24, four frames of a single walk cycle. Same sheet for every costume.</p>
+
+    <div class="sheet">
+      <div class="sheet-grid">
+        <div class="cell"><span class="frame-no">1 · pass</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="background:#00ffff"></i><i class="leg r" style="background:#00ffff"></i></span></div>
+        <div class="cell"><span class="frame-no">2 · stride</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="left:4px;background:#00ffff"></i><i class="leg r" style="left:10px;background:#00ffff"></i></span></div>
+        <div class="cell"><span class="frame-no">3 · pass</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="background:#00ffff"></i><i class="leg r" style="background:#00ffff"></i></span></div>
+        <div class="cell"><span class="frame-no">4 · stride</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="left:6px;background:#00ffff"></i><i class="leg r" style="left:8px;background:#00ffff"></i></span></div>
+      </div>
+      <p class="baseline">▲ Feet sit on the bottom edge of each 16 × 24 cell — that edge is the ground line.</p>
+      <div class="sheet-foot">
+        <span>64 × 24 px</span><span>transparent background</span><span>4 frames across</span><span>no padding, no gutters</span>
+      </div>
+    </div>
+
+    <h3>Key colours</h3>
+    <p>Paint the swappable parts in these three flat colours. Everything else passes through exactly as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
+
+    <div class="keys">
+      <div class="key-row"><span class="chip" style="background:#ff00ff"></span><span class="hex">#ff00ff</span><span class="what">Coat — takes the era colour</span></div>
+      <div class="key-row"><span class="chip" style="background:#00ffff"></span><span class="hex">#00ffff</span><span class="what">Legs and arms — takes the era trim</span></div>
+      <div class="key-row"><span class="chip" style="background:#ffff00"></span><span class="hex">#ffff00</span><span class="what">Hat — dropped entirely in the modern band</span></div>
+    </div>
+
+    <p>Keep the keys in a uniform and it still ages: a costume goes through the same recolouring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
+
+    <p>Paint a part in a fixed colour instead and it stays that colour for everyone — which is exactly what you want for the thing that identifies the trade.</p>
+
+    <div class="note">
+      <p>The default figure is generated in code against this same geometry, so you can replace one costume, all of them, or none. There is no "install the art" step.</p>
+    </div>
+  </section>
+
+  <section id="eras">
+    <h2>Era bands</h2>
+    <p class="lede">Which palette a person wears, taken from the middle of their life.</p>
+
+    <p>Someone born in 1840 who died in 1901 is dressed for the 1870s, because that is where they spent their adulthood — not for the decade they were born in.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Band</th><th scope="col">Midpoint before</th><th scope="col">Hat</th></tr></thead>
+        <tbody>
+          <tr><td class="k">georgian</td><td class="num">1845</td><td>tall</td></tr>
+          <tr><td class="k">victorian</td><td class="num">1890</td><td>tall</td></tr>
+          <tr><td class="k">edwardian</td><td class="num">1925</td><td>bowler</td></tr>
+          <tr><td class="k">interwar</td><td class="num">1970</td><td>cap</td></tr>
+          <tr><td class="k">modern</td><td class="num">—</td><td>none</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>These are loose on purpose. Nobody changed coat on the stroke of 1890, and a parish register rarely gives you a date worth hanging a decade on. The years exist so the same person always dresses the same way, not as a claim about costume history.</p>
+
+    <p>Someone with no dates at all gets <strong>victorian</strong>, not modern — a parish corpus is overwhelmingly nineteenth century, and putting an undated man in a windcheater is the louder claim.</p>
+  </section>
+
+  <section id="controls">
+    <h2>Control reference</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Control</th><th scope="col">Where</th><th scope="col">Does</th></tr></thead>
+        <tbody>
+          <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world, not the camera — spacing, figures and lettering grow together. Holds the centre of your view across a step.</td></tr>
+          <tr><td class="k">street / grid</td><td>Top right</td><td>Switch arrangement. Placements carry across.</td></tr>
+          <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. Starts on its own after 30 seconds untouched; any interaction stops it and restarts the wait.</td></tr>
+          <tr><td class="k">sort</td><td>Top right, grid only</td><td>west→east, earliest first, or A→Z. Reorders <em>within</em> groups.</td></tr>
+          <tr><td class="k">colour bar</td><td>Top left, when a place is selected</td><td>Two gradient stops, opacity, and clear.</td></tr>
+          <tr><td class="k">save / load</td><td>Bottom right</td><td><code>brick.json</code> out and in.</td></tr>
+          <tr><td class="k">drag</td><td>The ground</td><td>Pan the street. Wheel works too.</td></tr>
+          <tr><td class="k">drag</td><td>A figure</td><td>Pick up, drop into a column, or return to the pen.</td></tr>
+          <tr><td class="k">hover</td><td>A figure</td><td>Show their name and year.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Reduced-motion is honoured throughout: no drift, no pacing, no travel between arrangements — a still tableau instead.</p>
+  </section>
+
+  <footer>
+    Brick by Brick — one pile of bricks, many readings of it.
+  </footer>
+</div>
+
+</body>
+</html>

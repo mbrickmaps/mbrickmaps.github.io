@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Brick by Brick in five minutes — brick and mortar, what the panels do, and how to keep your work safe.">
+<title>Brick by Brick — quick guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="doc.css">
+<style>
+  /* The five-minute path: numbered because it genuinely is a sequence. */
+  .steps { list-style: none; counter-reset: s; padding: 0; margin: 0 0 1.4rem; max-width: var(--measure); }
+  .steps li {
+    counter-increment: s; position: relative;
+    padding: 0 0 0 3.1rem; margin-bottom: 1.05rem; min-height: 2rem;
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -0.1rem;
+    width: 2rem; height: 2rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.9rem;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  /* Panels described by what you want to do, not by where they sit. */
+  .groups { display: grid; gap: 1.1rem; margin: 0 0 1.4rem; }
+  @media (min-width: 52rem) { .groups { grid-template-columns: repeat(2, 1fr); } }
+  .grp {
+    background: var(--raised); border: 1px solid var(--rule);
+    border-radius: 5px; padding: 1rem 1.15rem;
+  }
+  .grp h3 {
+    margin: 0 0 0.55rem; font-size: 1.02rem;
+    font-family: "IBM Plex Mono", monospace; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint);
+  }
+  .grp p { margin: 0; max-width: none; font-size: 0.95rem; }
+  .grp b { font-weight: 600; color: var(--ink); }
+  /*  The page's opening line. Sits above the contents because that is the
+      order it is read in — a summary after the table of contents is a summary
+      the reader has already scrolled past. */
+  .deck {
+    font-size: var(--step-1); line-height: 1.5; color: var(--ink-soft);
+    max-width: 54ch; margin: 0 0 2.2rem;
+  }
+  blockquote {
+    margin: 0 0 1.2rem; padding: 0.9rem 1.1rem; max-width: var(--measure);
+    border-left: 3px solid var(--warn);
+    background: color-mix(in srgb, var(--warn) 10%, var(--ground));
+    border-radius: 0 4px 4px 0; font-size: 1.02rem;
+  }
+  blockquote p { margin: 0; }
+</style>
+</head>
+<body>
+
+<nav class="docnav"><strong>Quick guide</strong><span>/</span><a href="documentation.html">Full documentation</a><span>/</span><a href="promenade.html">The Promenade</a></nav>
+
+<header class="head">
+  <div class="head-inner">
+    <p class="eyebrow">Quick guide</p>
+    <h1>Brick by Brick</h1>
+    <p>Gather the facts, lay them in courses, and let the past show the pattern it was built in.</p>
+  </div>
+  <div class="horizon"></div>
+  <div class="figures" aria-hidden="true">
+    <span class="fig"><i class="hat"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="background:#4a5568"></i><i class="leg r" style="background:#4a5568"></i></span>
+    <span class="post"><span>Longforgan</span></span>
+    <span class="fig"><i class="hat"></i><i class="head-px"></i><i class="coat" style="background:#4a3b2a"></i><i class="leg l" style="background:#6d5942"></i><i class="leg r" style="background:#6d5942"></i></span>
+    <span class="post"><span>Perth</span></span>
+    <span class="fig"><i class="head-px"></i><i class="coat" style="background:#3a4a3a"></i><i class="leg l" style="background:#556b55"></i><i class="leg r" style="background:#556b55"></i></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <p class="deck">You lay one fact per line. Every other panel is a view of the same wall, rising as you type.</p>
+
+  <nav class="toc" aria-label="Contents">
+    <a href="#five">The first course</a>
+    <a href="#adding">Choosing your tools</a>
+    <a href="#brick">What a brick is</a>
+    <a href="#panels">What each tool does</a>
+    <a href="#saving">Saving</a>
+    <a href="#wrong">When it doesn't sit true</a>
+    <a href="#knowing">What the trade knows</a>
+  </nav>
+
+  <section id="five">
+    <h2>The first course</h2>
+    <p class="lede">Five minutes. Everything after this is levelled off it.</p>
+    <ol class="steps">
+      <li><strong>Open the page.</strong> A board of panels, with a small example pile already in it. None of it is yours yet, so handle it roughly.</li>
+      <li><strong>Find The Pallet.</strong> The panel full of text. That is the whole of your research; every other panel is a view of it.</li>
+      <li><strong>Change a line.</strong> Watch the rest of the board follow. Nothing to save, nothing to refresh.</li>
+      <li><strong>Click a name in Bricks.</strong> The board narrows to every record that names them. A family here is not a tree — it is everyone who turns up in the same documents.</li>
+      <li><strong>Add a panel.</strong> The <strong>🧰</strong> tab on the right-hand edge. Find <strong>Promenade</strong> and press its <strong>+</strong>: it is not on the board when you start, and you would never find it otherwise — <a href="#adding">how panels work</a>.</li>
+      <li><strong>Press Export.</strong> Before you close the tab. <a href="#saving">Saving</a> explains why.</li>
+    </ol>
+    <p>When you are ready to bring your own, The Pallet's <strong>☰</strong> menu takes a paste or a whole folder.</p>
+  </section>
+
+  <section id="adding">
+    <h2>Choosing your tools</h2>
+    <p class="lede"><strong>A board is a bench, not a building.</strong> Put out the panels you are using and put the rest away. Four are left off the bench entirely, because they are no use until you have records to look at.</p>
+
+    <blockquote>
+      <p><strong>Promenade</strong>, <strong>Theme</strong>, <strong>Map Style</strong> and <strong>Map Editor</strong> are not on the board when you first open the page. You have to add them.</p>
+    </blockquote>
+
+    <p>The <strong>🧰</strong> tab on the right-hand edge holds everything not currently out. It shrinks as you take tools out and fills as you put them back, and each entry says what that panel is for.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">To do this</th><th scope="col">Do that</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Add a panel</td><td>Press its <strong>+</strong>. It drops into the first free space.</td></tr>
+          <tr><td class="k">Put it somewhere exact</td><td>Drag the entry out of the list and onto the board.</td></tr>
+          <tr><td class="k">Change its size</td><td>The two number boxes on its entry — width × height, in cells.</td></tr>
+          <tr><td class="k">Move one</td><td>Drag it by the <strong>✥</strong> handle in its top-left corner.</td></tr>
+          <tr><td class="k">Swap two</td><td>Drag one onto another of the same size.</td></tr>
+          <tr><td class="k">Make it bigger</td><td>The <strong>+</strong> buttons on its edges. Only the ones that can't collide appear.</td></tr>
+          <tr><td class="k">Take one off</td><td>The <strong>×</strong> in its corner.</td></tr>
+          <tr><td class="k">Start over</td><td><strong>reset board</strong>, in the 🧰 panel.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <p><strong>Putting a tool away never loses work.</strong> Your bricks live in The Pallet, not in the panel you closed. Take one off, put it back, and it returns exactly as you left it, still scrolled where you were. Rearranging cannot break anything.</p>
+    </div>
+
+    <p>Two more controls at the top of the 🧰 panel: <strong>Columns</strong> for how wide the board is, <strong>Row px</strong> for how tall a row sits.</p>
+  </section>
+
+  <section id="brick">
+    <h2>What a brick is</h2>
+    <p class="lede">One line. One thing you know.</p>
+
+<pre><code>+|👤|&lt;george-isles&gt;|George Isles|Powerloom Tender</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td class="k">+</td><td><strong>A document says so.</strong> Use <code>-</code> if you're guessing.</td></tr>
+          <tr><td class="k">👤</td><td>It's a person. There are symbols for places, dates and documents too.</td></tr>
+          <tr><td class="k">&lt;george-isles&gt;</td><td>A nickname you invent, so you can point at him later.</td></tr>
+          <tr><td class="k">George Isles</td><td>His name.</td></tr>
+          <tr><td class="k">Powerloom Tender</td><td>Anything else worth keeping.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>You never have to type this by hand. <strong>Brick Builder</strong> has a button for each part and lays the line for you.</p>
+
+    <h3>Brick and mortar</h3>
+    <div class="note">
+      <p>A bricklayer mixes mortar <em>softer</em> than the brick on purpose. When the ground shifts it is the mortar that cracks, and mortar can be raked out and repointed without touching a single brick.</p>
+      <p>Your <code>+</code> records are the brick: what a document actually says, and it does not change. Your <code>−</code> inferences are the mortar — they hold the wall together, and they are the part you expect to redo when a better record turns up. Keep the two visibly apart and you can repoint later instead of demolishing.</p>
+      <p>Six months from now you will not remember which was which.</p>
+    </div>
+  </section>
+
+  <section id="panels">
+    <h2>What each tool does</h2>
+    <p class="lede">Every panel has a <strong>help</strong> link in its corner that opens its own write-up. In short:</p>
+
+    <div class="groups">
+      <div class="grp">
+        <h3>Laying</h3>
+        <p><b>The Pallet</b> holds every brick. <b>Brick Builder</b> lays them for you. <b>Gazetteer</b> is where places sit on the ground — paste coordinates straight from Google Maps.</p>
+      </div>
+      <div class="grp">
+        <h3>Checking the work</h3>
+        <p><b>Bricks</b> lists everyone and everywhere, and a dotted name is someone you have mentioned but never set down — usually your next lead. <b>Red Flags</b> catches what is out of true. <b>Classification</b> shows how each line was read. <b>Tally</b> counts. <b>Notation reference</b> lists the symbols.</p>
+      </div>
+      <div class="grp">
+        <h3>Standing back</h3>
+        <p><b>Timeline</b> puts every dated record in order, one row per person, with worked-out dates drawn hollow. <b>Map Viewer</b> puts your places on the ground. <b>Document</b> shows one record big enough to read the handwriting. <b>Promenade</b> walks your people through the places their records put them.</p>
+      </div>
+      <div class="grp">
+        <h3>Your own hand</h3>
+        <p><b>Filter</b> narrows every panel at once. <b>Theme</b> is eight colours. <b>Map Style</b> and <b>Map Editor</b> are the map's own look, and your own additions to it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="saving">
+    <h2>Saving</h2>
+    <p class="lede">Read this part twice.</p>
+
+    <p>Your bricks live in this browser, not on a server. Nothing is uploaded and nobody else can see it. That privacy has a price:</p>
+
+    <blockquote>
+      <p><strong>Clearing your browsing data will delete your work.</strong> So will a browser that tidies up after itself, and so will opening the page on another computer.</p>
+    </blockquote>
+
+    <p>So <strong>press Export</strong>. It writes an ordinary text file onto your computer, and that file is the only copy that is truly yours. Export again whenever you have laid a good stretch of wall.</p>
+    <p>The line at the top always says where things stand. Red means unsaved changes.</p>
+  </section>
+
+  <section id="wrong">
+    <h2>When it doesn't sit true</h2>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td class="k">A line isn't showing up</td><td>Look at it in <em>Classification</em>. Red usually means a missing <code>|</code>.</td></tr>
+          <tr><td class="k">Someone's appeared twice</td><td>Two nicknames for one person. Pick one, use it everywhere.</td></tr>
+          <tr><td class="k">A name is dotted</td><td>Mentioned, never set down. Not an error — a lead.</td></tr>
+          <tr><td class="k">The map is blank</td><td>Places need coordinates. Add them in <em>Gazetteer</em>.</td></tr>
+          <tr><td class="k">The map is blue and empty</td><td>Map pictures blocked. Running it yourself? It needs <strong>port 3000</strong>.</td></tr>
+          <tr><td class="k">Everything's vanished</td><td>Check <em>Filter</em>. Something is still switched on from earlier.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="knowing">
+    <h2>Four things the trade knows</h2>
+    <h3>No one hands you the plan</h3>
+    <p>Headings starting with <code>#</code> become your groupings — a family, a village, a theory you are testing. The page uses your categories and never imposes its own.</p>
+
+    <h3>Keep the wrong records</h3>
+    <p>Mark it <code>−</code>, say why you doubt it, and leave it in. A contradiction you have written down is research; one you have deleted is a hole you will fall into again next year.</p>
+
+    <h3>Strength comes from the overlap</h3>
+    <p>Line every vertical joint up and you have a stack, not a wall. Every bond that exists — English, Flemish, stretcher — exists so that a joint never sits directly above the joint below it.</p>
+    <p>Research holds together the same way. One record saying a thing is a stack; three records from different sources naming the same person is a bond. That is what links and the map's connector lines are for: not decoration, but the overlap that carries the weight.</p>
+
+    <h3>Nothing is locked away</h3>
+    <p>Your whole pile is plain text — readable in any editor, on any computer, in twenty years, with or without this page.</p>
+  </section>
+
+  <footer>
+    Want the full detail — file formats, every setting, adding your own views?
+    <a href="documentation.html">The full documentation</a> has it.
+  </footer>
+</div>
+</body>
+</html>

@@ -62,6 +62,16 @@
     transition: width 0.15s ease, opacity 0.15s ease, padding 0.15s ease;
   }
   .topsearch.open input { width: 170px; padding: 3px 7px; border-width: 1px; opacity: 1; }
+  /* Quiet by design: reassurance, not a notification. */
+  .top-btn { font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0; }
+  .top-auto {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.62rem; opacity: 0.55; flex-shrink: 0; cursor: pointer;
+  }
+  .top-auto input { accent-color: var(--accent2); cursor: pointer; }
+  .save-state { font-size: 0.62rem; opacity: 0.4; white-space: nowrap; margin-left: auto; }
+  .save-state[hidden] { display: none; }
+  .save-state.bad { color: var(--bad); opacity: 1; }
   .topsearch.active input { border-color: var(--accent2); }
   /* A round button to match the panels' corner control, and large enough to
      read as the primary way in rather than a minor toggle. */
@@ -202,6 +212,34 @@
       name matters more than the annotation, so the badge stands down. The
       panel is the query container (container-type: inline-size). */
   @container (max-width: 210px) { .role-badge { display: none; } }
+  /*  Reads as an annotation, not a control: no fill, and only fully legible on
+      hover. Sized off the badges beside it so the row keeps one baseline. It
+      outlives them when a tile narrows, being the one thing in the header you
+      cannot get to any other way. */
+  .panel-doc {
+    font: 500 0.6rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.04em; color: var(--muted); text-decoration: none;
+    opacity: 0.6; flex-shrink: 0; white-space: nowrap;
+    border-bottom: 1px dotted currentColor;
+    margin-left: 3px; transition: opacity 0.12s, color 0.12s;
+  }
+  .panel-doc:hover, .panel-doc:focus-visible { opacity: 1; color: var(--accent2); }
+  /*  Rides with the tagline rather than joining the button cluster — it is a
+      thing to read, not a thing to press, and the buttons beside it all act on
+      your pile. */
+  .top-guide {
+    margin-left: 0.55rem; white-space: nowrap;
+    color: var(--accent2); text-decoration: none;
+    border-bottom: 1px dotted currentColor; opacity: 0.8;
+  }
+  .top-guide:hover, .top-guide:focus-visible { opacity: 1; border-bottom-style: solid; }
+  /* One line per role, each led by the badge it explains. */
+  .role-key {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 0.62rem; opacity: 0.55; margin: 0 0 9px;
+  }
+  /* Each line is its own row, or the badges stretch to the column's width. */
+  .role-key > span { display: flex; align-items: center; gap: 5px; }
   .role-write  { color: var(--accent); border-color: var(--accent); }
   .role-filter { color: var(--accent2); border-color: var(--accent2); }
   /*  With the title absolutely positioned it is no longer a flex item, so
@@ -760,7 +798,7 @@
   }
   .me-field input[type="range"] { width: 100%; accent-color: var(--accent2); }
   .me-field input[type="text"], .me-field select { width: 100%; font-size: 0.66rem; }
-  .me-base { margin-bottom: 7px; }
+  .me-url { width: 100%; font-size: 0.63rem; margin: 2px 0 4px; }
 
   /* ---------- theme ---------- */
   .th-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
@@ -862,6 +900,132 @@
   .maplibregl-ctrl-attrib a { color: #9fb0bd !important; }
   .maplibregl-popup-content { background: #111 !important; color: var(--fg) !important; }
 
+  /* ---------- the promenade ---------- */
+  /*  The scene takes the whole tile. Its readouts float on top of it rather
+      than stealing a strip, because a promenade with a caption bar under it
+      is a diagram, not a view. */
+  #viz-promenade .panel-body { padding: 0; overflow: hidden; }
+  .pr-shell {
+    position: absolute; inset: 0; overflow: hidden;
+    background: var(--field); cursor: grab;
+  }
+  .pr-shell:active { cursor: grabbing; }
+  .pr-canvas { display: block; }
+  .pr-note {
+    position: absolute; left: 8px; bottom: 6px; z-index: 2; margin: 0;
+    font-size: 0.6rem; opacity: 0.45; pointer-events: none;
+    text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
+  }
+  /*  Clear of the panel's own close button, which owns the top-right corner.
+      At top: 6px the + sat directly beside the ×, so reaching for one risked
+      the other — and one of them removes the panel. */
+  .pr-zoom {
+    position: absolute; right: 6px; top: 28px; z-index: 2;
+    font-size: 0.62rem; padding: 1px 7px; min-width: 30px;
+  }
+  .pr-zoom { min-width: 24px; }
+  .pr-zoom-out { right: 34px; }
+  .pr-zoom:disabled { opacity: 0.3; cursor: default; }
+  .pr-mode { right: 66px; min-width: 46px; }
+  .pr-drift { right: 120px; min-width: 26px; }
+  .pr-drift.on { border-color: var(--accent2); color: var(--accent2); }
+  .pr-sort {
+    position: absolute; right: 152px; top: 28px; z-index: 2;
+    font-size: 0.62rem; padding: 1px 4px;
+  }
+  .pr-sort[hidden] { display: none; }
+  /* Appears only when a place is selected, so it never asks you to guess
+     what it would colour. */
+  .pr-tint {
+    position: absolute; left: 8px; top: 6px; z-index: 3;
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(0,0,0,0.6); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 6px;
+  }
+  .pr-tint[hidden] { display: none; }
+  .pr-tint-name { font-size: 0.62rem; opacity: 0.8; max-width: 110px;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-tint input[type="color"] {
+    width: 22px; height: 16px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+  .pr-files {
+    position: absolute; right: 6px; bottom: 6px; z-index: 3; display: flex; gap: 4px;
+  }
+  .pr-files button, .pr-files .pr-doc {
+    font-size: 0.6rem; padding: 1px 7px; line-height: 1.7;
+  }
+  /* A link, styled as one of the buttons beside it. */
+  .pr-doc {
+    border: 1px solid var(--border); border-radius: 3px; background: var(--field);
+    color: var(--fg); text-decoration: none;
+  }
+  .pr-doc:hover { border-color: var(--accent2); color: var(--accent2); }
+  /* Sits under the pen, because that is all it searches. */
+  .pr-find {
+    position: absolute; z-index: 3; font-size: 0.6rem; padding: 2px 5px;
+  }
+  .pr-find[hidden] { display: none; }
+  .pr-tint input[type="range"] { width: 54px; accent-color: var(--accent2); }
+  .pr-tint button { font-size: 0.62rem; padding: 0 5px; line-height: 1.5; }
+  .pr-scene { position: relative; height: 100%; min-height: 150px; }
+  .pr-sky {
+    position: absolute; inset: 0 0 34% 0;
+    background: linear-gradient(180deg, #14202b 0%, #1d2c38 60%, #24333f 100%);
+  }
+  .pr-ground {
+    position: absolute; inset: 66% 0 0 0; background: #1a1f18;
+    border-top: 2px solid #2b3327;
+  }
+  .pr-cast { position: absolute; inset: 0; }
+
+  /* Signposts: the place names, standing in the ground. */
+  .pr-sign { position: absolute; bottom: 26%; transform: translateX(-50%); text-align: center; }
+  .pr-sign-board {
+    display: block; font-size: 9px; letter-spacing: 0.02em; white-space: nowrap;
+    background: #4a3b28; color: #e8dcc4; border: 1px solid #2c2318;
+    padding: 2px 5px; border-radius: 1px;
+  }
+  .pr-sign-post { display: block; width: 2px; height: 16px; margin: 0 auto; background: #3a2f20; }
+  .pr-sign-lost .pr-sign-board { background: #2a2a2a; color: var(--draft); border-color: #1c1c1c; }
+
+  /*  A walker. Blocky on purpose — placeholder art with the era logic already
+      wired, so a sprite sheet can drop in later without changing placement. */
+  .pr-walker {
+    position: absolute; bottom: 26%; width: 14px;
+    transform: translateX(-50%);
+    animation: pr-pace var(--dur, 8s) ease-in-out infinite alternate;
+    animation-delay: var(--delay, 0s);
+  }
+  .pr-name {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; white-space: nowrap; color: #cfd6dc; opacity: 0.75;
+    text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317; pointer-events: none;
+  }
+  .pr-body { position: relative; display: block; width: 14px; height: 24px; }
+  .pr-body > i { position: absolute; display: block; }
+  .pr-head { left: 4px; bottom: 15px; width: 6px; height: 6px; background: #c9a689; }
+  .pr-coat { left: 3px; bottom: 6px; width: 8px; height: 10px; background: var(--coat); }
+  .pr-leg  { bottom: 0; width: 3px; height: 6px; background: var(--trim);
+             animation: pr-step 0.6s steps(2) infinite; }
+  .pr-leg.l { left: 4px; }
+  .pr-leg.r { left: 8px; animation-delay: 0.3s; }
+  .pr-hat { left: 3px; bottom: 20px; }
+  .hat-tall   { width: 8px; height: 6px; background: #16181c; }
+  .hat-bowler { width: 8px; height: 3px; background: #16181c; border-radius: 3px 3px 0 0; }
+  .hat-cap    { width: 8px; height: 2px; background: #4a4335; }
+  .hat-none   { display: none; }
+  /* Someone with no place in the record stands apart, and looks it. */
+  .pr-lost { opacity: 0.45; }
+  .pr-lost .pr-coat, .pr-lost .pr-leg { background: var(--draft); }
+
+  @keyframes pr-pace { from { margin-left: -18px; } to { margin-left: 18px; } }
+  @keyframes pr-step { from { height: 6px; } to { height: 4px; } }
+  /* Anyone who asks for stillness gets a tableau instead of a parade. */
+  @media (prefers-reduced-motion: reduce) {
+    .pr-walker, .pr-leg { animation: none; }
+  }
+
   .slot-empty { display: flex; flex-direction: column; gap: 9px; }
   .slot-desc { font-size: 0.74rem; opacity: 0.5; }
   .slot-note { font-size: 0.69rem; opacity: 0.45; border: 1px dashed var(--border);
@@ -874,8 +1038,18 @@
 
 <div class="topbar">
   <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
-  <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.</p>
+  <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.
+    <!-- Next to the tagline, which is where someone who does not yet know what
+         this is has just finished reading. The per-panel “?” answers “what is
+         THIS box”; this answers “what is any of this”. -->
+    <a class="top-guide" href="doc/quick-guide.html" target="_blank" rel="noopener"
+       title="what a brick is, what the panels do, and how to keep your work safe">quick guide</a></p>
   <!-- Same filter state as the Filter panel's search, reachable without it. -->
+  <!-- The autosave has no button, so it needs a line saying it happened. -->
+  <span class="save-state" id="saveState" hidden></span>
+  <label class="top-auto"><input type="checkbox" id="autoSave" checked>auto</label>
+  <button type="button" id="quickSave" class="top-btn">Save to browser</button>
+  <button type="button" id="quickDownload" class="top-btn">Export</button>
   <div class="topsearch" id="topsearch">
     <input type="text" id="topsearchInput" placeholder="find in the text…" spellcheck="false">
     <button id="topsearchBtn" title="search the pile">&#128269;</button>
@@ -895,6 +1069,14 @@
     </div>
     <div class="row"><button type="button" id="boardReset" title="back to the starting board">reset board</button></div>
     <input type="text" id="boardSearch" placeholder="search panels&hellip;" spellcheck="false">
+    <!-- What the badges on every panel header mean. Spelled out here, where
+         you are already reading the list of panels, rather than hidden behind
+         a hover on each one. -->
+    <p class="role-key">
+      <span><span class="role-badge role-write">W</span>write &mdash; changes the pile</span>
+      <span><span class="role-badge role-filter">F</span>filter &mdash; changes what is in view</span>
+      <span><span class="role-badge role-read">R</span>read only</span>
+    </p>
     <div id="boardCardList"></div>
   </div>
 </div>
@@ -1023,10 +1205,19 @@
     <button data-act="cancel" hidden>Cancel</button>
   </div>
   <p class="hint" data-el="tip"></p>
+  <!-- Paste a style URL to trace on. A MapTiler URL with your key in it works
+       as typed; write {key} instead to keep the key out of what you share. -->
+  <input type="text" class="me-url" data-el="meurl" spellcheck="false"
+    placeholder="paste a basemap style URL to trace on…">
   <!-- The digitizing surface. Deliberately its own map: no bricks, no
        markers, no place labels — only the basemap and what you are drawing,
        so nothing you did not put there can be clicked or read by mistake. -->
-  <div class="me-shell" data-el="shell"><div class="me-canvas"></div></div>
+  <div class="me-shell" data-el="shell">
+    <div class="me-canvas"></div>
+    <!-- What you are tracing against. Its own choice, separate from the Map
+         Viewer's: you often want imagery here and your own cartography there. -->
+    <select class="map-source" data-el="mesource"></select>
+  </div>
   <div class="me-list" data-el="list"></div>
   <div class="me-style" data-el="style" hidden></div>
   <div class="row ms-bar">
@@ -1680,6 +1871,7 @@ function V() { return (state.model && state.model.view) || state.model; }
    touches it and the boot-time registrations run before the view section.
    -------------------------------------------------------------------------- */
 const TEXT_KEY = "brick-by-brick:text:v1";
+const AUTOSAVE_KEY = "brick-by-brick:autosave:v1";
 const BOARD_KEY = "brick-by-brick:board:v2";
 const FOOTPRINT_KEY = "brick-by-brick:footprints:v2";
 const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
@@ -1689,6 +1881,10 @@ const THEMES_KEY = "brick-by-brick:themes:v1";   // the ones you saved
 const MAPPROJECT_KEY = "brick-by-brick:mapproject:v1";    // an Atlas project file
 const TILEKEY_KEY = "brick-by-brick:tilekey:v1";          // MapTiler & friends
 const STYLEURL_KEY = "brick-by-brick:styleurl:v1";        // a hosted basemap style
+const MESOURCE_KEY = "brick-by-brick:mesource:v1";        // what the editor traces against
+const MEURL_KEY = "brick-by-brick:meurl:v1";              // a style URL pasted into the editor
+const COLTINT_KEY = "brick-by-brick:columntint:v1";       // per-place column gradients
+const PINNED_KEY = "brick-by-brick:promenade-pins:v1";    // who you put in which column
 const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
 
@@ -1761,7 +1957,7 @@ const FOOTPRINTS = {};          // id -> {name, desc, w, h, group}
 /*  What a panel does to state, not what it looks like.
       write  — changes the pile (state.text / GAZETTEER)
       filter — changes what is in view (state.filter)
-      read   — changes nothing
+      read   — read only
     A panel is "filter" if using it can narrow the board: clicking a name in
     Bricks, a lane in Timeline, a person in Document, a marker on the Map.
     None of them own filter state — everything routes through setFilter — but
@@ -1769,14 +1965,37 @@ const FOOTPRINTS = {};          // id -> {name, desc, w, h, group}
     plumbing rather than the panel. */
 const ROLES = {
   write:  { badge: "W", label: "Write — changes the pile" },
-  read:   { badge: "R", label: "Read — changes nothing" },
+  read:   { badge: "R", label: "Read only" },
   filter: { badge: "F", label: "Filter — can change what is in view" },
 };
+/*  Where each panel is written up in doc/. A panel's own section, not the top
+    of the page — a header link that lands you on a contents list has made you
+    do the finding yourself. The Promenade earns its own page: its sprite
+    sheets need drawing, not describing. */
+/*  A real filename, not a directory index: a server that strips
+    "index.html" without adding a trailing slash leaves the page at
+    /doc, and its relative stylesheet then resolves to /doc.css and
+    404s — the page loads unstyled. */
+const DOC_HOME = "doc/documentation.html";
+const DOCS = {
+  pallet: "#pallet", builder: "#builder", classification: "#classification",
+  entities: "#bricks", filter: "#filter", document: "#document",
+  gazetteer: "#gazetteer", timeline: "#timeline", count: "#tally",
+  notes: "#red-flags", reference: "#notation-reference", theme: "#theme",
+  "viz-map": "#map-viewer", mapstyle: "#map-style", mapeditor: "#map-editor",
+  "viz-promenade": "doc/promenade.html",
+};
+function docHref(id) {
+  const d = DOCS[id];
+  if (!d) return "";
+  return d[0] === "#" ? DOC_HOME + d : d;
+}
+
 const ROLE_RANK = ["write", "filter", "read"];
 const ROLE_ORDER = [
   { role: "write",  title: "Write · changes the pile" },
   { role: "filter", title: "Filter · changes the view" },
-  { role: "read",   title: "Read · changes nothing" },
+  { role: "read",   title: "Read only" },
 ];
 const GROUPS = ["Visualizations", "Data & structure"];
 
@@ -1923,7 +2142,7 @@ definePanel({ roles: ["read", "filter"], id: "timeline", title: "Timeline", tpl:
   help: "Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn hollow. Hover a mark for the detail.",
   render(body) { renderTimeline(body); } });
 
-definePanel({ role: "read", id: "count", title: "Count", tpl: "tpl-count", w: 1, h: 1,
+definePanel({ role: "read", id: "count", title: "Tally", tpl: "tpl-count", w: 1, h: 1,
   help: "Live tally of the pile.",
   render(body) { renderStats(body.querySelector('[data-el="stats"]')); } });
 
@@ -1939,6 +2158,14 @@ definePanel({ role: "read", id: "reference", title: "Notation reference", tpl: "
 // exist yet. Deliberately
 // unimplemented — an empty slot that reports the shape of its input is more
 // useful than a placeholder pretending to draw.
+Brick.viz.register("promenade", {
+  emoji: "🚶", label: "Promenade", w: 4, h: 1,
+  description: "Your people, walking the ground their records put them on. " +
+    "West to east by longitude, dressed for the years they lived, with the " +
+    "parishes as signposts. Anyone no record places stands apart at the end.",
+  render: (model, el) => renderPromenade(model, el),
+});
+
 Brick.viz.register("map", {
   emoji: "🗺️", label: "Map Viewer", w: 3, h: 2,
   roles: ["read", "filter"],   // draws the places, and a click focuses one
@@ -1947,6 +2174,1835 @@ Brick.viz.register("map", {
     "is named at both (grey — inferred, so it is drawn in the draft colour).",
   render: (model, el) => renderMap(model, el),
 });
+
+/* ==========================================================================
+   THE PROMENADE — your people, walking the ground they are recorded on
+   --------------------------------------------------------------------------
+   A side-on scene you pan along. The horizontal axis is LONGITUDE: west on
+   the left, east on the right, the same order you would meet these parishes
+   walking across Perthshire. Signposts mark the places; each person stands
+   near the places their records actually name, and paces about there.
+
+   Two decisions worth stating, because both could have gone the other way:
+
+   1. The axis is geography, not time. A person exists in one spot and their
+      clothes carry the period instead. Time as the axis would make a queue of
+      strangers; geography makes neighbours, and neighbours are what parish
+      records are actually about.
+
+   2. Nobody is invented. A person with no place named in any record does not
+      get parked somewhere plausible — they wait at the end of the scene under
+      their own sign, because "we do not know where he was" is a finding, not
+      a gap to be filled.
+
+   The figures are drawn from divs, deliberately: they are placeholder art
+   with the era logic already wired, so a sprite sheet can replace the shapes
+   later without touching how anyone is placed or dressed.
+   ========================================================================== */
+
+/*  What a person wore, inferred from when they were alive.
+
+    Banded by the decades that actually changed silhouette in Britain, not by
+    round numbers: the tall hat and frock coat give way to the bowler and sack
+    suit around 1870, soft caps and shorter skirts after 1900, and everything
+    after 1945 is simply "modern" because this corpus does not go there. */
+/*  Loose bands, deliberately.
+
+    These are not costume history — nobody changed coat on the stroke of 1880,
+    and a parish register rarely gives you a date you would want to hang a
+    decade on anyway. They are wide, they overlap in spirit, and the years are
+    only there so the same person always dresses the same way. Treat them as
+    "roughly this sort of century", not as a claim. */
+const ERAS = [
+  { until: 1845, key: "georgian",  hat: "tall",   coat: "#4a3b2a", trim: "#6d5942" },
+  { until: 1890, key: "victorian", hat: "tall",   coat: "#2f3542", trim: "#4a5568" },
+  { until: 1925, key: "edwardian", hat: "bowler", coat: "#3a4a3a", trim: "#556b55" },
+  { until: 1970, key: "interwar",  hat: "cap",    coat: "#5a4632", trim: "#7a6247" },
+  { until: 9999, key: "modern",    hat: "none",   coat: "#3f4a5a", trim: "#5b6b80" },
+];
+// Where somebody with no dates at all stands. Not "modern" — the overwhelming
+// majority of a parish corpus is nineteenth century, and dressing an undated
+// person in a windcheater is a louder claim than dressing them in a frock coat.
+const ERA_UNKNOWN = 1;
+
+function eraFor(entity) {
+  // The middle of a life dresses it better than either end: someone born in
+  // 1840 spent their adult life in the 1870s, not the 1840s.
+  const b = entity.birthYear, d = entity.deathYear;
+  const year = (b && d) ? Math.round((b + d) / 2) : b ? b + 30 : d ? d - 30 : null;
+  if (year === null) return ERAS[ERA_UNKNOWN];
+  return ERAS.find(e => year < e.until) || ERAS[ERAS.length - 1];
+}
+
+/*  Which places each person is recorded at.
+
+    A record that names a person and a place puts that person there. Same rule
+    the connector lines use, so the map and the procession can never disagree
+    about who was where. */
+function peoplePlaces(model) {
+  const coord = new Map();
+  for (const p of model.places || []) if (p.coords) coord.set(p.slug, p.coords);
+  const byId = new Map((model.entities || []).map(e => [e.slug, e]));
+  const out = new Map();
+  for (const b of model.records || []) {
+    if (!b.valid) continue;
+    const named = [b.alias ? b.alias.slug : null, ...(b.links || [])].filter(Boolean);
+    const here = named.filter(s => coord.has(s));
+    if (!here.length) continue;
+    for (const s of named) {
+      const e = byId.get(s);
+      if (!e || e.kind !== "person") continue;
+      let set = out.get(s);
+      if (!set) out.set(s, set = new Set());
+      for (const p of here) set.add(p);
+    }
+  }
+  return { coord, byId, out };
+}
+
+/*  PixiJS 7, UMD build — a global `PIXI`, which is what the loadOnce() script
+    tag can actually consume. Pixi 8 is ESM-and-async-init and would need a
+    different loader for no benefit here. */
+const PIXI_JS = "https://unpkg.com/pixi.js@7.4.2/dist/pixi.min.js";
+
+const SPR_W = 16, SPR_H = 24, SPR_FRAMES = 4;
+
+/*  One figure, recoloured.
+
+    You draw a single 64×24 strip — four frames of one walk cycle — and paint
+    the swappable parts in flat key colours. Everything else passes through
+    untouched, so faces, boots, whatever you like stay exactly as drawn.
+
+        magenta #ff00ff  →  coat
+        cyan    #00ffff  →  legs and arms
+        yellow  #ffff00  →  hat
+
+    Each era, and then each person, gets that strip recoloured into their own
+    texture. It is the old palette-swap trick, and it means one drawing dresses
+    a whole parish. */
+const KEYS = {
+  coat: [255, 0, 255],
+  trim: [0, 255, 255],
+  hat:  [255, 255, 0],
+};
+
+const hexRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+
+/*  A stable wobble per person, so two men in the same decade are not the same
+    man twice — but the same man is the same colour every time you look. The
+    seed is their uid, so it survives reloads, re-sorts and re-renders. */
+function tweak(rgb, seed, amount) {
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const n = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+    const d = ((n - Math.floor(n)) - 0.5) * 2 * amount;
+    out.push(Math.max(0, Math.min(255, Math.round(rgb[i] + d))));
+  }
+  return out;
+}
+
+function seedOf(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000;
+  return h / 1000;
+}
+
+/*  Repaint the key colours. Cached on the palette itself, because a parish of
+    sixty people is sixty little 64×24 canvases otherwise, redrawn on every
+    resize and every sort. */
+const sheetCache = new Map();
+let sheetIds = 0;
+function paletteSheet(base, coat, trim, hat) {
+  // Each source sheet gets an id, so two different drawings recoloured the same
+  // way are not served the same canvas.
+  if (!base.__sheetId) base.__sheetId = ++sheetIds;
+  const key = base.__sheetId + "|" + coat + "|" + trim + "|" + hat;
+  if (sheetCache.has(key)) return sheetCache.get(key);
+
+  const c = document.createElement("canvas");
+  c.width = base.width; c.height = base.height;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(base, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  const want = [[KEYS.coat, coat], [KEYS.trim, trim], [KEYS.hat, hat]];
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    for (const [k, to] of want) {
+      if (d[i] === k[0] && d[i + 1] === k[1] && d[i + 2] === k[2]) {
+        d[i] = to[0]; d[i + 1] = to[1]; d[i + 2] = to[2];
+        break;
+      }
+    }
+  }
+  g.putImageData(img, 0, 0);
+  sheetCache.set(key, c);
+  return c;
+}
+
+/*  A placeholder sprite sheet, drawn rather than fetched.
+
+    Five eras down, four walk frames across. It exists so the engine, the walk
+    cycle and the era logic are all real and testable TODAY, with no art to
+    wait on — and so replacing it is a one-line change: hand the same frame
+    geometry a real sheet and every walker picks it up.
+
+    Nearest-neighbour everywhere; at this size a single smoothed pixel is the
+    difference between a person and a smudge. */
+function makeWalkSheet() {
+  const c = document.createElement("canvas");
+  c.width = SPR_W * SPR_FRAMES;
+  c.height = SPR_H;                       // one row now, not one per era
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+
+  const K = rgb => "rgb(" + rgb.join(",") + ")";
+  for (let f = 0; f < SPR_FRAMES; f++) {
+    const ox = f * SPR_W;
+    // Legs swing on a 4-beat: pass, stride, pass, stride the other way.
+    const swing = [0, 1, 0, -1][f];
+    g.fillStyle = K(KEYS.coat);
+    g.fillRect(ox + 4, 8, 8, 10);
+    g.fillStyle = "#c9a689";               // skin is not a key: it passes through
+    g.fillRect(ox + 5, 2, 6, 6);
+    g.fillStyle = K(KEYS.trim);
+    g.fillRect(ox + 5 - swing, 18, 3, 6);
+    g.fillRect(ox + 9 + swing, 18, 3, 6);
+    g.fillRect(ox + 3, 9 + swing, 1, 6);
+    g.fillRect(ox + 12, 9 - swing, 1, 6);
+    g.fillStyle = K(KEYS.hat);
+    g.fillRect(ox + 4, 0, 8, 3);
+  }
+  return c;
+}
+
+/*  Singling somebody out, without disturbing the scene.
+
+    Everything unrelated drops to a quarter opacity and everything related
+    stays lit — the person, and the parishes their records put them in; or the
+    parish, and everyone recorded there. The scene is never rebuilt, so the
+    walkers keep their stride and the view keeps its place.
+
+    Clicking the same thing again, or the empty ground, clears it. */
+const FOCUS_DIM = 0.22;
+
+function toggleFocus(host, kind, slug) {
+  const same = host._focus === slug;
+  host._focus = same ? null : slug;
+  host._focusKind = same ? null : kind;
+  applyFocus(host);
+}
+
+function applyFocus(host) {
+  const focus = host._focus, kind = host._focusKind;
+  const rel = host._related || { byPerson: new Map(), byPlace: new Map() };
+
+  const litPlaces = !focus ? null
+    : kind === "person" ? (rel.byPerson.get(focus) || new Set())
+    : new Set([focus]);
+  const litPeople = !focus ? null
+    : kind === "place" ? (rel.byPlace.get(focus) || new Set())
+    : new Set([focus]);
+
+  for (const w of host._walkers || []) {
+    const lit = !focus || litPeople.has(w.slug);
+    w.node.alpha = lit ? w.base : w.base * FOCUS_DIM;
+    // The selected person keeps their name up; everyone else waits for hover.
+    if (focus === w.slug) {
+      const make = host._ensureNameFor && host._ensureNameFor.get(w.slug);
+      if (make) make();
+    }
+    if (w.nameNode) w.nameNode.visible = focus === w.slug;
+  }
+  for (const s of host._signs || []) {
+    const lit = !focus || litPlaces.has(s.slug);
+    s.node.alpha = lit ? 1 : FOCUS_DIM;
+  }
+  if (host._syncTint) host._syncTint();
+}
+
+/*  A gradient behind one column.
+
+    Per place, and entirely optional: a column with no gradient shows the plain
+    sky and ground like every other. It is scenery, not data — it says nothing
+    about the place and never reaches the pile.
+
+    Stored by uid so it survives a reload, and kept out of the gazetteer for
+    the same reason the scene art is: that file is coordinates. */
+const COLUMN_TINT = new Map();   // uid -> { from, to }
+
+function loadColumnTints() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(COLTINT_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  for (const [uid, t] of raw) {
+    if (uid && t && /^#[0-9a-f]{6}$/i.test(t.from) && /^#[0-9a-f]{6}$/i.test(t.to)) {
+      const a = Number(t.alpha);
+      COLUMN_TINT.set(uid, { from: t.from, to: t.to,
+                             alpha: (a >= 0 && a <= 1) ? a : 1 });
+    }
+  }
+}
+function saveColumnTints() {
+  try {
+    if (COLUMN_TINT.size) localStorage.setItem(COLTINT_KEY, JSON.stringify([...COLUMN_TINT.entries()]));
+    else localStorage.removeItem(COLTINT_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+/*  A vertical gradient as a texture: Pixi's Graphics fills are flat, so the
+    ramp is painted on a 1-pixel-wide canvas and stretched across the column.
+    Cached, because the same two colours redraw on every render otherwise. */
+const gradCache = new Map();
+function gradientTexture(P, from, to) {
+  const key = from + "|" + to;
+  if (gradCache.has(key)) return gradCache.get(key);
+  const c = document.createElement("canvas");
+  c.width = 1; c.height = 64;
+  const g = c.getContext("2d");
+  const ramp = g.createLinearGradient(0, 0, 0, 64);
+  ramp.addColorStop(0, from);
+  ramp.addColorStop(1, to);
+  g.fillStyle = ramp;
+  g.fillRect(0, 0, 1, 64);
+  const tex = P.Texture.from(c);
+  gradCache.set(key, tex);
+  return tex;
+}
+
+/* ==========================================================================
+   brick.json — the sidecar
+   --------------------------------------------------------------------------
+   Everything that belongs to a piece of research but is not a record: who you
+   have placed in which column, and what colour you gave a column. It sits
+   beside bricks/ and images/ and travels with them.
+
+   Deliberately NOT the bricks. A brick is something a document says; this file
+   is how you have chosen to look at them. Keeping the two apart means a
+   arrangement can never be mistaken for evidence, and you can throw this file
+   away without losing a single record.
+
+   Read automatically when you open a folder that contains one.
+   ========================================================================== */
+function sidecarJSON(host) {
+  return JSON.stringify({
+    brickByBrick: 1,
+    saved: new Date().toISOString(),
+    promenade: {
+      pins: host && host._pinned ? [...host._pinned.entries()] : [],
+    },
+    columns: {
+      tints: [...COLUMN_TINT.entries()],
+    },
+  }, null, 2);
+}
+
+/*  Returns what it managed to read, so the caller can say so rather than
+    leaving you guessing whether the file did anything. */
+function applySidecar(text, host) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { return null; }
+  if (!data || typeof data !== "object") return null;
+  const out = { pins: 0, tints: 0 };
+
+  const pins = data.promenade && data.promenade.pins;
+  if (Array.isArray(pins) && host && host._pinned) {
+    host._pinned.clear();
+    for (const [uid, place] of pins) {
+      if (typeof uid === "string" && typeof place === "string") {
+        host._pinned.set(uid, place);
+        out.pins++;
+      }
+    }
+    if (host._savePins) host._savePins();
+  }
+
+  const tints = data.columns && data.columns.tints;
+  if (Array.isArray(tints)) {
+    COLUMN_TINT.clear();
+    for (const [uid, t] of tints) {
+      if (uid && t && /^#[0-9a-f]{6}$/i.test(t.from) && /^#[0-9a-f]{6}$/i.test(t.to)) {
+        const a = Number(t.alpha);
+        COLUMN_TINT.set(uid, { from: t.from, to: t.to, alpha: (a >= 0 && a <= 1) ? a : 1 });
+        out.tints++;
+      }
+    }
+    saveColumnTints();
+  }
+  return out;
+}
+
+/*  Light the people in the pen whose name matches, dim the rest.
+
+    Kept apart from the focus dimming so the two can coexist: a search inside
+    the pen does not disturb a place you have selected out on the street. */
+function applyPenSearch(host) {
+  const q = host._penQuery || "";
+  for (const w of host._walkers || []) {
+    if (!w.inPen) continue;
+    const hit = !q || w.search.includes(q);
+    w.node.alpha = hit ? w.base : w.base * 0.18;
+    if (q && hit) {
+      const make = host._ensureNameFor && host._ensureNameFor.get(w.slug);
+      if (make) make();
+    }
+    if (w.nameNode) w.nameNode.visible = !!q && hit;
+  }
+}
+
+/*  A costume for an occupation.
+
+    images/occupations/<trade>.png — found by filename, the same bargain as the
+    scene art: a person whose occupation slugs to "powerloom-tender" wears
+    powerloom-tender.png if such a file exists, and the ordinary figure if it
+    does not. Nothing to configure, nothing to keep in step.
+
+    A costume is a walk sheet like any other: same 64x24 geometry, same key
+    colours. Which means a uniform still takes its era's palette and its
+    wearer's own nudge, so twenty millworkers are recognisably millworkers
+    without being twenty identical sprites. */
+const costumeCache = new Map();   // occupation slug -> Image | null | Promise
+
+function occupationOf(entity) {
+  const raw = (entity.detail || "").split(/[,.;(]/)[0].trim();
+  if (!raw || raw.length > 28) return "";
+  return slugify(raw);
+}
+
+/*  Art lives in a folder named for what it is:
+
+      images/places/longforgan.png        behind that parish
+      images/occupations/mill-worker.png  worn by that trade
+
+    Which settles the collision outright — a parish called Mason and a trade
+    called mason are different files, and neither has to carry a prefix in its
+    name to say so.
+
+    An opened research folder is matched on the directory as well as the
+    filename, so the same layout works from disk and hosted. */
+function artSrc(kind, slug) {
+  const want = slug.toLowerCase();
+  for (const [path, v] of folderImages) {
+    const parts = path.toLowerCase().split("/");
+    const base = parts.pop().replace(/\.[^.]+$/, "");
+    if (base !== want) continue;
+    if (!parts.includes(kind)) continue;      // right name, wrong folder
+    if (!v.url) v.url = URL.createObjectURL(v.file);
+    return v.url;
+  }
+  return folderImages.size ? "" : "images/" + kind + "/" + want + ".png";
+}
+
+function costumeSrc(slug) { return artSrc("occupations", slug); }
+
+function costumeImage(slug, onReady) {
+  if (!slug) return null;
+  if (costumeCache.has(slug)) {
+    const got = costumeCache.get(slug);
+    return got instanceof Promise ? null : got;
+  }
+  const src = costumeSrc(slug);
+  if (!src) { costumeCache.set(slug, null); return null; }
+  const pending = new Promise(res => {
+    const img = new Image();
+    img.onload = () => { costumeCache.set(slug, img); res(img); if (onReady) onReady(); };
+    img.onerror = () => { costumeCache.set(slug, null); res(null); };
+    img.src = src;
+  });
+  costumeCache.set(slug, pending);
+  return null;                    // this render uses the default; the next has it
+}
+
+/*  Where a place's picture lives.
+
+    images/places/<uid>.png — the parish's own name, in the places folder.
+
+    No configuration, and no complaint when there is nothing there — most
+    places will not have art, and that is the normal state, not a fault. */
+function sceneSrc(slug) { return artSrc("places", slug); }
+
+/*  Look each place's art up once, and remember when there is none.
+
+    Without this every render speculatively requested images/<uid>.png for
+    every place — 59 requests that all 404 on a site with no images folder,
+    repeated on every zoom, sort, drop and resize. A place that has no picture
+    is a permanent fact for the session, so it is worth remembering.
+
+    Resolves to an Image once loaded, or null. Reset when a folder is opened,
+    since that changes where art comes from. */
+const sceneCache = new Map();     // slug -> HTMLImageElement | null | Promise
+function resetSceneCache() { sceneCache.clear(); }
+
+function sceneImage(slug) {
+  if (sceneCache.has(slug)) return sceneCache.get(slug);
+  const src = sceneSrc(slug);
+  if (!src) { sceneCache.set(slug, null); return null; }
+  const pending = new Promise(res => {
+    const img = new Image();
+    img.onload = () => { sceneCache.set(slug, img); res(img); };
+    img.onerror = () => { sceneCache.set(slug, null); res(null); };
+    img.src = src;
+  });
+  sceneCache.set(slug, pending);
+  return pending;
+}
+
+function renderPromenadePixi(model, host) {
+  const { coord, out: whereByPerson } = peoplePlaces(model);
+  const people = (model.people || []).filter(p => p.declared);
+  const P = window.PIXI;
+
+  /*  Zoom scales the world, not the camera: spacing, figures and lettering
+      all grow together, so 3× is a closer walk down the same street rather
+      than a magnified screenshot of it. Pixel art has no in-between sizes
+      worth having, so the steps are whole numbers. */
+  const Z = host._zoom || 1;
+  const GRID = host._view === "grid";
+
+  /*  Two arrangements of the same cast.
+
+      STREET is geography: west to east, everyone standing where the records
+      put them, the distance between two figures meaning something.
+
+      GRID is an isotype board — the old pictogram trick of one figure per
+      person, ranked and counted. Distance means nothing there, so it can be
+      sorted by anything you like, and it answers "how many, and when" where
+      the street answers "where". They walk on the spot in both, because a
+      figure frozen mid-stride reads as a corpse. */
+  const SORTS = {
+    lng:  { label: "west→east", of: p => (host._lngOf.get(p.slug) ?? Infinity) },
+    year: { label: "earliest first", of: p => (p.birthYear ?? p.deathYear ?? Infinity) },
+    name: { label: "A→Z", of: p => p.name.toLowerCase() },
+  };
+
+  /*  The street, narrowed to whatever you searched for.
+
+      Filtering the columns rather than dimming them, because the point is to
+      shorten the walk: a match two parishes wide is a street two parishes
+      long. Anyone placed in a column that is filtered out goes back to the pen
+      for the duration — their placement is untouched and returns with them
+      when you clear the box. */
+  const placeQ = host._placeQuery || "";
+  const placeName = slug => {
+    const e = (model.entities || []).find(k => k.slug === slug);
+    return ((e && e.name) || slug).toLowerCase();
+  };
+  const placed = [...coord.entries()]
+    .filter(([slug]) => !placeQ || placeName(slug).includes(placeQ) ||
+                        slug.toLowerCase().includes(placeQ))
+    .sort((a, b) => a[1].lng - b[1].lng);
+  const STEP = (GRID ? 74 : 110) * Z, PAD = 70 * Z, GROUND = 0.72;
+
+  /*  Columns widen to hold their crowd.
+
+      A place with ten people in it needs more room than a place with one, and
+      a fixed column would either waste space everywhere or overflow wherever
+      you put a family. So each column is sized to its occupancy and the street
+      is laid out cumulatively — the parishes stay in west-to-east order, they
+      just take the room they need.
+
+      Only people you have PLACED count. Someone standing at the average of
+      three parishes belongs to none of them and does not swell any column. */
+  /*  Tuned so the growth is visible rather than theoretical. At the previous
+      15+40 a column of five came out 115 against a 110 minimum — arithmetically
+      wider, indistinguishable by eye. These give roughly 110 for one or two,
+      160 for five, 270 for ten. */
+  const SPACING = 22 * Z, GUTTER = 50 * Z;
+  const occ = new Map();
+  if (host._pinned) {
+    for (const place of host._pinned.values()) occ.set(place, (occ.get(place) || 0) + 1);
+  }
+  const widthOf = slug =>
+    Math.max(STEP, (occ.get(slug) || 0) * SPACING + GUTTER);
+
+  const xOf = new Map(), wOf = new Map();
+  let cursor = PAD;
+  for (const [slug] of placed) {
+    const w = widthOf(slug);
+    wOf.set(slug, w);
+    xOf.set(slug, cursor + w / 2);      // the column's centre
+    cursor += w;
+  }
+  const unknownX = cursor;
+  const worldW = cursor + PAD;
+
+  if (!host._app) {
+    const shell = document.createElement("div");
+    shell.className = "pr-shell";
+    host.innerHTML = "";
+    host.appendChild(shell);
+    const note = document.createElement("p");
+    note.className = "hint pr-note";
+    shell.appendChild(note);
+
+    /*  Whole-number steps only. Re-rendering is the right move here rather
+        than scaling the stage: at 3× the walkers need more room between the
+        signposts, not the same street enlarged until everyone overlaps. */
+    /*  Plain + and −, not a cycling label. A single button that steps 1→2→3→1
+        makes zooming out a three-press journey and gives no clue what is
+        coming. Two buttons say what they do and stop at the ends. */
+    const zoomOut = document.createElement("button");
+    zoomOut.className = "pr-zoom pr-zoom-out";
+    zoomOut.textContent = "−";
+    const zoom = document.createElement("button");
+    zoom.className = "pr-zoom";
+    zoom.textContent = "+";
+    /*  Street or grid, and how the grid is ranked. The sort only appears in
+        the grid, because on the street the order is the geography — offering
+        to re-sort it would be offering to move Perth. */
+    const modeBtn = document.createElement("button");
+    modeBtn.className = "pr-zoom pr-mode";
+    const sortSel = document.createElement("select");
+    sortSel.className = "pr-sort";
+    sortSel.innerHTML =
+      '<option value="lng">west→east</option>' +
+      '<option value="year">earliest first</option>' +
+      '<option value="name">A→Z</option>';
+    const syncMode = () => {
+      modeBtn.textContent = host._view === "grid" ? "grid" : "street";
+      sortSel.hidden = host._view !== "grid";
+      sortSel.value = host._sort || "lng";
+    };
+    modeBtn.onclick = () => {
+      host._view = host._view === "grid" ? "street" : "grid";
+      /*  Placements survive the view change. Putting someone in Perth is a
+          statement about who they belong with, not about where they stand in
+          one particular arrangement — so the grid groups by it and the street
+          stands them there. Clearing it here was throwing away the only thing
+          the two views have in common. */
+      syncMode();
+      host._world.x = 0;   // the two layouts share no coordinates
+      renderPromenadePixi(V(), host);
+    };
+    sortSel.onchange = () => {
+      host._sort = sortSel.value;
+      // A re-sort reorders within the groups; it does not dissolve them.
+      renderPromenadePixi(V(), host);
+    };
+    // Drift is opt-in, and says whether it is on.
+    const driftBtn = document.createElement("button");
+    driftBtn.className = "pr-zoom pr-drift";
+    driftBtn.textContent = "▶";
+    host._driftBtn = driftBtn;
+    driftBtn.onclick = () => {
+      clearTimeout(host._idleTimer);        // an explicit choice outranks the timer
+      host._drift = !host._drift;
+      driftBtn.textContent = host._drift ? "❚❚" : "▶";
+      driftBtn.classList.toggle("on", host._drift);
+    };
+    shell.appendChild(driftBtn);
+
+    shell.appendChild(modeBtn);
+    shell.appendChild(sortSel);
+    host._syncMode = syncMode;
+    syncMode();
+
+    const ZOOM_MIN = 1, ZOOM_MAX = 4;
+    const setZoom = next => {
+      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next));
+      if (z === (host._zoom || 1)) return;
+      host._zoom = z;
+      host._noTween = true;          // the coordinates are about to mean something else
+      zoom.disabled = z >= ZOOM_MAX;
+      zoomOut.disabled = z <= ZOOM_MIN;
+      // Hold the middle of the view across the change, so zooming in does not
+      // also teleport you to the west coast.
+      const mid = (-host._world.x + host._app.screen.width / 2) / (host._worldW || 1);
+      renderPromenadePixi(V(), host);
+      host._world.x = Math.min(0, Math.max(-(host._worldW - host._app.screen.width),
+        -(mid * host._worldW - host._app.screen.width / 2)));
+    };
+    zoom.onclick = () => setZoom((host._zoom || 1) + 1);
+    zoomOut.onclick = () => setZoom((host._zoom || 1) - 1);
+    zoomOut.disabled = true;                 // starts at 1×
+    shell.appendChild(zoom);
+    shell.appendChild(zoomOut);
+
+    /*  Search the pen, and only the pen.
+
+        The people who need finding are the ones with nowhere to be — a name
+        you half remember, somewhere in a huddle of sixty. Everyone already
+        standing in a column can be found by looking at the column, so
+        searching them too would only add noise.
+
+        It does not remove anybody: non-matches dim and matches light up and
+        show their name, so you can still see how many you are choosing from. */
+    const penFind = document.createElement("input");
+    penFind.type = "text";
+    penFind.className = "pr-find";
+    penFind.placeholder = "find someone unplaced…";
+    penFind.spellcheck = false;
+    shell.appendChild(penFind);
+    host._penFind = penFind;
+    penFind.addEventListener("input", () => {
+      host._penQuery = penFind.value.trim().toLowerCase();
+      applyPenSearch(host);
+    });
+
+    /*  Save and load the sidecar.
+
+        Save hands you a brick.json to drop beside your bricks; Load takes one
+        back. Opening a research folder that already contains one reads it
+        without asking, so these are for moving an arrangement between machines
+        rather than everyday use. */
+    const fileBar = document.createElement("div");
+    fileBar.className = "pr-files";
+    fileBar.innerHTML =
+      '<button data-k="save" title="save placements and colours as brick.json">save</button>' +
+      '<button data-k="load" title="load a brick.json">load</button>' +
+      // Beside the file controls, since the questions it answers are mostly
+      // "what file do I make, and what goes in it".
+      '<a class="pr-doc" href="doc/promenade.html" target="_blank" rel="noopener"' +
+      ' title="how to manage the promenade, and how to make its art">help</a>';
+    // README.md covers the whole project; this button is the Promenade's own page.
+    shell.appendChild(fileBar);
+    fileBar.querySelector('[data-k="save"]').onclick = () =>
+      downloadText(sidecarJSON(host), "brick.json", "application/json");
+    fileBar.querySelector('[data-k="load"]').onclick = () => {
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = ".json,application/json";
+      inp.onchange = () => {
+        const f = inp.files && inp.files[0];
+        if (!f) return;
+        f.text().then(txt => {
+          const got = applySidecar(txt, host);
+          const note = host.querySelector(".pr-note");
+          if (note) {
+            note.textContent = got
+              ? got.pins + " placed, " + got.tints + " coloured"
+              : "that file is not valid JSON";
+          }
+          host._noTween = true;
+          renderPromenadePixi(V(), host);
+        });
+      };
+      inp.click();
+    };
+
+    /*  Find a place, and show only that stretch of street.
+
+        Different job from the pen search above it, so a different box: that
+        one lights people up without removing anybody, this one actually
+        narrows the street to the parishes you name. When you are looking for
+        somewhere to put someone, fifty-nine columns is the problem. */
+    const placeFind = document.createElement("input");
+    placeFind.type = "text";
+    placeFind.className = "pr-find pr-find-place";
+    placeFind.placeholder = "filter to a place…";
+    placeFind.spellcheck = false;
+    shell.appendChild(placeFind);
+    host._placeFind = placeFind;
+    placeFind.addEventListener("input", () => {
+      host._placeQuery = placeFind.value.trim().toLowerCase();
+      host._noTween = true;
+      host._world.x = 0;       // the street just changed length
+      renderPromenadePixi(V(), host);
+    });
+
+    /*  Colour the selected column.
+
+        Only visible when a place is actually selected, because a colour picker
+        with nothing to colour is a puzzle. Click a signpost and it appears
+        naming that place; click away and it goes. Two stops and a clear —
+        which is the whole of what a backdrop needs. */
+    const tintBar = document.createElement("div");
+    tintBar.className = "pr-tint";
+    tintBar.hidden = true;
+    tintBar.innerHTML =
+      '<span class="pr-tint-name"></span>' +
+      '<input type="color" data-k="from" value="#1d2c38">' +
+      '<input type="color" data-k="to" value="#1a1f18">' +
+      '<input type="range" data-k="alpha" min="0" max="1" step="0.05" value="1" ' +
+        'title="how strongly it shows">' +
+      '<button data-k="clear" title="no gradient for this place">×</button>';
+    shell.appendChild(tintBar);
+    host._tintBar = tintBar;
+
+    const readTint = () => {
+      const slug = host._focusKind === "place" ? host._focus : null;
+      if (!slug) return null;
+      return COLUMN_TINT.get(slug) || { from: "#1d2c38", to: "#1a1f18", alpha: 1 };
+    };
+    tintBar.addEventListener("input", e => {
+      const slug = host._focusKind === "place" ? host._focus : null;
+      if (!slug || !e.target.dataset.k) return;
+      const cur = readTint();
+      const next = { from: cur.from, to: cur.to,
+                     alpha: cur.alpha === undefined ? 1 : cur.alpha };
+      const k = e.target.dataset.k;
+      next[k] = k === "alpha" ? Number(e.target.value) : e.target.value;
+      COLUMN_TINT.set(slug, next);
+      saveColumnTints();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    });
+    tintBar.querySelector('[data-k="clear"]').onclick = () => {
+      const slug = host._focusKind === "place" ? host._focus : null;
+      if (!slug) return;
+      COLUMN_TINT.delete(slug);
+      saveColumnTints();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+
+    host._syncTint = model2 => {
+      const slug = host._focusKind === "place" ? host._focus : null;
+      tintBar.hidden = !slug || host._view === "grid";
+      if (!slug) return;
+      const e = ((model2 || V()).entities || []).find(k => k.slug === slug);
+      tintBar.querySelector(".pr-tint-name").textContent = e ? e.name : slug;
+      const t = readTint();
+      tintBar.querySelector('[data-k="from"]').value = t.from;
+      tintBar.querySelector('[data-k="to"]').value = t.to;
+      tintBar.querySelector('[data-k="alpha"]').value = t.alpha === undefined ? 1 : t.alpha;
+    };
+
+    const app = new P.Application({
+      backgroundAlpha: 0, antialias: false, autoDensity: true,
+      resolution: window.devicePixelRatio || 1,
+      width: shell.clientWidth || 600, height: shell.clientHeight || 150,
+    });
+    // Pixi 7 exposes the canvas as .view; append it, do not replace the shell.
+    shell.appendChild(app.view);
+    app.view.className = "pr-canvas";
+    host._app = app;
+    host._shell = shell;
+    // The drawing itself. Every walker gets a recoloured copy of this.
+    host._base = makeWalkSheet();
+    host._texCache = new Map();
+    host._world = new P.Container();
+    app.stage.addChild(host._world);
+
+    /*  Drag to walk along the scene. A wheel works too, but a scene you can
+        take hold of is the point of a promenade. */
+    /*  Panning happens on the BACKGROUND, through Pixi's own events.
+
+        It used to be a DOM listener on the canvas, which fought Pixi's hit
+        testing on the very same pointerdown: whichever ran first won, so
+        picking up a figure sometimes panned the street instead. Letting Pixi
+        decide what was grabbed removes the race — the ground is a target like
+        any other, and if you grabbed a walker the ground never hears about it.
+
+        The pan state lives on the host because the background object itself is
+        rebuilt with every render. */
+    /*  Panning the street.
+
+        A plain DOM drag on the canvas, guarded by a flag the walkers set. Pixi
+        registers its own listener when the Application is built — before this
+        one — so a pointerdown on a figure has already set host._dragging by
+        the time this runs, and the street stays put. */
+    app.stage.eventMode = "static";
+    let panFrom = null;
+    app.view.addEventListener("pointerdown", e => {
+      if (host._dragging) return;          // a walker took it
+      panFrom = { x: e.clientX, wx: host._world.x };
+      host._drift = false;
+    });
+    window.addEventListener("pointermove", e => {
+      if (!panFrom || host._dragging) return;
+      host._world.x = Math.min(0, Math.max(-(host._worldW - app.screen.width),
+                                           panFrom.wx + (e.clientX - panFrom.x)));
+    });
+    window.addEventListener("pointerup", () => { panFrom = null; });
+    app.view.addEventListener("wheel", e => {
+      host._drift = false;
+      host._world.x = Math.min(0, Math.max(-(host._worldW - app.screen.width),
+                                           host._world.x - e.deltaY));
+      e.preventDefault();
+    }, { passive: false });
+
+    /*  Resizing, driven by whoever actually knows.
+
+        A ResizeObserver on the shell does not survive the board rebuilding its
+        tiles — the panel is re-parented and the observation is silently lost,
+        so growing a tile left the canvas at its old size. The board calls this
+        directly instead. The observer stays as a second route, for the window
+        resizing rather than the grid.
+
+        The ground line and everyone's feet are positioned against the panel's
+        height, so this rebuilds the scene rather than just stretching the
+        canvas; the world container keeps its x, so your place in the street
+        survives. */
+    host._reflowNow = () => {
+      const w = shell.clientWidth, h = shell.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      if (app.screen.width === w && app.screen.height === h) return;
+      app.renderer.resize(w, h);
+      clearTimeout(host._reflow);
+      host._reflow = setTimeout(() => {
+        host._noTween = true;        // a resize moves the ground, not the people
+        const keep = host._world.x;
+        renderPromenadePixi(V(), host);
+        host._world.x = Math.min(0, Math.max(-(host._worldW - app.screen.width), keep));
+      }, 60);
+    };
+
+    /*  Where you have put people, remembered.
+
+        Still purely the Promenade's own: it never reaches the pile, writes no
+        brick and sets no coordinate. But an arrangement you spent time on
+        should survive closing the tab — losing it on reload made the whole
+        thing feel like a toy. Stored by uid, so it lines up again whatever
+        else changed in the pile meanwhile. */
+    host._pinned = new Map();
+    try {
+      const raw = JSON.parse(localStorage.getItem(PINNED_KEY) || "null");
+      if (Array.isArray(raw)) {
+        for (const [uid, place] of raw) {
+          if (typeof uid === "string" && typeof place === "string") host._pinned.set(uid, place);
+        }
+      }
+    } catch (e) { /* unavailable */ }
+
+    host._savePins = () => {
+      try {
+        if (host._pinned.size) {
+          localStorage.setItem(PINNED_KEY, JSON.stringify([...host._pinned.entries()]));
+        } else {
+          localStorage.removeItem(PINNED_KEY);
+        }
+      } catch (e) { /* private mode */ }
+    };
+
+    /*  The holding pen: everyone no record places.
+
+        It hangs off the STAGE rather than the world, so it does not scroll —
+        it stays in the top-left corner wherever you have panned to. That is
+        the point of it. Parking the unplaced at the far end of the street
+        meant they were a mile from every column you might want to drop them
+        into, and out of sight for most of the scene.
+
+        Dotted, like the drop zones, because it is one: drag somebody back
+        into it to say you no longer know where they were. */
+    host._limbo = new P.Container();
+    app.stage.addChild(host._limbo);
+
+    /*  Drift as an attract mode.
+
+        Still off while you are working — a scene that slides about under the
+        cursor is an obstacle — but it starts on its own once the panel has
+        been left alone for a while, so a board sitting on a screen eventually
+        shows itself off. Any touch of it stops the drift and starts the wait
+        over: the moment you reach for someone, the street stands still.
+
+        The button remains an override for starting it deliberately. */
+    host._drift = false;
+    host._idleMs = 30000;
+    host._bumpIdle = () => {
+      host._drift = false;
+      if (host._driftBtn) {
+        host._driftBtn.textContent = "▶";
+        host._driftBtn.classList.remove("on");
+      }
+      clearTimeout(host._idleTimer);
+      // A stilled scene is what someone asked for; do not override that.
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      host._idleTimer = setTimeout(() => {
+        host._drift = true;
+        if (host._driftBtn) {
+          host._driftBtn.textContent = "❚❚";
+          host._driftBtn.classList.add("on");
+        }
+      }, host._idleMs);
+    };
+    for (const t of ["pointerdown", "pointermove", "wheel"]) {
+      shell.addEventListener(t, host._bumpIdle, { passive: true });
+    }
+    host._bumpIdle();
+    /*  Reassigning a texture makes Pixi rebuild the sprite's UVs. At six
+        frames a second the walk cycle only changes every tenth frame, so doing
+        it unconditionally was nine wasted rebuilds out of ten, per walker. */
+    const setFrame = (w, i) => {
+      if (w.frame === i) return;
+      w.frame = i;
+      w.sprite.texture = w.frames[i];
+    };
+    app.ticker.add(() => {
+      const t = app.ticker.lastTime / 1000;
+      for (const w of host._walkers || []) {
+        /*  A held figure belongs to the hand, not to the ticker.
+
+            This is what stopped dragging from working at all: the loop below
+            reassigns node.x on every frame, so a figure followed the pointer
+            for a fraction of a frame and was then yanked back to where the
+            records put them. The drag was working; it was being undone sixty
+            times a second. */
+        if (w.held) {
+          setFrame(w, Math.floor(t * 10 + w.phase) % SPR_FRAMES);
+          continue;
+        }
+
+        /*  Dropped, and falling. Gravity rather than a tween, because you
+            threw them — they should land, not glide. They also slide into the
+            middle of their column on the way down, so the drop reads as
+            "into that group" rather than "at that spot". */
+        if (w.falling) {
+          w.vy += 0.9 * (app.ticker.deltaMS / 16.7);
+          w.node.y += w.vy;
+          w.node.x += (w.home - w.node.x) * 0.12;
+          setFrame(w, 0);
+          if (w.node.y >= w.toY) {
+            w.node.y = w.toY;
+            w.node.x = w.home;
+            w.falling = false;
+            w.vy = 0;
+          }
+          continue;
+        }
+
+        /*  Rearranging is a walk, not a cut.
+
+            When the layout changes, everyone keeps their own position and
+            walks to the new one — so you can follow a particular person from
+            the street into the grid and see where they landed. A hard swap
+            loses that thread entirely, and the whole point of one figure per
+            person is that you can keep your eye on one of them.
+
+            Staggered by phase so the cast moves as a crowd rather than a
+            rank of soldiers, and eased so it settles rather than stops. */
+        if (w.t < 1) {
+          w.t = Math.min(1, w.t + app.ticker.deltaMS / w.dur);
+          // t starts negative to stagger the crowd; until it reaches zero the
+          // walker simply waits where they were.
+          const k = Math.max(0, w.t);
+          const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+          w.node.x = w.fromX + (w.home - w.fromX) * e;
+          w.node.y = w.fromY + (w.toY - w.fromY) * e;
+          // Face the way they are travelling while they travel.
+          if (Math.abs(w.home - w.fromX) > 2) w.node.scale.x = w.home < w.fromX ? -1 : 1;
+          setFrame(w, Math.floor(t * 8 + w.phase * 3) % SPR_FRAMES);
+          continue;
+        }
+        // Each pace is a slow sine about the spot the records put them on, so
+        // nobody wanders somewhere no document says they were.
+        const off = Math.sin(t / w.period + w.phase) * w.range;
+        w.node.x = w.home + off;
+        w.node.y = w.toY;
+        if (w.range) w.node.scale.x = Math.cos(t / w.period + w.phase) < 0 ? -1 : 1;
+        setFrame(w, Math.floor(t * 6 + w.phase * 3) % SPR_FRAMES);
+      }
+      /*  Names ride on the container, so they flip with their walker; undo it.
+
+          This used to be a second ticker.add() called from the render body,
+          which meant one more permanent callback on every zoom, sort, drop and
+          resize — each iterating the whole cast every frame, for ever. It
+          belongs in the one ticker registered at startup. */
+      for (const w of host._walkers || []) {
+        if (w.nameNode) w.nameNode.scale.x = w.node.scale.x < 0 ? -1 : 1;
+      }
+      // The signposts belong to the street, so they fade rather than blink.
+      if (host._signLayer) {
+        const want = host._view === "grid" ? 0 : 1;
+        const a = host._signLayer.alpha;
+        if (a !== want) host._signLayer.alpha = a + Math.sign(want - a) * Math.min(0.06, Math.abs(want - a));
+      }
+      /*  Now and again, a balloon.
+
+          Drawn rather than fetched, and never announced. It drifts across the
+          sky on its own schedule, bobs a little, and is gone — the sort of
+          thing you only notice if you happen to be looking at the right
+          moment, which is the whole point of it.
+
+          Deliberately in the sky layer and never interactive: it is not a
+          record, it cannot be clicked, and nothing depends on it. */
+      if (!host._balloon && Math.random() < 0.0004) {
+        const bal = new P.Container();
+        const g = new P.Graphics();
+        // envelope, in the signboard timber so it belongs to the palette
+        g.beginFill(0xb4553a).drawEllipse(0, 0, 9, 11).endFill();
+        g.beginFill(0x8f4530).drawEllipse(-3.5, 0, 2.5, 11).endFill();
+        g.beginFill(0x8f4530).drawEllipse(3.5, 0, 2.5, 11).endFill();
+        // rigging and basket
+        g.lineStyle(1, 0x3a2f20, 0.9);
+        g.moveTo(-4, 9); g.lineTo(-2.5, 15);
+        g.moveTo(4, 9);  g.lineTo(2.5, 15);
+        g.lineStyle(0);
+        g.beginFill(0x6d5433).drawRect(-3, 15, 6, 4).endFill();
+        bal.addChild(g);
+        bal.y = H() * 0.22;
+        bal.x = -30;
+        bal.alpha = 0.85;
+        app.stage.addChildAt(bal, 0);       // behind the pen, above nothing else
+        host._balloon = { node: bal, t: 0, from: bal.y };
+      }
+      if (host._balloon) {
+        const b2 = host._balloon;
+        b2.t += app.ticker.deltaMS / 1000;
+        b2.node.x += 0.35;
+        b2.node.y = b2.from + Math.sin(b2.t * 0.7) * 6;
+        if (b2.node.x > app.screen.width + 30) {
+          b2.node.destroy({ children: true });
+          host._balloon = null;
+        }
+      }
+
+      /*  And birds, more often than the balloon.
+
+          A skein of three or four, flapping out of step with each other so
+          they read as birds rather than a decal. Same rules: sky only, never
+          interactive, gone when they leave the frame. */
+      if (!host._birds && Math.random() < 0.0016) {
+        const flock = new P.Container();
+        const n = 3 + Math.floor(Math.random() * 3);
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const marks = [];
+        for (let i = 0; i < n; i++) {
+          const g = new P.Graphics();
+          // Behind the leader and a little above or below, the way they fly.
+          g.x = -i * (11 + Math.random() * 7) * dir;
+          g.y = i * (4 - Math.random() * 8);
+          flock.addChild(g);
+          marks.push({ g, phase: Math.random() * 6.28, rate: 6 + Math.random() * 4 });
+        }
+        flock.y = H() * (0.1 + Math.random() * 0.16);
+        flock.x = dir > 0 ? -40 : app.screen.width + 40;
+        flock.alpha = 0.55;
+        app.stage.addChildAt(flock, 0);
+        host._birds = { node: flock, marks, dir, t: 0 };
+      }
+      if (host._birds) {
+        const f = host._birds;
+        f.t += app.ticker.deltaMS / 1000;
+        f.node.x += 0.9 * f.dir;
+        f.node.y += Math.sin(f.t * 0.5) * 0.12;
+        for (const m of f.marks) {
+          // Two strokes of a wing, redrawn as the beat opens and closes.
+          const beat = Math.sin(f.t * m.rate + m.phase);
+          const lift = 2.2 * beat;
+          m.g.clear();
+          m.g.lineStyle(1, 0x2b3542, 0.9);
+          m.g.moveTo(-3, lift); m.g.lineTo(0, -lift * 0.5);
+          m.g.lineTo(3, lift);
+        }
+        if (f.node.x < -60 || f.node.x > app.screen.width + 60) {
+          f.node.destroy({ children: true });
+          host._birds = null;
+        }
+      }
+
+      if (host._drift) {
+        host._world.x -= 0.25;
+        if (host._world.x < -(host._worldW - app.screen.width)) host._world.x = 0;
+      }
+    });
+
+    if (window.ResizeObserver) {
+      /*  The ground line and everyone's feet are laid out against the panel's
+          height, so stretching the canvas alone leaves the horizon where it
+          was and the walkers standing in mid-air. The scene has to be rebuilt.
+
+          Debounced, because dragging a tile's edge fires this continuously and
+          each rebuild is ~200 display objects. The scroll position is on the
+          world container, which survives the rebuild, so your place in the
+          street is kept. */
+      new ResizeObserver(() => host._reflowNow()).observe(shell);
+    }
+  }
+
+  const app = host._app, world = host._world;
+  host._renderId = (host._renderId || 0) + 1;
+  host._worldW = worldW;
+
+  /*  Where everyone was standing a moment ago.
+
+      Read before the scene is torn down so the rebuilt cast can start from
+      the old arrangement and walk to the new one. Keyed by uid, so a person
+      who was on screen keeps their thread through the change; anyone new just
+      appears where they belong. */
+  const wasAt = new Map();
+  for (const w of host._walkers || []) wasAt.set(w.slug, { x: w.node.x, y: w.node.y });
+
+  world.removeChildren();
+  host._walkers = [];
+  host._ensureNameFor = new Map();
+
+  // Both directions of the person↔place relation, so a click either way can
+  // light the other side without walking the records again.
+  const byPlace = new Map();
+  for (const [person, places] of whereByPerson) {
+    for (const pl of places) {
+      let set = byPlace.get(pl);
+      if (!set) byPlace.set(pl, set = new Set());
+      set.add(person);
+    }
+  }
+  host._related = { byPerson: whereByPerson, byPlace };
+
+  const H = () => app.screen.height || 150;
+  const groundY = () => H() * GROUND;
+
+  // Ground and sky, redrawn with the scene so a resized panel keeps its horizon.
+  const bg = new P.Graphics();
+  if (GRID) {
+    // A board, not a landscape: no horizon, because nothing here is standing
+    // anywhere. Faint rules instead, so the ranks read as ranks.
+    bg.beginFill(0x141a20).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
+  } else {
+    bg.beginFill(0x1d2c38).drawRect(0, 0, worldW, H() * GROUND).endFill();
+    bg.beginFill(0x1a1f18).drawRect(0, H() * GROUND, worldW, H()).endFill();
+    bg.beginFill(0x2b3327).drawRect(0, H() * GROUND, worldW, 2).endFill();
+  }
+  world.addChild(bg);
+
+  /*  Column gradients: the SKY above that column, not the ground.
+
+      The ground is the plane everybody stands on and it runs the length of the
+      street — colouring one stretch of it would cut the floor into pieces and
+      make the figures look like they were standing on different surfaces. The
+      sky is backdrop, and backdrop is what this is for.
+
+      Nothing at all for a place you have not coloured. */
+  if (!GRID) {
+    for (const [slug] of placed) {
+      const tint = COLUMN_TINT.get(slug);
+      if (!tint) continue;
+      const w = wOf.get(slug) || STEP;
+      const spr = new P.Sprite(gradientTexture(P, tint.from, tint.to));
+      spr.x = xOf.get(slug) - w / 2;
+      spr.y = 0;
+      spr.width = w;
+      spr.height = H() * GROUND;      // stops at the horizon
+      // Opacity on the whole ramp, so a backdrop can sit under the sky rather
+      // than replacing it.
+      spr.alpha = tint.alpha === undefined ? 1 : tint.alpha;
+      world.addChild(spr);
+    }
+  }
+
+  const label = (text, size, colour) => new P.Text(text, {
+    fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: colour,
+  });
+
+  /*  Each signpost is one container, so a highlight can dim it with a single
+      alpha rather than hunting down its post, board and text separately. */
+  /*  The columns: one per place that can be drawn, plus one at the end for
+      people no record places. Dropping a figure anywhere in a column puts them
+      in that column — the x you released at only decides which. */
+  // Only real places are columns now — the unplaced live in the pen, which is
+  // not part of the street at all.
+  const columns = placed.map(([slug]) => ({ slug, x: xOf.get(slug) }));
+  /*  Nearest column to an x, or null when there are none.
+
+      A pile whose places carry no coordinates has no columns at all — the
+      ordinary state before a gazetteer is loaded. Returning columns[0].slug
+      blind threw on the first pointer move of any drag. */
+  host._columnAt = px => {
+    if (!columns.length) return null;
+    let best = columns[0], bestD = Infinity;
+    for (const c of columns) {
+      const d = Math.abs(c.x - px);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best.slug;
+  };
+  /*  Null when that place is gone. Falling back to unknownX put the person
+      off the end of the street with no signpost and no drop zone, looking
+      placed while belonging to nothing. */
+  const columnX = slug => {
+    const c = columns.find(k => k.slug === slug);
+    return c ? c.x : null;
+  };
+  host._columnX = columnX;
+
+  /*  The drop zones: one dotted frame per column, the full height of the
+      scene, so it is obvious both that you may drop somebody here and exactly
+      how far "here" reaches. Invisible until you pick somebody up — a scene
+      permanently ruled into columns would read as a chart.
+
+      Pixi has no dashed stroke, so the dashes are drawn: short segments with
+      gaps, which is also the only way to keep the dash length constant when
+      the columns are wider at 3×. */
+  const zoneLayer = new P.Container();
+  zoneLayer.visible = false;
+  world.addChild(zoneLayer);
+  host._zoneLayer = zoneLayer;
+  host._zones = [];
+  /*  Built on demand, not on every render.
+
+      Fifty-nine dotted frames is seven thousand line segments, and they are
+      invisible except during the second or two you are actually holding
+      somebody. Building them with the scene cost 30ms on every drop, sort and
+      zoom — two dropped frames, exactly when you would feel it. Now they are
+      made the first time you pick a person up and left alone after that.
+
+      `visible = false` rather than `alpha = 0`, because a transparent layer is
+      still submitted to the renderer every frame; an invisible one is not. */
+  host._buildZones = () => {
+    if (host._zones.length || GRID) return;
+    const dash = 5, gap = 4;
+    const top = 6, bot = H() - 6;
+    for (const c of columns) {
+      const g = new P.Graphics();
+      const half = (wOf.get(c.slug) || STEP) / 2 - 3;
+      g.lineStyle(1, 0x33ff33, 0.9);
+      for (const x of [c.x - half, c.x + half]) {
+        for (let y = top; y < bot; y += dash + gap) {
+          g.moveTo(x, y); g.lineTo(x, Math.min(y + dash, bot));
+        }
+      }
+      for (const y of [top, bot]) {
+        for (let x = c.x - half; x < c.x + half; x += dash + gap) {
+          g.moveTo(x, y); g.lineTo(Math.min(x + dash, c.x + half), y);
+        }
+      }
+      g.alpha = 0.45;
+      zoneLayer.addChild(g);
+      host._zones.push({ slug: c.slug, g, x: c.x });
+    }
+  };
+
+  /*  Scene art, found rather than configured.
+
+      A place gets a picture if a picture exists with its uid as the filename:
+      longforgan.png sits behind Longforgan. Nothing to point at, nothing to
+      set, nothing to keep in step — name the file after the place and it
+      appears.
+
+      Loaded through a plain Image first so a place with no art costs nothing
+      and says nothing: a missing file is the ordinary case, not an error.
+
+      Centred in its column, standing on the ground line, behind the people.
+      The column width is the only constraint. */
+  if (!GRID) {
+    /*  A render token, so a picture that arrives late is dropped rather than
+        dressed for a scene that no longer exists. Comparing host._world to
+        world could never work: it is the same container every time, only
+        emptied between renders. */
+    const myRender = host._renderId;
+    const place = (c, img) => {
+      if (!img || host._renderId !== myRender) return;
+      const spr = new P.Sprite(P.Texture.from(img));
+      spr.texture.baseTexture.scaleMode = P.SCALE_MODES.NEAREST;
+      spr.anchor.set(0.5, 1);
+      spr.x = c.x;
+      spr.y = groundY();
+      // Fit the column, never blown up past its own pixels.
+      spr.scale.set(Math.min(1, ((wOf.get(c.slug) || STEP) - 8 * Z) / (img.width || 1)) * Z);
+      world.addChildAt(spr, 1);               // above the ground, below everyone
+    };
+    for (const c of columns) {
+      if (!c.slug) continue;
+      const got = sceneImage(c.slug);
+      if (!got) continue;                     // known to have none
+      if (got instanceof Promise) got.then(img => place(c, img));
+      else place(c, got);
+    }
+  }
+
+  host._signs = [];
+  const signLayer = new P.Container();
+  signLayer.alpha = host._signLayer ? host._signLayer.alpha : (GRID ? 0 : 1);
+  world.addChild(signLayer);
+  host._signLayer = signLayer;
+  for (const [slug] of placed) {
+    const e = (model.entities || []).find(x => x.slug === slug);
+    const x = xOf.get(slug);
+    const sign = new P.Container();
+    /*  A signpost stands over the people, not among them. A person is 24 units
+        tall, so the post runs to 40 and the board sits above that — high enough
+        that a crowded column never buries the name of the place it is in. */
+    const POST_H = 40, BOARD_Y = -52;
+    const post = new P.Graphics();
+    post.beginFill(0x3a2f20).drawRect(-Z, -POST_H * Z, 2 * Z, POST_H * Z).endFill();
+    const t = label(e ? e.name : slug, 9 * Z, 0xe8dcc4);
+    t.resolution = 2;
+    t.anchor.set(0.5, 0);
+    t.y = BOARD_Y * Z + 2;
+    const board = new P.Graphics();
+    board.beginFill(0x4a3b28)
+      .drawRect(-t.width / 2 - 3, BOARD_Y * Z, t.width + 6, t.height + 4).endFill();
+    sign.addChild(post, board, t);
+    sign.x = x; sign.y = groundY();
+    sign.eventMode = "static";
+    sign.cursor = "pointer";
+    // Same reason as the walkers: a Container needs its own hit area, or the
+    // Graphics and Text inside it are never tested.
+    sign.hitArea = new P.Rectangle(-t.width / 2 - 4, BOARD_Y * Z - 2, t.width + 8,
+                                   Math.abs(BOARD_Y) * Z + 6);
+    let dx = null;
+    sign.on("pointerdown", ev => { dx = ev.global.x; });
+    sign.on("pointerup", ev => {
+      if (dx !== null && Math.abs(ev.global.x - dx) < 4) toggleFocus(host, "place", slug);
+      dx = null;
+    });
+    signLayer.addChild(sign);
+    host._signs.push({ slug, node: sign });
+  }
+
+
+  /*  Frames for one person: their era's colours, nudged by their own uid so
+      the parish is not a line of identical twins. Textures are cached by
+      palette, so people who land on the same colours share one. */
+  /*  A costume that arrives after the scene was built needs one more render to
+      be worn. Debounced, so a folder full of uniforms causes one redraw. */
+  const costumeArrived = () => {
+    clearTimeout(host._costumeSettle);
+    host._costumeSettle = setTimeout(() => {
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    }, 120);
+  };
+
+  const framesFor = (era, slug, occupation) => {
+    const sheet = costumeImage(occupation, costumeArrived) || host._base;
+    const seed = seedOf(slug);
+    const coat = tweak(hexRgb(era.coat), seed, 18);
+    const trim = tweak(hexRgb(era.trim), seed + 1, 18);
+    const hat  = era.hat === "none" ? [0, 0, 0, 0] : tweak([22, 24, 28], seed + 2, 10);
+    // The sheet is part of the cache key, or one uniform would be served to
+    // everyone who happened to land on the same palette.
+    const key = (occupation || "-") + "|" + coat + "|" + trim + "|" + hat;
+    let base = host._texCache.get(key);
+    if (!base) {
+      base = P.BaseTexture.from(paletteSheet(sheet, coat, trim, hat),
+                                { scaleMode: P.SCALE_MODES.NEAREST });
+      host._texCache.set(key, base);
+    }
+    return [0, 1, 2, 3].map(f =>
+      new P.Texture(base, new P.Rectangle(f * SPR_W, 0, SPR_W, SPR_H)));
+  };
+
+  /*  Where each person sits on the street, worked out once so the grid can
+      sort by it without redoing the arithmetic. */
+  host._lngOf = new Map();
+  const streetX = new Map();
+  let lost = 0;
+  for (const p of people) {
+    const mine = whereByPerson.get(p.slug);
+    const xs = mine ? [...mine].map(s => xOf.get(s)).filter(v => v !== undefined) : [];
+    if (xs.length) {
+      streetX.set(p.slug, xs.reduce((a, b) => a + b, 0) / xs.length);
+      host._lngOf.set(p.slug, xs.reduce((a, b) => a + b, 0) / xs.length);
+    } else {
+      streetX.set(p.slug, unknownX + (lost++ % 3) * 20 * Z - 20 * Z);
+    }
+  }
+
+  /*  In the grid the cast is ordered by whatever you asked for and wrapped
+      into rows; on the street they stand where they stood. */
+  const sortKey = SORTS[host._sort || "lng"] ? (host._sort || "lng") : "lng";
+  /*  In the grid, a person you have put in a column stays with that column.
+
+      Placing somebody is a statement about who belongs together, and it would
+      be a poor one if it evaporated the moment you changed view. So the grid
+      ranks by group first and by your chosen sort second — people you have
+      grouped stand together, in the order you asked for, and everyone
+      ungrouped follows. */
+  const groupOf = p => {
+    const pin = host._pinned.get(p.slug);
+    if (pin !== undefined) return pin || "\uffff";   // the unrecorded column sorts last
+    return "\uffff\uffff";                          // never placed: last of all
+  };
+  const cast = GRID
+    ? [...people].sort((a, b) => {
+        const ga = groupOf(a), gb = groupOf(b);
+        if (ga !== gb) return ga < gb ? -1 : 1;
+        const x = SORTS[sortKey].of(a), y = SORTS[sortKey].of(b);
+        return x < y ? -1 : x > y ? 1 : a.name.localeCompare(b.name);
+      })
+    : people;
+  const perRow = Math.max(1, Math.floor((app.screen.width - PAD) / STEP));
+  const rowH = (SPR_H + 26) * Z;
+
+  /*  Rebuild the pen. Sized to whoever is in it, captioned so it is obvious
+      what it holds, and left empty-but-present so there is always somewhere to
+      drop a person you have decided you cannot place. */
+  const pen = host._limbo;
+  pen.removeChildren();
+  pen.visible = !GRID;
+  const unplacedList = people.filter(p => host._pinned.get(p.slug) === undefined &&
+                                          !(whereByPerson.get(p.slug) || new Set()).size);
+  /*  A crowd, not a table.
+
+      They are standing about waiting to be placed, so they stand about: a
+      loose huddle a few deep, jostled off each other rather than ruled into
+      rows. A grid would say these people have an order, and the whole point of
+      this box is that nothing is known about them yet.
+
+      The scatter is seeded from each uid, so the huddle is the same huddle
+      every time you look rather than reshuffling on every redraw. */
+  const penW = Math.max(96, Math.min(190, 54 + unplacedList.length * 11)) * Z / 1;
+  const penH = (SPR_H + 26) * Z;
+  const penBg = new P.Graphics();
+  penBg.beginFill(0x0a0f14, 0.55).drawRect(0, 0, penW, penH).endFill();
+  const dash = 4, gapd = 3;
+  penBg.lineStyle(1, 0x7a8a99, 0.55);
+  for (let x = 0; x < penW; x += dash + gapd) {
+    penBg.moveTo(x, 0); penBg.lineTo(Math.min(x + dash, penW), 0);
+    penBg.moveTo(x, penH); penBg.lineTo(Math.min(x + dash, penW), penH);
+  }
+  for (let y = 0; y < penH; y += dash + gapd) {
+    penBg.moveTo(0, y); penBg.lineTo(0, Math.min(y + dash, penH));
+    penBg.moveTo(penW, y); penBg.lineTo(penW, Math.min(y + dash, penH));
+  }
+  pen.addChild(penBg);
+  const penCap = label("no place recorded", 8, 0x7a8a99);
+  penCap.resolution = 2;
+  penCap.anchor.set(0.5, 0);
+  penCap.x = penW / 2; penCap.y = penH + 2;
+  pen.addChild(penCap);
+  /*  Centred over the street rather than tucked in a corner: it is the one
+      thing you are meant to empty, so it sits where you are already looking
+      and the same distance from every column. Recomputed on each render
+      because the panel can be resized under it. */
+  pen.x = Math.round((app.screen.width - penW) / 2);
+  pen.y = 10;
+  host._penBox = { x: pen.x, y: pen.y, w: penW, h: penH + 12 };
+
+  lost = 0;
+  let lastGroup = null;      // so each group in the grid is named once
+  cast.forEach((p, i) => {
+    const mine = whereByPerson.get(p.slug);
+    const known = !!(mine && mine.size);
+    let x, y;
+    if (GRID) {
+      x = PAD / 2 + (i % perRow) * STEP + STEP / 2;
+      y = rowH * (Math.floor(i / perRow) + 1) + 8 * Z;
+    } else {
+      x = streetX.get(p.slug);
+    }
+
+    const era = eraFor(p);
+    /*  The occupation is the first clause of the detail field.
+
+        That field is prose in practice — "Farmer, Robert immigrated to Utah in
+        the John Tidwell Company in 1852" — and slugging the lot gives a
+        seventy-character filename nobody would ever draw for. The trade is
+        almost always written first, so the text up to the first comma or full
+        stop is the part worth matching on. Capped, so a run-on sentence with
+        no punctuation cannot become a filename either. */
+    const occupation = occupationOf(p);
+    const frames = framesFor(era, p.slug, occupation);
+
+    const node = new P.Container();
+    const sprite = new P.Sprite(frames[0]);
+    sprite.anchor.set(0.5, 1);
+    sprite.scale.set(Z);
+    // Fading lives on the container alone. Setting it here as well multiplied
+    // the two together and left an unplaced person at a fifth opacity — which,
+    // on a pile where nobody is placed yet, is the whole cast.
+    node.addChild(sprite);
+
+    /*  Click to single somebody out. It dims the rest of the scene rather
+        than filtering the pile — a scene you are looking at should not be
+        torn down and rebuilt underneath you just because you pointed at
+        someone in it.
+
+        A drag must not count as a click, or panning would keep re-selecting
+        whoever you dragged from, so the hit only lands if the pointer barely
+        moved. */
+    /*  Drag to arrange, click to single out.
+
+        Dragging moves the figure and nothing else. It writes no brick, sets no
+        coordinate, and does not touch the gazetteer — it is a way of tidying
+        the view, the same as sliding photographs around a table. The pile is
+        untouched, and the arrangement lasts as long as you are looking at it.
+
+        Kept apart from a click by distance: under four pixels is a click, past
+        that you are moving somebody. */
+    node.eventMode = "static";
+    node.cursor = "grab";
+    /*  An explicit hit area, because a Container only hit-tests children that
+        are interactive themselves — and a plain Sprite is not. Without this
+        the figure has no target at all: pointerdown never lands, and dragging
+        silently does nothing.
+
+        Sized to the sprite, which is anchored bottom-centre, and given a
+        little headroom so small figures are still catchable. */
+    node.hitArea = new P.Rectangle(
+      -SPR_W * Z / 2 - 2, -SPR_H * Z - 2, SPR_W * Z + 4, SPR_H * Z + 6);
+    let downAt = null, moved = false;
+    node.on("pointerdown", e => {
+      downAt = { x: e.global.x, y: e.global.y, nx: node.x, ny: node.y };
+      moved = false;
+      host._dragging = true;          // stops the scene panning underneath
+      /*  And stop the drift. Reaching for someone while the whole street is
+          still sliding means they walk out from under the cursor before the
+          pointer goes down — which reads as "I cannot drag anyone" even though
+          the drag itself works perfectly. */
+      host._drift = false;
+      node.cursor = "grabbing";
+      if (host._buildZones) host._buildZones();
+      if (host._zoneLayer) host._zoneLayer.visible = true;
+      const me = host._walkers.find(k => k.slug === p.slug);
+      if (me) { me.held = true; me.falling = false; }
+      // Lifted out of the line, the way you pick a piece off a board.
+      node.scale.set(node.scale.x < 0 ? -1.25 : 1.25, 1.25);
+      /*  Carried on the STAGE while held, so a figure can be lifted out of the
+          pen and dropped on the street, or back the other way. Held in world
+          or pen coordinates it could never cross between them. */
+      const gp0 = node.getGlobalPosition();
+      app.stage.addChild(node);
+      node.x = gp0.x; node.y = gp0.y;
+      downAt.nx = node.x; downAt.ny = node.y;
+    });
+    node.on("globalpointermove", e => {
+      if (!downAt) return;
+      const dx = e.global.x - downAt.x, dy = e.global.y - downAt.y;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      moved = true;
+      node.x = downAt.nx + dx;
+      node.y = downAt.ny + dy;
+      // The column you are over brightens; the rest stay faint. Nobody should
+      // have to guess which frame is about to catch them.
+      const over = host._columnAt(node.x - world.x);
+      for (const z of host._zones || []) z.g.alpha = z.slug === over ? 1 : 0.3;
+    });
+    /*  One ending for both ways a drag can finish.
+
+        Releasing away from where you grabbed fires `pointerupoutside`, not
+        `pointerup` — which is every drag worth making. Treating that as a
+        cancel meant a drag moved the figure and then quietly threw the move
+        away the moment you let go. */
+    const finish = () => {
+      node.cursor = "grab";
+      host._dragging = false;
+      if (host._zoneLayer) host._zoneLayer.visible = false;
+      if (!downAt) return;
+      const me = host._walkers.find(k => k.slug === p.slug);
+      if (me) me.held = false;
+      node.scale.set(node.scale.x < 0 ? -1 : 1, 1);
+
+      if (!moved) toggleFocus(host, "person", p.slug);
+      else if (me && host._penBox &&
+               node.x >= host._penBox.x && node.x <= host._penBox.x + host._penBox.w &&
+               node.y >= host._penBox.y && node.y <= host._penBox.y + host._penBox.h) {
+        // Dropped back in the pen: you are saying you no longer know.
+        host._pinned.delete(p.slug);
+        host._savePins();
+        renderPromenadePixi(V(), host);
+      }
+      else if (me) {
+        /*  Each place is a column. Let go anywhere inside one and they belong
+            to that column — they fall to the ground and stand with whoever
+            else is there. You are not placing a figure at a coordinate, you
+            are putting a person in a group.
+
+            The landing spot is worked out here rather than by re-rendering,
+            so the fall can actually be watched. */
+        const col = host._columnAt(node.x - world.x);
+        if (col === null) {
+          // Nowhere to put anybody: no place has coordinates yet. Leave them
+          // where they were rather than inventing a group.
+          host._pinned.delete(p.slug);
+          host._savePins();
+          renderPromenadePixi(V(), host);
+          downAt = null;
+          return;
+        }
+        host._pinned.set(p.slug, col);
+        host._savePins();
+        // Back into the street, at the point it was released.
+        world.addChild(node);
+        node.x -= world.x;
+        const mates = [...host._pinned.entries()].filter(([, v]) => v === col).map(([k]) => k);
+        const rank = Math.max(0, mates.indexOf(p.slug));
+        me.home = host._columnX(col) + (rank - (mates.length - 1) / 2) * SPACING;
+        /*  The column has just grown to hold one more, which moves every
+            column east of it. Reflow once they have landed. */
+        clearTimeout(host._settle);
+        host._settle = setTimeout(() => {
+          host._noTween = true;
+          renderPromenadePixi(V(), host);
+        }, 700);
+        me.toY = groundY();
+        me.t = 1;
+        me.falling = true;
+        me.vy = 0;
+      }
+      downAt = null;
+    };
+    node.on("pointerup", finish);
+    node.on("pointerupoutside", finish);
+    // Names are noise at sixty walkers, so they arrive on hover and stay for
+    // whoever is selected. The scene reads as a crowd until you ask it not to.
+    node.on("pointerover", () => { if (!host._focus) { const n = ensureName(); if (n) n.visible = true; } });
+    node.on("pointerout", () => {
+      const w = host._walkers.find(k => k.slug === p.slug);
+      if (w && w.nameNode && host._focus !== p.slug) w.nameNode.visible = false;
+    });
+
+    /*  The name is built the first time it is wanted, not with the scene.
+
+        A Text in Pixi rasterises to its own canvas and uploads a texture. At
+        sixty-five people that was sixty-five of them made on every render —
+        every drop, sort, zoom and resize — for labels that are hidden until
+        you hover. Making them on demand is most of what a rebuild was doing. */
+    const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "~") + p.birthYear : "");
+    const nameColour = known ? 0xcfd6dc : 0x7a8a99;
+    const ensureName = () => {
+      const w = host._walkers.find(k => k.slug === p.slug);
+      if (!w || w.nameNode) return w && w.nameNode;
+      const n = label(nameText, 8 * Z, nameColour);
+      n.resolution = 2;
+      n.anchor.set(0.5, 1);
+      n.y = -(SPR_H + 3) * Z;
+      n.scale.x = 1;   // counter-scaled so a walker turning does not write backwards
+      node.addChild(n);
+      w.nameNode = n;
+      return n;
+    };
+    host._ensureNameFor = host._ensureNameFor || new Map();
+    host._ensureNameFor.set(p.slug, ensureName);
+
+    let toY = GRID ? y : groundY();
+    let pin = host._pinned.get(p.slug);
+    if (pin !== undefined && columnX(pin) === null) {
+      if (placeQ) {
+        // Their column is merely filtered out of view, not gone. They wait in
+        // the pen and come back with it when the box is cleared.
+        pin = undefined;
+      } else {
+        // The place itself has been deleted or un-geocoded, so it is no longer
+        // somewhere anyone can stand and the placement lapses.
+        host._pinned.delete(p.slug);
+        if (host._savePins) host._savePins();
+        pin = undefined;
+      }
+    }
+    if (pin !== undefined && !GRID) {
+      // Feet on the ground, and spread a little so a column of five is five
+      // people rather than one person drawn five times.
+      const mates = [...host._pinned.entries()].filter(([, v]) => v === pin).map(([k]) => k);
+      const rank = Math.max(0, mates.indexOf(p.slug));
+      // Spread across the room the column actually has, so a crowd fills it
+      // rather than spilling past the frame you dropped them into.
+      x = columnX(pin) + (rank - (mates.length - 1) / 2) * SPACING;
+      toY = groundY();
+    }
+    /*  In the grid, a group is announced by its place name over the first
+        person in it. Without that the ranks are just people in an order, and
+        the grouping you did by dragging is invisible — which defeats the
+        point of carrying it across from the street. */
+    if (GRID) {
+      const g = host._pinned.get(p.slug);
+      const gName = g === undefined ? "" : g;
+      if (gName !== lastGroup) {
+        lastGroup = gName;
+        const e = gName && (model.entities || []).find(k => k.slug === gName);
+        const cap = label(e ? e.name : (gName ? gName : "no place recorded"),
+                          8 * Z, gName ? 0xe8dcc4 : 0x7a8a99);
+        cap.resolution = 2;
+        cap.anchor.set(0, 1);
+        cap.x = Math.round(x - STEP / 2 + 4);
+        cap.y = Math.round(y - SPR_H * Z - 6 * Z);
+        world.addChild(cap);
+      }
+    }
+
+    /*  Anyone the records do not place, and you have not placed either, waits
+        in the pen — which lives on the stage, so they stay in the corner while
+        the street scrolls past behind them. */
+    const inPen = !GRID && pin === undefined && !known;
+    if (inPen) {
+      const n = lost++;
+      const seed = seedOf(p.slug);
+      const jx = (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+      const jy = (Math.sin(seed * 78.233) * 43758.5453) % 1;
+      // Spread along the box, with a little depth so they overlap like a crowd.
+      const span = penW - 22 * Z;
+      x = 11 * Z + ((n + 0.5) / Math.max(1, unplacedList.length)) * span
+          + jx * 7 * Z;
+      toY = penH - 6 * Z - Math.abs(jy) * 9 * Z;
+    }
+
+    const prev = wasAt.get(p.slug);
+    /*  Walking to a new position only makes sense when the old one meant the
+        same thing. A zoom or a resize rescales every coordinate in the scene,
+        so tweening from the old numbers sends everybody flying in from the
+        edge. Those redraws place people directly instead. */
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches || host._noTween;
+    // A person already on screen starts from where they were; a new one is
+    // simply already there.
+    node.x = (prev && !still && !inPen) ? prev.x : x;
+    node.y = (prev && !still && !inPen) ? prev.y : toY;
+    (inPen ? pen : world).addChild(node);
+    // In a crowd, whoever is nearer the front stands in front.
+    if (inPen) pen.children.sort((a, b) => (a.y || 0) - (b.y || 0));
+    host._walkers.push({
+      node, sprite, frames, home: x, slug: p.slug, toY, inPen,
+      // Matched against the name as shown, plus the uid, so either finds them.
+      search: (p.name + " " + p.slug).toLowerCase(),
+      fromX: node.x, fromY: node.y,
+      // Staggered starts, so the crowd flows instead of snapping as one.
+      t: (prev && !still) ? -(i % 7) * 0.06 : 1,
+      dur: 620,
+      // Base opacity is the person's own standing — unplaced people are
+      // faint to begin with. Focus multiplies it rather than replacing it, so
+      // dimming never accidentally promotes someone.
+      /*  Being unplaced is only worth showing on the street, where standing
+          apart from the parishes is the point. The grid is not about place at
+          all, so nobody is greyed for it there — and 0.7 rather than 0.45,
+          because "we do not know where he was" should read as a note beside
+          someone, not as their disappearance. */
+      base: (GRID || known) ? 1 : 0.7,
+      /*  Pacing belongs to the street. In the grid a sorted rank would shuffle
+          itself out of order in front of you, and in the pen a huddle would
+          walk through itself — so in both they march on the spot. */
+      range: (GRID || inPen) ? 0 : 16 * Z,
+      period: 2.4 + (i % 5) * 0.6,
+      phase: (i * 1.7) % 6.28,
+    });
+  });
+
+  // The grid wraps into the panel, so there is nothing to scroll sideways to.
+  if (GRID) { host._worldW = app.screen.width; world.x = 0; }
+
+  /*  Clicking bare ground clears the selection — the way out has to be as easy
+      as the way in, or a focused scene becomes a trap.
+
+      The listener goes on the BACKGROUND, not the stage. A hitArea on the
+      stage covers the whole canvas and wins every hit test before it can
+      reach a walker, which is why nobody could be clicked or dragged. */
+  bg.eventMode = "static";
+  bg.cursor = "grab";
+  bg.on("pointertap", () => { if (host._focus) toggleFocus(host, null, host._focus); });
+
+  applyFocus(host);
+
+  host._noTween = false;
+  const findW = Math.max(130, Math.round(penW));
+  if (host._penFind) {
+    host._penFind.hidden = GRID || !unplacedList.length;
+    host._penFind.style.left = Math.round(pen.x) + "px";
+    host._penFind.style.top = Math.round(pen.y + penH + 16) + "px";
+    host._penFind.style.width = findW + "px";
+  }
+  if (host._placeFind) {
+    // Under the pen search, since it is the second question you ask.
+    host._placeFind.hidden = GRID;
+    host._placeFind.style.left = Math.round(pen.x) + "px";
+    host._placeFind.style.top =
+      Math.round(pen.y + penH + 16 + ((GRID || !unplacedList.length) ? 0 : 24)) + "px";
+    host._placeFind.style.width = findW + "px";
+  }
+  applyPenSearch(host);
+  if (host._syncTint) host._syncTint(model);
+
+  const known = people.length - lost;
+  host.querySelector(".pr-note").textContent = people.length
+    ? people.length + " people · " + known + " placed by their records · " +
+      placed.length + " signposts"
+    : "No people declared yet.";
+}
+
+function renderPromenade(model, host) {
+  // The engine is a CDN script and only fetched when this panel is on the
+  // board — the same bargain the map makes for MapLibre.
+  if (window.PIXI) return renderPromenadePixi(model, host);
+  if (host._loading) return;
+  host._loading = true;
+  host.innerHTML = '<p class="hint">loading the sprite engine…</p>';
+  loadOnce(PIXI_JS)
+    .then(() => { host._loading = false; renderPromenadePixi(model, host); })
+    .catch(() => {
+      host._loading = false;
+      host.innerHTML = '<p class="hint" style="color:var(--bad)">' +
+        "The promenade needs a connection the first time — PixiJS loads from a CDN.</p>";
+    });
+}
 
 /* ==========================================================================
    THE MAP
@@ -2124,23 +4180,57 @@ function basemapStyle(archive) {
         covers the whole globe, and a relief-shaded ocean is the giveaway of a
         hillshade dropped in without thought. */
     layers: [
+      /*  Order, bottom to top: background, ocean, hillshade, land.
+
+          The `ocean` polygon is full-extent, not sea-minus-land — so it has to
+          be painted BEFORE the land or it covers the whole map and nothing
+          else is visible. Learned the hard way: putting it after the land to
+          keep the sea unshaded blanked the entire basemap.
+
+          The hillshade therefore sits above the ocean and below the land,
+          which is what "terrain above the background" means here, and why the
+          land fill is translucent — the relief reads up through it. */
       { id: "bg", type: "background", paint: { "background-color": S.ocean.color } },
-      { id: "hillshade", type: "raster", source: "hillshade",
-        layout: vis("hillshade"),
-        paint: { "raster-opacity": S.hillshade.opacity, "raster-fade-duration": 0 } },
-      { id: "land", type: "fill", source: "basemap", "source-layer": "coastline_land",
-        layout: vis("land"),
-        paint: { "fill-color": S.land.color, "fill-opacity": S.land.opacity } },
       { id: "ocean", type: "fill", source: "basemap", "source-layer": "ocean",
         layout: vis("ocean"),
         paint: { "fill-color": S.ocean.color, "fill-opacity": S.ocean.opacity } },
+      { id: "land", type: "fill", source: "basemap", "source-layer": "coastline_land",
+        layout: vis("land"),
+        paint: { "fill-color": S.land.color, "fill-opacity": S.land.opacity } },
+      { id: "hillshade", type: "raster", source: "hillshade",
+        layout: vis("hillshade"),
+        paint: { "raster-opacity": S.hillshade.opacity, "raster-fade-duration": 0 } },
       { id: "lakes", type: "fill", source: "basemap", "source-layer": "ne_10m_lakes",
         layout: vis("lakes"),
         paint: { "fill-color": S.lakes.color, "fill-opacity": S.lakes.opacity } },
       { id: "rivers", type: "line", source: "basemap",
         "source-layer": "ne_10m_rivers_lake_centerlines", layout: vis("rivers"),
+        /*  Width comes from the data, not from one number for every river.
+            Natural Earth ships `strokeweig` on each centreline — its own
+            cartographer's judgement of how big that river draws — so a trunk
+            river is heavier than a burn without anything here deciding which
+            is which. Multiplied by a zoom ramp and then by your slider, so the
+            slider scales the whole family and keeps their relative weights.
+
+            coalesce, because a centreline with no strokeweig should still
+            draw; it just draws at the default weight. */
         paint: { "line-color": S.rivers.color, "line-opacity": S.rivers.opacity,
-                 "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.3 * S.rivers.width, 9, 1.1 * S.rivers.width] } },
+                 /*  The interpolate has to be outermost: `zoom` is only legal
+                     as the direct input to a top-level step/interpolate, so
+                     the multiply lives inside each stop rather than wrapping
+                     the ramp.
+
+                     Each stop also asks the feature whether it belongs at THAT
+                     zoom — min_zoom is the other half of Natural Earth's own
+                     cartography, holding back the burns until the map is close
+                     enough to want them. A feature below its min_zoom gets
+                     width 0, and because the stops interpolate it thickens in
+                     rather than snapping on. Comparing against the stop's
+                     literal zoom keeps `zoom` itself out of the expression,
+                     which is what makes this legal at all. */
+                 "line-width": ["interpolate", ["linear"], ["zoom"],
+                   3, ["*", ["to-number", ["coalesce", ["get", "strokeweig"], 0.3]], 1.5 * S.rivers.width],
+                   9, ["*", ["to-number", ["coalesce", ["get", "strokeweig"], 0.3]], 6 * S.rivers.width]] } },
       { id: "admin1", type: "line", source: "basemap", "source-layer": "admin1_land",
         layout: vis("admin1"),
         paint: { "line-color": S.admin1.color, "line-opacity": S.admin1.opacity,
@@ -3471,6 +5561,17 @@ function meDisarm() {
     It reads the same basemap settings, so the ground you digitize against is
     the ground you will publish against. */
 let ME_MAP = null;
+let ME_SOURCE = "custom";
+function loadMeSource() {
+  try {
+    const v = localStorage.getItem(MESOURCE_KEY);
+    if (v === "custom" || v === "demo" || v === "url") ME_SOURCE = v;
+  } catch (e) { /* unavailable */ }
+}
+function saveMeSource() {
+  try { localStorage.setItem(MESOURCE_KEY, ME_SOURCE); } catch (e) { /* unavailable */ }
+}
+
 let ME_SVG = null, ME_TEXTS = null, ME_PTS = [], ME_ANNOS = [], ME_HANDLES = [];
 
 /*  Draws the project onto the editor's map. The polys go in as real style
@@ -3653,13 +5754,67 @@ function meDrawAnnosOnly() {
   meDrawProject(true);
 }
 
+/*  What the editor traces against.
+
+    Kept apart from the Map Viewer's choice on purpose: the reference you
+    digitize FROM and the cartography you publish ONTO are rarely the same
+    thing. Imagery here, your own style there. */
+let ME_URL = "";
+function loadMeUrl() {
+  try { ME_URL = localStorage.getItem(MEURL_KEY) || ""; } catch (e) { ME_URL = ""; }
+}
+function saveMeUrl() {
+  try {
+    if (ME_URL) localStorage.setItem(MEURL_KEY, ME_URL);
+    else localStorage.removeItem(MEURL_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+function meStyleFor(mode) {
+  if (mode === "demo") return DEMO_STYLE;
+  if (mode === "url") {
+    const u = withKey(ME_URL.trim());
+    return /^https?:\/\//i.test(u) ? u : basemapStyle();
+  }
+  return basemapStyle();
+}
+function meSourceOptions() {
+  const out = [["custom", "My tiles"], ["demo", "MapLibre"]];
+  if (/^https?:\/\//i.test(ME_URL.trim())) out.push(["url", "Pasted URL"]);
+  return out;
+}
+// Rebuilt on every render, since the URL can be typed at any moment.
+function meSyncSources(body) {
+  const pick = body.querySelector('[data-el="mesource"]');
+  if (!pick) return;
+  const opts = meSourceOptions();
+  if (!opts.some(o => o[0] === ME_SOURCE)) ME_SOURCE = "custom";
+  const sig = opts.map(o => o.join("|")).join(",");
+  if (pick.dataset.sig !== sig) {
+    pick.dataset.sig = sig;
+    pick.innerHTML = opts.map(o =>
+      '<option value="' + o[0] + '">' + esc(o[1]) + "</option>").join("");
+  }
+  pick.value = ME_SOURCE;
+}
+
 function meBoot(body) {
   const shell = body.querySelector('[data-el="shell"]');
   const canvas = shell.querySelector(".me-canvas");
+  const pick = shell.querySelector('[data-el="mesource"]');
   if (ME_MAP || !window.maplibregl) return;
+
+  meSyncSources(body);
+  pick.onchange = () => {
+    ME_SOURCE = pick.value;
+    saveMeSource();
+    ME_MAP._fellBack = false;   // an explicit choice deserves a fresh try
+    ME_MAP.setStyle(meStyleFor(ME_SOURCE));
+  };
+
   ME_MAP = new window.maplibregl.Map({
     container: canvas,
-    style: overrideStyle() || hostedStyle() || basemapStyle(),
+    style: overrideStyle() || meStyleFor(ME_SOURCE),
     center: [-3.4, 56.4], zoom: 7,
     attributionControl: false, preserveDrawingBuffer: true,
   });
@@ -3670,6 +5825,7 @@ function meBoot(body) {
     if (ME_MAP._fellBack) return;
     ME_MAP._fellBack = true;
     ME_MAP.setStyle(DEMO_STYLE);
+    pick.value = "demo";
   });
   ME_MAP.on("style.load", () => meDrawProject());
   ME_MAP.on("move", () => meDrawProject(true));
@@ -3865,8 +6021,29 @@ function renderMapEditor(body) {
   }
   if (!sel) styleBox.dataset.for = "";
 
+  meSyncSources(body);
+  const urlIn = body.querySelector('[data-el="meurl"]');
+  if (document.activeElement !== urlIn) urlIn.value = ME_URL;
+
   if (body._wired) return;
   body._wired = true;
+
+  /*  Debounced: a half-typed URL is still a URL as far as fetch is concerned,
+      and a 404 per keystroke is a poor way to spend a tile quota. */
+  let urlTimer = null;
+  urlIn.addEventListener("input", () => {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => {
+      ME_URL = urlIn.value.trim();
+      saveMeUrl();
+      // Pasting a URL means you want to see it — no second control to find.
+      if (/^https?:\/\//i.test(withKey(ME_URL))) ME_SOURCE = "url";
+      else if (ME_SOURCE === "url") ME_SOURCE = "custom";
+      saveMeSource();
+      meSyncSources(body);
+      if (ME_MAP) { ME_MAP._fellBack = false; ME_MAP.setStyle(meStyleFor(ME_SOURCE)); }
+    }, 700);
+  });
 
   body.querySelector(".me-tools").addEventListener("click", e => {
     const b = e.target.closest("button[data-act]");
@@ -4311,6 +6488,10 @@ function buildPanel(def) {
       // After the title: the name identifies the panel, the role annotates it.
       (def.roles || ["read"]).map(r =>
         '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join("") +
+      // …and, where one exists, the way to the panel's own write-up.
+      (docHref(def.id) ? '<a class="panel-doc" href="' + docHref(def.id) + '"' +
+        ' target="_blank" rel="noopener" title="how ' + esc(def.title) +
+        ' works">help</a>' : "") +
     "</span>" +
     // Panel-declared controls share the header row with the × rather than
     // costing the body a bar of its own.
@@ -4480,6 +6661,11 @@ function renderBoard() {
     }
   } else if (empty) empty.remove();
   refreshAll();
+  /*  Canvas panels size themselves against the tile, and a ResizeObserver does
+      not survive this function re-parenting them. So the board tells them
+      directly — it is the only thing that reliably knows the grid moved. */
+  const pr = document.querySelector("#viz-promenade .panel-body");
+  if (pr && pr._reflowNow) requestAnimationFrame(pr._reflowNow);
 }
 
 function renderBoardCardList() {
@@ -6131,9 +8317,11 @@ function palletAction(act, ta) {
     const blob = new Blob([state.text], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
+    const fname = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
+    a.download = fname;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    stampExport(fname);
     return;
   }
   if (act === "import" || act === "merge") return pickFiles(act === "merge");
@@ -6159,7 +8347,10 @@ let folderHandle = null;      // route 1 only
 let folderName = "";
 
 function isBrickFile(name) { return /\.txt$/i.test(name); }
-function isProjectFile(name) { return /\.json$/i.test(name); }
+// brick.json is the sidecar, not an Atlas project file — it must not appear
+// in the project picker or be mistaken for a map.
+function isSidecarFile(name) { return /(^|\/)brick\.json$/i.test(name); }
+function isProjectFile(name) { return /\.json$/i.test(name) && !isSidecarFile(name); }
 function isImageFile(name) { return /\.(jpe?g|png|gif|webp|avif|svgz?|tiff?)$/i.test(name); }
 
 /*  Images found in the opened folder, keyed by their path within it.
@@ -6184,6 +8375,7 @@ const LABEL_POS = new Map();   // uid -> "bottom"|"top"|"right"|"left"|"none"
     plain status dot, which stays the default because it is the only marker
     whose colour still carries the verified/draft distinction. */
 const MARKER_ICON = new Map();   // uid -> "⛪" etc.
+
 function isGazetteerFile(name) { return /gazetteer.*\.csv$/i.test(name); }
 
 function splitCsvRow(row) {
@@ -6290,6 +8482,8 @@ function setFolderImages(list) {
   for (const v of folderImages.values()) if (v.url) URL.revokeObjectURL(v.url);
   folderImages.clear();
   for (const f of list) folderImages.set(f.name, { file: f.file, url: "" });
+  resetSceneCache();   // art is looked up by filename, and the filenames just changed
+  costumeCache.clear();
 }
 
 /*  Matching is forgiving on purpose: you should not have to write the path
@@ -6351,6 +8545,7 @@ function openFile(name) {
   const f = folderFiles.find(x => x.name === name);
   if (!f) return;
   currentFile = name;
+  showSaved();
   setText(f.text);
   refreshPanel("pallet");
 }
@@ -6409,6 +8604,23 @@ function renderFileList(body) {
     unaffected, and context never enters the pile either way. */
 let FOLDER_PROJECTS = [];   // [{ name, text }]
 
+/*  A brick.json in the opened folder is applied straight away — it is this
+    research's own view settings, so there is nothing to choose. */
+function foldSidecar(files) {
+  const hit = files.find(f => isSidecarFile(f.name));
+  if (!hit) return "";
+  const got = applySidecar(hit.text, promenadeHost());
+  if (!got) return ", brick.json is not valid JSON";
+  refreshPanel("viz-promenade");
+  return ", brick.json: " + got.pins + " placed, " + got.tints + " coloured";
+}
+
+// The Promenade's panel body, when it is on the board.
+function promenadeHost() {
+  const n = document.getElementById("viz-promenade");
+  return n ? n.querySelector(".panel-body") : null;
+}
+
 function foldProject(files) {
   const cands = files.filter(f => isProjectFile(f.name))
                      .sort((a, b) => a.name.localeCompare(b.name));
@@ -6430,7 +8642,7 @@ function useFolderProject(name) {
 function foldFiles(files, label) {
   const usable = files.filter(f => isBrickFile(f.name))
                       .sort((a, b) => a.name.localeCompare(b.name));
-  const projNote = foldProject(files);
+  const projNote = foldProject(files) + foldSidecar(files);
   if (!usable.length) {
     showMergeLog("no .txt files found in " + label + projNote);
     return;
@@ -6587,6 +8799,7 @@ async function loadHostedBricks() {
   if (!added) return;
   setText(text);
   currentFile = "";
+  showSaved();
   showMergeLog(added + " bricks loaded from this site");
 }
 
@@ -6771,12 +8984,106 @@ function pushPlacesToMap() {
   if (host._syncMarkers) host._syncMarkers();
 }
 
-let saveTimer = null;
+/*  When the pile was last written to this browser.
+
+    The autosave is silent and debounced, which is exactly why it needs
+    saying: there is no Save button to press, so the only evidence that your
+    typing is safe is a line telling you so. It also says when it FAILED —
+    private browsing refuses localStorage, and finding that out by losing a
+    morning's work is not acceptable. */
+let lastSaved = null, lastSaveOk = true, saveTicker = null;
+let lastExport = null;   // { name, at } — the last time this pile left the browser
+
+function stampSave(ok) {
+  lastSaved = new Date();
+  lastSaveOk = ok;
+  showSaved();
+  // Re-render the relative time while you sit there, so "just now" does not
+  // still say "just now" ten minutes later.
+  if (!saveTicker) saveTicker = setInterval(showSaved, 30000);
+}
+function stampExport(name) {
+  lastExport = { name, at: new Date() };
+  showSaved();
+  if (!saveTicker) saveTicker = setInterval(showSaved, 30000);
+}
+
+function ago(then) {
+  const secs = Math.round((Date.now() - then) / 1000);
+  return secs < 45 ? "just now"
+    : secs < 5400 ? Math.round(secs / 60) + " min ago"
+    : then.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/*  Three different questions, answered in one line:
+
+      where this pile came from   — a file you opened, or the browser
+      when it was last autosaved  — to localStorage, silently
+      when it last left           — exported to a real file on disk
+
+    They are genuinely different guarantees. localStorage is this browser on
+    this machine and nothing else; a clear-site-data wipes it. Only the export
+    is a file you own. Saying just "saved" would blur the two, and the whole
+    point of the line is to be honest about which one you have. */
+function showSaved() {
+  const box = el("saveState");
+  if (!box) return;
+  const parts = [];
+
+  if (currentFile) parts.push(currentFile.split("/").pop());
+  else if (folderName) parts.push(folderName);
+
+  if (!lastSaveOk) {
+    box.className = "save-state bad";
+    box.hidden = false;
+    box.textContent = (parts.length ? parts[0] + " · " : "") +
+      "not saved — this browser is refusing storage, use Export";
+    return;
+  }
+  // Unsaved work is the one thing that must not be quiet.
+  if (!AUTOSAVE && dirty) {
+    box.className = "save-state bad";
+    box.hidden = false;
+    box.textContent = (parts.length ? parts[0] + " · " : "") + "unsaved changes";
+    return;
+  }
+  // "in browser" every time, because that is the fact people get wrong: this
+  // is not a file, and it does not follow you to another machine.
+  if (!AUTOSAVE) parts.push(lastSaved ? "saved in browser " + ago(lastSaved) : "autosave off");
+  else if (lastSaved) parts.push("autosaved in browser " + ago(lastSaved));
+  if (lastExport) parts.push("exported " + lastExport.name + " " + ago(lastExport.at));
+
+  box.className = "save-state";
+  box.hidden = !parts.length;
+  box.textContent = parts.join(" · ");
+}
+
+/*  Autosave, and the switch that turns it off.
+
+    Off means OFF: nothing is written until you press Save. That is a real
+    choice — someone experimenting on a pile they care about should be able to
+    do it without the browser quietly committing every keystroke. The status
+    line says "autosave off" so an unsaved pile can never look like a saved
+    one. The setting itself is remembered, since a preference you have to
+    re-set every session is not a preference. */
+let AUTOSAVE = true;
+function loadAutosave() {
+  try { AUTOSAVE = localStorage.getItem(AUTOSAVE_KEY) !== "off"; } catch (e) { AUTOSAVE = true; }
+}
+function saveAutosave() {
+  try { localStorage.setItem(AUTOSAVE_KEY, AUTOSAVE ? "on" : "off"); } catch (e) { /* unavailable */ }
+}
+
+function writePile() {
+  try { localStorage.setItem(TEXT_KEY, state.text); stampSave(true); return true; }
+  catch (e) { stampSave(false); return false; }
+}
+
+let saveTimer = null, dirty = false;
 function saveText() {
+  if (!AUTOSAVE) { dirty = true; showSaved(); return; }
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(TEXT_KEY, state.text); } catch (e) { /* private mode */ }
-  }, 400);
+  saveTimer = setTimeout(() => { dirty = false; writePile(); }, 400);
 }
 function setText(t) { state.text = t; saveText(); update(); }
 
@@ -6861,6 +9168,7 @@ state.text = savedText !== null ? savedText : SAMPLE;
 // First of all: the page should never paint in one theme and then flip.
 // Saved themes first, or restoring one by id finds nothing to restore.
 loadSavedThemes();
+loadAutosave();
 loadTheme();
 applyTheme();
 
@@ -6872,6 +9180,9 @@ loadStyleOverride();
 loadProject();
 loadTileKey();
 loadStyleUrl();
+loadColumnTints();
+loadMeSource();
+loadMeUrl();
 
 state.model = buildModel(parse(state.text));
 state.model.view = buildView(state.model);
@@ -6920,6 +9231,28 @@ topSearchInput.addEventListener("blur", () => {
 });
 
 /* ---------- flyout + board controls ---------- */
+/* ---------- header: autosave, save, download ---------- */
+el("autoSave").checked = AUTOSAVE;
+showSaved();
+el("autoSave").addEventListener("change", e => {
+  AUTOSAVE = e.target.checked;
+  saveAutosave();
+  // Switching it back on commits whatever is pending, rather than waiting for
+  // the next keystroke to notice.
+  if (AUTOSAVE && dirty) { dirty = false; writePile(); }
+  showSaved();
+});
+el("quickSave").addEventListener("click", () => {
+  clearTimeout(saveTimer);
+  dirty = false;
+  writePile();
+});
+el("quickDownload").addEventListener("click", () => {
+  const name = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
+  downloadText(state.text, name, "text/plain");
+  stampExport(name);
+});
+
 el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
 el("boardFlyoutClose").addEventListener("click", () => el("boardFlyoutWrap").classList.remove("open"));
 el("boardSearch").addEventListener("input", renderBoardCardList);
