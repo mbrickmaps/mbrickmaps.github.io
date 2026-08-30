@@ -140,6 +140,10 @@ laid a good stretch of wall.
 
 The line at the top always says where things stand. Red means unsaved changes.
 
+**Clear all**, next to Export, empties everything and starts a blank project. It
+asks first and tells you what will go — and if you have never exported, it says
+so. There is no undo; Export is the undo, which is why it sits right beside it.
+
 ---
 
 ## When it doesn't sit true

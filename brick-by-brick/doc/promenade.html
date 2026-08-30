@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="How to manage the Promenade panel in Brick by Brick, and how to make its place scenes and occupation costumes.">
+<meta name="description" content="How to manage the Promenade panel in Brick by Brick, and how to draw its place scenes and garments.">
 <title>The Promenade — Brick by Brick</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
@@ -124,7 +124,7 @@
     <h2>Saving</h2>
     <p class="lede">Placements and column colours persist in the browser, and travel as a file.</p>
 
-    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it.</p>
+    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it. So does <strong>Clear all</strong> in the page header, which names placements and column colours among the things it removes.</p>
 
     <p>For anything more durable, <strong>save</strong> hands you a <code>brick.json</code>:</p>
 
@@ -147,34 +147,82 @@
 
   <section id="assets">
     <h2>Assets</h2>
-    <p class="lede">Found by filename, never configured. Name a file after the thing and it appears.</p>
+    <p class="lede">Two files. Copy one, rename it, draw on it.</p>
 
-<pre><code>my-research/
-├── bricks/                    the piles — *.txt
-├── images/
-│   ├── places/
-│   │   └── longforgan.png     stands behind that parish
-│   └── occupations/
-│       └── mill-worker.png    worn by anyone of that trade
-└── brick.json                 placements and colours</code></pre>
-
-    <p>Two folders rather than one because the names collide otherwise: a parish called Mason and a mason are different pictures. The same layout works from an opened folder and from a hosted site — matching is on the directory as well as the filename, so nothing needs renaming when you publish.</p>
-
-    <h3>Place scenes</h3>
-    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centred in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
-    <p>A place without a picture gets nothing at all: no frame, no placeholder, no gap.</p>
-
-    <h3>Occupation costumes</h3>
-    <p>Named for the trade, taken from the <strong>first clause of the detail field</strong>:</p>
+<pre><code>images/
+├── places/default.png   the scene behind a place    102 × 64
+└── wear/default.png     a person                     96 × 96</code></pre>
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th scope="col">Brick detail</th><th scope="col">Looks for</th></tr></thead>
+        <thead><tr><th scope="col">To draw</th><th scope="col">Copy</th><th scope="col">Save it as</th></tr></thead>
         <tbody>
-          <tr><td>Powerloom Tender</td><td class="k">occupations/powerloom-tender.png</td></tr>
-          <tr><td>Farmer, immigrated to Utah in 1852</td><td class="k">occupations/farmer.png</td></tr>
-          <tr><td>Assistant Registrar (Perth)</td><td class="k">occupations/assistant-registrar.png</td></tr>
-          <tr><td>Mill worker; later a carter</td><td class="k">occupations/mill-worker.png</td></tr>
+          <tr><td>a place</td><td class="k">places/default.png</td><td class="k">places/&lt;place-uid&gt;.png</td></tr>
+          <tr><td>a trade</td><td class="k">wear/default.png</td><td class="k">wear/&lt;trade&gt;.png</td></tr>
+          <tr><td>one person</td><td class="k">wear/default.png</td><td class="k">wear/&lt;their-uid&gt;.png</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>That is the whole system. The file's name is what decides who gets it, so there is nothing to configure and no list to keep in step. Edit <code>default.png</code> itself and you change everyone, or everywhere, at once.</p>
+
+    <p>Two folders rather than one because the names would collide otherwise: a parish called Mason and a mason are different pictures.</p>
+
+    <h3>Place scenes</h3>
+    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centred in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
+    <p>A place with no picture of its own falls back to <code>images/places/default.png</code> — a low wall and a tree, muted so the people in front of it still read. It is deliberately generic: it says "somewhere" without claiming to be anywhere.</p>
+    <p>Delete that file and places without art show <strong>nothing at all</strong>: no frame, no placeholder, no gap. That is a perfectly good way to run it — a bare street reads as "no scenery yet" rather than as fifty identical cottages, and you may prefer it.</p>
+
+    <div class="note">
+      <p><strong>Draw it 102 px wide.</strong> A column is 110 px until a third person joins it, and art is fitted to the column less 8 and never enlarged past its own pixels — so 102 is the widest that still draws 1:1. Wider is allowed and simply scales down in a quiet column, which softens the pixels.</p>
+      <p>Height is free: the scene is anchored at the bottom, so it grows upward.
+        Copy <code>places/default.png</code> — it is already the right size, and the wall and tree give you the scale of a person before you start.</p>
+    </div>
+
+    <h3>Who wears what</h3>
+    <p><strong>One sheet per wearer.</strong> Four frames across, four rows down, and the rows are what a figure is made of, from the skin outwards:</p>
+
+<pre><code>          frame 1   frame 2   frame 3   frame 4
+row 1     body      ·         ·         ·
+row 2     bottom    ·         ·         ·
+row 3     top       ·         ·         ·
+row 4     hat       ·         ·         ·</code></pre>
+
+    <p>The filename says who it is for, and that is the entire configuration:</p>
+
+<pre><code>images/wear/&lt;who&gt;.png     who = a uid, a trade, or "default"
+
+mill-worker.png           every mill worker
+mill-worker-96x96.png     the same thing — a trailing -WxH is
+                          dimensions, not part of the name
+george-isles.png          him and nobody else
+default.png               everyone else</code></pre>
+
+    <p>Labelling a sheet with its own size is worth doing and costs nothing: the first thing you need when you reopen one is what to set the canvas to. The page strips a trailing <code>-WxH</code> before matching, so it never changes who the file is for.</p>
+
+    <div class="note">
+      <p><strong>Rows are independent.</strong> Leave a row transparent and it falls through to the next sheet in the chain — the person's, then their trade's, then <code>default</code>, then the built-in. A sheet with only a hat drawn on it changes <em>only</em> the hat, and the wearer keeps their trade's coat.</p>
+      <p>Redraw the <strong>body</strong> row and that person is a different figure entirely — no flag, no setting, no table. Whatever distinction you want to draw for, draw it.</p>
+    </div>
+
+    <p>Layers share an origin, so a garment may use any part of the cell — a brim wider than the head, a coat past the knee, a tool out in the prop margin. Nothing is clipped to a row; a row is a position in the stack, not a box you draw inside.</p>
+
+    <div class="note">
+      <p><strong>The grid comes from the image, and bigger means bigger.</strong> Four frames across and four rows down, always — so a 96 × 96 sheet is 24 × 24 cells and a 160 × 128 sheet is 40 × 32. A larger cell is <em>not</em> scaled back down: the scene's cell grows to the largest thing worn and the garment overhangs, which is what makes a greatcoat look like a greatcoat rather than a coat at higher resolution.</p>
+      <p>Everything registers the only two ways that survive a change of size: <strong>centred horizontally</strong>, and <strong>standing on the ground line</strong>. People in oversized clothes and people in ordinary ones share a street quite happily — the cell is worked out per person.</p>
+    </div>
+
+    <h3>How a trade is recognised</h3>
+    <p>The <code>trades</code> half of the table is keyed on the trade as slugged from the <strong>first clause of the detail field</strong>:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Brick detail</th><th scope="col">Trade key</th></tr></thead>
+        <tbody>
+          <tr><td>Powerloom Tender</td><td class="k">powerloom-tender</td></tr>
+          <tr><td>Farmer, immigrated to Utah in 1852</td><td class="k">farmer</td></tr>
+          <tr><td>Assistant Registrar (Perth)</td><td class="k">assistant-registrar</td></tr>
+          <tr><td>Mill worker; later a carter</td><td class="k">mill-worker</td></tr>
         </tbody>
       </table>
     </div>
@@ -184,7 +232,7 @@
 
   <section id="sheet">
     <h2>Sprite sheets</h2>
-    <p class="lede">One strip, 64 × 24, four frames of a single walk cycle. Same sheet for every costume.</p>
+    <p class="lede">One strip, 96 × 24, four frames of a single walk cycle. Same geometry for every layer.</p>
 
     <div class="sheet">
       <div class="sheet-grid">
@@ -193,27 +241,42 @@
         <div class="cell"><span class="frame-no">3 · pass</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="background:#00ffff"></i><i class="leg r" style="background:#00ffff"></i></span></div>
         <div class="cell"><span class="frame-no">4 · stride</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="left:6px;background:#00ffff"></i><i class="leg r" style="left:8px;background:#00ffff"></i></span></div>
       </div>
-      <p class="baseline">▲ Feet sit on the bottom edge of each 16 × 24 cell — that edge is the ground line.</p>
+      <p class="baseline">▲ Feet sit on the bottom edge of each 24 × 24 cell — that edge is the ground line.</p>
       <div class="sheet-foot">
-        <span>64 × 24 px</span><span>transparent background</span><span>4 frames across</span><span>no padding, no gutters</span>
+        <span>96 × 24 px</span><span>transparent background</span><span>4 frames across</span><span>no padding, no gutters</span>
       </div>
     </div>
 
     <h3>Key colours</h3>
-    <p>Paint the swappable parts in these three flat colours. Everything else passes through exactly as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
+    <p>Not colours so much as <strong>slots</strong>. When a garment is loaded, every pixel is checked once: an <em>exact</em> match on one of these three is repainted in that wearer's colour, and everything else passes through as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
+
+    <p>This is what lets <em>one</em> garment serve every century. Paint the parts that should age in key colours; paint the parts that identify the trade in real colours, and they survive every recolouring.</p>
 
     <div class="keys">
       <div class="key-row"><span class="chip" style="background:#ff00ff"></span><span class="hex">#ff00ff</span><span class="what">Coat — takes the era colour</span></div>
       <div class="key-row"><span class="chip" style="background:#00ffff"></span><span class="hex">#00ffff</span><span class="what">Legs and arms — takes the era trim</span></div>
-      <div class="key-row"><span class="chip" style="background:#ffff00"></span><span class="hex">#ffff00</span><span class="what">Hat — dropped entirely in the modern band</span></div>
+      <div class="key-row"><span class="chip" style="background:#ffff00"></span><span class="hex">#ffff00</span><span class="what">Hat — removed altogether after 1970</span></div>
     </div>
 
-    <p>Keep the keys in a uniform and it still ages: a costume goes through the same recolouring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
+    <p>Keep the keys in a garment and it still ages: it goes through the same recolouring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
 
     <p>Paint a part in a fixed colour instead and it stays that colour for everyone — which is exactly what you want for the thing that identifies the trade.</p>
 
     <div class="note">
-      <p>The default figure is generated in code against this same geometry, so you can replace one costume, all of them, or none. There is no "install the art" step.</p>
+      <p><strong>Start from the default itself.</strong>
+        <a href="../images/wear/default.png" download>images/wear/default.png</a> is not a copy of the default figure kept beside the docs — it <em>is</em> the default, the file the page actually loads. Body, bottom, top and hat, key colours already in place. Copy it to <code>images/wear/&lt;who&gt;.png</code> and edit; clearing a row hands that row back to whatever is behind it.</p>
+      <p>They are ordinary PNGs in the repository. Open one, draw, save. Nothing regenerates them and nothing overwrites them.</p>
+      <p>Delete them and nothing breaks: the same four rows are drawn in code as a last resort, so a copy with no art still has everybody dressed. There is no "install the art" step.</p>
+      <p>Delete it and nothing breaks: the same four rows are generated in code as a last resort, so a page opened from <code>file://</code> or a copy with no art still has everybody dressed. There is no "install the art" step.</p>
+    </div>
+
+    <div class="note caution">
+      <p><strong>Exact means exact.</strong> The match is on the three byte values with no tolerance, so a soft edge, a feathered brush, a partial opacity or a JPEG round-trip leaves pixels that are <em>nearly</em> magenta — and those never swap. Draw the key areas with a hard pencil at 100% opacity, and save as PNG.</p>
+      <p>A hat layer you want kept after 1970 simply has no yellow in it. Yellow means "this is the hat, take it off in the modern band".</p>
+    </div>
+
+    <div class="note">
+      <p>The default body and all three default garments are generated in code against this same geometry, so you can replace one slot, all of them, or none. There is no "install the art" step.</p>
     </div>
   </section>
 

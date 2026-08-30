@@ -57,7 +57,7 @@
 ├── images/
 │   ├── scans/                  what a document brick points at
 │   ├── places/                 longforgan.png — scenery behind that column
-│   └── occupations/            mill-worker.png — worn by anyone of that trade
+│   └── wear/                   who wears what — see the Promenade
 ├── gazetteer.csv               uid,lat,lng,label,icon
 ├── project.json                an Atlas project file (map context)
 └── brick.json                  placements and column colours</code></pre>
@@ -141,7 +141,7 @@
 
   <section id="saving">
     <h2>Saving</h2>
-    <p class="lede">The header carries the whole of it: <strong>auto</strong>, <strong>Save to browser</strong>, <strong>Export</strong>.</p>
+    <p class="lede">The header carries the whole of it: <strong>auto</strong>, <strong>Save to browser</strong>, <strong>Export</strong>, <strong>Clear all</strong>.</p>
 
     <div class="table-wrap">
       <table>
@@ -150,11 +150,19 @@
           <tr><td class="k">auto</td><td>Autosave on or off. Off means off — nothing is written until you press Save, and the status line turns red saying <strong>unsaved changes</strong>.</td></tr>
           <tr><td class="k">Save to browser</td><td>Writes to browser storage. This browser, this machine. A clear-site-data takes it.</td></tr>
           <tr><td class="k">Export</td><td>A real <code>.txt</code> file you own. The only durable one.</td></tr>
+          <tr><td class="k">Clear all</td><td>Back to a blank project.</td></tr>
         </tbody>
       </table>
     </div>
 
     <p>The status line spells out all three at once: where the pile came from, when it was last autosaved, and when it last left the browser as a file.</p>
+
+    <h3>Clear all</h3>
+    <p>It sits immediately right of Export, which is deliberate: the safe way out is next to the destructive one, already under the cursor. It confirms first, listing what will go with live counts, and warns in the dialog when the pile has never been exported.</p>
+    <p>It removes the pile, the gazetteer, Promenade placements and column colours, the board layout and panel sizes, and the map's project file, style and source. It <strong>keeps</strong> your themes and your tile key — losing those is a separate annoyance you never asked for, and neither says anything about the research. Both lists are named in the dialog, so nothing goes unannounced.</p>
+    <div class="note caution">
+      <p>There is no undo, by design. An undo would mean holding a full copy of everything just deleted, which is the last thing a page storing your only copy should quietly retain. <strong>Export is the undo</strong> — hence the placement.</p>
+    </div>
   </section>
 
   <section id="panels">
@@ -229,6 +237,7 @@
 
     <div class="panel-h" id="promenade"><h3>Promenade</h3><span class="badge r">R</span></div>
     <p>Your people, walking the ground their records put them on. A side-on scene where the horizontal axis is longitude and each place is a column. Drag people into columns to group them.</p>
+    <p>Art is found by filename, never configured. A place is <code>images/places/&lt;uid&gt;.png</code>, falling back to <code>images/places/default.png</code>. A person is one sheet — <code>images/wear/&lt;who&gt;.png</code>, where <em>who</em> is a uid, a trade, or <code>default</code> — four frames across and four rows down: <strong>body, bottom, top, hat</strong>. Rows resolve independently down that chain, so a sheet with only a hat drawn on it changes only the hat.</p>
     <p><a href="promenade.html"><strong>Full documentation, including the sprite-sheet spec →</strong></a></p>
   </section>
 

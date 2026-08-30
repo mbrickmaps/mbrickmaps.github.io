@@ -224,6 +224,13 @@
     margin-left: 3px; transition: opacity 0.12s, color 0.12s;
   }
   .panel-doc:hover, .panel-doc:focus-visible { opacity: 1; color: var(--accent2); }
+  /*  Reads as dangerous only once you are near it: quiet in the bar, plainly
+      red under the cursor. A permanently red button in a toolbar is either
+      ignored or feared, and neither is useful. */
+  .top-btn.danger { color: var(--muted); }
+  .top-btn.danger:hover, .top-btn.danger:focus-visible {
+    color: var(--bad); border-color: var(--bad);
+  }
   /*  Rides with the tagline rather than joining the button cluster — it is a
       thing to read, not a thing to press, and the buttons beside it all act on
       your pile. */
@@ -233,6 +240,95 @@
     border-bottom: 1px dotted currentColor; opacity: 0.8;
   }
   .top-guide:hover, .top-guide:focus-visible { opacity: 1; border-bottom-style: solid; }
+
+  /* ---------- sprite editor ---------- */
+  /*  Two columns: the blown-up cell, and everything you decide about it. The
+      grid keeps its own size rather than stretching, because a pixel that is
+      not square is worse than a pixel that is small. */
+  .sp-wrap { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; height: 100%; }
+  /*  The drawing surface gets the room. It was capped at 336px, which made a
+      102-wide scene tiny in a panel with space to spare — and a place is the
+      one thing here you cannot judge small. */
+  .sp-left { flex: 2 1 260px; min-width: 160px; }
+  .sp-grid {
+    display: block; image-rendering: pixelated;
+    border: 1px solid var(--border); border-radius: 3px;
+    cursor: crosshair; touch-action: none;
+    /*  The buffer stays 24x24 sprite pixels; only the display scales. Square
+        is not negotiable — a stretched pixel is a lie about the drawing. */
+    /*  The buffer is sized per garment, and a garment is not square — a hat is
+        wide and shallow. Let the element take the buffer's own proportions and
+        only cap the width, or a brim comes out stretched. */
+    max-width: 100%; height: auto;
+  }
+  .sp-right { flex: 1 1 180px; min-width: 170px; max-width: 260px; display: flex; flex-direction: column; gap: 7px; }
+  .sp-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .sp-cap {
+    font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); min-width: 34px;
+  }
+  /*  A label that is not the row's first is a mid-row caption, and does not
+      need the leading column width that keeps the first ones aligned. */
+  .sp-cap + * ~ .sp-cap { min-width: 0; margin-left: 4px; }
+  .sp-row button { font-size: 0.68rem; padding: 2px 7px; }
+  .sp-row button.on { border-color: var(--accent2); color: var(--accent2); }
+  /*  A swatch is the colour it draws — a label would only repeat what the
+      square already says, and there is no room for one. */
+  .sp-pen {
+    width: 20px; height: 20px; padding: 0; border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  .sp-pen.on { outline: 2px solid var(--accent2); outline-offset: 1px; }
+  /*  Recents are dashed, so a colour you mixed reads as yours rather than as
+      another fixed swatch. */
+  .sp-recent { border-style: dashed; }
+  .sp-recent[hidden] { display: none; }
+  .sp-pen.sp-erase {
+    background-image: linear-gradient(45deg, var(--border) 25%, transparent 25%,
+      transparent 75%, var(--border) 75%),
+      linear-gradient(45deg, var(--border) 25%, transparent 25%,
+      transparent 75%, var(--border) 75%);
+    background-size: 8px 8px; background-position: 0 0, 4px 4px;
+  }
+  .sp-row input[type="color"] {
+    width: 22px; height: 22px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+  /*  The period row sets what a century's colours ARE; the paint row is what
+      you draw with. They showed the same browns as identical squares, which
+      made two unrelated controls look like one. Pens are square and solid;
+      period colours are round and sunk into a labelled strip. */
+  .sp-era { display: flex; align-items: center; gap: 4px; }
+  .sp-era input[type="color"] {
+    width: 18px; height: 18px; border-radius: 50%;
+  }
+  .sp-era input[type="color"]:disabled { opacity: 0.3; cursor: default; }
+  .sp-eranum {
+    font-size: 0.55rem; color: var(--muted); margin-right: -2px;
+  }
+  .sp-row select { font-size: 0.68rem; padding: 1px 4px; }
+  /*  Narrow enough that size and frames share a line — they are read together
+      and wrapping them apart made two controls look like two subjects. */
+  .sp-num { width: 38px; font-size: 0.68rem; padding: 1px 3px; }
+  .sp-x { font-size: 0.62rem; color: var(--muted); margin: 0 -1px; }
+  .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
+  /*  The filename, shown as you type it — the one thing that decides whether
+      the page ever finds this drawing. */
+  .sp-filename {
+    flex: 1 1 100%; font-family: var(--mono, ui-monospace, monospace);
+    font-size: 0.6rem; color: var(--accent2); opacity: 0.85; word-break: break-all;
+  }
+  /*  The answer to "does it read?", which is the only question that matters
+      while drawing a 24px sleeve. Both sizes, because 4x flatters and 1x does
+      not, and the street runs at 1x. */
+  .sp-preview {
+    display: flex; gap: 10px; align-items: flex-end;
+    padding: 8px; border: 1px dashed var(--border); border-radius: 4px;
+    background: linear-gradient(180deg, #1d2c38 0%, #1d2c38 72%, #1a1f18 72%);
+  }
+  .sp-preview canvas { display: block; image-rendering: pixelated; }
+  .sp-true { align-self: flex-end; }
+  .sp-hint { font-size: 0.63rem; line-height: 1.5; margin: 0; opacity: 0.6; }
   /* One line per role, each led by the badge it explains. */
   .role-key {
     display: flex; flex-direction: column; gap: 3px;
@@ -1050,6 +1146,10 @@
   <label class="top-auto"><input type="checkbox" id="autoSave" checked>auto</label>
   <button type="button" id="quickSave" class="top-btn">Save to browser</button>
   <button type="button" id="quickDownload" class="top-btn">Export</button>
+  <!-- Beside Export on purpose: the safe way out sits next to the
+       destructive one, so the escape route is already under the cursor. -->
+  <button type="button" id="quickClear" class="top-btn danger"
+          title="empty the pile and put every panel back as it started">Clear all</button>
   <div class="topsearch" id="topsearch">
     <input type="text" id="topsearchInput" placeholder="find in the text…" spellcheck="false">
     <button id="topsearchBtn" title="search the pile">&#128269;</button>
@@ -2166,6 +2266,13 @@ Brick.viz.register("promenade", {
   render: (model, el) => renderPromenade(model, el),
 });
 
+Brick.viz.register("sprite", {
+  emoji: "\uD83C\uDFA8", label: "Sprite Editor", w: 3, h: 2,
+  description: "Draw a wear sheet a pixel at a time, blown up, with the figure " +
+    "walking beside it at true size. Exports the PNG the Promenade reads.",
+  render: (model, el) => renderSpriteEditor(model, el),
+});
+
 Brick.viz.register("map", {
   emoji: "🗺️", label: "Map Viewer", w: 3, h: 2,
   roles: ["read", "filter"],   // draws the places, and a click focuses one
@@ -2213,27 +2320,6 @@ Brick.viz.register("map", {
     decade on anyway. They are wide, they overlap in spirit, and the years are
     only there so the same person always dresses the same way. Treat them as
     "roughly this sort of century", not as a claim. */
-const ERAS = [
-  { until: 1845, key: "georgian",  hat: "tall",   coat: "#4a3b2a", trim: "#6d5942" },
-  { until: 1890, key: "victorian", hat: "tall",   coat: "#2f3542", trim: "#4a5568" },
-  { until: 1925, key: "edwardian", hat: "bowler", coat: "#3a4a3a", trim: "#556b55" },
-  { until: 1970, key: "interwar",  hat: "cap",    coat: "#5a4632", trim: "#7a6247" },
-  { until: 9999, key: "modern",    hat: "none",   coat: "#3f4a5a", trim: "#5b6b80" },
-];
-// Where somebody with no dates at all stands. Not "modern" — the overwhelming
-// majority of a parish corpus is nineteenth century, and dressing an undated
-// person in a windcheater is a louder claim than dressing them in a frock coat.
-const ERA_UNKNOWN = 1;
-
-function eraFor(entity) {
-  // The middle of a life dresses it better than either end: someone born in
-  // 1840 spent their adult life in the 1870s, not the 1840s.
-  const b = entity.birthYear, d = entity.deathYear;
-  const year = (b && d) ? Math.round((b + d) / 2) : b ? b + 30 : d ? d - 30 : null;
-  if (year === null) return ERAS[ERA_UNKNOWN];
-  return ERAS.find(e => year < e.until) || ERAS[ERAS.length - 1];
-}
-
 /*  Which places each person is recorded at.
 
     A record that names a person and a place puts that person there. Same rule
@@ -2265,7 +2351,13 @@ function peoplePlaces(model) {
     different loader for no benefit here. */
 const PIXI_JS = "https://unpkg.com/pixi.js@7.4.2/dist/pixi.min.js";
 
-const SPR_W = 16, SPR_H = 24, SPR_FRAMES = 4;
+/*  24 wide for a 10-wide body, and the margin is deliberate: it is where a
+    carried thing goes. A hod on the shoulder, a basket held out, a scythe —
+    none of them fit inside the body's own footprint, and widening the cell
+    later would invalidate every sheet already drawn against it. The room is
+    cheap now and impossible to add once there is art. */
+const SPR_W = 24, SPR_H = 24, SPR_FRAMES = 4;
+const BODY_X = 4;      // the body sits inset by this much, leaving prop room both sides
 
 /*  One figure, recoloured.
 
@@ -2280,26 +2372,15 @@ const SPR_W = 16, SPR_H = 24, SPR_FRAMES = 4;
     Each era, and then each person, gets that strip recoloured into their own
     texture. It is the old palette-swap trick, and it means one drawing dresses
     a whole parish. */
-const KEYS = {
-  coat: [255, 0, 255],
-  trim: [0, 255, 255],
-  hat:  [255, 255, 0],
-};
+/*  Garments are drawn in the colours you drew them in.
 
-const hexRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    There was a palette-swap here once: three marker colours, a palette per
+    century, and a figure recoloured to suit its dates. It let one drawing
+    serve five centuries, and it cost more in confusion than it ever returned —
+    every question about clothing turned into a question about magenta.
 
-/*  A stable wobble per person, so two men in the same decade are not the same
-    man twice — but the same man is the same colour every time you look. The
-    seed is their uid, so it survives reloads, re-sorts and re-renders. */
-function tweak(rgb, seed, amount) {
-  const out = [];
-  for (let i = 0; i < 3; i++) {
-    const n = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
-    const d = ((n - Math.floor(n)) - 0.5) * 2 * amount;
-    out.push(Math.max(0, Math.min(255, Math.round(rgb[i] + d))));
-  }
-  return out;
-}
+    So: a pixel is the colour you painted it. If you want a Georgian coat and a
+    Victorian one, draw two coats and name them for who wears them. */
 
 function seedOf(str) {
   let h = 0;
@@ -2311,69 +2392,149 @@ function seedOf(str) {
     sixty people is sixty little 64×24 canvases otherwise, redrawn on every
     resize and every sort. */
 const sheetCache = new Map();
-let sheetIds = 0;
-function paletteSheet(base, coat, trim, hat) {
-  // Each source sheet gets an id, so two different drawings recoloured the same
-  // way are not served the same canvas.
-  if (!base.__sheetId) base.__sheetId = ++sheetIds;
-  const key = base.__sheetId + "|" + coat + "|" + trim + "|" + hat;
-  if (sheetCache.has(key)) return sheetCache.get(key);
+/*  ONE CELL, SHARED BY EVERY LAYER.
 
+    A figure is four rasters stacked — body, bottom, top, hat — all the same
+    size and all in the same space. The bottom edge of that space is the ground
+    the person stands on; the centre line is the person. You draw each element
+    where it actually goes, and the layers simply lie on top of one another.
+
+    Which is why there are no anchors and nothing to configure: a taller cell
+    is a taller hat, because the extra room is above the head. A 24 x 24 cell
+    is an ordinary figure; a 40 x 32 cell is the same figure with eight pixels
+    of headroom and eight either side for a brim or a carried tool. */
+const SWING = [0, 1, 0, -1];          // pass, stride, pass, stride the other way
+
+function sheetCanvas() {
   const c = document.createElement("canvas");
-  c.width = base.width; c.height = base.height;
-  const g = c.getContext("2d");
+  c.width = SPR_W * SPR_FRAMES;
+  c.height = SPR_H;
+  const g = c.getContext("2d", { willReadFrequently: true });
   g.imageSmoothingEnabled = false;
-  g.drawImage(base, 0, 0);
-  const img = g.getImageData(0, 0, c.width, c.height);
-  const d = img.data;
-  const want = [[KEYS.coat, coat], [KEYS.trim, trim], [KEYS.hat, hat]];
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] === 0) continue;
-    for (const [k, to] of want) {
-      if (d[i] === k[0] && d[i + 1] === k[1] && d[i + 2] === k[2]) {
-        d[i] = to[0]; d[i + 1] = to[1]; d[i + 2] = to[2];
-        break;
-      }
-    }
+  return [c, g];
+}
+
+const SKIN = "#c9a689", SKIN_SHADE = "#aa8970", HAIR = "#4a3b2a";
+
+/*  The body: skin and hair, no clothes. */
+function makeBodySheet() {
+  const [c, g] = sheetCanvas();
+  for (let f = 0; f < SPR_FRAMES; f++) {
+    const ox = f * SPR_W + BODY_X, s = SWING[f];
+    const box = (x0, y0, x1, y1, col) => { g.fillStyle = col; g.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1); };
+    box(ox + 5, 2, ox + 10, 7, SKIN);            // head
+    box(ox + 5, 1, ox + 10, 2, HAIR);            // scalp, so a hatless head is not an egg
+    box(ox + 10, 3, ox + 10, 7, SKIN_SHADE);     // one column of form
+    box(ox + 7, 8, ox + 8, 8, SKIN_SHADE);       // neck
+    box(ox + 5, 9, ox + 10, 16, SKIN);           // torso
+    box(ox + 10, 9, ox + 10, 16, SKIN_SHADE);
+    box(ox + 3, 10 - s, ox + 4, 15 - s, SKIN);   // arms swing opposite the legs
+    box(ox + 11, 10 + s, ox + 12, 15 + s, SKIN);
+    box(ox + 12, 10 + s, ox + 12, 15 + s, SKIN_SHADE);
+    box(ox + 5, 17, ox + 10, 17, SKIN);          // hips
+    box(ox + 5 - s, 18, ox + 7 - s, 23, SKIN);   // legs
+    box(ox + 8 + s, 18, ox + 10 + s, 23, SKIN_SHADE);
   }
-  g.putImageData(img, 0, 0);
-  sheetCache.set(key, c);
+  c.__frames = SPR_FRAMES;
   return c;
 }
 
-/*  A placeholder sprite sheet, drawn rather than fetched.
+function bodySpaceSheet(draw) {
+  const [c, g] = sheetCanvas();
+  for (let f = 0; f < SPR_FRAMES; f++) draw(g, f * SPR_W + BODY_X, SWING[f], f);
+  c.__frames = SPR_FRAMES;
+  return c;
+}
 
-    Five eras down, four walk frames across. It exists so the engine, the walk
-    cycle and the era logic are all real and testable TODAY, with no art to
-    wait on — and so replacing it is a one-line change: hand the same frame
-    geometry a real sheet and every walker picks it up.
+/*  Trousers, not painted legs — a pixel proud of the limb inside, with a seat
+    joining them, or it reads as bare skin in a different colour. */
+function makeBottomSheet() {
+  const K = "#4a5568";                       // trousers
+  return bodySpaceSheet((g, x, s) => {
+    g.fillStyle = K;
+    g.fillRect(x + 4, 17, 8, 3);              // seat
+    g.fillRect(x + 4 - s, 19, 3, 5);          // left leg
+    g.fillRect(x + 9 + s, 19, 3, 5);          // right leg
+  });
+}
 
-    Nearest-neighbour everywhere; at this size a single smoothed pixel is the
-    difference between a person and a smudge. */
-function makeWalkSheet() {
+/*  A coat with a shape of its own: shoulders past the torso, and a skirt
+    hanging below the waist over the top of the trousers. */
+function makeTopSheet() {
+  const C = "#2f3542", T = "#4a5568";        // coat, and its cuffs and collar
+  return bodySpaceSheet((g, x, s) => {
+    g.fillStyle = C;
+    g.fillRect(x + 3, 9, 10, 10);             // body of the coat, down over the hips
+    g.fillRect(x + 4, 8, 8, 2);               // shoulders
+    g.fillStyle = T;
+    g.fillRect(x + 7, 8, 2, 3);               // collar
+    g.fillRect(x + 2, 10 - s, 3, 7);          // sleeves swing with the arms
+    g.fillRect(x + 11, 10 + s, 3, 7);
+  });
+}
+
+/*  A brim wider than the head, which is the whole of what says "hat". */
+function makeHatSheet() {
+  const K = "#16181c";                       // hat
+  return bodySpaceSheet((g, x) => {
+    g.fillStyle = K;
+    g.fillRect(x + 2, 2, 12, 2);              // brim
+    g.fillRect(x + 4, 0, 8, 3);               // crown
+  });
+}
+
+/*  Body first, then each layer over it. Cached, because a parish of mill
+    workers is one composite shared by all of them.
+
+    `cache` is off for anything being edited: the cache is keyed on each
+    canvas's identity, and drawing into a canvas does not change its identity,
+    so a sheet you are painting would keep handing back the composite from
+    before your first stroke. */
+const dressCache = new Map();
+let dressIds = 0;
+
+function dressBody(layers, cache) {
+  const worn = (layers || []).filter(l => l && l.img);
+  if (!worn.length) return null;
+  const useCache = cache !== false;
+  const idOf = cv => cv.__dressId || (cv.__dressId = ++dressIds);
+  const key = worn.map(l => idOf(l.img)).join(">");
+  if (useCache && dressCache.has(key)) return dressCache.get(key);
+
+  /*  Every layer brings its own cell, and the composite takes the largest —
+      so a sheet drawn on a roomier grid keeps its headroom instead of being
+      cropped to the body's box.
+
+      Two rules place everything, and they are the only two that survive a
+      change of size: CENTRED on the vertical axis, because a person is
+      symmetrical about it, and sitting on the BOTTOM edge, because that edge
+      is the ground. Extra height is therefore headroom, which is exactly where
+      a tall hat needs it. */
+  const cells = worn.map(({ img }) => {
+    const n = img.__frames || SPR_FRAMES;
+    return { img, n, w: (img.width || SPR_W * n) / n, h: img.height || SPR_H };
+  });
+  const cw = Math.max(SPR_W, ...cells.map(c => c.w));
+  const ch = Math.max(SPR_H, ...cells.map(c => c.h));
+
+  const gcd = (x, y) => y ? gcd(y, x % y) : x;
+  const frames = Math.min(24, cells.reduce((m, c) => m * c.n / gcd(m, c.n), 1));
+
   const c = document.createElement("canvas");
-  c.width = SPR_W * SPR_FRAMES;
-  c.height = SPR_H;                       // one row now, not one per era
+  c.width = cw * frames; c.height = ch;
   const g = c.getContext("2d");
   g.imageSmoothingEnabled = false;
-
-  const K = rgb => "rgb(" + rgb.join(",") + ")";
-  for (let f = 0; f < SPR_FRAMES; f++) {
-    const ox = f * SPR_W;
-    // Legs swing on a 4-beat: pass, stride, pass, stride the other way.
-    const swing = [0, 1, 0, -1][f];
-    g.fillStyle = K(KEYS.coat);
-    g.fillRect(ox + 4, 8, 8, 10);
-    g.fillStyle = "#c9a689";               // skin is not a key: it passes through
-    g.fillRect(ox + 5, 2, 6, 6);
-    g.fillStyle = K(KEYS.trim);
-    g.fillRect(ox + 5 - swing, 18, 3, 6);
-    g.fillRect(ox + 9 + swing, 18, 3, 6);
-    g.fillRect(ox + 3, 9 + swing, 1, 6);
-    g.fillRect(ox + 12, 9 - swing, 1, 6);
-    g.fillStyle = K(KEYS.hat);
-    g.fillRect(ox + 4, 0, 8, 3);
+  for (const l of cells) {
+    const dx = Math.round((cw - l.w) / 2), dy = ch - l.h;
+    for (let f = 0; f < frames; f++) {
+      // A layer with fewer frames repeats: a one-frame hat sits still on a
+      // four-frame walk without anybody drawing it four times.
+      g.drawImage(l.img, (f % l.n) * l.w, 0, l.w, l.h, f * cw + dx, dy, l.w, l.h);
+    }
   }
+  c.__cellW = cw; c.__cellH = ch; c.__frames = frames;
+  c.__footY = ch;                       // the ground is the bottom edge
+  if (useCache) dressCache.set(key, c);
   return c;
 }
 
@@ -2431,6 +2592,31 @@ function applyFocus(host) {
     Stored by uid so it survives a reload, and kept out of the gazetteer for
     the same reason the scene art is: that file is coordinates. */
 const COLUMN_TINT = new Map();   // uid -> { from, to }
+
+/*  ONE SHEET PER WEARER.
+
+    Four frames across, four rows down, and the rows are what a figure is made
+    of — from the skin outwards:
+
+        row 1   body
+        row 2   bottom
+        row 3   top
+        row 4   hat
+
+    The filename says who it is for, and that is the whole of the configuration:
+
+        images/wear/<who>.png       who = a uid, a trade, or "default"
+
+        mill-worker.png   every mill worker
+        george-isles.png  him and nobody else
+        default.png       everyone else
+
+    ROWS ARE INDEPENDENT. Leave a row transparent and it falls through to the
+    next sheet in the chain — the person's, then their trade's, then default's,
+    then the built-in. So a sheet with only a hat drawn on it changes only the
+    hat, and one that redraws the body row gives that person a different figure
+    entirely without a flag or a setting anywhere. */
+const ROWS = ["body", "bottom", "top", "hat"];
 
 function loadColumnTints() {
   let raw;
@@ -2581,36 +2767,53 @@ function occupationOf(entity) {
 
     An opened research folder is matched on the directory as well as the
     filename, so the same layout works from disk and hosted. */
+/*  The directory this page lives in, worked out rather than assumed.
+
+    A relative "images/..." resolves against the URL, and a server that serves
+    index.html at /brick-by-brick WITHOUT a trailing slash makes that resolve to
+    /images/... — one level too high, so every garment and scene 404s while
+    looking perfectly correct in the source. There is no way to ask whether a
+    slashless path is a directory, so: a path ending in a file extension keeps
+    its directory, anything else is treated as one. */
+const ASSET_BASE = (() => {
+  const p = location.pathname;
+  if (/\.[a-z0-9]+$/i.test(p)) return p.slice(0, p.lastIndexOf("/") + 1);
+  return p.endsWith("/") ? p : p + "/";
+})();
+
 function artSrc(kind, slug) {
   const want = slug.toLowerCase();
   for (const [path, v] of folderImages) {
     const parts = path.toLowerCase().split("/");
-    const base = parts.pop().replace(/\.[^.]+$/, "");
+    /*  A trailing -WxH is dimensions, not part of the name, so
+        mill-worker-96x96.png and mill-worker.png are the same wearer. */
+    const base = parts.pop().replace(/\.[^.]+$/, "").replace(/-\d+x\d+$/, "");
     if (base !== want) continue;
     if (!parts.includes(kind)) continue;      // right name, wrong folder
     if (!v.url) v.url = URL.createObjectURL(v.file);
     return v.url;
   }
-  return folderImages.size ? "" : "images/" + kind + "/" + want + ".png";
+  return folderImages.size ? "" : ASSET_BASE + "images/" + kind + "/" + encodeURIComponent(want) + ".png";
 }
 
-function costumeSrc(slug) { return artSrc("occupations", slug); }
-
-function costumeImage(slug, onReady) {
+/*  A sheet from any of the art folders. Cached under folder+name, so a parish
+    called Mason and a tradesman called mason stay different pictures. */
+function layerImage(kind, slug, onReady) {
   if (!slug) return null;
-  if (costumeCache.has(slug)) {
-    const got = costumeCache.get(slug);
+  const key = kind + "/" + slug;
+  if (costumeCache.has(key)) {
+    const got = costumeCache.get(key);
     return got instanceof Promise ? null : got;
   }
-  const src = costumeSrc(slug);
-  if (!src) { costumeCache.set(slug, null); return null; }
+  const src = artSrc(kind, slug);
+  if (!src) { costumeCache.set(key, null); return null; }
   const pending = new Promise(res => {
     const img = new Image();
-    img.onload = () => { costumeCache.set(slug, img); res(img); if (onReady) onReady(); };
-    img.onerror = () => { costumeCache.set(slug, null); res(null); };
+    img.onload = () => { costumeCache.set(key, img); res(img); if (onReady) onReady(); };
+    img.onerror = () => { costumeCache.set(key, null); res(null); };
     img.src = src;
   });
-  costumeCache.set(slug, pending);
+  costumeCache.set(key, pending);
   return null;                    // this render uses the default; the next has it
 }
 
@@ -2634,18 +2837,56 @@ function sceneSrc(slug) { return artSrc("places", slug); }
 const sceneCache = new Map();     // slug -> HTMLImageElement | null | Promise
 function resetSceneCache() { sceneCache.clear(); }
 
-function sceneImage(slug) {
-  if (sceneCache.has(slug)) return sceneCache.get(slug);
-  const src = sceneSrc(slug);
-  if (!src) { sceneCache.set(slug, null); return null; }
-  const pending = new Promise(res => {
+function loadImg(src) {
+  return new Promise(res => {
+    if (!src) return res(null);
     const img = new Image();
-    img.onload = () => { sceneCache.set(slug, img); res(img); };
-    img.onerror = () => { sceneCache.set(slug, null); res(null); };
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
     img.src = src;
   });
+}
+
+function sceneImage(slug) {
+  if (sceneCache.has(slug)) return sceneCache.get(slug);
+  // The place's own picture, then the one everywhere shares.
+  const pending = loadImg(sceneSrc(slug))
+    .then(img => img || (slug === "default" ? null : loadImg(sceneSrc("default"))))
+    .then(img => { sceneCache.set(slug, img || null); return img || null; });
   sceneCache.set(slug, pending);
   return pending;
+}
+
+/*  A garment is its own file, because it is its own size.
+
+    One sheet cannot hold a 10 x 4 cap and a 12 x 11 coat in equal rows, and
+    the sizes are the point — a broad hat has to be broad. So each garment is
+    a file, and the name says who wears it and where it goes:
+
+        images/wear/<who>.<slot>.png     slot = body | bottom | top | hat
+
+        mill-worker.top.png    every mill worker's coat
+        george-isles.hat.png   his hat and nobody else's
+        default.bottom.png     what everyone else has on below the waist
+
+    Four frames across; the frame is however tall and wide the garment needs.
+    It is centred on that slot's anchor, so a bigger drawing grows evenly
+    around the body rather than off one corner. */
+function wearImage(who, slot, onReady) {
+  return who ? layerImage("wear", who + "." + slot, onReady) : null;
+}
+
+/*  Everything this person has on. Each slot resolves on its own, most specific
+    first, so a trade can supply a coat while one person overrides only the
+    hat, and anything nobody has drawn keeps the built-in. */
+function outfitFor(slug, trade, host, onReady) {
+  return ROWS.map(slot => {
+    const img = wearImage(slug, slot, onReady)
+             || wearImage(trade, slot, onReady)
+             || wearImage("default", slot, onReady)
+             || (host && host._wear[slot]);
+    return img ? { img, slot } : null;
+  });
 }
 
 function renderPromenadePixi(model, host) {
@@ -2970,7 +3211,11 @@ function renderPromenadePixi(model, host) {
     host._app = app;
     host._shell = shell;
     // The drawing itself. Every walker gets a recoloured copy of this.
-    host._base = makeWalkSheet();
+    host._wear = { body: makeBodySheet(), bottom: makeBottomSheet(),
+                   top: makeTopSheet(), hat: makeHatSheet() };
+    host._body = host._wear.body;                 // the bare figure, for reference
+    // The fully dressed default, for anything wanting one finished figure.
+    host._base = dressBody(ROWS.map(k => ({ img: host._wear[k], slot: k })));
     host._texCache = new Map();
     host._world = new P.Container();
     app.stage.addChild(host._world);
@@ -3130,7 +3375,7 @@ function renderPromenadePixi(model, host) {
             records put them. The drag was working; it was being undone sixty
             times a second. */
         if (w.held) {
-          setFrame(w, Math.floor(t * 10 + w.phase) % SPR_FRAMES);
+          setFrame(w, Math.floor(t * 10 + w.phase) % w.frames.length);
           continue;
         }
 
@@ -3172,7 +3417,7 @@ function renderPromenadePixi(model, host) {
           w.node.y = w.fromY + (w.toY - w.fromY) * e;
           // Face the way they are travelling while they travel.
           if (Math.abs(w.home - w.fromX) > 2) w.node.scale.x = w.home < w.fromX ? -1 : 1;
-          setFrame(w, Math.floor(t * 8 + w.phase * 3) % SPR_FRAMES);
+          setFrame(w, Math.floor(t * 8 + w.phase * 3) % w.frames.length);
           continue;
         }
         // Each pace is a slow sine about the spot the records put them on, so
@@ -3181,7 +3426,7 @@ function renderPromenadePixi(model, host) {
         w.node.x = w.home + off;
         w.node.y = w.toY;
         if (w.range) w.node.scale.x = Math.cos(t / w.period + w.phase) < 0 ? -1 : 1;
-        setFrame(w, Math.floor(t * 6 + w.phase * 3) % SPR_FRAMES);
+        setFrame(w, Math.floor(t * 6 + w.phase * 3) % w.frames.length);
       }
       /*  Names ride on the container, so they flip with their walker; undo it.
 
@@ -3258,7 +3503,12 @@ function renderPromenadePixi(model, host) {
         }
         flock.y = H() * (0.1 + Math.random() * 0.16);
         flock.x = dir > 0 ? -40 : app.screen.width + 40;
-        flock.alpha = 0.55;
+        /*  Dark birds or pale ones, decided per flock. A single dark tone
+            vanished into the sky it was drawn on; silhouettes read one way
+            against a bright sky and the other way against a dim one, and
+            picking per flock gets both without knowing which sky it is. */
+        flock.alpha = 0.75;
+        host._birdTone = Math.random() < 0.5 ? 0x11151b : 0xe8ece6;
         app.stage.addChildAt(flock, 0);
         host._birds = { node: flock, marks, dir, t: 0 };
       }
@@ -3272,7 +3522,7 @@ function renderPromenadePixi(model, host) {
           const beat = Math.sin(f.t * m.rate + m.phase);
           const lift = 2.2 * beat;
           m.g.clear();
-          m.g.lineStyle(1, 0x2b3542, 0.9);
+          m.g.lineStyle(1, host._birdTone === undefined ? 0x11151b : host._birdTone, 0.95);
           m.g.moveTo(-3, lift); m.g.lineTo(0, -lift * 0.5);
           m.g.lineTo(3, lift);
         }
@@ -3347,9 +3597,15 @@ function renderPromenadePixi(model, host) {
     // anywhere. Faint rules instead, so the ranks read as ranks.
     bg.beginFill(0x141a20).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
   } else {
-    bg.beginFill(0x1d2c38).drawRect(0, 0, worldW, H() * GROUND).endFill();
-    bg.beginFill(0x1a1f18).drawRect(0, H() * GROUND, worldW, H()).endFill();
-    bg.beginFill(0x2b3327).drawRect(0, H() * GROUND, worldW, 2).endFill();
+    /*  Floored to the panel, exactly as the grid already was. The world is
+        sized to the places in it, so an empty pile — or one where nothing is
+        geocoded yet — collapsed the street to a 140px sliver at the far left
+        and left the rest of the panel blank. There should always be somewhere
+        to stand, even before anybody does. */
+    const bgW = Math.max(worldW, app.screen.width);
+    bg.beginFill(0x1d2c38).drawRect(0, 0, bgW, H() * GROUND).endFill();
+    bg.beginFill(0x1a1f18).drawRect(0, H() * GROUND, bgW, H()).endFill();
+    bg.beginFill(0x2b3327).drawRect(0, H() * GROUND, bgW, 2).endFill();
   }
   world.addChild(bg);
 
@@ -3552,23 +3808,27 @@ function renderPromenadePixi(model, host) {
     }, 120);
   };
 
-  const framesFor = (era, slug, occupation) => {
-    const sheet = costumeImage(occupation, costumeArrived) || host._base;
-    const seed = seedOf(slug);
-    const coat = tweak(hexRgb(era.coat), seed, 18);
-    const trim = tweak(hexRgb(era.trim), seed + 1, 18);
-    const hat  = era.hat === "none" ? [0, 0, 0, 0] : tweak([22, 24, 28], seed + 2, 10);
-    // The sheet is part of the cache key, or one uniform would be served to
-    // everyone who happened to land on the same palette.
-    const key = (occupation || "-") + "|" + coat + "|" + trim + "|" + hat;
+  const framesFor = (slug, occupation) => {
+    // Body first, then whichever garments apply to this person.
+    const sheet = dressBody(outfitFor(slug, occupation, host, costumeArrived));
+    // Keyed on the dressed sheet, so two people in the same clothes share one
+    // texture and two in different clothes never collide.
+    if (!sheet.__dressId) sheet.__dressId = ++dressIds;
+    const key = String(sheet.__dressId);
     let base = host._texCache.get(key);
     if (!base) {
-      base = P.BaseTexture.from(paletteSheet(sheet, coat, trim, hat),
-                                { scaleMode: P.SCALE_MODES.NEAREST });
+      base = P.BaseTexture.from(sheet, { scaleMode: P.SCALE_MODES.NEAREST });
       host._texCache.set(key, base);
     }
-    return [0, 1, 2, 3].map(f =>
-      new P.Texture(base, new P.Rectangle(f * SPR_W, 0, SPR_W, SPR_H)));
+    const cw = sheet.__cellW || SPR_W, ch = sheet.__cellH || SPR_H;
+    const n = sheet.__frames || SPR_FRAMES;
+    const frames = [];
+    for (let f = 0; f < n; f++) frames.push(new P.Texture(base, new P.Rectangle(f * cw, 0, cw, ch)));
+    /*  Once a cell can grow upward for a tall hat, the bottom of the texture
+        is no longer the bottom of the person. Carried on the array so the
+        walker can anchor on the feet rather than on the frame. */
+    frames.footY = (sheet.__footY === undefined ? ch : sheet.__footY) / ch;
+    return frames;
   };
 
   /*  Where each person sits on the street, worked out once so the grid can
@@ -3671,7 +3931,7 @@ function renderPromenadePixi(model, host) {
       x = streetX.get(p.slug);
     }
 
-    const era = eraFor(p);
+
     /*  The occupation is the first clause of the detail field.
 
         That field is prose in practice — "Farmer, Robert immigrated to Utah in
@@ -3681,11 +3941,12 @@ function renderPromenadePixi(model, host) {
         stop is the part worth matching on. Capped, so a run-on sentence with
         no punctuation cannot become a filename either. */
     const occupation = occupationOf(p);
-    const frames = framesFor(era, p.slug, occupation);
+    const frames = framesFor(p.slug, occupation);
 
     const node = new P.Container();
     const sprite = new P.Sprite(frames[0]);
-    sprite.anchor.set(0.5, 1);
+    // Feet on the ground, wherever they sit inside the frame.
+    sprite.anchor.set(0.5, frames.footY === undefined ? 1 : frames.footY);
     sprite.scale.set(Z);
     // Fading lives on the container alone. Setting it here as well multiplied
     // the two together and left an unplaced person at a fifth opacity — which,
@@ -4031,6 +4292,465 @@ function renderPromenade(model, host) {
       host.innerHTML = '<p class="hint" style="color:var(--bad)">' +
         "The promenade needs a connection the first time — PixiJS loads from a CDN.</p>";
     });
+}
+
+/* ==========================================================================
+   THE SPRITE EDITOR
+   --------------------------------------------------------------------------
+   A wear sheet is 96 x 96: four frames across, four rows down. At that size a
+   pixel is the unit of meaning and a mouse cannot hit one, so the editor works
+   on ONE 24 x 24 cell at a time, blown up until a pixel is a target — and puts
+   the finished figure walking next to it at true size, because the only
+   question that matters while drawing a sleeve is whether it reads at 24 px.
+
+   It never touches the pile. It draws a PNG and hands it to you; where that
+   file goes and who wears it is the filename's business.
+   ========================================================================== */
+/*  Every garment starts as a copy of the built-in one, so you are always
+    editing something that already works rather than a void. */
+function garmentCopy(src) {
+  const c = document.createElement("canvas");
+  c.width = src.width; c.height = src.height;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0);
+  return c;
+}
+
+/*  Resize a garment, keeping what is drawn centred in it — because the anchor
+    is the centre, so growing a garment should grow it evenly around the body
+    rather than push the drawing off one edge. */
+function garmentResize(src, w, h, frames) {
+  const on = src.__frames || SPR_FRAMES;
+  const n = frames || on;
+  const c = document.createElement("canvas");
+  c.width = w * n; c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  const ow = src.width / on, oh = src.height;
+  const dx = Math.round((w - ow) / 2), dy = Math.round((h - oh) / 2);
+  // Growing the count repeats what is there rather than leaving blank frames.
+  for (let f = 0; f < n; f++) {
+    g.drawImage(src, (f % on) * ow, 0, ow, oh, f * w + dx, dy, ow, oh);
+  }
+  c.__frames = n;
+  return c;
+}
+
+function renderSpriteEditor(model, host) {
+  // Built once. The model changes on every keystroke and this panel has
+  // nothing to do with the pile — rebuilding would wipe your drawing.
+  if (host._spriteBuilt) return;
+  host._spriteBuilt = true;
+  host.innerHTML = "";
+
+  const wear = { body: makeBodySheet(), bottom: makeBottomSheet(),
+                 top: makeTopSheet(), hat: makeHatSheet() };
+  const garments = host._garments = {};
+  for (const k of ROWS) { garments[k] = garmentCopy(wear[k]); garments[k].__frames = SPR_FRAMES; }
+
+  /*  A place scene is the fifth thing you can draw here, and it is not a
+      garment: it stands behind a column rather than on a body, it never walks,
+      and it is never recoloured. Same editor all the same — it is the same job
+      of putting pixels down and seeing them in place, and a second panel would
+      only drift from this one. */
+  const TARGETS = ROWS.concat(["place"]);
+  const PLACE_W = 102, PLACE_H = 64;      // 102 is the widest that draws 1:1 in a column
+  garments.place = (() => {
+    const c = document.createElement("canvas");
+    c.width = PLACE_W; c.height = PLACE_H;
+    c.getContext("2d").imageSmoothingEnabled = false;
+    c.__frames = 1;
+    return c;
+  })();
+  // Start from the scene that ships, if it is there — something to alter beats
+  // a blank rectangle. A miss is the ordinary case and says nothing.
+  loadImg(ASSET_BASE + "images/places/default.png").then(img => {
+    if (!img || !host.isConnected) return;
+    garments.place.width = img.width; garments.place.height = img.height;
+    const g = garments.place.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, 0);
+    garments.place.__frames = 1;
+    if (slot === "place") { syncSize(); paint(); }
+  });
+  const isPlace = () => slot === "place";
+
+  /*  `linked` is on to begin with, and it is the difference between this being
+      usable and being four times the work: a stroke goes into every frame at
+      once, so one drawing is a finished garment that simply does not move.
+      Turn it off when you actually want to animate something. */
+  let slot = "top", frame = 0, pen = 0, onion = true, playing = true, linked = true;
+
+  const el = (tag, cls, parent) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+
+  const wrap = el("div", "sp-wrap", host);
+  const left = el("div", "sp-left", wrap);
+  const grid = el("canvas", "sp-grid", left);
+  const right = el("div", "sp-right", wrap);
+
+  // ---- which garment
+  const slotBar = el("div", "sp-row", right);
+  el("span", "sp-cap", slotBar).textContent = "garment";
+  const slotBtns = TARGETS.map(name => {
+    const b = el("button", null, slotBar);
+    b.type = "button"; b.textContent = name;
+    b.title = name === "body" ? "the figure itself, under everything"
+            : name === "place" ? "scenery, standing behind a column"
+            : "a garment, centred on the " + name + " anchor";
+    b.onclick = () => { slot = name; syncSize(); paint(); };
+    return b;
+  });
+
+  // ---- how big it is
+  const sizeBar = el("div", "sp-row", right);
+  el("span", "sp-cap", sizeBar).textContent = "size";
+  const wIn = el("input", null, sizeBar);
+  el("span", "sp-x", sizeBar).textContent = "\u00d7";
+  const hIn = el("input", null, sizeBar);
+  for (const [i, t] of [[wIn, "width of one frame, in pixels"], [hIn, "height, in pixels"]]) {
+    i.type = "number"; i.min = "1"; i.max = "256"; i.title = t; i.className = "sp-num";
+  }
+  el("span", "sp-cap", sizeBar).textContent = "frames";
+  const fIn = el("input", "sp-num", sizeBar);
+  fIn.type = "number"; fIn.min = "1"; fIn.max = "24";
+  fIn.title = "how many frames. One is a garment that does not move.";
+  const applySize = () => {
+    const cap = isPlace() ? 256 : 64;       // scenery is allowed to be a building
+    const w = Math.max(1, Math.min(cap, +wIn.value || 1));
+    const h = Math.max(1, Math.min(cap, +hIn.value || 1));
+    const n = isPlace() ? 1 : Math.max(1, Math.min(24, +fIn.value || 1));
+    garments[slot] = garmentResize(garments[slot], w, h, n);
+    frame = Math.min(frame, n - 1);
+    syncSize(); paint();
+  };
+  wIn.onchange = hIn.onchange = fIn.onchange = applySize;
+
+  // ---- what to paint with
+  /*  A few colours to hand, and a picker for everything else. Nothing here
+      means anything to the page — a pixel is the colour you paint it. */
+  const SWATCHES = ["#c9a689", "#aa8970", "#4a3b2a", "#2f3542", "#4a5568",
+                    "#5a4632", "#7a6247", "#8a2f2f", "#3a4a3a"];
+  /*  Four slots that fill themselves. A colour earns a place here by being
+      USED — picked and actually put on the canvas — because a colour you tried
+      and abandoned is not one you want back. Newest first, and a colour already
+      held moves to the front rather than taking a second slot. */
+  const RECENT = [];
+  function remember(c) {
+    if (!c || SWATCHES.includes(c)) return;
+    const i = RECENT.indexOf(c);
+    if (i !== -1) RECENT.splice(i, 1);
+    RECENT.unshift(c);
+    RECENT.length = Math.min(RECENT.length, 4);
+  }
+  const penBar = el("div", "sp-row", right);
+  el("span", "sp-cap", penBar).textContent = "paint";
+  const penBtns = SWATCHES.map((c, i) => {
+    const b = el("button", "sp-pen", penBar);
+    b.type = "button"; b.style.background = c; b.title = c;
+    b.onclick = () => { pen = i; fixed.value = c; paint(); };
+    return b;
+  });
+  const eraseBtn = el("button", "sp-pen sp-erase", penBar);
+  eraseBtn.type = "button"; eraseBtn.title = "erase";
+  eraseBtn.onclick = () => { pen = -1; paint(); };
+  const fixed = el("input", null, penBar);
+  fixed.type = "color"; fixed.value = "#8a2f2f";
+  fixed.title = "any other colour";
+  fixed.oninput = () => { pen = -2; paint(); };
+  const recentBtns = [0, 1, 2, 3].map(i => {
+    const b = el("button", "sp-pen sp-recent", penBar);
+    b.type = "button";
+    b.onclick = () => { if (RECENT[i]) { pen = -2; fixed.value = RECENT[i]; paint(); } };
+    return b;
+  });
+
+  // ---- and how it should look
+  const optBar = el("div", "sp-row", right);
+  const onionBtn = el("button", null, optBar);
+  onionBtn.type = "button"; onionBtn.textContent = "ghost";
+  onionBtn.title = "show the rest of the figure faintly underneath, to draw onto";
+  onionBtn.onclick = () => { onion = !onion; paint(); };
+
+  const linkBtn = el("button", null, optBar);
+  linkBtn.type = "button"; linkBtn.textContent = "all frames";
+  linkBtn.title = "a stroke goes into every frame at once. Turn off to animate frame by frame.";
+  linkBtn.onclick = () => { linked = !linked; paint(); };
+  const frameBar = el("span", null, optBar);
+  /*  After the frame numbers, because it is a statement about them: these are
+      the frames, and this says whether a stroke goes into all of them. Before
+      them it read as another view toggle sitting next to "ghost". */
+  optBar.appendChild(linkBtn);
+
+  // ---- the render example
+  const prevWrap = el("div", "sp-preview", right);
+  const prev = el("canvas", null, prevWrap);
+  const prev1 = el("canvas", "sp-true", prevWrap);
+
+  /*  Size sits under the preview, not above the canvas: it is a thing you
+      adjust while looking at the result, not before you start. */
+  right.appendChild(sizeBar);
+
+  /*  Who this is for. The slot half of the filename is decided by which
+      garment you are drawing, so this is the only half you choose. */
+  const nameBar = el("div", "sp-row", right);
+  el("span", "sp-cap", nameBar).textContent = "for";
+  const nameIn = el("input", null, nameBar);
+  nameIn.type = "text"; nameIn.className = "sp-name";
+  nameIn.placeholder = "mill-worker";
+  nameIn.spellcheck = false;
+  nameIn.title = "a person's uid, a trade, or \u201cdefault\u201d for everybody";
+  nameIn.oninput = () => paint();
+  const nameOut = el("span", "sp-filename", nameBar);
+
+  const outBar = el("div", "sp-row", right);
+  const playBtn = el("button", null, outBar);
+  playBtn.type = "button"; playBtn.textContent = "\u275A\u275A";
+  playBtn.title = "stop or start the walk";
+  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "\u275A\u275A" : "\u25B6"; };
+  const dl = el("button", null, outBar);
+  dl.type = "button"; dl.textContent = "download";
+  dl.title = "save this garment as the PNG the Promenade reads";
+  dl.onclick = () => {
+    garments[slot].toBlob(b => {
+      const a2 = document.createElement("a");
+      a2.href = URL.createObjectURL(b);
+      // Named for the slot, since that half of the filename is fixed. Rename
+      // the front of it for whoever wears it: mill-worker.top.png
+      a2.download = fileName();
+      a2.click();
+      setTimeout(() => URL.revokeObjectURL(a2.href), 1000);
+    });
+  };
+  const reset = el("button", null, outBar);
+  reset.type = "button"; reset.textContent = "reset";
+  reset.title = "this garment back to the built-in one";
+  reset.onclick = () => {
+    if (!confirm("Throw away this " + slot + " and start again?")) return;
+    if (isPlace()) {
+      const g = garments.place.getContext("2d");
+      g.clearRect(0, 0, garments.place.width, garments.place.height);
+    } else garments[slot] = garmentCopy(wear[slot]);
+    syncSize(); paint();
+  };
+
+  const hint = el("p", "hint sp-hint", right);
+
+  /*  The filename the page will look for. A place is named for the place; a
+      garment is named for the wearer AND the slot, because each slot is its
+      own file. Slugged, so what you type cannot produce a filename that will
+      never match. */
+  function fileName() {
+    const who = slugify(nameIn.value.trim()) || (isPlace() ? "place" : "default");
+    return isPlace() ? who + ".png" : who + "." + slot + ".png";
+  }
+
+  // ---- geometry
+  const nFrames = () => garments[slot].__frames || SPR_FRAMES;
+  const cellW = () => garments[slot].width / nFrames();
+  const cellH = () => garments[slot].height;
+  function syncSize() { wIn.value = cellW(); hIn.value = cellH(); fIn.value = nFrames(); }
+
+  /*  Where the body sits behind this garment, in the garment's own pixels.
+      Same two rules as everywhere else: centred, and standing on the bottom
+      edge. A taller garment therefore shows the body lower down, which is
+      correct — the extra room is headroom. */
+  function bodyOffset() {
+    return { x: (cellW() - SPR_W) / 2, y: cellH() - SPR_H };
+  }
+
+  // ---- drawing
+  function colourNow() {
+    if (pen === -1) return null;                    // erase
+    if (pen === -2) return fixed.value;             // the picker
+    return SWATCHES[pen];
+  }
+  function setPixel(x, y, erase) {
+    if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
+    const g = garments[slot].getContext("2d");
+    const c = colourNow();
+    // Linked: the same pixel in every frame, so one drawing is a whole garment.
+    const at = linked ? [...Array(nFrames()).keys()] : [frame];
+    for (const f of at) {
+      const sx = f * cellW() + x;
+      if (erase || !c) g.clearRect(sx, y, 1, 1);
+      else { g.fillStyle = c; g.fillRect(sx, y, 1, 1); }
+    }
+    if (!erase && c) remember(c);
+  }
+
+  let drawing = null;
+  const cellAt = e => {
+    const r = grid.getBoundingClientRect();
+    return { x: Math.floor((e.clientX - r.left) / (r.width / cellW())),
+             y: Math.floor((e.clientY - r.top) / (r.height / cellH())) };
+  };
+  grid.addEventListener("pointerdown", e => {
+    drawing = e.button === 2 || e.ctrlKey;
+    const { x, y } = cellAt(e);
+    setPixel(x, y, drawing); paint();
+    try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+  });
+  grid.addEventListener("pointermove", e => {
+    if (drawing === null) return;
+    const { x, y } = cellAt(e);
+    setPixel(x, y, drawing); paint();
+  });
+  const stop = () => { drawing = null; };
+  grid.addEventListener("pointerup", stop);
+  grid.addEventListener("pointercancel", stop);
+  grid.addEventListener("contextmenu", e => e.preventDefault());
+
+  // ---- painting
+  let tick = 0;
+  function paint() {
+    /*  Buffer zoom, sized against the largest dimension so a wide scene and a
+        tall hat both come out sensible — and generous enough that the grid
+        lines drawn into it stay fine when CSS scales the canvas up. */
+    const cw = cellW(), ch = cellH();
+    const z = Math.max(4, Math.min(24, Math.floor(620 / Math.max(cw, ch))));
+    grid.width = cw * z; grid.height = ch * z;
+
+    slotBtns.forEach((b, i) => b.classList.toggle("on", ROWS[i] === slot));
+    // Rebuilt, because the count is the garment's and changes with it.
+    if (frameBar.childElementCount !== nFrames()) {
+      frameBar.innerHTML = "";
+      for (let i = 0; i < nFrames(); i++) {
+        const b = el("button", null, frameBar);
+        b.type = "button"; b.textContent = String(i + 1);
+        b.title = "frame " + (i + 1);
+        b.dataset.frame = String(i);
+        b.onclick = () => { frame = +b.dataset.frame; paint(); };
+      }
+    }
+    [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
+    onionBtn.classList.toggle("on", onion);
+    linkBtn.classList.toggle("on", linked);
+    eraseBtn.classList.toggle("on", pen === -1);
+
+    /*  A swatch shows what the slot BECOMES this century, not the marker
+        colour stored in the file. Nobody should have to look at magenta to
+        know they are painting a coat. */
+    penBtns.forEach((b, i) => {
+      b.hidden = false;
+      b.classList.toggle("on", pen === i);
+    });
+    recentBtns.forEach((b, i) => {
+      const c = RECENT[i];
+      b.hidden = !c;
+      if (!c) return;
+      b.style.background = c;
+      b.title = c + " \u2014 used recently";
+      b.classList.toggle("on", pen === -2 && fixed.value.toLowerCase() === c.toLowerCase());
+    });
+
+    const g = grid.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, grid.width, grid.height);
+    // cols is worked out above, with the swatches — the canvas and the pens
+    // must never disagree about what a slot looks like.
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      g.fillStyle = ((x + y) & 1) ? "#1a1e17" : "#151812";
+      g.fillRect(x * z, y * z, z, z);
+    }
+    if (onion && isPlace()) {
+      /*  A figure at true size, standing on the ground line. The only thing
+          genuinely hard to judge when drawing a kirk is how big the people in
+          front of it are. */
+      const fig = dressBody(ROWS.map(k => ({ img: garments[k] })), false);
+      if (fig) {
+        g.globalAlpha = 0.75;
+        const fw = fig.__cellW, fh = fig.__cellH;
+        g.drawImage(fig, 0, 0, fw, fh, Math.round(cw * 0.12) * z, (ch - fh) * z, fw * z, fh * z);
+        g.globalAlpha = 1;
+      }
+    } else if (onion) {
+      /*  Everything EXCEPT what you are drawing. Showing only the body was no
+          use when adding a hat to someone already in a coat — you need to see
+          what the new piece has to sit with. */
+      const others = ROWS.filter(k => k !== slot).map(k => ({ img: garments[k] }));
+      const ghost = dressBody(others, false);
+      if (ghost) {
+        const gw = ghost.__cellW, gh = ghost.__cellH;
+        const gn = ghost.__frames || SPR_FRAMES;
+        g.globalAlpha = 0.3;
+        g.drawImage(ghost, (frame % gn) * gw, 0, gw, gh,
+                    Math.round((cw - gw) / 2) * z, (ch - gh) * z, gw * z, gh * z);
+        g.globalAlpha = 1;
+      }
+    }
+    g.drawImage(garments[slot], frame * cw, 0, cw, ch, 0, 0, grid.width, grid.height);
+
+    g.strokeStyle = "rgba(255,255,255,0.07)"; g.lineWidth = 1;
+    for (let i = 1; i < cw; i++) { g.beginPath(); g.moveTo(i * z + 0.5, 0); g.lineTo(i * z + 0.5, grid.height); g.stroke(); }
+    for (let i = 1; i < ch; i++) { g.beginPath(); g.moveTo(0, i * z + 0.5); g.lineTo(grid.width, i * z + 0.5); g.stroke(); }
+
+    nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
+    hint.textContent = "drag to draw \u00b7 right-click or ctrl to erase \u00b7 " +
+      slot + ", frame " + (frame + 1) + " \u00b7 " + cw + " \u00d7 " + ch +
+      " \u00b7 grows from the centre, so it stays on the body";
+    drawPreview();
+  }
+
+  /*  The render example, through the real compositor and the real palette
+      swap — so what walks here is what walks down the street. */
+  function drawPreview() {
+    const dressed = dressBody(ROWS.map(k => ({ img: garments[k], slot: k })), false);
+    if (!dressed) return;
+    if (isPlace()) return drawPlacePreview(dressed);
+    const swapped = dressed;
+    const cw = dressed.__cellW, ch = dressed.__cellH;
+    const n = dressed.__frames || SPR_FRAMES;
+    const f = playing ? Math.floor(tick / 9) % n : Math.min(frame, n - 1);
+    for (const [cv, z] of [[prev, 4], [prev1, 1]]) {
+      cv.width = cw * z; cv.height = ch * z;
+      const c = cv.getContext("2d");
+      c.imageSmoothingEnabled = false;
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.drawImage(swapped, f * cw, 0, cw, ch, 0, 0, cw * z, ch * z);
+    }
+  }
+
+  /*  Scenery in its column: sky, ground, the scene standing on the line, and
+      people in front of it. A building drawn on its own always looks right;
+      the question is whether it still reads with a crowd in front of it. */
+  function drawPlacePreview(fig) {
+    const sc = garments.place;
+    const swapped = fig;
+    const z = 2, pad = 6;
+    const w = Math.max(sc.width, 110) + pad * 2, h = Math.max(sc.height, 40) + 18;
+    for (const [cv, zz] of [[prev, z], [prev1, 1]]) {
+      cv.width = w * zz; cv.height = h * zz;
+      const c = cv.getContext("2d");
+      c.imageSmoothingEnabled = false;
+      const groundY = h - 10;
+      c.fillStyle = "#1d2c38"; c.fillRect(0, 0, cv.width, groundY * zz);
+      c.fillStyle = "#1a1f18"; c.fillRect(0, groundY * zz, cv.width, cv.height);
+      c.drawImage(sc, 0, 0, sc.width, sc.height,
+                  Math.round((w - sc.width) / 2) * zz, (groundY - sc.height) * zz,
+                  sc.width * zz, sc.height * zz);
+      const fw = swapped.__cellW || fig.__cellW, fh = swapped.__cellH || fig.__cellH;
+      const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
+      for (const dx of [w * 0.3, w * 0.5, w * 0.68]) {
+        c.drawImage(swapped, f * fw, 0, fw, fh,
+                    Math.round(dx - fw / 2) * zz, (groundY - fh) * zz, fw * zz, fh * zz);
+      }
+    }
+  }
+
+  (function loop() {
+    if (!host.isConnected) return;              // panel taken off the board
+    if (playing) { tick++; if (tick % 9 === 0) drawPreview(); }
+    host._spriteRAF = requestAnimationFrame(loop);
+  })();
+
+  syncSize();
+  paint();
 }
 
 /* ==========================================================================
@@ -9287,6 +10007,76 @@ el("quickDownload").addEventListener("click", () => {
   downloadText(state.text, name, "text/plain");
   stampExport(name);
 });
+
+/*  Clear all — back to a blank project.
+
+    Scoped to what this project HOLDS, not to how the page looks. Themes you
+    made and a tile key you pasted survive, because losing those is a separate
+    annoyance you never asked for and they say nothing about the research. The
+    dialog names both lists, so nothing goes without being announced.
+
+    Deliberately not undoable: an undo for this would have to hold a full copy
+    of everything it just deleted, which is the one thing a page storing your
+    only copy should not quietly keep. Export is the undo, which is why it sits
+    immediately to the left. */
+const CLEAR_KEYS = [
+  TEXT_KEY, GAZETTEER_KEY, PINNED_KEY, COLTINT_KEY,
+  BOARD_KEY, FOOTPRINT_KEY,
+  MAPPROJECT_KEY, MAPSTYLE_KEY, MAPOVERRIDE_KEY, MAPSOURCE_KEY,
+  STYLEURL_KEY, MEURL_KEY, MESOURCE_KEY,
+];
+
+function clearAll() {
+  const bricks = state.text.trim() ? state.text.trim().split(/\n/).filter(l => l.trim()).length : 0;
+  const places = (typeof GAZETTEER !== "undefined" && GAZETTEER) ? GAZETTEER.size : 0;
+
+  const lines = [
+    "Clear everything and start a new project?",
+    "",
+    "This removes:",
+    "  · the pile — " + bricks + " line" + (bricks === 1 ? "" : "s"),
+  ];
+  if (places) lines.push("  · " + places + " gazetteer coordinate" + (places === 1 ? "" : "s"));
+  lines.push("  · Promenade placements and column colours",
+             "  · your board layout and panel sizes",
+             "  · the map's project file, style and source",
+             "",
+             "It keeps your themes and your tile key.",
+             "");
+  /*  The one warning worth interrupting for. Everything else here is
+      recoverable by redoing a bit of arranging; an unexported pile is not
+      recoverable at all. */
+  if (bricks && !lastExport) {
+    lines.push("⚠ This pile has never been exported. There is no copy of it",
+               "  anywhere but this browser, and this cannot be undone.", "");
+  } else if (bricks && lastExport) {
+    lines.push("Last export: " + lastExport.name + " (" + ago(lastExport.at) + ").", "");
+  }
+  lines.push("This cannot be undone.");
+
+  if (!confirm(lines.join("\n"))) return;
+
+  // Stop the autosave that is about to run, or it writes the old pile back
+  // over the empty one a moment after this finishes.
+  clearTimeout(saveTimer);
+  dirty = false;
+
+  for (const k of CLEAR_KEYS) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+
+  state.text = "";
+  if (typeof GAZETTEER !== "undefined" && GAZETTEER && GAZETTEER.clear) GAZETTEER.clear();
+  if (typeof COLUMN_TINT !== "undefined" && COLUMN_TINT && COLUMN_TINT.clear) COLUMN_TINT.clear();
+  // The filter is never persisted, so the reload below is what clears it.
+  lastExport = null;
+
+  /*  The pile is gone, so nothing on the board is showing anything. Reload
+      rather than trying to reset a dozen panels in place: every panel already
+      knows how to build itself from scratch at boot, and half-resetting them
+      by hand is how a stale map or a stranded Pixi scene survives a clear. */
+  location.reload();
+}
+
+el("quickClear").addEventListener("click", clearAll);
 
 el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
 el("boardFlyoutClose").addEventListener("click", () => el("boardFlyoutWrap").classList.remove("open"));

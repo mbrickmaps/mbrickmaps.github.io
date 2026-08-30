@@ -28,7 +28,7 @@ my-research/
 ├── images/
 │   ├── scans/                  what a document brick points at
 │   ├── places/                 longforgan.png — scenery behind that column
-│   └── occupations/            mill-worker.png — worn by anyone of that trade
+│   └── wear/                   who wears what — see the Promenade
 ├── gazetteer.csv               uid,lat,lng,label,icon
 ├── project.json                an Atlas project file (map context)
 └── brick.json                  placements and column colours
@@ -128,13 +128,29 @@ A panel can hold more than one. The legend is at the top of the panel list.
 
 ## Saving
 
-The header carries the whole of it: **auto**, **Save to browser**, **Export**.
+The header carries the whole of it: **auto**, **Save to browser**, **Export**,
+**Clear all**.
 
 | | |
 |---|---|
 | **auto** | Autosave on or off. Off means off — nothing is written until you press Save, and the status line turns red saying **unsaved changes**. |
 | **Save to browser** | Writes to `localStorage`. This browser, this machine. A clear-site-data takes it. |
 | **Export** | A real `.txt` file you own. The only durable one. |
+| **Clear all** | Back to a blank project. |
+
+**Clear all** sits immediately right of Export, which is deliberate: the safe way
+out is next to the destructive one. It confirms first, listing what will go with
+live counts, and warns in the dialog if the pile has never been exported.
+
+It removes the pile, the gazetteer, Promenade placements and column colours, the
+board layout and panel sizes, and the map's project file, style and source. It
+**keeps** your themes and your tile key — losing those is a separate annoyance
+you never asked for, and neither says anything about the research. Both lists
+are named in the dialog, so nothing goes unannounced.
+
+There is no undo, by design: an undo would mean holding a full copy of
+everything just deleted, which is the last thing a page storing your only copy
+should quietly retain. Export is the undo — hence the placement.
 
 The status line spells out all three: where the pile came from, when it was last
 autosaved, and when it last left the browser as a file.
@@ -379,14 +395,19 @@ sliders and scrollbars for the wrong side.
 
 Your people, walking the ground their records put them on.
 
-Full documentation, including the sprite-sheet spec for costumes and place
-scenes: **[doc/promenade.html](doc/promenade.html)**.
+Full documentation, including the sprite-sheet spec: **[doc/promenade.html](doc/promenade.html)**.
 
 In short: a side-on scene where the horizontal axis is longitude and each place
 is a column. Drag people into columns to group them; the grouping carries into
-the grid view and is saved to `brick.json`. Art is found by filename —
-`images/places/<uid>.png` and `images/occupations/<trade>.png` — never
-configured.
+the grid view and is saved to `brick.json`.
+
+Art is found by filename, never configured. A place is `images/places/<uid>.png`,
+falling back to `images/places/default.png`.
+A person is one sheet — `images/wear/<who>.png`, where *who* is a uid, a trade,
+or `default` — four frames across and four rows down: **body, bottom, top, hat**.
+Rows resolve independently down that chain, so a sheet with only a hat drawn on
+it changes only the hat, and redrawing the body row gives that person a
+different figure with no flag or setting anywhere.
 
 ---
 
