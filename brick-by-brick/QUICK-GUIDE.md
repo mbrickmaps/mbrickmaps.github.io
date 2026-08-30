@@ -6,6 +6,12 @@ was built in.**
 You lay one fact per line. Every other panel is a view of the same wall, rising
 as you type.
 
+> **Note on this document.** Written by an AI assistant during development, and
+> not yet reviewed line by line. It describes the code as it stood when written,
+> so some of it will have drifted. Treat it as a working draft — to be rewritten
+> properly later.
+
+
 ---
 
 ## The first course
@@ -13,7 +19,7 @@ as you type.
 Five minutes. Everything after this is levelled off it.
 
 1. **Open the page.** A board of panels and an empty Pallet. For something to
-   practise on, open the Pallet's **☰** menu and press **Sample** — it loads a
+   practice on, open the Pallet's **☰** menu and press **Sample** — it loads a
    real pile, and none of it is yours, so handle it roughly.
 2. **Find The Pallet.** The panel full of text. That is the whole of your
    research; every other panel is a view of it.
@@ -119,7 +125,7 @@ ground. *Document* shows one record big enough to read the handwriting.
 *Promenade* walks your people through the places their records put them.
 
 **Your own hand** — *Filter* narrows every panel at once. *Theme* is eight
-colours. *Map Style* and *Map Editor* are the map's own look, and your own
+colors. *Map Style* and *Map Editor* are the map's own look, and your own
 additions to it.
 
 ---

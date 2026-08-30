@@ -31,6 +31,11 @@
 
 <div class="wrap">
 
+  <div class="note caution" role="note">
+    <p><strong>Note on this document.</strong> Written by an AI assistant during development, and not yet reviewed line by line. It describes the code as it stood when written, so some of it will have drifted. Treat it as a working draft — to be rewritten properly later.</p>
+  </div>
+
+
   <div class="note">
     <p>New to this? The <a href="quick-guide.html"><strong>quick guide</strong></a> covers what a brick is, what the panels do, and how to keep your work safe — in about five minutes. This page is the full detail.</p>
   </div>
@@ -60,7 +65,7 @@
 │   └── wear/                   who wears what — see the Promenade
 ├── gazetteer.csv               uid,lat,lng,label,icon
 ├── project.json                an Atlas project file (map context)
-└── brick.json                  placements and column colours</code></pre>
+└── brick.json                  placements and column colors</code></pre>
 
     <div class="field">
       <div>
@@ -87,7 +92,7 @@
 │  └────────────────────────────────────────────────────── type token
 └───────────────────────────────────────────────────────── status</code></pre>
 
-    <p class="why">A real corpus is inconsistent, and a notation whose premise is <strong>you define the symbols</strong> cannot then punish a stray column. Fields are recognised by what they look like, not where they sit.</p>
+    <p class="why">A real corpus is inconsistent, and a notation whose premise is <strong>you define the symbols</strong> cannot then punish a stray column. Fields are recognized by what they look like, not where they sit.</p>
 
     <div class="table-wrap">
       <table>
@@ -119,7 +124,7 @@
       <li><strong>🧰 flyout</strong> — every panel <em>not currently on the board</em>, grouped and searchable. Drag a card onto the board, or press <strong>+</strong> to drop it in the first free slot. The list empties as you add and refills as you remove.</li>
       <li><strong>Four panels start off the board</strong> — Promenade, Theme, Map Style and Map Editor. The default board is the working set for entering records; those four are for once you have some. A first-time reader will not find them without opening the flyout, so the <a href="quick-guide.html#adding">quick guide</a> says so explicitly.</li>
       <li><strong>Footprints</strong> are per panel, editable in the flyout, and remembered.</li>
-      <li><strong>Grow or shrink</strong> a tile by a column or row. Only the legal buttons appear, so a <strong>+</strong> never points at an occupied neighbour or past the edge.</li>
+      <li><strong>Grow or shrink</strong> a tile by a column or row. Only the legal buttons appear, so a <strong>+</strong> never points at an occupied neighbor or past the edge.</li>
       <li><strong>Swap</strong> two tiles of the same footprint by dragging one onto the other.</li>
       <li><strong>Removing</strong> a tile parks its panel in the store, so its scroll position and typed text survive a trip off the board.</li>
       <li><strong>Columns and row height</strong> are controls. Changing columns repacks with a skyline scan rather than pretending old positions still fit.</li>
@@ -159,7 +164,7 @@
 
     <h3>Clear all</h3>
     <p>It sits immediately right of Export, which is deliberate: the safe way out is next to the destructive one, already under the cursor. It confirms first, listing what will go with live counts, and warns in the dialog when the pile has never been exported.</p>
-    <p>It removes the pile, the gazetteer, Promenade placements and column colours, the board layout and panel sizes, and the map's project file, style and source. It <strong>keeps</strong> your themes and your tile key — losing those is a separate annoyance you never asked for, and neither says anything about the research. Both lists are named in the dialog, so nothing goes unannounced.</p>
+    <p>It removes the pile, the gazetteer, Promenade placements and column colors, the board layout and panel sizes, and the map's project file, style and source. It <strong>keeps</strong> your themes and your tile key — losing those is a separate annoyance you never asked for, and neither says anything about the research. Both lists are named in the dialog, so nothing goes unannounced.</p>
     <div class="note caution">
       <p>There is no undo, by design. An undo would mean holding a full copy of everything just deleted, which is the last thing a page storing your only copy should quietly retain. <strong>Export is the undo</strong> — hence the placement.</p>
     </div>
@@ -175,12 +180,12 @@
     <p><strong>Merge</strong> folds several small piles into one, marking each file's bricks with a provenance comment and skipping any brick already present verbatim — so one person recorded in two piles does not become two entities. Comments are never deduplicated, since the same <code># PEOPLE</code> heading legitimately appears in every file.</p>
 
     <div class="panel-h" id="builder"><h3>Brick Builder</h3><span class="badge w">W</span></div>
-    <p>Compose a line without typing a pipe or hunting for an emoji. Status toggle, type buttons, labelled fields that change with the type, and uid autocomplete drawn from what you have already declared.</p>
+    <p>Compose a line without typing a pipe or hunting for an emoji. Status toggle, type buttons, labeled fields that change with the type, and uid autocomplete drawn from what you have already declared.</p>
     <p class="why">It always shows the exact line it will write, and that line is <strong>parsed with the real parser before it is offered</strong> — so the builder can never emit something the parser would reject.</p>
     <p>Clicking a line in Classification loads it back for editing, and round-trips exactly, including your own arithmetic.</p>
 
     <div class="panel-h" id="classification"><h3>Classification</h3><span class="badge r">R</span></div>
-    <p>Every line as the parser sees it. Orange verified, grey dashed draft, red unparsed. Click one to load it into the Builder.</p>
+    <p>Every line as the parser sees it. Orange verified, gray dashed draft, red unparsed. Click one to load it into the Builder.</p>
 
     <div class="panel-h" id="bricks"><h3>Bricks</h3><span class="badge f">F</span><span class="badge r">R</span></div>
     <p>Every uid in the pile. Dotted means a ghost: referenced but never declared.</p>
@@ -222,7 +227,7 @@
     <p>The symbols the parser understands, generated from the parser itself.</p>
 
     <div class="panel-h" id="theme"><h3>Theme</h3><span class="badge r">R</span></div>
-    <p>Six dark themes, or your own. Eight colours drive the whole page.</p>
+    <p>Six dark themes, or your own. Eight colors drive the whole page.</p>
     <div class="table-wrap">
       <table>
         <tbody>
@@ -248,13 +253,13 @@
     <p>Every place brick that carries coordinates. Click a marker to focus that place.</p>
     <p><strong>Source dropdown</strong>, top left: <strong>My tiles</strong> or <strong>MapLibre</strong>, remembered between sessions. If your tiles do not answer it falls back and says so — a map with markers floating on nothing is worse than a borrowed basemap.</p>
     <p><strong>Coordinate readout</strong>, bottom left — zoom, then west, south, east, north, the same order <code>view.bbox</code> takes. Click it to copy <code>"center"</code>, <code>"zoom"</code> and <code>"bbox"</code> for a project file.</p>
-    <p><strong>Marker kinds</strong> are coloured by what they are: places, births, deaths, marriages. Status moved to opacity.</p>
+    <p><strong>Marker kinds</strong> are colored by what they are: places, births, deaths, marriages. Status moved to opacity.</p>
     <p class="why">A mark cannot say two things with one fill, and <strong>what is this</strong> is the question you ask before <strong>how sure are we</strong>. An event becomes a mark only when it names a place with coordinates, and borrows that place's position rather than inventing one.</p>
     <p><strong>Labels place themselves.</strong> A label set to <code>auto</code> tries eight positions in Imhof's order — upper right first, then the other corners, then the sides, then directly above and below — and takes the first that does not collide. Choosing a side opts out: it is honoured or the label is dropped, never quietly moved.</p>
-    <p><strong>Connector lines</strong> join two places when one record names both (orange, a stated fact) or when the same person is named at both (grey, inferred, so it wears the draft colour). Undirected, because the records give an association and never a direction of travel.</p>
+    <p><strong>Connector lines</strong> join two places when one record names both (orange, a stated fact) or when the same person is named at both (gray, inferred, so it wears the draft color). Undirected, because the records give an association and never a direction of travel.</p>
 
     <div class="panel-h" id="map-style"><h3>Map Style</h3><span class="badge r">R</span></div>
-    <p>Per-layer control of your basemap: show/hide, colour, line width and opacity for every layer, plus the hillshade raster. Below a divider: <strong>Hide overlaps</strong>, <strong>Label offset</strong> and <strong>Marker size</strong>.</p>
+    <p>Per-layer control of your basemap: show/hide, color, line width and opacity for every layer, plus the hillshade raster. Below a divider: <strong>Hide overlaps</strong>, <strong>Label offset</strong> and <strong>Marker size</strong>.</p>
     <p>Behind <strong>Style file…</strong>: a hosted style URL, a tile-service key, and the raw MapLibre style JSON.</p>
     <div class="note">
       <p>Write <code>{key}</code> in a style URL and the key is substituted at the moment the style is handed to the map — so the key stays in your browser and out of anything you share.</p>
@@ -274,7 +279,7 @@
 
     <div class="panel-h" id="map-editor"><h3>Map Editor</h3><span class="badge r">R</span></div>
     <p>A blank map to trace on, kept deliberately separate from the Viewer: no bricks, no markers, no place labels, so nothing you did not put there can be clicked or read by mistake.</p>
-    <p>Paste a <strong>basemap style URL</strong> to trace against. Tools: point, line, shape, arrow, curved arrow, note. Select an item to restyle it; drag its handles to reshape it. <strong>Capture view</strong> writes the current centre and zoom into the file; <strong>Download</strong> saves it.</p>
+    <p>Paste a <strong>basemap style URL</strong> to trace against. Tools: point, line, shape, arrow, curved arrow, note. Select an item to restyle it; drag its handles to reshape it. <strong>Capture view</strong> writes the current center and zoom into the file; <strong>Download</strong> saves it.</p>
     <p class="why">It writes the same format the Viewer reads, so the preview is the real renderer drawing the real file — nothing can look right here and wrong when loaded.</p>
   </section>
 
@@ -288,7 +293,7 @@
   render(model, el) { /* draw into el */ },
 });</code></pre>
 
-    <p>Registering creates a panel with a footprint; it appears as a card in the flyout and you place it on the board. A slot gets the model and an empty element — no access to the raw text, the editor, or its neighbours — so a broken renderer can only break its own tile.</p>
+    <p>Registering creates a panel with a footprint; it appears as a card in the flyout and you place it on the board. A slot gets the model and an empty element — no access to the raw text, the editor, or its neighbors — so a broken renderer can only break its own tile.</p>
     <p><code>Brick.model</code> is the current model. <code>Brick.place("network")</code> drops one onto the board from the console. A slot with no <code>render</code> reports the shape of the data it <em>would</em> receive, which is the fastest way to see a new record type flowing through.</p>
     <div class="note">
       <p><strong>A renderer owns its element.</strong> It is called again on every model change, so it must update what is there rather than assume an empty element — a map or a canvas cannot be rebuilt sixty times while you type.</p>
@@ -315,7 +320,7 @@
           <tr><td class="k">mapsource:v1 · mapstyle:v1 · mapstyle-raw:v1</td><td>basemap choice, layer settings, hand-edited style</td></tr>
           <tr><td class="k">mapproject:v1 · styleurl:v1 · tilekey:v1</td><td>project file, hosted style, tile key</td></tr>
           <tr><td class="k">meurl:v1 · mesource:v1</td><td>the Map Editor's tracing basemap</td></tr>
-          <tr><td class="k">promenade-pins:v1 · columntint:v1</td><td>placements and column colours</td></tr>
+          <tr><td class="k">promenade-pins:v1 · columntint:v1</td><td>placements and column colors</td></tr>
         </tbody>
       </table>
     </div>

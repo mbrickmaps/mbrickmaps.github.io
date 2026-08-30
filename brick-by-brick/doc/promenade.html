@@ -31,6 +31,11 @@
 
 <div class="wrap">
 
+  <div class="note caution" role="note">
+    <p><strong>Note on this document.</strong> Written by an AI assistant during development, and not yet reviewed line by line. It describes the code as it stood when written, so some of it will have drifted. Treat it as a working draft — to be rewritten properly later.</p>
+  </div>
+
+
   <nav class="toc" aria-label="Contents">
     <a href="#what">What it shows</a>
     <a href="#views">Street &amp; grid</a>
@@ -83,7 +88,7 @@
     <p><strong>Columns grow.</strong> A place holding ten people is wider than one holding two, and everything east of it shifts along. Roughly 110px for one or two, 160 for five, 270 for ten.</p>
 
     <h3>The pen</h3>
-    <p>People with no recorded place wait in a dotted box centred over the street. It doesn't scroll — it stays put while the street slides past behind it, so it is the same distance from every column you might want to drop someone into.</p>
+    <p>People with no recorded place wait in a dotted box centered over the street. It doesn't scroll — it stays put while the street slides past behind it, so it is the same distance from every column you might want to drop someone into.</p>
     <p>They stand about in a loose huddle rather than a grid, because a grid would say these people have an order and nothing is known about them yet. Drag someone <strong>back into the pen</strong> to say you no longer know where they were.</p>
 
     <div class="note caution">
@@ -122,9 +127,9 @@
 
   <section id="saving">
     <h2>Saving</h2>
-    <p class="lede">Placements and column colours persist in the browser, and travel as a file.</p>
+    <p class="lede">Placements and column colors persist in the browser, and travel as a file.</p>
 
-    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it. So does <strong>Clear all</strong> in the page header, which names placements and column colours among the things it removes.</p>
+    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it. So does <strong>Clear all</strong> in the page header, which names placements and column colors among the things it removes.</p>
 
     <p>For anything more durable, <strong>save</strong> hands you a <code>brick.json</code>:</p>
 
@@ -137,12 +142,12 @@
                                        "alpha": 0.6 }], …] }
 }</code></pre>
 
-    <p>Drop it in your research folder beside <code>bricks/</code> and it is read automatically whenever you open that folder — the merge log reports how many placements and colours it found. <strong>load</strong> takes one from anywhere.</p>
+    <p>Drop it in your research folder beside <code>bricks/</code> and it is read automatically whenever you open that folder — the merge log reports how many placements and colors it found. <strong>load</strong> takes one from anywhere.</p>
 
     <p>It is deliberately not your bricks. A brick is what a document says; this is how you have chosen to look at them. Delete it and you lose an arrangement, never a record.</p>
 
-    <h3>Colouring a column</h3>
-    <p>Click a signpost and a bar appears naming that place, with two gradient stops, an opacity slider and a <code>×</code>. The gradient fills that column's <strong>sky</strong> and stops at the horizon — the ground is one continuous plane that everybody stands on, and cutting it into coloured stretches would make neighbours look like they were standing on different surfaces.</p>
+    <h3>Coloring a column</h3>
+    <p>Click a signpost and a bar appears naming that place, with two gradient stops, an opacity slider and a <code>×</code>. The gradient fills that column's <strong>sky</strong> and stops at the horizon — the ground is one continuous plane that everybody stands on, and cutting it into colored stretches would make neighbors look like they were standing on different surfaces.</p>
   </section>
 
   <section id="assets">
@@ -169,7 +174,7 @@
     <p>Two folders rather than one because the names would collide otherwise: a parish called Mason and a mason are different pictures.</p>
 
     <h3>Place scenes</h3>
-    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centred in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
+    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centered in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
     <p>A place with no picture of its own falls back to <code>images/places/default.png</code> — a low wall and a tree, muted so the people in front of it still read. It is deliberately generic: it says "somewhere" without claiming to be anywhere.</p>
     <p>Delete that file and places without art show <strong>nothing at all</strong>: no frame, no placeholder, no gap. That is a perfectly good way to run it — a bare street reads as "no scenery yet" rather than as fifty identical cottages, and you may prefer it.</p>
 
@@ -198,7 +203,7 @@ mill-worker-96x96.png     the same thing — a trailing -WxH is
 george-isles.png          him and nobody else
 default.png               everyone else</code></pre>
 
-    <p>Labelling a sheet with its own size is worth doing and costs nothing: the first thing you need when you reopen one is what to set the canvas to. The page strips a trailing <code>-WxH</code> before matching, so it never changes who the file is for.</p>
+    <p>Labeling a sheet with its own size is worth doing and costs nothing: the first thing you need when you reopen one is what to set the canvas to. The page strips a trailing <code>-WxH</code> before matching, so it never changes who the file is for.</p>
 
     <div class="note">
       <p><strong>Rows are independent.</strong> Leave a row transparent and it falls through to the next sheet in the chain — the person's, then their trade's, then <code>default</code>, then the built-in. A sheet with only a hat drawn on it changes <em>only</em> the hat, and the wearer keeps their trade's coat.</p>
@@ -209,10 +214,10 @@ default.png               everyone else</code></pre>
 
     <div class="note">
       <p><strong>The grid comes from the image, and bigger means bigger.</strong> Four frames across and four rows down, always — so a 96 × 96 sheet is 24 × 24 cells and a 160 × 128 sheet is 40 × 32. A larger cell is <em>not</em> scaled back down: the scene's cell grows to the largest thing worn and the garment overhangs, which is what makes a greatcoat look like a greatcoat rather than a coat at higher resolution.</p>
-      <p>Everything registers the only two ways that survive a change of size: <strong>centred horizontally</strong>, and <strong>standing on the ground line</strong>. People in oversized clothes and people in ordinary ones share a street quite happily — the cell is worked out per person.</p>
+      <p>Everything registers the only two ways that survive a change of size: <strong>centered horizontally</strong>, and <strong>standing on the ground line</strong>. People in oversized clothes and people in ordinary ones share a street quite happily — the cell is worked out per person.</p>
     </div>
 
-    <h3>How a trade is recognised</h3>
+    <h3>How a trade is recognized</h3>
     <p>The <code>trades</code> half of the table is keyed on the trade as slugged from the <strong>first clause of the detail field</strong>:</p>
 
     <div class="table-wrap">
@@ -247,24 +252,24 @@ default.png               everyone else</code></pre>
       </div>
     </div>
 
-    <h3>Key colours</h3>
-    <p>Not colours so much as <strong>slots</strong>. When a garment is loaded, every pixel is checked once: an <em>exact</em> match on one of these three is repainted in that wearer's colour, and everything else passes through as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
+    <h3>Key colors</h3>
+    <p>Not colors so much as <strong>slots</strong>. When a garment is loaded, every pixel is checked once: an <em>exact</em> match on one of these three is repainted in that wearer's color, and everything else passes through as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
 
-    <p>This is what lets <em>one</em> garment serve every century. Paint the parts that should age in key colours; paint the parts that identify the trade in real colours, and they survive every recolouring.</p>
+    <p>This is what lets <em>one</em> garment serve every century. Paint the parts that should age in key colors; paint the parts that identify the trade in real colors, and they survive every recoloring.</p>
 
     <div class="keys">
-      <div class="key-row"><span class="chip" style="background:#ff00ff"></span><span class="hex">#ff00ff</span><span class="what">Coat — takes the era colour</span></div>
+      <div class="key-row"><span class="chip" style="background:#ff00ff"></span><span class="hex">#ff00ff</span><span class="what">Coat — takes the era color</span></div>
       <div class="key-row"><span class="chip" style="background:#00ffff"></span><span class="hex">#00ffff</span><span class="what">Legs and arms — takes the era trim</span></div>
       <div class="key-row"><span class="chip" style="background:#ffff00"></span><span class="hex">#ffff00</span><span class="what">Hat — removed altogether after 1970</span></div>
     </div>
 
-    <p>Keep the keys in a garment and it still ages: it goes through the same recolouring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
+    <p>Keep the keys in a garment and it still ages: it goes through the same recoloring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
 
-    <p>Paint a part in a fixed colour instead and it stays that colour for everyone — which is exactly what you want for the thing that identifies the trade.</p>
+    <p>Paint a part in a fixed color instead and it stays that color for everyone — which is exactly what you want for the thing that identifies the trade.</p>
 
     <div class="note">
       <p><strong>Start from the default itself.</strong>
-        <a href="../images/wear/default.png" download>images/wear/default.png</a> is not a copy of the default figure kept beside the docs — it <em>is</em> the default, the file the page actually loads. Body, bottom, top and hat, key colours already in place. Copy it to <code>images/wear/&lt;who&gt;.png</code> and edit; clearing a row hands that row back to whatever is behind it.</p>
+        <a href="../images/wear/default.png" download>images/wear/default.png</a> is not a copy of the default figure kept beside the docs — it <em>is</em> the default, the file the page actually loads. Body, bottom, top and hat, key colors already in place. Copy it to <code>images/wear/&lt;who&gt;.png</code> and edit; clearing a row hands that row back to whatever is behind it.</p>
       <p>They are ordinary PNGs in the repository. Open one, draw, save. Nothing regenerates them and nothing overwrites them.</p>
       <p>Delete them and nothing breaks: the same four rows are drawn in code as a last resort, so a copy with no art still has everybody dressed. There is no "install the art" step.</p>
       <p>Delete it and nothing breaks: the same four rows are generated in code as a last resort, so a page opened from <code>file://</code> or a copy with no art still has everybody dressed. There is no "install the art" step.</p>
@@ -311,11 +316,11 @@ default.png               everyone else</code></pre>
       <table>
         <thead><tr><th scope="col">Control</th><th scope="col">Where</th><th scope="col">Does</th></tr></thead>
         <tbody>
-          <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world, not the camera — spacing, figures and lettering grow together. Holds the centre of your view across a step.</td></tr>
+          <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world, not the camera — spacing, figures and lettering grow together. Holds the center of your view across a step.</td></tr>
           <tr><td class="k">street / grid</td><td>Top right</td><td>Switch arrangement. Placements carry across.</td></tr>
           <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. Starts on its own after 30 seconds untouched; any interaction stops it and restarts the wait.</td></tr>
           <tr><td class="k">sort</td><td>Top right, grid only</td><td>west→east, earliest first, or A→Z. Reorders <em>within</em> groups.</td></tr>
-          <tr><td class="k">colour bar</td><td>Top left, when a place is selected</td><td>Two gradient stops, opacity, and clear.</td></tr>
+          <tr><td class="k">color bar</td><td>Top left, when a place is selected</td><td>Two gradient stops, opacity, and clear.</td></tr>
           <tr><td class="k">save / load</td><td>Bottom right</td><td><code>brick.json</code> out and in.</td></tr>
           <tr><td class="k">drag</td><td>The ground</td><td>Pan the street. Wheel works too.</td></tr>
           <tr><td class="k">drag</td><td>A figure</td><td>Pick up, drop into a column, or return to the pen.</td></tr>

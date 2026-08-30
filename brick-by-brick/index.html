@@ -22,7 +22,7 @@
     --draft: #7a8a99;       /* the '-' status, used everywhere a brick is drawn */
     --ghost: #b06a00;       /* referenced but never declared */
     --bad: #f44336;
-    /*  The "on" washes, mixed from the colour they belong to rather than
+    /*  The "on" washes, mixed from the color they belong to rather than
         hand-picked. One less thing for a theme to get wrong: change --accent2
         and its wash follows, in any theme, light or dark. */
     --tint: color-mix(in srgb, var(--accent2) 14%, var(--panel));
@@ -99,7 +99,7 @@
   }
   .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
-  /* Raise a tile while its label is the thing being read, so a neighbouring
+  /* Raise a tile while its label is the thing being read, so a neighboring
      tile's background cannot paint over the overhanging cartouche. */
   .board-tile:hover { z-index: 3; }
   /*  Scrolling belongs to the BODY, not the panel. With overflow:auto on the
@@ -135,7 +135,7 @@
   }
 
   /* Grow/shrink a placed tile by a column or row. Only the legal buttons are
-     shown — a "+" never appears toward an occupied neighbour or past the edge. */
+     shown — a "+" never appears toward an occupied neighbor or past the edge. */
   .tile-resize { position: absolute; display: flex; gap: 2px; z-index: 4; opacity: 0; transition: opacity 0.15s; }
   .board-tile:hover .tile-resize { opacity: 1; }
   .tile-resize button {
@@ -146,16 +146,16 @@
   .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
   .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
   .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
-  /*  Sits on the top-right corner rather than in the header row, centred on
-      the corner arc's own centre of curvature — which is (radius, radius) in
+  /*  Sits on the top-right corner rather than in the header row, centered on
+      the corner arc's own center of curvature — which is (radius, radius) in
       from the corner, so the circle is offset half its width back from that
       point. Derived from the variables, so changing the panel radius keeps it
-      centred without re-tuning any numbers. */
+      centered without re-tuning any numbers. */
   .tile-remove {
     position: absolute; z-index: 3;
     /* Less the border: absolute offsets are measured from the PADDING edge,
        which is inside the border, while the corner arc lives on the border
-       box — without this the circle sits 1px off centre in both axes. */
+       box — without this the circle sits 1px off center in both axes. */
     top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
     right: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
     width: var(--close-size); height: var(--close-size); padding: 0;
@@ -256,7 +256,7 @@
     cursor: crosshair; touch-action: none;
     /*  The buffer stays 24x24 sprite pixels; only the display scales. Square
         is not negotiable — a stretched pixel is a lie about the drawing. */
-    /*  The buffer is sized per garment, and a garment is not square — a hat is
+    /*  The buffer is sized per layer, and a layer is not square — a hat is
         wide and shallow. Let the element take the buffer's own proportions and
         only cap the width, or a brim comes out stretched. */
     max-width: 100%; height: auto;
@@ -272,14 +272,14 @@
   .sp-cap + * ~ .sp-cap { min-width: 0; margin-left: 4px; }
   .sp-row button { font-size: 0.68rem; padding: 2px 7px; }
   .sp-row button.on { border-color: var(--accent2); color: var(--accent2); }
-  /*  A swatch is the colour it draws — a label would only repeat what the
+  /*  A swatch is the color it draws — a label would only repeat what the
       square already says, and there is no room for one. */
   .sp-pen {
     width: 20px; height: 20px; padding: 0; border-radius: 3px;
     border: 1px solid var(--border);
   }
   .sp-pen.on { outline: 2px solid var(--accent2); outline-offset: 1px; }
-  /*  Recents are dashed, so a colour you mixed reads as yours rather than as
+  /*  Recents are dashed, so a color you mixed reads as yours rather than as
       another fixed swatch. */
   .sp-recent { border-style: dashed; }
   .sp-recent[hidden] { display: none; }
@@ -294,10 +294,10 @@
     width: 22px; height: 22px; padding: 0; border: 1px solid var(--border);
     border-radius: 3px; background: none; cursor: pointer;
   }
-  /*  The period row sets what a century's colours ARE; the paint row is what
+  /*  The period row sets what a century's colors ARE; the paint row is what
       you draw with. They showed the same browns as identical squares, which
       made two unrelated controls look like one. Pens are square and solid;
-      period colours are round and sunk into a labelled strip. */
+      period colors are round and sunk into a labeled strip. */
   .sp-era { display: flex; align-items: center; gap: 4px; }
   .sp-era input[type="color"] {
     width: 18px; height: 18px; border-radius: 50%;
@@ -309,6 +309,8 @@
   .sp-row select { font-size: 0.68rem; padding: 1px 4px; }
   /*  Narrow enough that size and frames share a line — they are read together
       and wrapping them apart made two controls look like two subjects. */
+  .sp-bg { display: flex; align-items: center; gap: 3px; }
+  .sp-bg input[type="color"] { width: 17px; height: 17px; border-radius: 3px; }
   .sp-num { width: 38px; font-size: 0.68rem; padding: 1px 3px; }
   .sp-x { font-size: 0.62rem; color: var(--muted); margin: 0 -1px; }
   .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
@@ -324,7 +326,11 @@
   .sp-preview {
     display: flex; gap: 10px; align-items: flex-end;
     padding: 8px; border: 1px dashed var(--border); border-radius: 4px;
-    background: linear-gradient(180deg, #1d2c38 0%, #1d2c38 72%, #1a1f18 72%);
+    /*  Set from the two swatches below it — a figure reads differently against
+        a night sky and a bright one, and which one you are drawing for is your
+        business, not a constant in a stylesheet. */
+    background: linear-gradient(180deg, var(--sp-sky) 0%, var(--sp-sky) 72%,
+                                var(--sp-ground) 72%);
   }
   .sp-preview canvas { display: block; image-rendering: pixelated; }
   .sp-true { align-self: flex-end; }
@@ -483,8 +489,8 @@
   .ents { display: flex; flex-wrap: wrap; gap: 5px; }
   .ent { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 3px;
          border: 1px solid var(--accent); color: var(--accent); background: var(--field); white-space: nowrap; }
-  /* Border STYLE carries the state as well as colour, so it survives greyscale
-     and colour-blind viewing. */
+  /* Border STYLE carries the state as well as color, so it survives greyscale
+     and color-blind viewing. */
   .ent.draft { border-color: var(--draft); color: var(--draft); border-style: dashed; }
   .ent.ghost { border-color: var(--ghost); color: var(--ghost); border-style: dotted; }
   .ent .n { opacity: 0.45; margin-left: 5px; }
@@ -605,7 +611,7 @@
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
   }
   /* Left margin matches .tl-name + its gap so the axis starts where the tracks
-     do; without it every tick sat left of the marks it labelled. */
+     do; without it every tick sat left of the marks it labeled. */
   .tl-scale {
     position: relative; height: 11px; flex-shrink: 0;
     border-bottom: 1px solid var(--border); margin: 0 0 3px 84px;
@@ -745,14 +751,14 @@
     box-shadow: 0 0 0 1px rgba(0,0,0,0.5); cursor: pointer; position: relative;
     /* Fill is the kind, so status has to be carried by something else. Weight
        is the natural second channel: a draft mark is simply fainter, which
-       survives greyscale and colour-blind viewing the way a second hue does
+       survives greyscale and color-blind viewing the way a second hue does
        not. */
     opacity: 0.62;
   }
   .map-marker.verified { opacity: 1; }
   /*  An icon marker drops the dot's own shape entirely and draws the glyph, so
       the emoji is the mark rather than sitting on top of a circle. Status can
-      no longer be read from fill, so a coloured ring carries it instead. */
+      no longer be read from fill, so a colored ring carries it instead. */
   .map-marker.as-icon {
     width: auto; height: auto; background: none; border: none; box-shadow: none;
     /* A glyph reads smaller than a filled disc of the same measure, so it is
@@ -763,14 +769,14 @@
     transform: translateY(-2px);
   }
   .map-marker.as-icon::before { content: attr(data-glyph); }
-  /* An emoji has its own colours, so the kind's colour rings it instead. */
+  /* An emoji has its own colors, so the kind's color rings it instead. */
   .map-marker.as-icon.verified { outline: 2px solid var(--fill, var(--accent)); outline-offset: 2px; border-radius: 50%; }
   .map-marker-label {
     position: absolute; font-size: 10px; line-height: 1.2; white-space: nowrap;
     color: #cfd6dc; text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317; pointer-events: none;
   }
-  /*  The eight compass positions, plus hidden. Cardinals centre on the dot;
-      the diagonals are offset on both axes and, crucially, are NOT centred —
+  /*  The eight compass positions, plus hidden. Cardinals center on the dot;
+      the diagonals are offset on both axes and, crucially, are NOT centered —
       a corner label reads outward from the dot, so it is anchored by the
       corner nearest the mark rather than by its middle. */
   /*  Every offset is derived from one number, --lbl, so the whole sheet's
@@ -779,7 +785,7 @@
       a side label needs a touch more room than a stacked one, a corner label
       needs a touch less because it clears the mark diagonally, and an emoji
       mark is bigger than a dot so everything steps out around it. */
-  /*  --lbl is the gap from the EDGE of the mark, not from its centre, so
+  /*  --lbl is the gap from the EDGE of the mark, not from its center, so
       growing the marker pushes its name out with it and the spacing you set
       stays the spacing you see. --r is just the mark's radius, named once. */
   .map-shell { --mk: 11px; --lbl: 8px; --r: calc(var(--mk) / 2); }
@@ -805,21 +811,21 @@
   .map-marker-label.suppressed { display: none; }
   /*  Two places named by the same record, or by the same person, drawn as a
       line between them. Dotted on purpose: this is inferred from the records,
-      not a surveyed route — nobody said anyone travelled it. Under the
+      not a surveyed route — nobody said anyone traveled it. Under the
       markers, since the places are the figure and the link is the relation. */
   .map-links {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 2; pointer-events: none; overflow: visible;
   }
-  /*  A record names both places outright, so it takes the verified colour the
+  /*  A record names both places outright, so it takes the verified color the
       rest of the page uses for a stated fact. Drawn with a dark casing under
       it: a hairline over a mottled basemap disappears wherever the land
       happens to be light, and a line you can only see half of is worse than
       no line. The casing makes it legible over anything. */
   .map-link { stroke: var(--accent); stroke-dasharray: 5 3; opacity: 0.95; }
   /* Nobody stated this one — it is inferred through a shared person. So it
-     takes --draft, the same grey every unverified thing on this page wears,
-     rather than introducing a colour that means nothing anywhere else. */
+     takes --draft, the same gray every unverified thing on this page wears,
+     rather than introducing a color that means nothing anywhere else. */
   .map-link.via { stroke: var(--draft); stroke-dasharray: 2 3.5; opacity: 0.8; }
   .map-link-case { stroke: #05080b; opacity: 0.55; }
   #viz-map .maplibregl-marker { z-index: 3; }
@@ -846,7 +852,7 @@
     border-radius: 4px; padding: 2px 4px; cursor: pointer; max-width: 130px;
   }
   .map-source:focus { outline: none; border-color: var(--accent2); }
-  /* Greyed, not hidden: something is outranking it, and that should be visible. */
+  /* Grayed, not hidden: something is outranking it, and that should be visible. */
   .map-source:disabled { opacity: 0.4; cursor: default; }
 
   /* ---------- map editor ---------- */
@@ -963,7 +969,7 @@
   .ms-pick { width: 100%; margin-bottom: 6px; font-size: 0.66rem; }
   .ms-pick[hidden] { display: none; }
   /* No :focus rule — the page already has one for every textarea, and a second
-     one here in a different colour is exactly the mismatch worth avoiding. */
+     one here in a different color is exactly the mismatch worth avoiding. */
   /*  Zoom and extent, in the order a project file wants them. Bottom-left,
       out of the way, and monospaced so the digits do not jitter as you pan. */
   .map-where {
@@ -1031,7 +1037,7 @@
   }
   .pr-sort[hidden] { display: none; }
   /* Appears only when a place is selected, so it never asks you to guess
-     what it would colour. */
+     what it would color. */
   .pr-tint {
     position: absolute; left: 8px; top: 6px; z-index: 3;
     display: flex; align-items: center; gap: 5px;
@@ -1321,7 +1327,7 @@
   <div class="me-list" data-el="list"></div>
   <div class="me-style" data-el="style" hidden></div>
   <div class="row ms-bar">
-    <button data-act="view" title="store the map's current centre and zoom in the file">Capture view</button>
+    <button data-act="view" title="store the map's current center and zoom in the file">Capture view</button>
     <button data-act="download" title="save this project file">Download</button>
     <button data-act="wipe" title="throw the whole project file away">Clear</button>
   </div>
@@ -1332,7 +1338,7 @@
   <div class="ms-rows th-rows" data-el="rows"></div>
   <div class="row ms-bar">
     <input type="text" data-el="name" placeholder="save as…" spellcheck="false">
-    <button data-act="save" title="keep these colours under a name">Save</button>
+    <button data-act="save" title="keep these colors under a name">Save</button>
     <button data-act="reset" title="back to Night, the theme this page ships with">Reset</button>
   </div>
   <p class="hint" data-el="msg"></p>
@@ -1340,11 +1346,11 @@
 
 <template id="tpl-mapstyle">
   <div class="ms-rows" data-el="rows"></div>
-  <!-- Outside the fold: it explains why the controls above are greyed, so it
+  <!-- Outside the fold: it explains why the controls above are grayed, so it
        has to be visible when the style file editor is closed. -->
   <p class="hint" data-el="msg"></p>
   <div class="row ms-bar">
-    <button data-act="reset" title="back to the colours this page ships with">Reset</button>
+    <button data-act="reset" title="back to the colors this page ships with">Reset</button>
     <button data-act="edit" title="edit the style file these settings produce">Style file&hellip;</button>
     <button data-act="proj" title="an Atlas project file — context drawn over the basemap">Project&hellip;</button>
   </div>
@@ -1436,7 +1442,7 @@ const RE_ALIAS = /<([^<>]*)>/g;
 
 /*  A coordinate pair, as your earlier spec wrote it: "56.463, -2.977".
 
-    Recognised by shape like everything else. It cannot be confused with a
+    Recognized by shape like everything else. It cannot be confused with a
     linkage field (no '@'), a date (no comma) or a source (no dot-slash or
     extension), so it needs no keyword. Latitude first, as every geographic
     convention outside of a few APIs has it. */
@@ -1452,7 +1458,7 @@ function readCoords(field) {   // "56.463, -2.977" -> {lat, lng}
 }
 
 /*  A source reference: the actual scan, photo or page a document brick stands
-    for. Recognised by shape like everything else — a URL, a path, or a filename
+    for. Recognized by shape like everything else — a URL, a path, or a filename
     with an image/pdf extension — so it can sit in any field position without a
     keyword. Deliberately tight: '377/4/1' (a census reference) must NOT look
     like a path, so a bare slash is not enough. */
@@ -1985,6 +1991,7 @@ const MESOURCE_KEY = "brick-by-brick:mesource:v1";        // what the editor tra
 const MEURL_KEY = "brick-by-brick:meurl:v1";              // a style URL pasted into the editor
 const COLTINT_KEY = "brick-by-brick:columntint:v1";       // per-place column gradients
 const PINNED_KEY = "brick-by-brick:promenade-pins:v1";    // who you put in which column
+const GROUPS_KEY = "brick-by-brick:promenade-groups:v1";  // columns you invented
 const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
 
@@ -2128,7 +2135,7 @@ function definePanel(cfg) {
    Registering creates a panel with a footprint. It appears in the flyout list
    and you drag it onto the board wherever you want it. A slot receives the
    model and an empty element — no access to the raw text, the editor, or its
-   neighbours — so a broken renderer can only break its own tile.
+   neighbors — so a broken renderer can only break its own tile.
    -------------------------------------------------------------------------- */
 const Brick = {
   viz: {
@@ -2197,7 +2204,7 @@ definePanel({ role: "write", id: "builder", title: "Brick Builder", tpl: "tpl-bu
   render(body) { renderBuilder(body); } });
 
 definePanel({ role: "read", id: "classification", title: "Classification", tpl: "tpl-classification", w: 1, h: 2,
-  help: "Every line as the parser sees it. Orange verified, grey dashed draft, red unparsed.",
+  help: "Every line as the parser sees it. Orange verified, gray dashed draft, red unparsed.",
   render(body) {
     renderClassification(body.querySelector('[data-el="lines"]'));
     noteFiltered(body.querySelector('[data-el="note"]'));
@@ -2228,11 +2235,11 @@ definePanel({ role: "read", id: "mapeditor", title: "Map Editor", tpl: "tpl-mape
   render(body) { renderMapEditor(body); } });
 
 definePanel({ role: "read", id: "theme", title: "Theme", tpl: "tpl-theme", w: 1, h: 2,
-  help: "Four themes, or your own. Eight colours drive the whole page; the basemap keeps its own, in Map Style.",
+  help: "Four themes, or your own. Eight colors drive the whole page; the basemap keeps its own, in Map Style.",
   render(body) { renderTheme(body); } });
 
 /*  Badged read: it changes how the map is drawn and nothing about the pile.
-    A brick means the same thing whatever colour the land is. */
+    A brick means the same thing whatever color the land is. */
 definePanel({ role: "read", id: "mapstyle", title: "Map Style", tpl: "tpl-mapstyle", w: 2, h: 2,
   group: "Visualizations",
   help: "A MapLibre style file. While one is applied it overrides the map's source dropdown; clear it to hand control back.",
@@ -2278,7 +2285,7 @@ Brick.viz.register("map", {
   roles: ["read", "filter"],   // draws the places, and a click focuses one
   description: "Every place brick that carries coordinates. Click a marker to focus it. " +
     "A line joins two places when one record names both (orange), or when the same person " +
-    "is named at both (grey — inferred, so it is drawn in the draft colour).",
+    "is named at both (gray — inferred, so it is drawn in the draft color).",
   render: (model, el) => renderMap(model, el),
 });
 
@@ -2294,7 +2301,7 @@ Brick.viz.register("map", {
 
    1. The axis is geography, not time. A person exists in one spot and their
       clothes carry the period instead. Time as the axis would make a queue of
-      strangers; geography makes neighbours, and neighbours are what parish
+      strangers; geography makes neighbors, and neighbors are what parish
       records are actually about.
 
    2. Nobody is invented. A person with no place named in any record does not
@@ -2359,27 +2366,27 @@ const PIXI_JS = "https://unpkg.com/pixi.js@7.4.2/dist/pixi.min.js";
 const SPR_W = 24, SPR_H = 24, SPR_FRAMES = 4;
 const BODY_X = 4;      // the body sits inset by this much, leaving prop room both sides
 
-/*  One figure, recoloured.
+/*  One figure, recolored.
 
     You draw a single 64×24 strip — four frames of one walk cycle — and paint
-    the swappable parts in flat key colours. Everything else passes through
+    the swappable parts in flat key colors. Everything else passes through
     untouched, so faces, boots, whatever you like stay exactly as drawn.
 
         magenta #ff00ff  →  coat
         cyan    #00ffff  →  legs and arms
         yellow  #ffff00  →  hat
 
-    Each era, and then each person, gets that strip recoloured into their own
+    Each era, and then each person, gets that strip recolored into their own
     texture. It is the old palette-swap trick, and it means one drawing dresses
     a whole parish. */
-/*  Garments are drawn in the colours you drew them in.
+/*  Layers are drawn in the colors you drew them in.
 
-    There was a palette-swap here once: three marker colours, a palette per
-    century, and a figure recoloured to suit its dates. It let one drawing
+    There was a palette-swap here once: three marker colors, a palette per
+    century, and a figure recolored to suit its dates. It let one drawing
     serve five centuries, and it cost more in confusion than it ever returned —
     every question about clothing turned into a question about magenta.
 
-    So: a pixel is the colour you painted it. If you want a Georgian coat and a
+    So: a pixel is the color you painted it. If you want a Georgian coat and a
     Victorian one, draw two coats and name them for who wears them. */
 
 function seedOf(str) {
@@ -2388,7 +2395,7 @@ function seedOf(str) {
   return h / 1000;
 }
 
-/*  Repaint the key colours. Cached on the palette itself, because a parish of
+/*  Repaint the key colors. Cached on the palette itself, because a parish of
     sixty people is sixty little 64×24 canvases otherwise, redrawn on every
     resize and every sort. */
 const sheetCache = new Map();
@@ -2396,7 +2403,7 @@ const sheetCache = new Map();
 
     A figure is four rasters stacked — body, bottom, top, hat — all the same
     size and all in the same space. The bottom edge of that space is the ground
-    the person stands on; the centre line is the person. You draw each element
+    the person stands on; the center line is the person. You draw each element
     where it actually goes, and the layers simply lie on top of one another.
 
     Which is why there are no anchors and nothing to configure: a taller cell
@@ -2447,7 +2454,7 @@ function bodySpaceSheet(draw) {
 }
 
 /*  Trousers, not painted legs — a pixel proud of the limb inside, with a seat
-    joining them, or it reads as bare skin in a different colour. */
+    joining them, or it reads as bare skin in a different color. */
 function makeBottomSheet() {
   const K = "#4a5568";                       // trousers
   return bodySpaceSheet((g, x, s) => {
@@ -2483,6 +2490,73 @@ function makeHatSheet() {
   });
 }
 
+/*  A SHIFT OF TINT, so a parish is not one figure repeated.
+
+    Twenty mill workers in the same drawn coat should read as twenty people,
+    not as one person printed twenty times — but they must still read as mill
+    workers, so the shift has to be small: a few degrees of hue and a little
+    lightness, never enough to turn a brown coat blue.
+
+    Seeded from the uid, so somebody is the same shade in every render, this
+    session and the next. Bucketed into a handful of variants rather than one
+    per person, because each distinct tint is another GPU texture and a parish
+    of three hundred does not need three hundred of them. */
+const TINTS = 7;
+const tintCache = new Map();
+
+function tintSheet(base, bucket) {
+  if (!bucket) return base;                       // bucket 0 is the drawing as drawn
+  if (!base.__tintId) base.__tintId = ++dressIds;
+  const key = base.__tintId + ":" + bucket;
+  if (tintCache.has(key)) return tintCache.get(key);
+
+  const c = document.createElement("canvas");
+  c.width = base.width; c.height = base.height;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(base, 0, 0);
+  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+
+  // Spread evenly either side of the drawing rather than always one way.
+  const t = (bucket / (TINTS - 1)) * 2 - 1;       // -1 … 1
+  const dh = t * 14, dl = t * 0.05;               // degrees, and a fraction
+
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255;
+    const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+    let h = 0, sat = 0;
+    const l = (mx + mn) / 2;
+    if (mx !== mn) {
+      const dd = mx - mn;
+      sat = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+      h = mx === r ? ((gg - b) / dd + (gg < b ? 6 : 0))
+        : mx === gg ? (b - r) / dd + 2
+        : (r - gg) / dd + 4;
+      h *= 60;
+    }
+    const h2 = (h + dh + 360) % 360;
+    const l2 = Math.max(0, Math.min(1, l + dl));
+    // back to rgb
+    const cc = (1 - Math.abs(2 * l2 - 1)) * sat;
+    const x = cc * (1 - Math.abs(((h2 / 60) % 2) - 1));
+    const m = l2 - cc / 2;
+    let rr, g2, bb;
+    if (h2 < 60)       { rr = cc; g2 = x;  bb = 0; }
+    else if (h2 < 120) { rr = x;  g2 = cc; bb = 0; }
+    else if (h2 < 180) { rr = 0;  g2 = cc; bb = x; }
+    else if (h2 < 240) { rr = 0;  g2 = x;  bb = cc; }
+    else if (h2 < 300) { rr = x;  g2 = 0;  bb = cc; }
+    else               { rr = cc; g2 = 0;  bb = x; }
+    d[i]     = Math.round((rr + m) * 255);
+    d[i + 1] = Math.round((g2 + m) * 255);
+    d[i + 2] = Math.round((bb + m) * 255);
+  }
+  g.putImageData(im, 0, 0);
+  tintCache.set(key, c);
+  return c;
+}
+
 /*  Body first, then each layer over it. Cached, because a parish of mill
     workers is one composite shared by all of them.
 
@@ -2506,7 +2580,7 @@ function dressBody(layers, cache) {
       cropped to the body's box.
 
       Two rules place everything, and they are the only two that survive a
-      change of size: CENTRED on the vertical axis, because a person is
+      change of size: CENTERED on the vertical axis, because a person is
       symmetrical about it, and sitting on the BOTTOM edge, because that edge
       is the ground. Extra height is therefore headroom, which is exactly where
       a tall hat needs it. */
@@ -2562,8 +2636,21 @@ function applyFocus(host) {
   const litPlaces = !focus ? null
     : kind === "person" ? (rel.byPerson.get(focus) || new Set())
     : new Set([focus]);
+  /*  A column you made has no records behind it, so there is nothing to look
+      up — who is in it is simply who you put in it. Same for the promenade.
+      Read straight off the placements rather than off the relation map. */
+  const fromPins = () => {
+    const set = new Set();
+    if (!host._pinned) return set;
+    for (const [uid, where] of host._pinned) if (where === focus) set.add(uid);
+    return set;
+  };
+  /*  A column's people are whoever the records put there AND whoever you did.
+      One rule for both kinds: a parish knows its own from the pile, a group you
+      invented knows only what you told it, and a parish you have also dragged
+      people into is both. */
   const litPeople = !focus ? null
-    : kind === "place" ? (rel.byPlace.get(focus) || new Set())
+    : kind === "column" ? new Set([...(rel.byPlace.get(focus) || []), ...fromPins()])
     : new Set([focus]);
 
   for (const w of host._walkers || []) {
@@ -2592,6 +2679,43 @@ function applyFocus(host) {
     Stored by uid so it survives a reload, and kept out of the gazetteer for
     the same reason the scene art is: that file is coordinates. */
 const COLUMN_TINT = new Map();   // uid -> { from, to }
+
+/*  GROUPS — columns you invent.
+
+    A place is a column because a record says somebody was there. A group is a
+    column because YOU say these people belong together: a household, a
+    suspected family, everyone in one lawsuit, the ones you have not settled.
+    The page attaches no meaning to it and never infers one — it is a heading
+    you wrote, exactly like the `#` headings in the pile.
+
+    Kept beside the placements rather than in the pile, for the same reason
+    those are: which column somebody stands in is a note about your thinking,
+    not a fact a document attests. Saved into brick.json with the rest. */
+const PROM_GROUPS = [];          // [{ slug, name }]
+
+function loadGroups() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(GROUPS_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  for (const g of raw) {
+    const name = typeof g === "string" ? g : (g && g.name);
+    if (name && !PROM_GROUPS.some(x => x.name === name)) {
+      PROM_GROUPS.push({ slug: "grp-" + slugify(name), name });
+    }
+  }
+}
+function saveGroups() {
+  try {
+    if (PROM_GROUPS.length) localStorage.setItem(GROUPS_KEY, JSON.stringify(PROM_GROUPS));
+    else localStorage.removeItem(GROUPS_KEY);
+  } catch (e) { /* unavailable */ }
+}
+/*  Prefixed, so a group called Perth and a parish called Perth are different
+    columns — the same collision the art folders solve by being folders. */
+function groupNameOf(slug) {
+  const g = PROM_GROUPS.find(x => x.slug === slug);
+  return g ? g.name : null;
+}
 
 /*  ONE SHEET PER WEARER.
 
@@ -2639,7 +2763,7 @@ function saveColumnTints() {
 
 /*  A vertical gradient as a texture: Pixi's Graphics fills are flat, so the
     ramp is painted on a 1-pixel-wide canvas and stretched across the column.
-    Cached, because the same two colours redraw on every render otherwise. */
+    Cached, because the same two colors redraw on every render otherwise. */
 const gradCache = new Map();
 function gradientTexture(P, from, to) {
   const key = from + "|" + to;
@@ -2661,7 +2785,7 @@ function gradientTexture(P, from, to) {
    brick.json — the sidecar
    --------------------------------------------------------------------------
    Everything that belongs to a piece of research but is not a record: who you
-   have placed in which column, and what colour you gave a column. It sits
+   have placed in which column, and what color you gave a column. It sits
    beside bricks/ and images/ and travels with them.
 
    Deliberately NOT the bricks. A brick is something a document says; this file
@@ -2677,6 +2801,7 @@ function sidecarJSON(host) {
     saved: new Date().toISOString(),
     promenade: {
       pins: host && host._pinned ? [...host._pinned.entries()] : [],
+      groups: PROM_GROUPS.map(g => g.name),
     },
     columns: {
       tints: [...COLUMN_TINT.entries()],
@@ -2690,7 +2815,7 @@ function applySidecar(text, host) {
   let data;
   try { data = JSON.parse(text); } catch (e) { return null; }
   if (!data || typeof data !== "object") return null;
-  const out = { pins: 0, tints: 0 };
+  const out = { pins: 0, tints: 0, groups: 0 };
 
   const pins = data.promenade && data.promenade.pins;
   if (Array.isArray(pins) && host && host._pinned) {
@@ -2702,6 +2827,18 @@ function applySidecar(text, host) {
       }
     }
     if (host._savePins) host._savePins();
+  }
+
+  const groups = data.promenade && data.promenade.groups;
+  if (Array.isArray(groups)) {
+    PROM_GROUPS.length = 0;
+    for (const name of groups) {
+      if (typeof name === "string" && name.trim()) {
+        PROM_GROUPS.push({ slug: "grp-" + slugify(name), name });
+        out.groups++;
+      }
+    }
+    saveGroups();
   }
 
   const tints = data.columns && data.columns.tints;
@@ -2724,9 +2861,14 @@ function applySidecar(text, host) {
     Kept apart from the focus dimming so the two can coexist: a search inside
     the pen does not disturb a place you have selected out on the street. */
 function applyPenSearch(host) {
+  /*  Searches EVERYONE on the panel, not only the pen.
+
+      Restricting it to the unplaced assumed you always know where somebody is
+      once you have put them somewhere — but a column of twelve is no easier to
+      scan than a huddle of twelve, and the name you half remember is as likely
+      to be standing in Longforgan as waiting to be placed. */
   const q = host._penQuery || "";
   for (const w of host._walkers || []) {
-    if (!w.inPen) continue;
     const hit = !q || w.search.includes(q);
     w.node.alpha = hit ? w.base : w.base * 0.18;
     if (q && hit) {
@@ -2745,7 +2887,7 @@ function applyPenSearch(host) {
     does not. Nothing to configure, nothing to keep in step.
 
     A costume is a walk sheet like any other: same 64x24 geometry, same key
-    colours. Which means a uniform still takes its era's palette and its
+    colors. Which means a uniform still takes its era's palette and its
     wearer's own nudge, so twenty millworkers are recognisably millworkers
     without being twenty identical sprites. */
 const costumeCache = new Map();   // occupation slug -> Image | null | Promise
@@ -2771,7 +2913,7 @@ function occupationOf(entity) {
 
     A relative "images/..." resolves against the URL, and a server that serves
     index.html at /brick-by-brick WITHOUT a trailing slash makes that resolve to
-    /images/... — one level too high, so every garment and scene 404s while
+    /images/... — one level too high, so every layer and scene 404s while
     looking perfectly correct in the source. There is no way to ask whether a
     slashless path is a directory, so: a path ending in a file extension keeps
     its directory, anything else is treated as one. */
@@ -2857,10 +2999,10 @@ function sceneImage(slug) {
   return pending;
 }
 
-/*  A garment is its own file, because it is its own size.
+/*  A layer is its own file, because it is its own size.
 
     One sheet cannot hold a 10 x 4 cap and a 12 x 11 coat in equal rows, and
-    the sizes are the point — a broad hat has to be broad. So each garment is
+    the sizes are the point — a broad hat has to be broad. So each layer is
     a file, and the name says who wears it and where it goes:
 
         images/wear/<who>.<slot>.png     slot = body | bottom | top | hat
@@ -2869,8 +3011,8 @@ function sceneImage(slug) {
         george-isles.hat.png   his hat and nobody else's
         default.bottom.png     what everyone else has on below the waist
 
-    Four frames across; the frame is however tall and wide the garment needs.
-    It is centred on that slot's anchor, so a bigger drawing grows evenly
+    Four frames across; the frame is however tall and wide the layer needs.
+    It is centered on that slot's anchor, so a bigger drawing grows evenly
     around the body rather than off one corner. */
 function wearImage(who, slot, onReady) {
   return who ? layerImage("wear", who + "." + slot, onReady) : null;
@@ -2933,6 +3075,34 @@ function renderPromenadePixi(model, host) {
     .filter(([slug]) => !placeQ || placeName(slug).includes(placeQ) ||
                         slug.toLowerCase().includes(placeQ))
     .sort((a, b) => a[1].lng - b[1].lng);
+
+  /*  With nowhere on the map, the street itself is the one place.
+
+      A pile with no coordinates had no columns and therefore nowhere to drop
+      anybody — the one arrangement this panel exists to let you make. Rather
+      than inventing a column per declared place, which claims a geography
+      nobody gave, there is a single unnamed column: the promenade. Group
+      people in it, and when you geocode a place later the real columns appear
+      and the grouping is still there. */
+  /*  Your own columns, after the places. They have no coordinates by
+      definition, so they cannot be ordered by geography — they keep the order
+      you made them in, which is at least an order you chose. */
+  for (const g of PROM_GROUPS) {
+    if (!placeQ || g.name.toLowerCase().includes(placeQ) || g.slug.includes(placeQ)) {
+      placed.push([g.slug, null]);
+    }
+  }
+
+  /*  THE PROMENADE ITSELF — always a column, never a place.
+
+      The named places take the room their crowds need; whatever is left over
+      IS the promenade, and it is where somebody stands when you have decided
+      they belong together but not that they belong anywhere on the map. It is
+      not a fallback for a pile with no coordinates — it is there beside the
+      parishes whether they exist or not, because "these people, not anywhere
+      in particular" is a grouping in its own right. */
+  const PROMENADE = "";
+  placed.push([PROMENADE, null]);
   const STEP = (GRID ? 74 : 110) * Z, PAD = 70 * Z, GROUND = 0.72;
 
   /*  Columns widen to hold their crowd.
@@ -2954,15 +3124,31 @@ function renderPromenadePixi(model, host) {
   if (host._pinned) {
     for (const place of host._pinned.values()) occ.set(place, (occ.get(place) || 0) + 1);
   }
-  const widthOf = slug =>
-    Math.max(STEP, (occ.get(slug) || 0) * SPACING + GUTTER);
+  /*  The one fallback column IS the street, so it takes the whole view rather
+      than standing as a narrow strip with empty ground either side. A real
+      place is sized to its crowd; the promenade is sized to the panel. */
+  const widthOf = slug => Math.max(STEP, (occ.get(slug) || 0) * SPACING + GUTTER);
 
+  /*  The places are sized to their crowds; the promenade takes the rest of the
+      view. Never less than its own crowd needs, so a busy promenade on a
+      narrow panel still holds everyone — it stops being "the leftover" and
+      starts being a column like any other, which is the honest thing for it to
+      do once there are twenty people in it.
+
+      host.clientWidth, not app.screen.width: the layout is worked out before
+      the Pixi application exists, and reaching for `app` here threw before a
+      single column was measured. */
   const xOf = new Map(), wOf = new Map();
+  const named = placed.filter(([slug]) => slug !== PROMENADE);
+  const takenByPlaces = named.reduce((n, [slug]) => n + widthOf(slug), 0);
+  const view = (host.clientWidth || 600);
+  const promW = Math.max(widthOf(PROMENADE), view - PAD * 2 - takenByPlaces);
+
   let cursor = PAD;
   for (const [slug] of placed) {
-    const w = widthOf(slug);
+    const w = slug === PROMENADE ? promW : widthOf(slug);
     wOf.set(slug, w);
-    xOf.set(slug, cursor + w / 2);      // the column's centre
+    xOf.set(slug, cursor + w / 2);      // the column's center
     cursor += w;
   }
   const unknownX = cursor;
@@ -3021,10 +3207,9 @@ function renderPromenadePixi(model, host) {
       // A re-sort reorders within the groups; it does not dissolve them.
       renderPromenadePixi(V(), host);
     };
-    // Drift is opt-in, and says whether it is on.
     const driftBtn = document.createElement("button");
-    driftBtn.className = "pr-zoom pr-drift";
-    driftBtn.textContent = "▶";
+    driftBtn.className = "pr-zoom pr-drift on";
+    driftBtn.textContent = "❚❚";
     host._driftBtn = driftBtn;
     driftBtn.onclick = () => {
       clearTimeout(host._idleTimer);        // an explicit choice outranks the timer
@@ -3060,25 +3245,66 @@ function renderPromenadePixi(model, host) {
     shell.appendChild(zoom);
     shell.appendChild(zoomOut);
 
-    /*  Search the pen, and only the pen.
+    /*  Find anybody on the panel.
 
-        The people who need finding are the ones with nowhere to be — a name
-        you half remember, somewhere in a huddle of sixty. Everyone already
-        standing in a column can be found by looking at the column, so
-        searching them too would only add noise.
+        It removes nobody: non-matches dim, and matches light up and show their
+        name, so you can still see how many you are choosing from and where
+        they are standing relative to everyone else. */
+    /*  Columns you invent.
 
-        It does not remove anybody: non-matches dim and matches light up and
-        show their name, so you can still see how many you are choosing from. */
+        A button rather than a field, because adding a group is something you
+        do rarely and deliberately — a permanent input for it sat there asking
+        to be filled in. Naming an existing group removes it, since there is
+        nowhere sensible to hang a row of delete buttons over a street. Anyone
+        standing in a removed group goes back to the pen: their placement
+        referred to a column that no longer exists. */
+    const groupBtn = document.createElement("button");
+    groupBtn.textContent = "+ group";
+    groupBtn.title = "a column of your own \u2014 a household, a theory, anything. " +
+                     "Name an existing one to remove it.";
+    groupBtn.onclick = () => {
+      const name = prompt("Name a column of your own.\n\n" +
+                          "Naming one that already exists removes it.");
+      if (name === null) return;
+      const want = name.trim();
+      if (!want) return;
+      const slug = "grp-" + slugify(want);
+      const at = PROM_GROUPS.findIndex(g => g.slug === slug);
+      if (at === -1) PROM_GROUPS.push({ slug, name: want });
+      else {
+        PROM_GROUPS.splice(at, 1);
+        for (const [uid, where] of [...host._pinned.entries()]) {
+          if (where === slug) host._pinned.delete(uid);
+        }
+        if (host._savePins) host._savePins();
+      }
+      saveGroups();
+      renderPromenadePixi(V(), host);
+    };
+    host._groupBtn = groupBtn;
+
     const penFind = document.createElement("input");
     penFind.type = "text";
     penFind.className = "pr-find";
-    penFind.placeholder = "find someone unplaced…";
+    penFind.placeholder = "find a person or a place…";
     penFind.spellcheck = false;
     shell.appendChild(penFind);
     host._penFind = penFind;
     penFind.addEventListener("input", () => {
-      host._penQuery = penFind.value.trim().toLowerCase();
+      /*  One box, both questions.
+
+          "Find someone" and "filter to a place" were separate fields asking
+          the same thing in two ways — you typed a word and had to decide which
+          kind of answer you wanted before you knew what was there. Now the
+          word is applied to both: matching people light up, and the columns
+          narrow to matching places. */
+      const q = penFind.value.trim().toLowerCase();
+      host._penQuery = q;
+      host._placeQuery = q;
       applyPenSearch(host);
+      host._noTween = true;
+      host._world.x = 0;       // the street just changed length
+      renderPromenadePixi(V(), host);
     });
 
     /*  Save and load the sidecar.
@@ -3090,8 +3316,11 @@ function renderPromenadePixi(model, host) {
     const fileBar = document.createElement("div");
     fileBar.className = "pr-files";
     fileBar.innerHTML =
-      '<button data-k="save" title="save placements and colours as brick.json">save</button>' +
-      '<button data-k="load" title="load a brick.json">load</button>' +
+      '<button data-k="save" title="write a brick.json holding who you put where, ' +
+      'the groups you made and the column colors \u2014 keep it beside your bricks">' +
+      'save arrangement</button>' +
+      '<button data-k="load" title="read a brick.json back in, replacing the ' +
+      'current arrangement">open\u2026</button>' +
       // Beside the file controls, since the questions it answers are mostly
       // "what file do I make, and what goes in it".
       '<a class="pr-doc" href="doc/promenade.html" target="_blank" rel="noopener"' +
@@ -3100,6 +3329,7 @@ function renderPromenadePixi(model, host) {
     shell.appendChild(fileBar);
     fileBar.querySelector('[data-k="save"]').onclick = () =>
       downloadText(sidecarJSON(host), "brick.json", "application/json");
+    fileBar.insertBefore(groupBtn, fileBar.firstChild);
     fileBar.querySelector('[data-k="load"]').onclick = () => {
       const inp = document.createElement("input");
       inp.type = "file";
@@ -3112,7 +3342,7 @@ function renderPromenadePixi(model, host) {
           const note = host.querySelector(".pr-note");
           if (note) {
             note.textContent = got
-              ? got.pins + " placed, " + got.tints + " coloured"
+              ? got.pins + " placed, " + got.tints + " colored"
               : "that file is not valid JSON";
           }
           host._noTween = true;
@@ -3122,30 +3352,10 @@ function renderPromenadePixi(model, host) {
       inp.click();
     };
 
-    /*  Find a place, and show only that stretch of street.
+    /*  Color the selected column.
 
-        Different job from the pen search above it, so a different box: that
-        one lights people up without removing anybody, this one actually
-        narrows the street to the parishes you name. When you are looking for
-        somewhere to put someone, fifty-nine columns is the problem. */
-    const placeFind = document.createElement("input");
-    placeFind.type = "text";
-    placeFind.className = "pr-find pr-find-place";
-    placeFind.placeholder = "filter to a place…";
-    placeFind.spellcheck = false;
-    shell.appendChild(placeFind);
-    host._placeFind = placeFind;
-    placeFind.addEventListener("input", () => {
-      host._placeQuery = placeFind.value.trim().toLowerCase();
-      host._noTween = true;
-      host._world.x = 0;       // the street just changed length
-      renderPromenadePixi(V(), host);
-    });
-
-    /*  Colour the selected column.
-
-        Only visible when a place is actually selected, because a colour picker
-        with nothing to colour is a puzzle. Click a signpost and it appears
+        Only visible when a place is actually selected, because a color picker
+        with nothing to color is a puzzle. Click a signpost and it appears
         naming that place; click away and it goes. Two stops and a clear —
         which is the whole of what a backdrop needs. */
     const tintBar = document.createElement("div");
@@ -3162,13 +3372,15 @@ function renderPromenadePixi(model, host) {
     host._tintBar = tintBar;
 
     const readTint = () => {
-      const slug = host._focusKind === "place" ? host._focus : null;
-      if (!slug) return null;
+      const slug = host._focusKind === "column" ? host._focus : null;
+      // "" is the promenade — a real column and a valid key, so this has to
+      // test for null rather than for falsiness.
+      if (slug === null) return null;
       return COLUMN_TINT.get(slug) || { from: "#1d2c38", to: "#1a1f18", alpha: 1 };
     };
     tintBar.addEventListener("input", e => {
-      const slug = host._focusKind === "place" ? host._focus : null;
-      if (!slug || !e.target.dataset.k) return;
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (slug === null || !e.target.dataset.k) return;
       const cur = readTint();
       const next = { from: cur.from, to: cur.to,
                      alpha: cur.alpha === undefined ? 1 : cur.alpha };
@@ -3180,8 +3392,8 @@ function renderPromenadePixi(model, host) {
       renderPromenadePixi(V(), host);
     });
     tintBar.querySelector('[data-k="clear"]').onclick = () => {
-      const slug = host._focusKind === "place" ? host._focus : null;
-      if (!slug) return;
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (slug === null) return;
       COLUMN_TINT.delete(slug);
       saveColumnTints();
       host._noTween = true;
@@ -3189,11 +3401,20 @@ function renderPromenadePixi(model, host) {
     };
 
     host._syncTint = model2 => {
-      const slug = host._focusKind === "place" ? host._focus : null;
-      tintBar.hidden = !slug || host._view === "grid";
-      if (!slug) return;
-      const e = ((model2 || V()).entities || []).find(k => k.slug === slug);
-      tintBar.querySelector(".pr-tint-name").textContent = e ? e.name : slug;
+      /*  Any column can be colored, not only a parish.
+
+          A group and the promenade are columns like any other — the whole
+          point of clicking their signpost is to give that stretch of street a
+          background. Restricting this to places meant the one thing a group's
+          signpost could usefully do was the one thing it could not. */
+      const isCol = host._focusKind === "column";
+      // "" is the promenade, and a valid key — check the kind, not the slug.
+      const slug = isCol ? host._focus : null;
+      tintBar.hidden = !isCol || host._view === "grid";
+      if (!isCol) return;
+      const grp = slug ? groupNameOf(slug) : "The Promenade";
+      const e = grp ? null : ((model2 || V()).entities || []).find(k => k.slug === slug);
+      tintBar.querySelector(".pr-tint-name").textContent = grp || (e ? e.name : slug);
       const t = readTint();
       tintBar.querySelector('[data-k="from"]').value = t.from;
       tintBar.querySelector('[data-k="to"]').value = t.to;
@@ -3210,7 +3431,7 @@ function renderPromenadePixi(model, host) {
     app.view.className = "pr-canvas";
     host._app = app;
     host._shell = shell;
-    // The drawing itself. Every walker gets a recoloured copy of this.
+    // The drawing itself. Every walker gets a recolored copy of this.
     host._wear = { body: makeBodySheet(), bottom: makeBottomSheet(),
                    top: makeTopSheet(), hat: makeHatSheet() };
     host._body = host._wear.body;                 // the bare figure, for reference
@@ -3321,7 +3542,12 @@ function renderPromenadePixi(model, host) {
 
         Dotted, like the drop zones, because it is one: drag somebody back
         into it to say you no longer know where they were. */
+    /*  The pen is drawn last, above the street and above whoever is being
+        carried — a figure passing over the box must not hide the box it is
+        being aimed at. Pixi only honors zIndex on a sorted parent. */
+    app.stage.sortableChildren = true;
     host._limbo = new P.Container();
+    host._limbo.zIndex = 10;
     app.stage.addChild(host._limbo);
 
     /*  Drift as an attract mode.
@@ -3332,8 +3558,13 @@ function renderPromenadePixi(model, host) {
         shows itself off. Any touch of it stops the drift and starts the wait
         over: the moment you reach for someone, the street stands still.
 
-        The button remains an override for starting it deliberately. */
-    host._drift = false;
+        The button remains an override for starting it deliberately.
+
+        It STARTS moving, so the button is a pause. A still street reads as a
+        broken one — you cannot tell a paused promenade from one that failed to
+        start, and the first thing this panel has to say is that these are
+        people rather than a chart. Reach for anyone and it stops. */
+    host._drift = true;
     host._idleMs = 30000;
     host._bumpIdle = () => {
       host._drift = false;
@@ -3355,7 +3586,13 @@ function renderPromenadePixi(model, host) {
     for (const t of ["pointerdown", "pointermove", "wheel"]) {
       shell.addEventListener(t, host._bumpIdle, { passive: true });
     }
-    host._bumpIdle();
+    /*  Not called here.
+
+        It used to be, to arm the idle timer — but bumpIdle's first act is to
+        STOP the drift, so arming it that way turned the street off the instant
+        it was built. The timer is armed by the first interaction instead,
+        which is the only time the "left alone for a while" it measures starts
+        meaning anything. */
     /*  Reassigning a texture makes Pixi rebuild the sprite's UVs. At six
         frames a second the walk cycle only changes every tenth frame, so doing
         it unconditionally was nine wasted rebuilds out of ten, per walker. */
@@ -3415,7 +3652,7 @@ function renderPromenadePixi(model, host) {
           const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
           w.node.x = w.fromX + (w.home - w.fromX) * e;
           w.node.y = w.fromY + (w.toY - w.fromY) * e;
-          // Face the way they are travelling while they travel.
+          // Face the way they are traveling while they travel.
           if (Math.abs(w.home - w.fromX) > 2) w.node.scale.x = w.home < w.fromX ? -1 : 1;
           setFrame(w, Math.floor(t * 8 + w.phase * 3) % w.frames.length);
           continue;
@@ -3612,11 +3849,11 @@ function renderPromenadePixi(model, host) {
   /*  Column gradients: the SKY above that column, not the ground.
 
       The ground is the plane everybody stands on and it runs the length of the
-      street — colouring one stretch of it would cut the floor into pieces and
+      street — coloring one stretch of it would cut the floor into pieces and
       make the figures look like they were standing on different surfaces. The
       sky is backdrop, and backdrop is what this is for.
 
-      Nothing at all for a place you have not coloured. */
+      Nothing at all for a place you have not colored. */
   if (!GRID) {
     for (const [slug] of placed) {
       const tint = COLUMN_TINT.get(slug);
@@ -3634,8 +3871,8 @@ function renderPromenadePixi(model, host) {
     }
   }
 
-  const label = (text, size, colour) => new P.Text(text, {
-    fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: colour,
+  const label = (text, size, color) => new P.Text(text, {
+    fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: color,
   });
 
   /*  Each signpost is one container, so a highlight can dim it with a single
@@ -3726,7 +3963,7 @@ function renderPromenadePixi(model, host) {
       Loaded through a plain Image first so a place with no art costs nothing
       and says nothing: a missing file is the ordinary case, not an error.
 
-      Centred in its column, standing on the ground line, behind the people.
+      Centered in its column, standing on the ground line, behind the people.
       The column width is the only constraint. */
   if (!GRID) {
     /*  A render token, so a picture that arrives late is dropped rather than
@@ -3760,7 +3997,12 @@ function renderPromenadePixi(model, host) {
   world.addChild(signLayer);
   host._signLayer = signLayer;
   for (const [slug] of placed) {
-    const e = (model.entities || []).find(x => x.slug === slug);
+    /*  The promenade gets a signpost only when there are places to tell it
+        apart from. On its own it is the whole street, and a post naming the
+        room you are standing in says nothing. */
+    if (!slug && placed.length < 2) continue;
+    const grp = slug ? groupNameOf(slug) : "The Promenade";
+    const e = grp ? null : (model.entities || []).find(x => x.slug === slug);
     const x = xOf.get(slug);
     const sign = new P.Container();
     /*  A signpost stands over the people, not among them. A person is 24 units
@@ -3769,7 +4011,7 @@ function renderPromenadePixi(model, host) {
     const POST_H = 40, BOARD_Y = -52;
     const post = new P.Graphics();
     post.beginFill(0x3a2f20).drawRect(-Z, -POST_H * Z, 2 * Z, POST_H * Z).endFill();
-    const t = label(e ? e.name : slug, 9 * Z, 0xe8dcc4);
+    const t = label(grp || (e ? e.name : slug), 9 * Z, grp ? 0xc9a877 : 0xe8dcc4);
     t.resolution = 2;
     t.anchor.set(0.5, 0);
     t.y = BOARD_Y * Z + 2;
@@ -3787,7 +4029,11 @@ function renderPromenadePixi(model, host) {
     let dx = null;
     sign.on("pointerdown", ev => { dx = ev.global.x; });
     sign.on("pointerup", ev => {
-      if (dx !== null && Math.abs(ev.global.x - dx) < 4) toggleFocus(host, "place", slug);
+      if (dx !== null && Math.abs(ev.global.x - dx) < 4) {
+        // A group and the promenade are columns, not places: what they light
+        // up is whoever you put in them.
+        toggleFocus(host, "column", slug);
+      }
       dx = null;
     });
     signLayer.addChild(sign);
@@ -3795,9 +4041,9 @@ function renderPromenadePixi(model, host) {
   }
 
 
-  /*  Frames for one person: their era's colours, nudged by their own uid so
+  /*  Frames for one person: their era's colors, nudged by their own uid so
       the parish is not a line of identical twins. Textures are cached by
-      palette, so people who land on the same colours share one. */
+      palette, so people who land on the same colors share one. */
   /*  A costume that arrives after the scene was built needs one more render to
       be worn. Debounced, so a folder full of uniforms causes one redraw. */
   const costumeArrived = () => {
@@ -3809,25 +4055,31 @@ function renderPromenadePixi(model, host) {
   };
 
   const framesFor = (slug, occupation) => {
-    // Body first, then whichever garments apply to this person.
-    const sheet = dressBody(outfitFor(slug, occupation, host, costumeArrived));
-    // Keyed on the dressed sheet, so two people in the same clothes share one
-    // texture and two in different clothes never collide.
-    if (!sheet.__dressId) sheet.__dressId = ++dressIds;
-    const key = String(sheet.__dressId);
+    // Body first, then whichever layers apply to this person.
+    const dressed = dressBody(outfitFor(slug, occupation, host, costumeArrived));
+    // Their own shade of the same clothes.
+    // seedOf returns a float, so this has to be floored: without it every
+    // person lands in a bucket of their own and each is a separate texture,
+    // which is the exact cost the bucketing exists to avoid.
+    const bucket = Math.floor(Math.abs(seedOf(slug))) % TINTS;
+    const sheet = tintSheet(dressed, bucket);
+    // Keyed on the dressed sheet AND the shade, so two people in the same
+    // clothes share one texture only when they are the same shade of them.
+    if (!dressed.__dressId) dressed.__dressId = ++dressIds;
+    const key = dressed.__dressId + ":" + bucket;
     let base = host._texCache.get(key);
     if (!base) {
       base = P.BaseTexture.from(sheet, { scaleMode: P.SCALE_MODES.NEAREST });
       host._texCache.set(key, base);
     }
-    const cw = sheet.__cellW || SPR_W, ch = sheet.__cellH || SPR_H;
-    const n = sheet.__frames || SPR_FRAMES;
+    const cw = dressed.__cellW || SPR_W, ch = dressed.__cellH || SPR_H;
+    const n = dressed.__frames || SPR_FRAMES;
     const frames = [];
     for (let f = 0; f < n; f++) frames.push(new P.Texture(base, new P.Rectangle(f * cw, 0, cw, ch)));
     /*  Once a cell can grow upward for a tall hat, the bottom of the texture
         is no longer the bottom of the person. Carried on the array so the
         walker can anchor on the feet rather than on the frame. */
-    frames.footY = (sheet.__footY === undefined ? ch : sheet.__footY) / ch;
+    frames.footY = (dressed.__footY === undefined ? ch : dressed.__footY) / ch;
     return frames;
   };
 
@@ -3905,12 +4157,26 @@ function renderPromenadePixi(model, host) {
     penBg.moveTo(penW, y); penBg.lineTo(penW, Math.min(y + dash, penH));
   }
   pen.addChild(penBg);
+
+  /*  Lit while you are carrying somebody, brighter when you are over it.
+
+      The pen is where a placement is undone, and there was nothing to say so:
+      you could pick a person out of a column with no idea that dropping them
+      back in the box was even a thing you were allowed to do. Hidden at rest,
+      because a box glowing at nobody is just noise. */
+  const penGlow = new P.Graphics();
+  penGlow.beginFill(0x7fc188, 0.16).drawRect(0, 0, penW, penH).endFill();
+  penGlow.lineStyle(2, 0x7fc188, 0.95);
+  penGlow.drawRect(0, 0, penW, penH);
+  penGlow.visible = false;
+  pen.addChild(penGlow);
+  host._penGlow = penGlow;
   const penCap = label("no place recorded", 8, 0x7a8a99);
   penCap.resolution = 2;
   penCap.anchor.set(0.5, 0);
   penCap.x = penW / 2; penCap.y = penH + 2;
   pen.addChild(penCap);
-  /*  Centred over the street rather than tucked in a corner: it is the one
+  /*  Centered over the street rather than tucked in a corner: it is the one
       thing you are meant to empty, so it sits where you are already looking
       and the same distance from every column. Recomputed on each render
       because the panel can be resized under it. */
@@ -3977,7 +4243,7 @@ function renderPromenadePixi(model, host) {
         the figure has no target at all: pointerdown never lands, and dragging
         silently does nothing.
 
-        Sized to the sprite, which is anchored bottom-centre, and given a
+        Sized to the sprite, which is anchored bottom-center, and given a
         little headroom so small figures are still catchable. */
     node.hitArea = new P.Rectangle(
       -SPR_W * Z / 2 - 2, -SPR_H * Z - 2, SPR_W * Z + 4, SPR_H * Z + 6);
@@ -3994,6 +4260,8 @@ function renderPromenadePixi(model, host) {
       node.cursor = "grabbing";
       if (host._buildZones) host._buildZones();
       if (host._zoneLayer) host._zoneLayer.visible = true;
+      // The pen is a target too — say so the moment somebody is lifted.
+      if (host._penGlow) { host._penGlow.visible = true; host._penGlow.alpha = 0.55; }
       const me = host._walkers.find(k => k.slug === p.slug);
       if (me) { me.held = true; me.falling = false; }
       // Lifted out of the line, the way you pick a piece off a board.
@@ -4025,6 +4293,12 @@ function renderPromenadePixi(model, host) {
       // have to guess which frame is about to catch them.
       const over = host._columnAt(node.x - world.x);
       for (const z of host._zones || []) z.g.alpha = z.slug === over ? 1 : 0.3;
+      if (host._penGlow && host._penBox) {
+        const b = host._penBox;
+        const inPen = node.x >= b.x && node.x <= b.x + b.w &&
+                      node.y >= b.y && node.y <= b.y + b.h;
+        host._penGlow.alpha = inPen ? 1 : 0.55;
+      }
     });
     /*  One ending for both ways a drag can finish.
 
@@ -4036,6 +4310,7 @@ function renderPromenadePixi(model, host) {
       node.cursor = "grab";
       host._dragging = false;
       if (host._zoneLayer) host._zoneLayer.visible = false;
+      if (host._penGlow) host._penGlow.visible = false;
       if (!downAt) return;
       const me = host._walkers.find(k => k.slug === p.slug);
       if (me) me.held = false;
@@ -4121,11 +4396,11 @@ function renderPromenadePixi(model, host) {
         every drop, sort, zoom and resize — for labels that are hidden until
         you hover. Making them on demand is most of what a rebuild was doing. */
     const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "~") + p.birthYear : "");
-    const nameColour = known ? 0xcfd6dc : 0x7a8a99;
+    const nameColor = known ? 0xcfd6dc : 0x7a8a99;
     const ensureName = () => {
       const w = host._walkers.find(k => k.slug === p.slug);
       if (!w || w.nameNode) return w && w.nameNode;
-      const n = label(nameText, 8 * Z, nameColour);
+      const n = label(nameText, 8 * Z, nameColor);
       n.resolution = 2;
       n.anchor.set(0.5, 1);
       n.y = -(SPR_H + 3) * Z;
@@ -4171,8 +4446,9 @@ function renderPromenadePixi(model, host) {
       const gName = g === undefined ? "" : g;
       if (gName !== lastGroup) {
         lastGroup = gName;
-        const e = gName && (model.entities || []).find(k => k.slug === gName);
-        const cap = label(e ? e.name : (gName ? gName : "no place recorded"),
+        const grpName = gName && groupNameOf(gName);
+        const e = !grpName && gName && (model.entities || []).find(k => k.slug === gName);
+        const cap = label(grpName || (e ? e.name : (gName ? gName : "The Promenade")),
                           8 * Z, gName ? 0xe8dcc4 : 0x7a8a99);
         cap.resolution = 2;
         cap.anchor.set(0, 1);
@@ -4222,12 +4498,16 @@ function renderPromenadePixi(model, host) {
       // Base opacity is the person's own standing — unplaced people are
       // faint to begin with. Focus multiplies it rather than replacing it, so
       // dimming never accidentally promotes someone.
-      /*  Being unplaced is only worth showing on the street, where standing
-          apart from the parishes is the point. The grid is not about place at
-          all, so nobody is greyed for it there — and 0.7 rather than 0.45,
-          because "we do not know where he was" should read as a note beside
-          someone, not as their disappearance. */
-      base: (GRID || known) ? 1 : 0.7,
+      /*  Everybody is solid.
+
+          Unplaced people used to be drawn faint, to say "no record puts this
+          person anywhere". But standing in the pen already says that, and a
+          washed-out figure reads as broken rather than as unlocated — worse,
+          it made the ordinary state of a new pile, where nobody is placed yet,
+          look like a rendering fault. Focus still dims; that is a temporary
+          answer to a question you asked, not a permanent judgment on someone
+          whose parish is unknown. */
+      base: 1,
       /*  Pacing belongs to the street. In the grid a sorted rank would shuffle
           itself out of order in front of you, and in the pen a huddle would
           walk through itself — so in both they march on the spot. */
@@ -4259,14 +4539,6 @@ function renderPromenadePixi(model, host) {
     host._penFind.style.left = Math.round(pen.x) + "px";
     host._penFind.style.top = Math.round(pen.y + penH + 16) + "px";
     host._penFind.style.width = findW + "px";
-  }
-  if (host._placeFind) {
-    // Under the pen search, since it is the second question you ask.
-    host._placeFind.hidden = GRID;
-    host._placeFind.style.left = Math.round(pen.x) + "px";
-    host._placeFind.style.top =
-      Math.round(pen.y + penH + 16 + ((GRID || !unplacedList.length) ? 0 : 24)) + "px";
-    host._placeFind.style.width = findW + "px";
   }
   applyPenSearch(host);
   if (host._syncTint) host._syncTint(model);
@@ -4306,9 +4578,9 @@ function renderPromenade(model, host) {
    It never touches the pile. It draws a PNG and hands it to you; where that
    file goes and who wears it is the filename's business.
    ========================================================================== */
-/*  Every garment starts as a copy of the built-in one, so you are always
+/*  Every layer starts as a copy of the built-in one, so you are always
     editing something that already works rather than a void. */
-function garmentCopy(src) {
+function layerCopy(src) {
   const c = document.createElement("canvas");
   c.width = src.width; c.height = src.height;
   const g = c.getContext("2d", { willReadFrequently: true });
@@ -4317,10 +4589,10 @@ function garmentCopy(src) {
   return c;
 }
 
-/*  Resize a garment, keeping what is drawn centred in it — because the anchor
-    is the centre, so growing a garment should grow it evenly around the body
+/*  Resize a layer, keeping what is drawn centered in it — because the anchor
+    is the center, so growing a layer should grow it evenly around the body
     rather than push the drawing off one edge. */
-function garmentResize(src, w, h, frames) {
+function layerResize(src, w, h, frames) {
   const on = src.__frames || SPR_FRAMES;
   const n = frames || on;
   const c = document.createElement("canvas");
@@ -4328,7 +4600,26 @@ function garmentResize(src, w, h, frames) {
   const g = c.getContext("2d", { willReadFrequently: true });
   g.imageSmoothingEnabled = false;
   const ow = src.width / on, oh = src.height;
-  const dx = Math.round((w - ow) / 2), dy = Math.round((h - oh) / 2);
+  /*  Resize the way the compositor places things, or the drawing moves on the
+      body: CENTERED across, and anchored to the BOTTOM.
+
+      Centering vertically was the bug — the bottom edge is the ground line, so
+      keeping a layer the same distance from the bottom is what keeps a hat
+      on the head. Center it instead and every change of height slid the hat
+      down by half the difference. */
+  const dx = Math.round((w - ow) / 2);
+  /*  Anchored to the bottom, because that edge is the ground. Clamped so a
+      smaller box never silently eats the drawing: shrinking a 24-tall sheet
+      whose hat sits in the top four rows would otherwise crop the hat and
+      leave an empty canvas. */
+  let dy = h - oh;
+  const g0 = src.getContext("2d", { willReadFrequently: true });
+  const d0 = g0.getImageData(0, 0, src.width, src.height).data;
+  let top = oh;
+  for (let y = 0; y < oh && top === oh; y++) {
+    for (let x = 0; x < src.width; x++) if (d0[(y * src.width + x) * 4 + 3]) { top = y; break; }
+  }
+  if (top < oh) dy = Math.max(dy, -top);
   // Growing the count repeats what is there rather than leaving blank frames.
   for (let f = 0; f < n; f++) {
     g.drawImage(src, (f % on) * ow, 0, ow, oh, f * w + dx, dy, ow, oh);
@@ -4346,41 +4637,73 @@ function renderSpriteEditor(model, host) {
 
   const wear = { body: makeBodySheet(), bottom: makeBottomSheet(),
                  top: makeTopSheet(), hat: makeHatSheet() };
-  const garments = host._garments = {};
-  for (const k of ROWS) { garments[k] = garmentCopy(wear[k]); garments[k].__frames = SPR_FRAMES; }
+  const layers = host._layers = {};
+  for (const k of ROWS) { layers[k] = layerCopy(wear[k]); layers[k].__frames = SPR_FRAMES; }
 
   /*  A place scene is the fifth thing you can draw here, and it is not a
-      garment: it stands behind a column rather than on a body, it never walks,
-      and it is never recoloured. Same editor all the same — it is the same job
+      layer: it stands behind a column rather than on a body, it never walks,
+      and it is never recolored. Same editor all the same — it is the same job
       of putting pixels down and seeing them in place, and a second panel would
       only drift from this one. */
   const TARGETS = ROWS.concat(["place"]);
   const PLACE_W = 102, PLACE_H = 64;      // 102 is the widest that draws 1:1 in a column
-  garments.place = (() => {
+  layers.place = (() => {
     const c = document.createElement("canvas");
     c.width = PLACE_W; c.height = PLACE_H;
     c.getContext("2d").imageSmoothingEnabled = false;
     c.__frames = 1;
     return c;
   })();
-  // Start from the scene that ships, if it is there — something to alter beats
-  // a blank rectangle. A miss is the ordinary case and says nothing.
-  loadImg(ASSET_BASE + "images/places/default.png").then(img => {
-    if (!img || !host.isConnected) return;
-    garments.place.width = img.width; garments.place.height = img.height;
-    const g = garments.place.getContext("2d");
-    g.imageSmoothingEnabled = false;
-    g.drawImage(img, 0, 0);
-    garments.place.__frames = 1;
-    if (slot === "place") { syncSize(); paint(); }
-  });
   const isPlace = () => slot === "place";
+
+  /*  What has been drawn on, and so must not be replaced under the hand.
+
+      The editor opens whatever file already exists for the name you have
+      typed — otherwise naming a place you drew last week and getting a blank
+      rectangle is baffling. But it opens it only while the canvas is still
+      untouched: once you have made a mark, the name is a label for what you
+      are drawing, not a request to throw it away. */
+  const touched = {};
+  let loadToken = 0;
+
+  function openExisting() {
+    if (touched[slot]) return;
+    const my = ++loadToken;
+    const base = ASSET_BASE + (isPlace() ? "images/places/" : "images/wear/");
+    const named = slugify(nameIn.value.trim());
+    // The one you asked for, then the one everybody shares.
+    const tries = [];
+    if (named) tries.push(base + encodeURIComponent(isPlace() ? named : named + "." + slot) + ".png");
+    tries.push(base + (isPlace() ? "default" : "default." + slot) + ".png");
+    (async () => {
+      for (const url of tries) {
+        const img = await loadImg(url);
+        if (!img) continue;
+        if (my !== loadToken || !host.isConnected || touched[slot]) return;
+        const cv = layers[slot];
+        cv.width = img.width; cv.height = img.height;
+        const g = cv.getContext("2d");
+        g.imageSmoothingEnabled = false;
+        g.clearRect(0, 0, cv.width, cv.height);
+        g.drawImage(img, 0, 0);
+        if (isPlace()) cv.__frames = 1;
+        syncSize(); paint();
+        return;
+      }
+    })();
+  }
 
   /*  `linked` is on to begin with, and it is the difference between this being
       usable and being four times the work: a stroke goes into every frame at
-      once, so one drawing is a finished garment that simply does not move.
+      once, so one drawing is a finished layer that simply does not move.
       Turn it off when you actually want to animate something. */
-  let slot = "top", frame = 0, pen = 0, onion = true, playing = true, linked = true;
+  /*  `all frames` starts OFF. Writing into four frames at once is a surprising
+      thing for an editor to do without being asked — you draw one stroke and
+      three others appear somewhere you were not looking. Switch it on when you
+      want a layer that does not move. */
+  let slot = "top", frame = 0, pen = 0, onion = true, playing = true, linked = false;
+  let gridOn = true, axesOn = true;
+  let tool = "pencil";
 
   const el = (tag, cls, parent) => {
     const n = document.createElement(tag);
@@ -4394,16 +4717,16 @@ function renderSpriteEditor(model, host) {
   const grid = el("canvas", "sp-grid", left);
   const right = el("div", "sp-right", wrap);
 
-  // ---- which garment
+  // ---- which layer
   const slotBar = el("div", "sp-row", right);
-  el("span", "sp-cap", slotBar).textContent = "garment";
+  el("span", "sp-cap", slotBar).textContent = "type";
   const slotBtns = TARGETS.map(name => {
     const b = el("button", null, slotBar);
     b.type = "button"; b.textContent = name;
     b.title = name === "body" ? "the figure itself, under everything"
             : name === "place" ? "scenery, standing behind a column"
-            : "a garment, centred on the " + name + " anchor";
-    b.onclick = () => { slot = name; syncSize(); paint(); };
+            : "a layer, centered on the " + name + " anchor";
+    b.onclick = () => { slot = name; syncSize(); openExisting(); paint(); };
     return b;
   });
 
@@ -4419,26 +4742,44 @@ function renderSpriteEditor(model, host) {
   el("span", "sp-cap", sizeBar).textContent = "frames";
   const fIn = el("input", "sp-num", sizeBar);
   fIn.type = "number"; fIn.min = "1"; fIn.max = "24";
-  fIn.title = "how many frames. One is a garment that does not move.";
+  fIn.title = "how many frames. One is a layer that does not move.";
+  /*  Size is the FIGURE's, not one layer's.
+
+      Every layer shares a cell — that is what lets a hat sit on a head without
+      anchors or configuration. So resizing one layer alone is not a thing
+      that can mean anything: shrink the hat's box on its own and the hat comes
+      off the head, or gets cropped away entirely, depending which edge you
+      anchor to. Both happened while I was building this.
+
+      So the box belongs to all four layers at once. Growing it is headroom for
+      everybody; the drawings keep their distance from the ground line, which
+      is the bottom edge. Frames stay per layer — a still hat on a walking
+      body is perfectly sensible. */
   const applySize = () => {
     const cap = isPlace() ? 256 : 64;       // scenery is allowed to be a building
     const w = Math.max(1, Math.min(cap, +wIn.value || 1));
     const h = Math.max(1, Math.min(cap, +hIn.value || 1));
     const n = isPlace() ? 1 : Math.max(1, Math.min(24, +fIn.value || 1));
-    garments[slot] = garmentResize(garments[slot], w, h, n);
-    frame = Math.min(frame, n - 1);
+    if (isPlace()) {
+      layers.place = layerResize(layers.place, w, h, 1);
+    } else {
+      for (const k of ROWS) {
+        layers[k] = layerResize(layers[k], w, h, k === slot ? n : undefined);
+      }
+      frame = Math.min(frame, nFrames() - 1);
+    }
     syncSize(); paint();
   };
   wIn.onchange = hIn.onchange = fIn.onchange = applySize;
 
   // ---- what to paint with
-  /*  A few colours to hand, and a picker for everything else. Nothing here
-      means anything to the page — a pixel is the colour you paint it. */
+  /*  A few colors to hand, and a picker for everything else. Nothing here
+      means anything to the page — a pixel is the color you paint it. */
   const SWATCHES = ["#c9a689", "#aa8970", "#4a3b2a", "#2f3542", "#4a5568",
                     "#5a4632", "#7a6247", "#8a2f2f", "#3a4a3a"];
-  /*  Four slots that fill themselves. A colour earns a place here by being
-      USED — picked and actually put on the canvas — because a colour you tried
-      and abandoned is not one you want back. Newest first, and a colour already
+  /*  Four slots that fill themselves. A color earns a place here by being
+      USED — picked and actually put on the canvas — because a color you tried
+      and abandoned is not one you want back. Newest first, and a color already
       held moves to the front rather than taking a second slot. */
   const RECENT = [];
   function remember(c) {
@@ -4461,7 +4802,7 @@ function renderSpriteEditor(model, host) {
   eraseBtn.onclick = () => { pen = -1; paint(); };
   const fixed = el("input", null, penBar);
   fixed.type = "color"; fixed.value = "#8a2f2f";
-  fixed.title = "any other colour";
+  fixed.title = "any other color";
   fixed.oninput = () => { pen = -2; paint(); };
   const recentBtns = [0, 1, 2, 3].map(i => {
     const b = el("button", "sp-pen sp-recent", penBar);
@@ -4470,16 +4811,42 @@ function renderSpriteEditor(model, host) {
     return b;
   });
 
+  const toolBar = el("div", "sp-row", right);
+  el("span", "sp-cap", toolBar).textContent = "tool";
+  const TOOLS = [
+    ["pencil", "\u270E", "freehand"],
+    ["line",   "\u2571", "straight line \u2014 drag from one end to the other"],
+    ["rect",   "\u25AB", "box outline"],
+    ["fill",   "\u25AA", "filled box"],
+    ["move",   "\u2725", "nudge what is drawn — drag it into place"],
+  ];
+  const toolBtns = TOOLS.map(([id, glyph, tip]) => {
+    const b = el("button", null, toolBar);
+    b.type = "button"; b.textContent = glyph; b.title = tip;
+    b.onclick = () => { tool = id; paint(); };
+    return b;
+  });
+
   // ---- and how it should look
   const optBar = el("div", "sp-row", right);
   const onionBtn = el("button", null, optBar);
   onionBtn.type = "button"; onionBtn.textContent = "ghost";
-  onionBtn.title = "show the rest of the figure faintly underneath, to draw onto";
+  onionBtn.title = "show what this has to sit with \u2014 the rest of the figure, or a person for scale on a place";
   onionBtn.onclick = () => { onion = !onion; paint(); };
+
+  const gridBtn = el("button", null, optBar);
+  gridBtn.type = "button"; gridBtn.textContent = "grid";
+  gridBtn.title = "rule every cell, with a firmer line every fourth";
+  gridBtn.onclick = () => { gridOn = !gridOn; paint(); };
+
+  const axesBtn = el("button", null, optBar);
+  axesBtn.type = "button"; axesBtn.textContent = "center";
+  axesBtn.title = "the center lines \u2014 every layer is centered on the vertical one";
+  axesBtn.onclick = () => { axesOn = !axesOn; paint(); };
 
   const linkBtn = el("button", null, optBar);
   linkBtn.type = "button"; linkBtn.textContent = "all frames";
-  linkBtn.title = "a stroke goes into every frame at once. Turn off to animate frame by frame.";
+  linkBtn.title = "a stroke goes into every frame at once. Drawing only \u2014 move works on one frame.";
   linkBtn.onclick = () => { linked = !linked; paint(); };
   const frameBar = el("span", null, optBar);
   /*  After the frame numbers, because it is a statement about them: these are
@@ -4489,6 +4856,19 @@ function renderSpriteEditor(model, host) {
 
   // ---- the render example
   const prevWrap = el("div", "sp-preview", right);
+  /*  The backdrop it stands against. Kept in the browser, because it is a
+      preference about looking rather than anything about the drawing. */
+  const BG_KEY = "brick-by-brick:spritebg:v1";
+  let bg = { sky: "#1d2c38", ground: "#1a1f18" };
+  try {
+    const raw = JSON.parse(localStorage.getItem(BG_KEY) || "null");
+    if (raw && /^#[0-9a-f]{6}$/i.test(raw.sky) && /^#[0-9a-f]{6}$/i.test(raw.ground)) bg = raw;
+  } catch (e) { /* unavailable */ }
+  const applyBg = () => {
+    prevWrap.style.setProperty("--sp-sky", bg.sky);
+    prevWrap.style.setProperty("--sp-ground", bg.ground);
+    try { localStorage.setItem(BG_KEY, JSON.stringify(bg)); } catch (e) { /* unavailable */ }
+  };
   const prev = el("canvas", null, prevWrap);
   const prev1 = el("canvas", "sp-true", prevWrap);
 
@@ -4496,8 +4876,26 @@ function renderSpriteEditor(model, host) {
       adjust while looking at the result, not before you start. */
   right.appendChild(sizeBar);
 
+  const bgBar = el("div", "sp-row", right);
+  el("span", "sp-cap", bgBar).textContent = "backdrop";
+  const bgWrap = el("span", "sp-bg", bgBar);
+  const skyIn = el("input", null, bgWrap), groundIn = el("input", null, bgWrap);
+  skyIn.type = groundIn.type = "color";
+  skyIn.title = "sky"; groundIn.title = "ground";
+  skyIn.value = bg.sky; groundIn.value = bg.ground;
+  skyIn.oninput = () => { bg.sky = skyIn.value; applyBg(); };
+  groundIn.oninput = () => { bg.ground = groundIn.value; applyBg(); };
+  const bgReset = el("button", null, bgWrap);
+  bgReset.type = "button"; bgReset.textContent = "\u21ba";
+  bgReset.title = "back to the street's own colors";
+  bgReset.onclick = () => {
+    bg = { sky: "#1d2c38", ground: "#1a1f18" };
+    skyIn.value = bg.sky; groundIn.value = bg.ground; applyBg();
+  };
+  applyBg();
+
   /*  Who this is for. The slot half of the filename is decided by which
-      garment you are drawing, so this is the only half you choose. */
+      layer you are drawing, so this is the only half you choose. */
   const nameBar = el("div", "sp-row", right);
   el("span", "sp-cap", nameBar).textContent = "for";
   const nameIn = el("input", null, nameBar);
@@ -4505,7 +4903,7 @@ function renderSpriteEditor(model, host) {
   nameIn.placeholder = "mill-worker";
   nameIn.spellcheck = false;
   nameIn.title = "a person's uid, a trade, or \u201cdefault\u201d for everybody";
-  nameIn.oninput = () => paint();
+  nameIn.oninput = () => { openExisting(); paint(); };
   const nameOut = el("span", "sp-filename", nameBar);
 
   const outBar = el("div", "sp-row", right);
@@ -4515,9 +4913,9 @@ function renderSpriteEditor(model, host) {
   playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "\u275A\u275A" : "\u25B6"; };
   const dl = el("button", null, outBar);
   dl.type = "button"; dl.textContent = "download";
-  dl.title = "save this garment as the PNG the Promenade reads";
+  dl.title = "save this layer as the PNG the Promenade reads";
   dl.onclick = () => {
-    garments[slot].toBlob(b => {
+    layers[slot].toBlob(b => {
       const a2 = document.createElement("a");
       a2.href = URL.createObjectURL(b);
       // Named for the slot, since that half of the filename is fixed. Rename
@@ -4529,20 +4927,20 @@ function renderSpriteEditor(model, host) {
   };
   const reset = el("button", null, outBar);
   reset.type = "button"; reset.textContent = "reset";
-  reset.title = "this garment back to the built-in one";
+  reset.title = "this layer back to the built-in one";
   reset.onclick = () => {
     if (!confirm("Throw away this " + slot + " and start again?")) return;
     if (isPlace()) {
-      const g = garments.place.getContext("2d");
-      g.clearRect(0, 0, garments.place.width, garments.place.height);
-    } else garments[slot] = garmentCopy(wear[slot]);
+      const g = layers.place.getContext("2d");
+      g.clearRect(0, 0, layers.place.width, layers.place.height);
+    } else layers[slot] = layerCopy(wear[slot]);
     syncSize(); paint();
   };
 
   const hint = el("p", "hint sp-hint", right);
 
   /*  The filename the page will look for. A place is named for the place; a
-      garment is named for the wearer AND the slot, because each slot is its
+      layer is named for the wearer AND the slot, because each slot is its
       own file. Slugged, so what you type cannot produce a filename that will
       never match. */
   function fileName() {
@@ -4551,30 +4949,30 @@ function renderSpriteEditor(model, host) {
   }
 
   // ---- geometry
-  const nFrames = () => garments[slot].__frames || SPR_FRAMES;
-  const cellW = () => garments[slot].width / nFrames();
-  const cellH = () => garments[slot].height;
+  const nFrames = () => layers[slot].__frames || SPR_FRAMES;
+  const cellW = () => layers[slot].width / nFrames();
+  const cellH = () => layers[slot].height;
   function syncSize() { wIn.value = cellW(); hIn.value = cellH(); fIn.value = nFrames(); }
 
-  /*  Where the body sits behind this garment, in the garment's own pixels.
-      Same two rules as everywhere else: centred, and standing on the bottom
-      edge. A taller garment therefore shows the body lower down, which is
+  /*  Where the body sits behind this layer, in the layer's own pixels.
+      Same two rules as everywhere else: centered, and standing on the bottom
+      edge. A taller layer therefore shows the body lower down, which is
       correct — the extra room is headroom. */
   function bodyOffset() {
     return { x: (cellW() - SPR_W) / 2, y: cellH() - SPR_H };
   }
 
   // ---- drawing
-  function colourNow() {
+  function colorNow() {
     if (pen === -1) return null;                    // erase
     if (pen === -2) return fixed.value;             // the picker
     return SWATCHES[pen];
   }
   function setPixel(x, y, erase) {
     if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
-    const g = garments[slot].getContext("2d");
-    const c = colourNow();
-    // Linked: the same pixel in every frame, so one drawing is a whole garment.
+    const g = layers[slot].getContext("2d");
+    const c = colorNow();
+    // Linked: the same pixel in every frame, so one drawing is a whole layer.
     const at = linked ? [...Array(nFrames()).keys()] : [frame];
     for (const f of at) {
       const sx = f * cellW() + x;
@@ -4582,9 +4980,43 @@ function renderSpriteEditor(model, host) {
       else { g.fillStyle = c; g.fillRect(sx, y, 1, 1); }
     }
     if (!erase && c) remember(c);
+    touched[slot] = true;
+  }
+
+  /*  Which pixels a shape covers. One function, so the preview drawn while you
+      drag and the pixels committed when you let go cannot disagree — the
+      commonest way a shape tool lies to you. */
+  function shapePixels(x0, y0, x1, y1) {
+    const out = [];
+    if (tool === "pencil") { out.push([x1, y1]); return out; }
+    if (tool === "line") {
+      // Bresenham: whole pixels only, which is the only kind there are here.
+      const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+      const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy, x = x0, y = y0;
+      for (;;) {
+        out.push([x, y]);
+        if (x === x1 && y === y1) break;
+        const e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
+      }
+      return out;
+    }
+    const ax = Math.min(x0, x1), bx = Math.max(x0, x1);
+    const ay = Math.min(y0, y1), by = Math.max(y0, y1);
+    for (let y = ay; y <= by; y++) {
+      for (let x = ax; x <= bx; x++) {
+        const edge = x === ax || x === bx || y === ay || y === by;
+        if (tool === "fill" || edge) out.push([x, y]);
+      }
+    }
+    return out;
   }
 
   let drawing = null;
+  let anchor = null;      // where a shape started, while it is being dragged
+  let pending = null;     // the shape under the cursor, not yet committed
   const cellAt = e => {
     const r = grid.getBoundingClientRect();
     return { x: Math.floor((e.clientX - r.left) / (r.width / cellW())),
@@ -4593,15 +5025,103 @@ function renderSpriteEditor(model, host) {
   grid.addEventListener("pointerdown", e => {
     drawing = e.button === 2 || e.ctrlKey;
     const { x, y } = cellAt(e);
-    setPixel(x, y, drawing); paint();
+    anchor = { x, y };
+    /*  A shape shows before it commits; the pencil goes straight down. Waiting
+        to commit is what makes a line adjustable — you see it before you agree
+        to it. */
+    if (tool === "pencil") setPixel(x, y, drawing);
+    else pending = { x, y };
+    paint();
+    // Capture last, and never let it stop the drawing: it throws for a pointer
+    // the browser does not consider active, and that aborted the whole stroke.
     try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
   });
   grid.addEventListener("pointermove", e => {
     if (drawing === null) return;
     const { x, y } = cellAt(e);
-    setPixel(x, y, drawing); paint();
+    if (tool === "pencil") setPixel(x, y, drawing);
+    else pending = { x, y };
+    paint();
   });
-  const stop = () => { drawing = null; };
+  /*  Shift the whole layer by a whole number of pixels. Committed on release,
+      so a nudge can be lined up before it is agreed to — and applied to every
+      frame when "all frames" is on, or the frames walk out of register with
+      one another. */
+  /*  How far the layer may actually go.
+
+      Dragging past the edge used to cut whatever crossed it, permanently and
+      with no undo — nudge a coat two pixels too far and a sleeve is gone. So
+      the move is limited to what keeps the DRAWN pixels inside the cell: shove
+      it as hard as you like and it stops at the edge rather than eating the
+      drawing.
+
+      Measured on the frame being moved. */
+  function shiftRange() {
+    const cv = layers[slot], w = cellW(), h = cellH();
+    const g = cv.getContext("2d");
+    const at = [frame];
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (const f of at) {
+      const d = g.getImageData(f * w, 0, w, h).data;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (!d[(y * w + x) * 4 + 3]) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return { lo: 0, hi: 0, up: 0, down: 0 };   // nothing drawn
+    return { lo: -minX, hi: w - 1 - maxX, up: -minY, down: h - 1 - maxY };
+  }
+
+  function clampShift(dx, dy) {
+    const r = shiftRange();
+    return { dx: Math.max(r.lo, Math.min(r.hi, dx)),
+             dy: Math.max(r.up, Math.min(r.down, dy)) };
+  }
+
+  /*  Deliberately ONE frame, whatever "all frames" says.
+
+      That toggle is about putting the same thing into every frame, which is
+      what you want while drawing and precisely what you do not want here:
+      moving is how you fix a frame that sits wrong against the others, and
+      shifting them all together leaves you exactly where you started. */
+  function shiftBy(dx, dy) {
+    if (!dx && !dy) return;
+    touched[slot] = true;
+    const cv = layers[slot], w = cellW(), h = cellH();
+    const g = cv.getContext("2d");
+    const at = [frame];
+    for (const f of at) {
+      const tmp = document.createElement("canvas");
+      tmp.width = w; tmp.height = h;
+      const tg = tmp.getContext("2d");
+      tg.imageSmoothingEnabled = false;
+      tg.drawImage(cv, f * w, 0, w, h, dx, dy, w, h);
+      g.clearRect(f * w, 0, w, h);
+      g.drawImage(tmp, f * w, 0);
+    }
+  }
+
+  const stop = () => {
+    if (anchor && pending && tool === "move") {
+      const m = clampShift(pending.x - anchor.x, pending.y - anchor.y);
+      shiftBy(m.dx, m.dy);
+      drawing = null; anchor = null; pending = null; paint();
+      return;
+    }
+    // Let go and the shape is laid down; until then it is only a proposal.
+    if (anchor && pending && tool !== "pencil") {
+      for (const [px, py] of shapePixels(anchor.x, anchor.y, pending.x, pending.y)) {
+        setPixel(px, py, drawing);
+      }
+    }
+    drawing = null; anchor = null; pending = null;
+    paint();
+  };
   grid.addEventListener("pointerup", stop);
   grid.addEventListener("pointercancel", stop);
   grid.addEventListener("contextmenu", e => e.preventDefault());
@@ -4617,7 +5137,7 @@ function renderSpriteEditor(model, host) {
     grid.width = cw * z; grid.height = ch * z;
 
     slotBtns.forEach((b, i) => b.classList.toggle("on", ROWS[i] === slot));
-    // Rebuilt, because the count is the garment's and changes with it.
+    // Rebuilt, because the count is the layer's and changes with it.
     if (frameBar.childElementCount !== nFrames()) {
       frameBar.innerHTML = "";
       for (let i = 0; i < nFrames(); i++) {
@@ -4629,12 +5149,15 @@ function renderSpriteEditor(model, host) {
       }
     }
     [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
+    toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     onionBtn.classList.toggle("on", onion);
+    gridBtn.classList.toggle("on", gridOn);
+    axesBtn.classList.toggle("on", axesOn);
     linkBtn.classList.toggle("on", linked);
     eraseBtn.classList.toggle("on", pen === -1);
 
     /*  A swatch shows what the slot BECOMES this century, not the marker
-        colour stored in the file. Nobody should have to look at magenta to
+        color stored in the file. Nobody should have to look at magenta to
         know they are painting a coat. */
     penBtns.forEach((b, i) => {
       b.hidden = false;
@@ -4655,25 +5178,14 @@ function renderSpriteEditor(model, host) {
     // cols is worked out above, with the swatches — the canvas and the pens
     // must never disagree about what a slot looks like.
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-      g.fillStyle = ((x + y) & 1) ? "#1a1e17" : "#151812";
+      g.fillStyle = ((x + y) & 1) ? "#20241c" : "#161a14";
       g.fillRect(x * z, y * z, z, z);
     }
-    if (onion && isPlace()) {
-      /*  A figure at true size, standing on the ground line. The only thing
-          genuinely hard to judge when drawing a kirk is how big the people in
-          front of it are. */
-      const fig = dressBody(ROWS.map(k => ({ img: garments[k] })), false);
-      if (fig) {
-        g.globalAlpha = 0.75;
-        const fw = fig.__cellW, fh = fig.__cellH;
-        g.drawImage(fig, 0, 0, fw, fh, Math.round(cw * 0.12) * z, (ch - fh) * z, fw * z, fh * z);
-        g.globalAlpha = 1;
-      }
-    } else if (onion) {
+    if (onion && !isPlace()) {
       /*  Everything EXCEPT what you are drawing. Showing only the body was no
           use when adding a hat to someone already in a coat — you need to see
           what the new piece has to sit with. */
-      const others = ROWS.filter(k => k !== slot).map(k => ({ img: garments[k] }));
+      const others = ROWS.filter(k => k !== slot).map(k => ({ img: layers[k] }));
       const ghost = dressBody(others, false);
       if (ghost) {
         const gw = ghost.__cellW, gh = ghost.__cellH;
@@ -4684,23 +5196,102 @@ function renderSpriteEditor(model, host) {
         g.globalAlpha = 1;
       }
     }
-    g.drawImage(garments[slot], frame * cw, 0, cw, ch, 0, 0, grid.width, grid.height);
+    if (anchor && pending && tool === "move") {
+      // Shown where it would land, so the nudge is judged before it is made.
+      const m = clampShift(pending.x - anchor.x, pending.y - anchor.y);
+      g.drawImage(layers[slot], frame * cw, 0, cw, ch,
+                  m.dx * z, m.dy * z, grid.width, grid.height);
+    } else {
+      g.drawImage(layers[slot], frame * cw, 0, cw, ch, 0, 0, grid.width, grid.height);
+    }
 
-    g.strokeStyle = "rgba(255,255,255,0.07)"; g.lineWidth = 1;
-    for (let i = 1; i < cw; i++) { g.beginPath(); g.moveTo(i * z + 0.5, 0); g.lineTo(i * z + 0.5, grid.height); g.stroke(); }
-    for (let i = 1; i < ch; i++) { g.beginPath(); g.moveTo(0, i * z + 0.5); g.lineTo(grid.width, i * z + 0.5); g.stroke(); }
+    /*  On a place, the scale reference is a LINE at head height.
+
+        A block was still too much: the only thing you cannot judge by eye when
+        drawing a kirk is how far up the wall a person reaches, and a line says
+        that and nothing else. It obscures nothing, so there is no need to draw
+        through it or fade it. */
+    if (onion && isPlace()) {
+      const ph = layers.body.height;
+      const y = (ch - ph) * z;
+      g.strokeStyle = "rgba(232,220,196,0.8)";
+      g.lineWidth = 1;
+      g.setLineDash([4, 3]);
+      g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(grid.width, y + 0.5); g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = "rgba(232,220,196,0.8)";
+      g.font = "10px ui-monospace, monospace";
+      g.fillText("head height \u00b7 " + ph + "px", 4, y - 4);
+    }
+
+    /*  The shape under the cursor, not yet committed. Drawn in the pen's own
+        color so what you see is what you get, and outlined when erasing,
+        where the color is nothing. */
+    if (anchor && pending && tool !== "pencil" && tool !== "move") {
+      const col = drawing ? null : colorNow();
+      for (const [px, py] of shapePixels(anchor.x, anchor.y, pending.x, pending.y)) {
+        if (px < 0 || py < 0 || px >= cw || py >= ch) continue;
+        if (col) { g.fillStyle = col; g.fillRect(px * z, py * z, z, z); }
+        else {
+          g.strokeStyle = "rgba(217,138,92,0.9)"; g.lineWidth = 1;
+          g.strokeRect(px * z + 0.5, py * z + 0.5, z - 1, z - 1);
+        }
+      }
+    }
+
+    /*  Two weights. Every cell gets a faint rule so you can count pixels, and
+        every fourth a firmer one so you can count them QUICKLY — without the
+        major lines you lose your place around the tenth column and start
+        miscounting a sleeve. Skipped when the cells are too small to rule,
+        where a grid is only noise. */
+    g.lineWidth = 1;
+    if (gridOn && z >= 5) {
+      for (let i = 1; i < cw; i++) {
+        g.strokeStyle = i % 4 ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.3)";
+        g.beginPath(); g.moveTo(i * z + 0.5, 0); g.lineTo(i * z + 0.5, grid.height); g.stroke();
+      }
+      for (let i = 1; i < ch; i++) {
+        g.strokeStyle = i % 4 ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.3)";
+        g.beginPath(); g.moveTo(0, i * z + 0.5); g.lineTo(grid.width, i * z + 0.5); g.stroke();
+      }
+    }
+
+    /*  The center lines, and the ground.
+
+        Vertical matters most: every layer is centered on it, so a sleeve two
+        pixels off the middle is two pixels off on the body — invisible until
+        you can see the axis it is meant to be even about. Horizontal is a
+        second reference, roughly the waist. The bottom edge is the ground line
+        everything stands on, so it gets its own color and no dashes. */
+    if (axesOn) {
+      const midX = Math.round(cw / 2) * z, midY = Math.round(ch / 2) * z;
+      g.strokeStyle = "rgba(120,220,255,0.95)";
+      g.lineWidth = 2;
+      g.setLineDash([6, 4]);
+      g.beginPath(); g.moveTo(midX + 0.5, 0); g.lineTo(midX + 0.5, grid.height); g.stroke();
+      g.beginPath(); g.moveTo(0, midY + 0.5); g.lineTo(grid.width, midY + 0.5); g.stroke();
+      g.setLineDash([]);
+    }
+    g.lineWidth = 1;
+    g.strokeStyle = "#d98a5c";
+    g.beginPath();
+    g.moveTo(0, grid.height - 0.5); g.lineTo(grid.width, grid.height - 0.5);
+    g.stroke();
 
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
-    hint.textContent = "drag to draw \u00b7 right-click or ctrl to erase \u00b7 " +
+    hint.textContent = (tool === "pencil" ? "drag to draw"
+                      : tool === "move" ? "drag to nudge the layer"
+                      : "drag to place the shape") +
+      " \u00b7 right-click or ctrl to erase \u00b7 " +
       slot + ", frame " + (frame + 1) + " \u00b7 " + cw + " \u00d7 " + ch +
-      " \u00b7 grows from the centre, so it stays on the body";
+      " \u00b7 grows from the center, so it stays on the body";
     drawPreview();
   }
 
   /*  The render example, through the real compositor and the real palette
       swap — so what walks here is what walks down the street. */
   function drawPreview() {
-    const dressed = dressBody(ROWS.map(k => ({ img: garments[k], slot: k })), false);
+    const dressed = dressBody(ROWS.map(k => ({ img: layers[k], slot: k })), false);
     if (!dressed) return;
     if (isPlace()) return drawPlacePreview(dressed);
     const swapped = dressed;
@@ -4720,7 +5311,7 @@ function renderSpriteEditor(model, host) {
       people in front of it. A building drawn on its own always looks right;
       the question is whether it still reads with a crowd in front of it. */
   function drawPlacePreview(fig) {
-    const sc = garments.place;
+    const sc = layers.place;
     const swapped = fig;
     const z = 2, pad = 6;
     const w = Math.max(sc.width, 110) + pad * 2, h = Math.max(sc.height, 40) + 18;
@@ -4729,8 +5320,8 @@ function renderSpriteEditor(model, host) {
       const c = cv.getContext("2d");
       c.imageSmoothingEnabled = false;
       const groundY = h - 10;
-      c.fillStyle = "#1d2c38"; c.fillRect(0, 0, cv.width, groundY * zz);
-      c.fillStyle = "#1a1f18"; c.fillRect(0, groundY * zz, cv.width, cv.height);
+      c.fillStyle = bg.sky; c.fillRect(0, 0, cv.width, groundY * zz);
+      c.fillStyle = bg.ground; c.fillRect(0, groundY * zz, cv.width, cv.height);
       c.drawImage(sc, 0, 0, sc.width, sc.height,
                   Math.round((w - sc.width) / 2) * zz, (groundY - sc.height) * zz,
                   sc.width * zz, sc.height * zz);
@@ -4750,6 +5341,7 @@ function renderSpriteEditor(model, host) {
   })();
 
   syncSize();
+  openExisting();
   paint();
 }
 
@@ -4795,7 +5387,7 @@ function loadOnce(url, isCss) {
 
 /*  The style is settings, and the settings are the style.
 
-    Each row is one layer of the basemap: its colour, whether it draws, and how
+    Each row is one layer of the basemap: its color, whether it draws, and how
     heavy its line is. The panel edits this object and the style is rebuilt
     from it, so there is exactly one description of how the map looks — no
     chance of a control saying one thing while the map draws another.
@@ -4809,7 +5401,7 @@ function loadOnce(url, isCss) {
 const MAP_LAYERS = [
   { key: "ocean",  label: "Ocean",     type: "fill", def: "#0d1317", opacity: 1 },
   // Raster, not terrain-DEM: hs.pmtiles holds pre-rendered WEBP shading, z0-8.
-  // No colour of its own to set.
+  // No color of its own to set.
   { key: "hillshade", label: "Hillshade", type: "raster", def: "#000000", opacity: 0.5 },
   // Below 1 by default: the hillshade is underneath it, and an opaque land
   // fill would hide the thing it is meant to show.
@@ -4821,13 +5413,13 @@ const MAP_LAYERS = [
   { key: "coast",  label: "Coastline", type: "line", def: "#39434a", width: 1,   opacity: 1 },
 ];
 
-/*  What can be on the map, and what colour it is.
+/*  What can be on the map, and what color it is.
 
     A place brick is a place. An event brick becomes a mark too, but only when
     it names somewhere with coordinates — a birth with no location is still a
     fact, it just is not a point. Nothing is invented to fill the map.
 
-    Colour carries the KIND. Status moves to opacity, because a mark cannot say
+    Color carries the KIND. Status moves to opacity, because a mark cannot say
     two things with one fill, and "what is this" is the question you ask of a
     map before "how sure are we". */
 const MARK_KINDS = [
@@ -4869,7 +5461,7 @@ function loadMapSettings() {
   if (!raw || typeof raw !== "object") return;
   // Read field by field: a settings file from an older version, or one with a
   // key that no longer exists, must degrade to the default rather than
-  // handing MapLibre a colour it cannot parse.
+  // handing MapLibre a color it cannot parse.
   const gap = Number(raw.labelGap);
   if (gap >= 2 && gap <= 30) MAP_SETTINGS.labelGap = gap;
   if (typeof raw.labelVet === "boolean") MAP_SETTINGS.labelVet = raw.labelVet;
@@ -4923,7 +5515,7 @@ function basemapStyle(archive) {
         else. The land fill therefore has to let it through — which is what
         its opacity slider is for, and why it defaults below 1. Terrain read
         THROUGH the fill rather than laid over it: the shading tints the
-        colour instead of greying it.
+        color instead of greying it.
 
         The ocean is drawn after both, so the sea stays clean. The shading
         covers the whole globe, and a relief-shaded ocean is the giveaway of a
@@ -4955,13 +5547,13 @@ function basemapStyle(archive) {
       { id: "rivers", type: "line", source: "basemap",
         "source-layer": "ne_10m_rivers_lake_centerlines", layout: vis("rivers"),
         /*  Width comes from the data, not from one number for every river.
-            Natural Earth ships `strokeweig` on each centreline — its own
-            cartographer's judgement of how big that river draws — so a trunk
+            Natural Earth ships `strokeweig` on each centerline — its own
+            cartographer's judgment of how big that river draws — so a trunk
             river is heavier than a burn without anything here deciding which
             is which. Multiplied by a zoom ramp and then by your slider, so the
             slider scales the whole family and keeps their relative weights.
 
-            coalesce, because a centreline with no strokeweig should still
+            coalesce, because a centerline with no strokeweig should still
             draw; it just draws at the default weight. */
         paint: { "line-color": S.rivers.color, "line-opacity": S.rivers.opacity,
                  /*  The interpolate has to be outermost: `zoom` is only legal
@@ -5092,11 +5684,11 @@ function projectObject() {
 const DASHES = { solid: null, dashed: [2, 2], dotted: [0.6, 1.6] };
 const SVGNS = "http://www.w3.org/2000/svg";
 
-/*  An arrowhead, in the arrow's own colour.
+/*  An arrowhead, in the arrow's own color.
 
     `fill="context-stroke"` would say that in one line, but only Firefox
     implements it — everywhere else the head silently vanishes, which is why
-    arrows were drawing as plain lines. So each colour gets its own marker,
+    arrows were drawing as plain lines. So each color gets its own marker,
     made once and reused, with the fill written out explicitly.
 
     markerUnits="strokeWidth" ties the head's size to the line's weight, so a
@@ -5151,7 +5743,7 @@ function applyProjectLayers(map, p) {
   const view = p.view || {};
 
   // view.basemap:false hides the drawn basemap but keeps the background, so
-  // the ground colour still comes from your style rather than going white.
+  // the ground color still comes from your style rather than going white.
   if (view.basemap === false) {
     for (const l of map.getStyle().layers || []) {
       if (l.type !== "background" && !l.id.startsWith("proj-")) {
@@ -5325,7 +5917,7 @@ function placeLinks(model) {
 
     An event has no coordinates of its own — it borrows them from the place it
     names, which is the honest reading of "@george,longforgan": the record says
-    this happened at Longforgan, not at some point 40 metres east of it. Two
+    this happened at Longforgan, not at some point 40 meters east of it. Two
     events at one parish therefore sit on the same point, and that is correct;
     they are the same place.
 
@@ -5497,7 +6089,7 @@ function renderMap(model, host) {
             linkSvg.appendChild(ln);
             return ln;
           };
-          // Casing first so the coloured line paints on top of it.
+          // Casing first so the colored line paints on top of it.
           const casing = line("map-link-case");
           casing.setAttribute("stroke-width", (w + 2).toFixed(2));
           // Direct beats inferred: if any record names both places outright,
@@ -5556,7 +6148,7 @@ function renderMap(model, host) {
           Run on settle, not per frame: 59 getBoundingClientRect calls during a
           pan would be a layout thrash for no gain, and labels holding their
           last state mid-drag is invisible to the eye. */
-      const LABEL_PAD = 2;   // a hair of air, or neighbours read as one word
+      const LABEL_PAD = 2;   // a hair of air, or neighbors read as one word
 
       /*  Where a name goes when you have not said. Imhof's order, and the same
           one every automatic placer since has used: upper right first, because
@@ -5756,7 +6348,7 @@ function renderMap(model, host) {
       };
       /*  A project may bring its own basemap, so changing the project can mean
           changing the style underneath it. Only reloaded when the URL actually
-          differs — otherwise every colour tweak in the editor would throw the
+          differs — otherwise every color tweak in the editor would throw the
           whole basemap away and refetch it. */
       let styleShowing = hostedStyle();   // what the map opened with
       host._buildProject = () => {
@@ -5794,7 +6386,7 @@ function renderMap(model, host) {
           elDot.className = "map-marker" + (glyph ? " as-icon" : "") +
                             " mk-" + mark +
                             (f.properties.status === "verified" ? " verified" : "");
-          // Colour says WHICH KIND of thing this is. Set per element rather
+          // Color says WHICH KIND of thing this is. Set per element rather
           // than per class so the swatches in Map Style drive it directly.
           elDot.style.setProperty("--fill", MAP_SETTINGS.marks[mark].color);
           if (glyph) elDot.dataset.glyph = glyph;
@@ -5880,14 +6472,14 @@ function renderMap(model, host) {
 
       /*  Two sources, and the dropdown always names the one actually drawing.
           There is no third "auto" mode to pick: falling back when the tiles do
-          not answer is behaviour, not a choice you should have to make. */
+          not answer is behavior, not a choice you should have to make. */
       let usingFallback = startMode === "demo";   // true when DEMO_STYLE is what's actually showing
 
       const sourceSel = host.querySelector(".map-source");
 
       /*  One place decides what the map draws: a hand-edited style file if
           there is one, otherwise the settings applied to whichever source the
-          dropdown names. The dropdown greys out while overridden rather than
+          dropdown names. The dropdown grays out while overridden rather than
           vanishing, so it is clear the choice still exists and something is
           currently outranking it. */
       const applyStyle = ({ silent } = {}) => {
@@ -5983,16 +6575,16 @@ function updateMapCount(host, shown, model) {
 /* --------------------------------------------------------------------------
    THEMES
    --------------------------------------------------------------------------
-   Eight colours and a light/dark flag. Everything else on the page is written
+   Eight colors and a light/dark flag. Everything else on the page is written
    in terms of these, and the "on" washes are mixed from --accent/--accent2 at
    render time, so a theme never has to name a tint and never has one drift out
-   of step with the colour it belongs to.
+   of step with the color it belongs to.
 
    `color-scheme` is not decoration: without it the browser paints native
-   controls — checkboxes, sliders, scrollbars, the colour picker itself — for
+   controls — checkboxes, sliders, scrollbars, the color picker itself — for
    the wrong side, which is what made the Brick Builder fields white.
 
-   Not covered here: the basemap. Its colours are cartography, not chrome, and
+   Not covered here: the basemap. Its colors are cartography, not chrome, and
    they live in the Map Style panel where they belong.
    -------------------------------------------------------------------------- */
 /*  Each token says what it paints, in the words of the thing on screen rather
@@ -6172,7 +6764,7 @@ function renderTheme(body) {
     if (del) {
       SAVED_THEMES = SAVED_THEMES.filter(t => t.id !== del.dataset.del);
       saveSavedThemes();
-      // Deleting the theme you are wearing leaves the colours on screen
+      // Deleting the theme you are wearing leaves the colors on screen
       // untouched — they simply stop having a name. Nothing should change
       // appearance because you tidied a list.
       if (THEME_ID === del.dataset.del) { THEME_ID = "custom"; saveTheme(); }
@@ -6803,7 +7395,7 @@ function renderMapEditor(body) {
     else meArm(a);
   });
 
-  // Live: a colour or a slider changes the file, which redraws the map. There
+  // Live: a color or a slider changes the file, which redraws the map. There
   // is no Apply, because there is nothing to apply it to but itself.
   styleBox.addEventListener("input", e => {
     const i = e.target.closest("[data-k]");
@@ -6905,7 +7497,7 @@ function renderMapStyle(body) {
   // what they change is visible whenever your basemap is the one drawing.
   const syncEnabled = status;
 
-  // Wired once: re-rendering must never overwrite a colour you are dragging or
+  // Wired once: re-rendering must never overwrite a color you are dragging or
   // a style file you are half way through editing.
   if (body._wired) { syncEnabled(); projSources(); projStatus(); return; }
   body._wired = true;
@@ -6936,7 +7528,7 @@ function renderMapStyle(body) {
   };
 
   // Column headings. Without them a swatch and a slider are just two controls
-  // and you have to guess which is the colour and which is the line weight.
+  // and you have to guess which is the color and which is the line weight.
   rows.innerHTML =
     '<div class="ms-row ms-head">' +
       "<span></span>" +
@@ -6947,7 +7539,7 @@ function renderMapStyle(body) {
     "</div>" +
     MAP_LAYERS.map(l => {
     const s = MAP_SETTINGS[l.key];
-    // The controls follow the layer, not a template: a raster has no colour,
+    // The controls follow the layer, not a template: a raster has no color,
     // and only a line has a weight. Opacity is the one thing everything has.
     return '<div class="ms-row" data-key="' + l.key + '">' +
         '<input type="checkbox" data-f="on"' + (s.on ? " checked" : "") + ">" +
@@ -6990,7 +7582,7 @@ function renderMapStyle(body) {
       '<input type="range" data-f="mk" min="4" max="32" step="1" value="' + MAP_SETTINGS.markerSize + '">' +
     "</div>";
 
-  // 'input', not 'change': a colour picker and a slider are both things you
+  // 'input', not 'change': a color picker and a slider are both things you
   // drag, and watching the map follow the drag is the entire point of having
   // controls rather than a text field.
   rows.addEventListener("input", e => {
@@ -7063,7 +7655,7 @@ function renderMapStyle(body) {
         });
         applyMarkerVars();
         applyMapStyle();
-        // Mark colours are baked into the elements, so they need a rebuild —
+        // Mark colors are baked into the elements, so they need a rebuild —
         // restyling the basemap alone would leave them on the old palette.
         const mh = mapHost();
         if (mh && mh._syncMarkers) mh._syncMarkers();
@@ -7332,7 +7924,7 @@ function renderBoardTiles() {
       order the array happens to hold. Tiles all share z-index:1, so DOM order
       decides who paints over whom — and a cartouche overhangs UP into the tile
       above it, which must therefore already be on the page. Out of order, the
-      label of a lower tile was painted over by its upper neighbour. */
+      label of a lower tile was painted over by its upper neighbor. */
   const painted = [...board.tiles].sort((a, c) => a.y - c.y || a.x - c.x);
   for (const t of painted) {
     const panel = nodes.get(t.id);
@@ -7361,7 +7953,7 @@ function renderBoardTiles() {
   }
 }
 
-// Only the legal buttons — a "+" never appears toward an occupied neighbour or
+// Only the legal buttons — a "+" never appears toward an occupied neighbor or
 // past the board edge.
 function appendTileResize(wrap, t, dim, canGrow) {
   const canShrink = (dim === "w" ? t.w : t.h) > 1;
@@ -7973,7 +8565,7 @@ function wireDocViewport(body) {
   body.querySelector('[data-act="fit"]').onclick = () => fitDoc(body);
   body.querySelector('[data-act="actual"]').onclick = () => {
     const z0 = docView.zoom;
-    zoomDocBy(body, 1 / z0);               // back to exactly 100%, about the centre
+    zoomDocBy(body, 1 / z0);               // back to exactly 100%, about the center
   };
 
   // The tile can be resized by a column or a row at any time; the buffer has to
@@ -8054,7 +8646,7 @@ function renderDocument(body) {
 
   view.innerHTML = "";
 
-  // Only images go on the canvas. A PDF or a catalogue URL is still a source
+  // Only images go on the canvas. A PDF or a catalog URL is still a source
   // worth recording — it just gets a link rather than a viewport.
   if (src && isImageSrc(src)) {
     loadDocImage(body, src);
@@ -8143,7 +8735,7 @@ function renderTimeline(body) {
   let lo = Math.min(...years), hi = Math.max(...years);
   // A single year would divide by zero; give it a nominal decade of room.
   if (lo === hi) { lo -= 5; hi += 5; }
-  /*  Marks are positioned by their CENTRE, so a year at 0% or 100% would hang
+  /*  Marks are positioned by their CENTER, so a year at 0% or 100% would hang
       half outside the track and get clipped. Plot into an inset band instead
       of the full width, leaving room for the dot's radius at both ends. */
   const PAD = 6;   // percent of track width reserved at each end
@@ -9006,10 +9598,10 @@ function renderStats(host) {
                  ["dated", s.dated], ["estimated", s.estimated], ["geocoded", s.geocoded],
                  ["unparsed", s.unparsed]];
   host.innerHTML = cells.map(([k, v]) => {
-    const colour = (k === "unparsed" && v > 0) ? "var(--bad)"
+    const color = (k === "unparsed" && v > 0) ? "var(--bad)"
                  : (k === "ghosts" && v > 0) ? "var(--ghost)"
                  : k === "draft" ? "var(--draft)" : k === "verified" ? "var(--accent)" : "inherit";
-    return '<div class="stat"><div class="v" style="color:' + colour + '">' + v +
+    return '<div class="stat"><div class="v" style="color:' + color + '">' + v +
            '</div><div class="k">' + k + "</div></div>";
   }).join("");
 }
@@ -9122,7 +9714,7 @@ const GAZETTEER = new Map();   // uid -> {lat, lng}
 const LABEL_POS = new Map();   // uid -> "bottom"|"top"|"right"|"left"|"none"
 /*  Per-place marker glyph — any emoji or character. Empty/absent means the
     plain status dot, which stays the default because it is the only marker
-    whose colour still carries the verified/draft distinction. */
+    whose color still carries the verified/draft distinction. */
 const MARKER_ICON = new Map();   // uid -> "⛪" etc.
 
 function isGazetteerFile(name) { return /gazetteer.*\.csv$/i.test(name); }
@@ -9361,7 +9953,7 @@ function foldSidecar(files) {
   const got = applySidecar(hit.text, promenadeHost());
   if (!got) return ", brick.json is not valid JSON";
   refreshPanel("viz-promenade");
-  return ", brick.json: " + got.pins + " placed, " + got.tints + " coloured";
+  return ", brick.json: " + got.pins + " placed, " + got.tints + " colored";
 }
 
 // The Promenade's panel body, when it is on the board.
@@ -9936,6 +10528,7 @@ loadProject();
 loadTileKey();
 loadStyleUrl();
 loadColumnTints();
+loadGroups();
 loadMeSource();
 loadMeUrl();
 
@@ -10020,7 +10613,7 @@ el("quickDownload").addEventListener("click", () => {
     only copy should not quietly keep. Export is the undo, which is why it sits
     immediately to the left. */
 const CLEAR_KEYS = [
-  TEXT_KEY, GAZETTEER_KEY, PINNED_KEY, COLTINT_KEY,
+  TEXT_KEY, GAZETTEER_KEY, PINNED_KEY, COLTINT_KEY, GROUPS_KEY,
   BOARD_KEY, FOOTPRINT_KEY,
   MAPPROJECT_KEY, MAPSTYLE_KEY, MAPOVERRIDE_KEY, MAPSOURCE_KEY,
   STYLEURL_KEY, MEURL_KEY, MESOURCE_KEY,
@@ -10037,7 +10630,7 @@ function clearAll() {
     "  · the pile — " + bricks + " line" + (bricks === 1 ? "" : "s"),
   ];
   if (places) lines.push("  · " + places + " gazetteer coordinate" + (places === 1 ? "" : "s"));
-  lines.push("  · Promenade placements and column colours",
+  lines.push("  · Promenade placements and column colors",
              "  · your board layout and panel sizes",
              "  · the map's project file, style and source",
              "",

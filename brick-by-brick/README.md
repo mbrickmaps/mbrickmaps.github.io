@@ -13,6 +13,12 @@ deliberately shares its panel grammar and palette.
 > Both read as web pages too: [doc/quick-guide.html](doc/quick-guide.html) and
 > [doc/documentation.html](doc/documentation.html).
 
+> **Note on this document.** Written by an AI assistant during development, and
+> not yet reviewed line by line. It describes the code as it stood when written,
+> so some of it will have drifted. Treat it as a working draft — to be rewritten
+> properly later.
+
+
 ---
 
 ## The research folder
@@ -31,7 +37,7 @@ my-research/
 │   └── wear/                   who wears what — see the Promenade
 ├── gazetteer.csv               uid,lat,lng,label,icon
 ├── project.json                an Atlas project file (map context)
-└── brick.json                  placements and column colours
+└── brick.json                  placements and column colors
 ```
 
 Two rules the structure depends on:
@@ -105,7 +111,7 @@ tiles both explicitly placed, so neither pushes the other around.
   opening the flyout, so the quick guide says so explicitly.
 - **Footprints** are per panel, editable in the flyout, and remembered.
 - **Grow or shrink** a tile by a column or row; only the legal buttons appear,
-  so a **+** never points at an occupied neighbour or past the edge.
+  so a **+** never points at an occupied neighbor or past the edge.
 - **Swap** two tiles of the same footprint by dragging one onto the other.
 - **Removing** a tile parks its panel in the store, so its scroll position and
   typed text survive a trip off the board.
@@ -142,7 +148,7 @@ The header carries the whole of it: **auto**, **Save to browser**, **Export**,
 out is next to the destructive one. It confirms first, listing what will go with
 live counts, and warns in the dialog if the pile has never been exported.
 
-It removes the pile, the gazetteer, Promenade placements and column colours, the
+It removes the pile, the gazetteer, Promenade placements and column colors, the
 board layout and panel sizes, and the map's project file, style and source. It
 **keeps** your themes and your tile key — losing those is a separate annoyance
 you never asked for, and neither says anything about the research. Both lists
@@ -185,7 +191,7 @@ legitimately appears in every file.
 ## Brick Builder — **W**
 
 Compose a line without typing a pipe or hunting for an emoji. Status toggle,
-type buttons, labelled fields that change with the type, and uid autocomplete
+type buttons, labeled fields that change with the type, and uid autocomplete
 drawn from what you have already declared.
 
 It always shows the exact line it will write, and that line is **parsed with the
@@ -195,7 +201,7 @@ editing, and round-trips exactly, including your own arithmetic.
 
 ## Classification — **R**
 
-Every line as the parser sees it. Orange verified, grey dashed draft, red
+Every line as the parser sees it. Orange verified, gray dashed draft, red
 unparsed. Click one to load it into the Builder.
 
 ## Bricks — **F R**
@@ -245,7 +251,7 @@ brick declares identity; the gazetteer supplies geometry.
 - The **Add** row declares a brand-new place and sets its coordinates in one
   action. Adding the same name again updates rather than duplicating.
 - **Paste a Google Maps string** — `56.4629, -2.9715` — into either coordinate
-  field and it splits across both. Recognised by the same `readCoords` the
+  field and it splits across both. Recognized by the same `readCoords` the
   parser uses, so "what counts as a pair" is defined once.
 - Per place: a **marker icon** (any emoji) and a **label placement** — nine
   choices, `auto` by default.
@@ -294,7 +300,7 @@ basemap.
 it** to copy `"center": […], "zoom": …, "bbox": […]` for pasting into a project
 file.
 
-**Marker kinds** are coloured by what they are — places, births, deaths,
+**Marker kinds** are colored by what they are — places, births, deaths,
 marriages. Status moved to opacity, because a mark cannot say two things with
 one fill, and *what is this* is the question you ask before *how sure are we*.
 An event becomes a mark only when it names a place with coordinates; it borrows
@@ -306,13 +312,13 @@ directly above and below — and takes the first that does not collide. Choosing
 side opts out: it is honoured or the label is dropped, never quietly moved.
 
 **Connector lines** join two places when one record names both (orange, a stated
-fact) or when the same person is named at both (grey, inferred — so it wears the
-draft colour). Undirected, because the records give an association and never a
+fact) or when the same person is named at both (gray, inferred — so it wears the
+draft color). Undirected, because the records give an association and never a
 direction of travel.
 
 ## Map Style — **R**
 
-Per-layer control of your basemap: show/hide, colour, line width, and opacity for
+Per-layer control of your basemap: show/hide, color, line width, and opacity for
 every layer, plus the hillshade raster.
 
 Below a divider: **Hide overlaps** (label decluttering), **Label offset**, and
@@ -364,14 +370,14 @@ it works as typed, or write `{key}`.
 
 Tools: point, line, shape, arrow, curved arrow, note. Draw on the map; select an
 item to restyle it; drag its handles to reshape it. **Capture view** writes the
-current centre and zoom into the file, and **Download** saves it.
+current center and zoom into the file, and **Download** saves it.
 
 It writes the same format the Viewer reads, so the preview is the real renderer
 drawing the real file — nothing can look right here and wrong when loaded.
 
 ## Theme — **R**
 
-Six dark themes, or your own. Eight colours drive the whole page.
+Six dark themes, or your own. Eight colors drive the whole page.
 
 | | |
 |---|---|
@@ -427,7 +433,7 @@ Brick.viz.register("network", {
 
 Registering creates a panel with a footprint; it appears as a card in the flyout
 and you place it on the board. A slot gets the model and an empty element,
-nothing else — no access to the raw text, the editor, or its neighbours — so a
+nothing else — no access to the raw text, the editor, or its neighbors — so a
 broken renderer can only break its own tile.
 
 `Brick.model` is the current model. `Brick.place("network")` drops one straight
@@ -460,7 +466,7 @@ unexpectedly blue, check the port before checking the server.
 | `mapsource:v1` · `mapstyle:v1` · `mapstyle-raw:v1` | basemap choice, layer settings, hand-edited style |
 | `mapproject:v1` · `styleurl:v1` · `tilekey:v1` | project file, hosted style, tile key |
 | `meurl:v1` · `mesource:v1` | Map Editor's tracing basemap |
-| `promenade-pins:v1` · `columntint:v1` | placements and column colours |
+| `promenade-pins:v1` · `columntint:v1` | placements and column colors |
 
 All of it is this browser on this machine. Only **Export** and **brick.json**
 produce files you own.
