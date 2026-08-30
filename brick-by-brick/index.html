@@ -1994,6 +1994,7 @@ const PINNED_KEY = "brick-by-brick:promenade-pins:v1";    // who you put in whic
 const GROUPS_KEY = "brick-by-brick:promenade-groups:v1";  // columns you invented
 const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
+const IGNORED_KEY = "brick-by-brick:ignored:v1";          // site files told not to come back
 
 // Which tiles the map draws. Remembered, because it is a preference about the
 // tool rather than anything about the pile — reopening should not silently
@@ -10084,18 +10085,71 @@ function showRescan(on) {
     the Pallet like any other folder, and you choose what to open.
 
     Silent on file:// and data: URLs, where fetch is blocked; there is nothing
-    useful to say to someone opening the page from disk. */
+    useful to say to someone opening the page from disk.
+
+    ── Two switches ────────────────────────────────────────────────────────
+    Per file, from the page: the ✕ on a site file's row in the Pallet drops it
+    and stops it being read again — see IGNORED below.
+
+    Wholesale, from the source: set READ_HOSTED to false and the page never
+    touches bricks/ at all — no manifest, no piles, no gazetteer, nothing
+    listed. Deleting the bricks/ folder from the site does the same without
+    editing anything, since a missing manifest already means "no piles here."
+    ──────────────────────────────────────────────────────────────────────── */
+const READ_HOSTED = true;
 const MANIFEST = "bricks/manifest.json";
+const GAZ_FILE = "bricks/gazetteer.csv";
+
+/*  Site files you have told to stay away, by path.
+
+    A preference about this site rather than anything about your research, so
+    it outlives Clear all the way a saved theme does: clearing the pile and
+    finding the files you excluded queued up again would make the exclusion
+    worthless, since a fresh project is exactly when they would reappear. */
+let IGNORED = new Set();
+
+function loadIgnored() {
+  try {
+    const raw = localStorage.getItem(IGNORED_KEY);
+    if (raw) IGNORED = new Set(JSON.parse(raw));
+  } catch (e) { IGNORED = new Set(); }
+}
+function saveIgnored() {
+  try {
+    if (IGNORED.size) localStorage.setItem(IGNORED_KEY, JSON.stringify([...IGNORED]));
+    else localStorage.removeItem(IGNORED_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+// Only site files can be excluded: a folder you dropped is read fresh every
+// time, so there would be nothing for the exclusion to outlive.
+function isHostedFile(name) { return /^bricks\//.test(name || ""); }
+
+function ignoreFile(name) {
+  IGNORED.add(name);
+  saveIgnored();
+  folderFiles = folderFiles.filter(f => f.name !== name);
+  refreshPanel("pallet");
+}
+
+function unignoreAll() {
+  IGNORED.clear();
+  saveIgnored();
+  loadHostedBricks();
+}
 
 async function loadHostedGazetteer() {
+  if (!READ_HOSTED) return;
   if (!/^https?:$/.test(location.protocol)) return;
+  if (IGNORED.has(GAZ_FILE)) return;
   try {
-    const r = await fetch("bricks/gazetteer.csv", { cache: "no-cache" });
+    const r = await fetch(GAZ_FILE, { cache: "no-cache" });
     if (r.ok && mergeGazetteerFile(await r.text())) update();
   } catch (e) { /* optional */ }
 }
 
 async function loadHostedBricks() {
+  if (!READ_HOSTED) return;
   if (!/^https?:$/.test(location.protocol)) return;
   let names;
   try {
@@ -10109,39 +10163,27 @@ async function loadHostedBricks() {
   for (const n of names) {
     const name = typeof n === "string" ? n : (n && n.name);
     if (!name || !isBrickFile(name)) continue;
+    const path = "bricks/" + name;
+    // Excluded files are not merely hidden — they are never fetched, so a file
+    // you have said no to costs nothing on every load thereafter.
+    if (IGNORED.has(path)) continue;
     try {
-      const r = await fetch("bricks/" + name, { cache: "no-cache" });
-      if (r.ok) files.push({ name: "bricks/" + name, text: await r.text() });
+      const r = await fetch(path, { cache: "no-cache" });
+      if (r.ok) files.push({ name: path, text: await r.text() });
     } catch (e) { /* one missing file must not lose the rest */ }
   }
-  if (!files.length) return;
+  if (!files.length) { refreshPanel("pallet"); return; }
   rememberFolder(files, "this site");
 
-  /*  Listing the site's piles is not the same as loading them, and only
-      listing them meant a hosted page opened on the built-in SAMPLE — whose
-      places carry no coordinates and match no gazetteer uid — so the map was
-      correctly, but uselessly, empty.
+  /*  Listed, never loaded.
 
-      Merge them in on first visit only. If there is already work on the
-      pallet (anything the user typed, or a restored autosave that differs
-      from the sample) it is left alone: silently concatenating the site's
-      piles into someone's own pile on every reload would be far worse than
-      an empty map. */
-  const untouched = !state.text.trim() || state.text === SAMPLE;
-  if (!untouched) {
-    showMergeLog(files.length + " pile" + (files.length > 1 ? "s" : "") + " on this site — open or merge one");
-    return;
-  }
-  let text = "", added = 0;
-  for (const f of files) {
-    const r = mergeText(text, f.text, f.name);
-    text = r.text; added += r.added;
-  }
-  if (!added) return;
-  setText(text);
-  currentFile = "";
-  showSaved();
-  showMergeLog(added + " bricks loaded from this site");
+      This used to merge them in whenever the pile looked untouched, which was
+      convenient while the site's piles were the test data and wrong the moment
+      they were not: an empty pile is also what Clear all leaves behind, so the
+      piles walked back in on the reload seconds after a dialog said they had
+      gone. Nothing reads its way onto the pallet on its own now — the folder
+      is there in the Pallet like any folder you dropped, and you open it. */
+  showMergeLog(files.length + " pile" + (files.length > 1 ? "s" : "") + " on this site — open or merge one");
 }
 
 let droppedImages = [];
