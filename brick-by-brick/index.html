@@ -593,7 +593,16 @@
                    white-space: nowrap; font-family: var(--mono); font-size: 0.7rem; }
   .file-item .meta { font-size: 0.62rem; opacity: 0.45; flex-shrink: 0; font-family: var(--mono); }
   .file-item button { padding: 0 6px; font-size: 0.68rem; }
+  /*  The dismiss sits quiet until you are on the row: it is the one button here
+      that changes what the page does on every later visit, and a row of three
+      equally loud buttons invites the wrong one. */
+  .file-item .x { opacity: 0.35; }
+  .file-item:hover .x, .file-item .x:focus-visible { opacity: 1; }
   .file-empty { font-size: 0.7rem; opacity: 0.45; line-height: 1.6; }
+  .file-empty .lnk {
+    padding: 0; border: 0; background: none; font: inherit; color: var(--accent);
+    text-decoration: underline; cursor: pointer;
+  }
   /* ---------- timeline ---------- */
   #timeline .panel-body { display: flex; flex-direction: column; }
   /* Reserves its line always (&nbsp;) so hovering does not shift the lanes. */
@@ -1057,6 +1066,21 @@
   .pr-files button, .pr-files .pr-doc {
     font-size: 0.6rem; padding: 1px 7px; line-height: 1.7;
   }
+  /*  The scene's sky and ground, in the panel's own bar. Two swatches sized to
+      the buttons beside them, so the bar reads as one row rather than a
+      control bolted onto the end of it. */
+  .pr-bg {
+    display: flex; align-items: center; gap: 3px;
+    padding: 0 5px; border: 1px solid var(--border); border-radius: 3px;
+    background: var(--field);
+  }
+  .pr-bg-cap { font-size: 0.55rem; opacity: 0.5; letter-spacing: 0.04em; }
+  .pr-bg input[type="color"] {
+    width: 15px; height: 15px; padding: 0; border: 1px solid var(--border);
+    border-radius: 2px; background: none; cursor: pointer;
+  }
+  .pr-bg button { border: 0; background: none; padding: 0 2px; opacity: 0.55; }
+  .pr-bg button:hover { opacity: 1; }
   /* A link, styled as one of the buttons beside it. */
   .pr-doc {
     border: 1px solid var(--border); border-radius: 3px; background: var(--field);
@@ -1995,6 +2019,7 @@ const GROUPS_KEY = "brick-by-brick:promenade-groups:v1";  // columns you invente
 const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
 const IGNORED_KEY = "brick-by-brick:ignored:v1";          // site files told not to come back
+const SCENEBG_KEY = "brick-by-brick:promenade-bg:v1";     // the street's own sky and ground
 
 // Which tiles the map draws. Remembered, because it is a preference about the
 // tool rather than anything about the pile — reopening should not silently
@@ -2743,6 +2768,82 @@ function groupNameOf(slug) {
     entirely without a flag or a setting anywhere. */
 const ROWS = ["body", "bottom", "top", "hat"];
 
+/*  THE STREET'S OWN SKY AND GROUND.
+
+    A column tint colors one stretch of sky; this is the whole scene behind
+    every stretch of it, which is why it sits in the panel's own bar rather
+    than behind a signpost — there is no column to select for it.
+
+    Two colors, because everything else follows from them and a picker with
+    five swatches is a paint program. The horizon line is the ground lifted a
+    little, so it reads as an edge without being chosen; the grid view's flat
+    field is the sky taken down, because a board of pictograms is the same
+    room with the lights off. */
+const SCENE_BG_DEFAULT = { sky: "#1d2c38", ground: "#1a1f18" };
+let SCENE_BG = { ...SCENE_BG_DEFAULT };
+
+function loadSceneBg() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(SCENEBG_KEY) || "null"); } catch (e) { return; }
+  if (raw && /^#[0-9a-f]{6}$/i.test(raw.sky) && /^#[0-9a-f]{6}$/i.test(raw.ground)) {
+    SCENE_BG = { sky: raw.sky, ground: raw.ground };
+  }
+}
+function saveSceneBg() {
+  try {
+    const d = SCENE_BG.sky === SCENE_BG_DEFAULT.sky && SCENE_BG.ground === SCENE_BG_DEFAULT.ground;
+    if (d) localStorage.removeItem(SCENEBG_KEY);
+    else localStorage.setItem(SCENEBG_KEY, JSON.stringify(SCENE_BG));
+  } catch (e) { /* unavailable */ }
+}
+
+const hexInt = h => parseInt(String(h).slice(1), 16) || 0;
+
+/*  Toward white for a positive amount, toward black for a negative one. Per
+    channel, so a color keeps its hue instead of drifting grey. */
+function shadeInt(hex, amt) {
+  const n = hexInt(hex);
+  const mix = c => amt >= 0 ? Math.round(c + (255 - c) * amt) : Math.round(c * (1 + amt));
+  return (mix((n >> 16) & 255) << 16) | (mix((n >> 8) & 255) << 8) | mix(n & 255);
+}
+
+const mixInt = (a, b, t) => {
+  const ch = s => {
+    const x = Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
+    return x < 0 ? 0 : x > 255 ? 255 : x;
+  };
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
+
+// Perceived brightness, so a saturated yellow counts as light and a saturated
+// blue does not — which the plain average gets backwards.
+const lumOf = int => (0.299 * ((int >> 16) & 255) + 0.587 * ((int >> 8) & 255) +
+                      0.114 * (int & 255)) / 255;
+
+/*  LETTERING THAT SURVIVES THE SKY.
+
+    Every label out here used to be a fixed color — a pale grey for a person
+    whose place is known, a dim slate for one whose is not — chosen against the
+    one sky this panel had. The moment the sky became yours, those two were a
+    guess: pale grey on a pale sky is not dim, it is gone.
+
+    So the ink is picked from what it is sitting on. Near-black on a light
+    field, near-white on a dark one; the quiet variant is the same ink taken
+    part of the way back toward the field, so "known" and "unknown" stay a
+    difference in strength rather than two unrelated hues that only happened
+    to work against navy. */
+function sceneInk(bgInt, quiet) {
+  const ink = lumOf(bgInt) > 0.5 ? 0x14181c : 0xe4ebf0;
+  return quiet ? mixInt(ink, bgInt, 0.45) : ink;
+}
+
+const sceneSky = () => hexInt(SCENE_BG.sky);
+const sceneGround = () => hexInt(SCENE_BG.ground);
+// 0.08 rather than a rounder number because it lands on #2c312a for the
+// default ground, which is the #2b3327 this line was hand-picked as.
+const sceneEdge = () => shadeInt(SCENE_BG.ground, 0.08);    // the horizon line
+const sceneGrid = () => shadeInt(SCENE_BG.sky, -0.38);      // the pictogram board
+
 function loadColumnTints() {
   let raw;
   try { raw = JSON.parse(localStorage.getItem(COLTINT_KEY) || "null"); } catch (e) { return; }
@@ -2806,6 +2907,8 @@ function sidecarJSON(host) {
     },
     columns: {
       tints: [...COLUMN_TINT.entries()],
+      // The scene behind all of them, which is the same kind of decision.
+      scene: { ...SCENE_BG },
     },
   }, null, 2);
 }
@@ -2853,6 +2956,15 @@ function applySidecar(text, host) {
       }
     }
     saveColumnTints();
+  }
+
+  /*  Absent in a file written before the scene was settable, which must leave
+      the current one alone rather than resetting it to the default. */
+  const scene = data.columns && data.columns.scene;
+  if (scene && /^#[0-9a-f]{6}$/i.test(scene.sky) && /^#[0-9a-f]{6}$/i.test(scene.ground)) {
+    SCENE_BG = { sky: scene.sky, ground: scene.ground };
+    saveSceneBg();
+    if (host && host._syncSceneBg) host._syncSceneBg();
   }
   return out;
 }
@@ -3000,40 +3112,359 @@ function sceneImage(slug) {
   return pending;
 }
 
-/*  A layer is its own file, because it is its own size.
+/*  A wardrobe is one file.
 
-    One sheet cannot hold a 10 x 4 cap and a 12 x 11 coat in equal rows, and
-    the sizes are the point — a broad hat has to be broad. So each layer is
-    a file, and the name says who wears it and where it goes:
+    images/wear/<who>.png — four frames across, four rows down, the rows in
+    ROWS order from the skin outwards. The cell is width/4 by height/4, so a
+    96 x 96 sheet is four 24 x 24 cells and a 128 x 160 sheet is four 32 x 40
+    ones. A broader hat therefore makes the whole figure's cell broader, which
+    is the price of one file and a fair one: a hat is only ever broad ON
+    somebody.
+
+    Four frames is fixed, because nothing in a PNG can say otherwise. With a
+    file per layer the cell width was derivable from the layer's own size;
+    stacked into one sheet every row shares a cell, and a sheet cannot say how
+    many columns it was cut into. */
+const ROW_CACHE = new Map();   // sheet Image -> [canvas | null] in ROWS order
+
+function sheetRows(img) {
+  if (!img) return null;
+  const had = ROW_CACHE.get(img);
+  if (had) return had;
+
+  const w = img.width, rh = Math.max(1, Math.round(img.height / ROWS.length));
+  const probe = document.createElement("canvas");
+  probe.width = w; probe.height = img.height;
+  const pg = probe.getContext("2d", { willReadFrequently: true });
+  pg.imageSmoothingEnabled = false;
+  pg.drawImage(img, 0, 0);
+
+  const rows = ROWS.map((slot, i) => {
+    /*  A row nobody drew on is not an empty coat — it is a coat this sheet has
+        no opinion about, so it falls through to the next sheet in the chain.
+        Which is what makes one file per wearer as expressive as four: a sheet
+        with only the hat row inked changes only the hat. */
+    const d = pg.getImageData(0, i * rh, w, rh).data;
+    let ink = false;
+    for (let p = 3; p < d.length; p += 4) if (d[p]) { ink = true; break; }
+    if (!ink) return null;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = rh;
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, i * rh, w, rh, 0, 0, w, rh);
+    c.__frames = SPR_FRAMES;
+    return c;
+  });
+  /*  Bounded, because the editor loads a fresh Image on every pass and each
+      one is a new key. The Promenade's sheets come from costumeCache and are
+      the same objects render after render, so they cost four entries, not one
+      per render — this cap only ever throws away editor scratch. */
+  if (ROW_CACHE.size > 64) ROW_CACHE.clear();
+  ROW_CACHE.set(img, rows);
+  return rows;
+}
+
+function wearSheet(who, onReady) {
+  return who ? layerImage("wear", who, onReady) : null;
+}
+
+/*  A LOOSE LAYER, for when a whole sheet is more than you meant.
 
         images/wear/<who>.<slot>.png     slot = body | bottom | top | hat
 
-        mill-worker.top.png    every mill worker's coat
-        george-isles.hat.png   his hat and nobody else's
-        default.bottom.png     what everyone else has on below the waist
+    Drawing one hat should not require drawing the three rows under it, and a
+    hat that has to live inside somebody's sheet cannot be lent to anybody
+    else. So a single-layer file still counts, and it beats the same wearer's
+    sheet — it is the more specific statement of the two.
 
-    Four frames across; the frame is however tall and wide the layer needs.
-    It is centered on that slot's anchor, so a bigger drawing grows evenly
-    around the body rather than off one corner. */
+    Its cell is its own, which is the one thing a sheet cannot offer: a broad
+    hat here is broad without widening the body it sits on. */
 function wearImage(who, slot, onReady) {
   return who ? layerImage("wear", who + "." + slot, onReady) : null;
 }
 
-/*  Everything this person has on. Each slot resolves on its own, most specific
-    first, so a trade can supply a coat while one person overrides only the
-    hat, and anything nobody has drawn keeps the built-in. */
+/*  Everything this person has on.
+
+    Three wearers, most specific first — themselves, their trade, everybody —
+    and for each of them a loose layer beats their sheet's row. First hit down
+    that list wins the slot, so a trade supplies a coat while one person
+    overrides only the hat, and a slot nobody has drawn anywhere keeps the
+    built-in. */
 function outfitFor(slug, trade, host, onReady) {
-  return ROWS.map(slot => {
-    const img = wearImage(slug, slot, onReady)
-             || wearImage(trade, slot, onReady)
-             || wearImage("default", slot, onReady)
-             || (host && host._wear[slot]);
+  const whos = [slug, trade, "default"].filter(Boolean);
+  const rowsOf = new Map();
+  const rows = who => {
+    if (!rowsOf.has(who)) rowsOf.set(who, sheetRows(wearSheet(who, onReady)));
+    return rowsOf.get(who);
+  };
+  return ROWS.map((slot, i) => {
+    let img = null;
+    for (const who of whos) {
+      img = wearImage(who, slot, onReady) || (rows(who) || [])[i];
+      if (img) break;
+    }
+    if (!img) img = host && host._wear[slot];
     return img ? { img, slot } : null;
   });
 }
 
+/*  What sits in front of what, on the STAGE — which is the layer that does not
+    pan, unlike the world inside it.
+
+        0   the street: ground, gradients, scenery, people, signposts
+        5   the sky: a balloon, a skein of birds — over the street, under the pen
+       10   the pen, and whoever is being carried
+
+    Named because "addChildAt(0)" is not layering, it is a guess, and the guess
+    was wrong: the street paints an opaque sky over the whole panel, so index 0
+    is not "behind everything", it is "invisible". */
+const SKY_Z = 5, PEN_Z = 10;
+
+/*  Balloon silks: the envelope, and the two side gores under it.
+
+    Each pair is one dyestuff at two strengths rather than two colors, because
+    that is what a gore is — the same bolt, shaded by the curve of the cloth.
+    The names are the dyes a balloon of the period would actually have been
+    made up in, which is also why none of them is a bright primary: aniline
+    had barely arrived, and madder, weld and indigo do not do neon.
+
+    Muted on purpose besides. This thing crosses the sky above somebody's
+    research; it is meant to be noticed once and then ignored. */
+const BALLOON_SILKS = [
+  [0xb4553a, 0x8f4530],   // madder — the original, and still the commonest
+  [0xc08a3e, 0x9a6b2e],   // ochre
+  [0x8f9d5c, 0x6f7c46],   // weld over woad, the green of old bunting
+  [0x6d7f96, 0x53637a],   // indigo, weak
+  [0x9c4f57, 0x7c3d45],   // cochineal
+  [0x7a6a94, 0x5e5175],   // logwood damson
+  // Undyed silk, which is a color too — taken down a little from the raw
+  // cloth, because against a night sky the true shade was the one thing up
+  // there brighter than the signposts.
+  [0xc4b79c, 0xa39a82],
+  [0x4f6b63, 0x3c534d],   // verdigris
+];
+
+/*  PASSENGERS.
+
+    Drop somebody onto the balloon and they hang under it on a string until it
+    leaves the frame, at which point everyone is set down exactly where they
+    were. Nothing is written: no pin moves, no brick changes, and the sidecar
+    never hears about it. A ride is a thing you watch, not a thing you record —
+    which is also why the balloon is allowed to carry them off the edge of the
+    world without that costing you a placement.
+
+    One. A basket six pixels wide with a queue hanging off it was a good gag
+    and a bad control: the passengers covered the balloon, and since a walker
+    is interactive in its own right, every click meant to let them off landed
+    on somebody's head instead. One passenger hanging clear of the envelope
+    leaves the balloon clickable, which is the thing that has to work. */
+const BALLOON_SEATS = 1;
+
+/*  One rope, and it leans.
+
+    The lean is drag. The balloon is under power in the x direction and the
+    person is not, so the rope trails BACKWARD, and further back the deeper
+    you hang — which is why the second term is quadratic. It is the only part
+    of this that had to be worked out rather than chosen.
+
+    The rope is long enough to hang a whole figure below the basket with ten
+    pixels of line showing. Not decoration: a passenger overlapping the
+    envelope is a passenger sitting on top of the balloon's click target, and
+    that is exactly how "clicking it does nothing" happened. */
+const balloonDrift = load => 0.35 - load * 0.03;   // always forward, and always +x
+const ROPE = 10;
+
+function riderPos(i, h) {
+  const step = Math.max(14, h * 0.9);
+  const d = 19 + ROPE + h + i * step;      // basket, line, then the whole figure
+  return { x: -(0.30 * d + 0.0035 * d * d), y: d };
+}
+
+/*  Generous, because you are aiming a person at a nine-pixel balloon that is
+    moving. Reaching a little below it too — a figure dragged UP to the balloon
+    arrives from underneath, so the catch has to be where the hand is coming
+    from. */
+function overBalloonAt(host, x, y) {
+  const b = host._balloon;
+  if (!b || b.riders.length >= BALLOON_SEATS) return false;
+  const dx = Math.abs(x - b.node.x), dy = y - b.node.y;
+  return dx < 24 && dy > -26 && dy < 46;
+}
+
+/*  WHAT IS UNDER THIS POINT.
+
+    Three regions accept a person and they mean three different things:
+
+        balloon   nothing. A ride. No pin, no brick, no record.
+        pen       "I no longer know where they were." Clears the pin.
+        column    "they belong with this group." Writes the pin.
+        nowhere   no column has coordinates yet, so there is nothing to join.
+
+    One function answers it, and both the highlight during a drag and the drop
+    itself read that one answer. They used to work it out separately, three
+    regions by three code paths, and the results could disagree — the balloon
+    could swell to say it would catch you while the release went to a column.
+    Worse, each path grew its own hit testing, so a fix for one was a fix for
+    one. Everything about where a person lands is decided here now.
+
+    Point is in STAGE coordinates: a carried figure is on the stage, which is
+    the only frame the pen, the sky and the street can all be compared in. */
+function dropTargetAt(host, x, y) {
+  if (host._balloon && overBalloonAt(host, x, y)) return { kind: "balloon" };
+  const b = host._penBox;
+  if (b && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return { kind: "pen" };
+  const col = host._columnAt ? host._columnAt(x - (host._world ? host._world.x : 0)) : null;
+  return col === null ? { kind: "nowhere" } : { kind: "column", slug: col };
+}
+
+/*  On, and off.
+
+    Both go through host._aloft, which is the only durable record of who is up
+    there: b.riders holds live nodes and does not survive a rebuild, and the
+    rebuild puts everybody back on the rope by reading the set. */
+function boardRider(host, w, P) {
+  const b = host._balloon;
+  if (!b || !w || b.riders.length >= BALLOON_SEATS) return false;
+  w.riding = true;
+  w.held = false;
+  b.node.addChild(w.node);           // the balloon owns them now
+  // Facing the way it is going, since that is the way they are going.
+  w.node.scale.x = Math.abs(w.node.scale.x);
+  b.riders.push({ slug: w.slug, node: w.node, h: (w.sprite && w.sprite.height) || 24 });
+  host._aloft.add(w.slug);
+  rigBalloon(host, P);
+  return true;
+}
+
+/*  Taken off the rope, and the rope closes up — everybody below them moves up
+    one, which is what a rope does. Called the moment a passenger is picked up
+    rather than when they are put down, so what you are dragging is already
+    nobody's passenger. */
+function unboardRider(host, w, P) {
+  if (!w) return;
+  w.riding = false;
+  host._aloft.delete(w.slug);
+  const b = host._balloon;
+  if (!b) return;
+  const i = b.riders.findIndex(r => r.slug === w.slug);
+  if (i >= 0) b.riders.splice(i, 1);
+  rigBalloon(host, P);
+}
+
+/*  Place everyone on the rope and draw the rope through them.
+
+    Segment by segment — basket to the first head, then each pair of feet to
+    the next head — so it reads as one line passing through a chain of people
+    rather than five separate strings that happen to line up. */
+function rigBalloon(host, P) {
+  const b = host._balloon;
+  if (!b) return;
+  if (!b.rig) { b.rig = new P.Graphics(); b.node.addChildAt(b.rig, 0); }
+  b.riders.forEach((r, i) => {
+    const at = riderPos(i, r.h || 24);
+    r.node.x = at.x;
+    r.node.y = at.y;
+  });
+  b.rig.clear();
+  b.rig.lineStyle(1, 0x3a2f20, 0.75);
+  let fromX = 0, fromY = 19;                 // the underside of the basket
+  for (const r of b.riders) {
+    // To the top of their head, not their feet: a rope ending at the ground
+    // line they are no longer standing on reads as a stilt.
+    b.rig.moveTo(fromX, fromY);
+    b.rig.lineTo(r.node.x, r.node.y - (r.h || 24));
+    fromX = r.node.x; fromY = r.node.y;
+  }
+  // Always "grab": it can be moved whether or not it is carrying anybody.
+  if (b.envelope) b.envelope.cursor = "grab";
+}
+
+/*  Click the balloon and everyone aboard is set down in The Promenade.
+
+    Which is a real decision, unlike the ride itself: it writes a placement,
+    the same one a drop into that column writes by hand. The Promenade is
+    where somebody stands when you have not said where they were, and stepping
+    out of a balloon into the middle of the street is exactly that.
+
+    They fall the rest of the way, through the same gravity a dropped figure
+    uses, because they should land rather than appear. */
+function dropOffBalloon(host) {
+  const b = host._balloon;
+  if (!b || !b.riders.length) return;
+  const riders = [...b.riders];
+  const world = host._world;
+  const promX = host._columnX ? host._columnX("") : null;
+  riders.forEach((r, i) => {
+    const w = (host._walkers || []).find(k => k.slug === r.slug);
+    host._pinned.set(r.slug, "");            // "" is The Promenade's own slug
+    host._aloft.delete(r.slug);
+    if (!w || !world) return;
+    // Handed from the balloon to the street at the point they were hanging, so
+    // the fall starts where they were rather than where they are going.
+    const gx = b.node.x + w.node.x, gy = b.node.y + w.node.y;
+    w.riding = false;
+    world.addChild(w.node);
+    w.node.x = gx - world.x;
+    w.node.y = gy - world.y;
+    /*  Spread across the column on the way down rather than landing in one
+        stack. Same arithmetic the drop handler uses, so five off a balloon
+        stand exactly as five dropped by hand would. */
+    if (promX !== null) w.home = promX + (i - (riders.length - 1) / 2) * 22;
+    w.t = 1;
+    w.vy = 0;
+    w.falling = true;
+  });
+  b.riders.length = 0;
+  if (b.rig) b.rig.clear();
+  if (b.envelope) b.envelope.cursor = "grab";
+  if (host._savePins) host._savePins();
+  /*  The Promenade has just taken five more, so every column east of it moves.
+      Reflowed once they are down, not while they are in the air. */
+  clearTimeout(host._settle);
+  host._settle = setTimeout(() => {
+    host._noTween = true;
+    renderPromenadePixi(V(), host);
+  }, 1100);
+}
+
+/*  Everybody down.
+
+    The rebuild is what actually returns them: their pins were never touched,
+    so a plain re-render puts each one back in the column they were taken
+    from. Which is why the nodes can simply be destroyed with the balloon —
+    the render makes new ones. */
+function landBalloon(host) {
+  const b = host._balloon;
+  if (!b) return;
+  const had = (b.riders || []).length;
+  if (host._aloft) host._aloft.clear();
+  /*  Off the event boundary before it is torn down. Pixi keeps a reference to
+      whatever it is currently tracking a pointer over, and a destroyed node
+      still sitting in that slot throws on the next move. */
+  b.node.eventMode = "none";
+  if (b.envelope) b.envelope.eventMode = "none";
+  b.node.removeAllListeners();
+  b.node.destroy({ children: true });
+  host._balloon = null;
+  if (had) { host._noTween = true; renderPromenadePixi(V(), host); }
+}
+
 function renderPromenadePixi(model, host) {
+  // Who is in the sky rather than on the street. Read below, when the cast is
+  // worked out, so a passenger is not also standing in their column.
+  if (!host._aloft) host._aloft = new Set();
   const { coord, out: whereByPerson } = peoplePlaces(model);
+  /*  Passengers stay in the cast.
+
+      Taking them out of it was the tidier-looking choice and the wrong one:
+      a walker that is not in host._walkers has no drag, no drop, no name and
+      no way down, so a passenger could be lifted off the balloon and then
+      belonged nowhere — the release found no walker and did nothing at all.
+
+      They keep their place in their column too. It is held open for them
+      rather than closing up and reopening, which is both less work and a
+      better answer to "where was that person" while they are in the air. */
   const people = (model.people || []).filter(p => p.declared);
   const P = window.PIXI;
 
@@ -3331,6 +3762,43 @@ function renderPromenadePixi(model, host) {
     fileBar.querySelector('[data-k="save"]').onclick = () =>
       downloadText(sidecarJSON(host), "brick.json", "application/json");
     fileBar.insertBefore(groupBtn, fileBar.firstChild);
+
+    /*  The scene's own sky and ground.
+
+        In the bar rather than behind a signpost, because it is the one
+        backdrop with no column to select: the tint bar appears when you click
+        a place, and there is nothing to click for "the whole street". Two
+        swatches and a way back. */
+    const bgBar = document.createElement("span");
+    bgBar.className = "pr-bg";
+    bgBar.innerHTML =
+      '<span class="pr-bg-cap">scene</span>' +
+      '<input type="color" data-k="sky" title="the sky behind the whole street">' +
+      '<input type="color" data-k="ground" title="the ground everybody stands on">' +
+      '<button data-k="reset" title="back to the street’s own colors">↺</button>';
+    fileBar.insertBefore(bgBar, groupBtn.nextSibling);
+    const syncBgBar = () => {
+      bgBar.querySelector('[data-k="sky"]').value = SCENE_BG.sky;
+      bgBar.querySelector('[data-k="ground"]').value = SCENE_BG.ground;
+    };
+    const redrawScene = () => {
+      saveSceneBg();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    bgBar.addEventListener("input", e => {
+      const k = e.target.dataset.k;
+      if (k !== "sky" && k !== "ground") return;
+      SCENE_BG[k] = e.target.value;
+      redrawScene();
+    });
+    bgBar.querySelector('[data-k="reset"]').onclick = () => {
+      SCENE_BG = { ...SCENE_BG_DEFAULT };
+      syncBgBar();
+      redrawScene();
+    };
+    syncBgBar();
+    host._syncSceneBg = syncBgBar;   // an opened sidecar can bring its own
     fileBar.querySelector('[data-k="load"]').onclick = () => {
       const inp = document.createElement("input");
       inp.type = "file";
@@ -3548,7 +4016,7 @@ function renderPromenadePixi(model, host) {
         being aimed at. Pixi only honors zIndex on a sorted parent. */
     app.stage.sortableChildren = true;
     host._limbo = new P.Container();
-    host._limbo.zIndex = 10;
+    host._limbo.zIndex = PEN_Z;
     app.stage.addChild(host._limbo);
 
     /*  Drift as an attract mode.
@@ -3617,6 +4085,15 @@ function renderPromenadePixi(model, host) {
           continue;
         }
 
+        /*  A passenger belongs to the balloon, exactly as a held figure
+            belongs to the hand. Their x and y are the balloon's business now;
+            the loop below would drag them back to a column they are three
+            hundred feet above. They keep walking, because everybody does. */
+        if (w.riding) {
+          setFrame(w, Math.floor(t * 4 + w.phase) % w.frames.length);
+          continue;
+        }
+
         /*  Dropped, and falling. Gravity rather than a tween, because you
             threw them — they should land, not glide. They also slide into the
             middle of their column on the way down, so the drop reads as
@@ -3681,6 +4158,20 @@ function renderPromenadePixi(model, host) {
         const a = host._signLayer.alpha;
         if (a !== want) host._signLayer.alpha = a + Math.sign(want - a) * Math.min(0.06, Math.abs(want - a));
       }
+      /*  The sky exists on the street and nowhere else.
+
+          The grid is a pictogram board — a flat field with no horizon, so
+          there is nothing for a balloon to be in front of and nothing for it
+          to be behind. Anything already crossing when you switch is taken
+          down rather than left hanging over a chart. */
+      const SKY = host._view !== "grid";
+      if (!SKY) {
+        // Through landBalloon, so anybody aboard is set down in their column
+        // rather than deleted along with the basket.
+        if (host._balloon) landBalloon(host);
+        if (host._birds) { host._birds.node.destroy({ children: true }); host._birds = null; }
+      }
+
       /*  Now and again, a balloon.
 
           Drawn rather than fetched, and never announced. It drifts across the
@@ -3690,13 +4181,14 @@ function renderPromenadePixi(model, host) {
 
           Deliberately in the sky layer and never interactive: it is not a
           record, it cannot be clicked, and nothing depends on it. */
-      if (!host._balloon && Math.random() < 0.0004) {
+      if (SKY && !host._balloon && Math.random() < 0.0004) {
         const bal = new P.Container();
         const g = new P.Graphics();
-        // envelope, in the signboard timber so it belongs to the palette
-        g.beginFill(0xb4553a).drawEllipse(0, 0, 9, 11).endFill();
-        g.beginFill(0x8f4530).drawEllipse(-3.5, 0, 2.5, 11).endFill();
-        g.beginFill(0x8f4530).drawEllipse(3.5, 0, 2.5, 11).endFill();
+        // A silk, drawn each time from the same bolt of cloth.
+        const [silk, gore] = BALLOON_SILKS[Math.floor(Math.random() * BALLOON_SILKS.length)];
+        g.beginFill(silk).drawEllipse(0, 0, 9, 11).endFill();
+        g.beginFill(gore).drawEllipse(-3.5, 0, 2.5, 11).endFill();
+        g.beginFill(gore).drawEllipse(3.5, 0, 2.5, 11).endFill();
         // rigging and basket
         g.lineStyle(1, 0x3a2f20, 0.9);
         g.moveTo(-4, 9); g.lineTo(-2.5, 15);
@@ -3707,17 +4199,108 @@ function renderPromenadePixi(model, host) {
         bal.y = H() * 0.22;
         bal.x = -30;
         bal.alpha = 0.85;
-        app.stage.addChildAt(bal, 0);       // behind the pen, above nothing else
-        host._balloon = { node: bal, t: 0, from: bal.y };
+        /*  Above the street, below the pen.
+
+            This used to be addChildAt(stage, 0), which reads as "behind
+            everything" and was: the world's own sky is an opaque rectangle the
+            full size of the panel, so a balloon put underneath it drifted the
+            whole way across without a single pixel of it ever being seen. The
+            stage sorts on zIndex — world sits at 0 and the pen at 10, so the
+            sky belongs between them. */
+        bal.zIndex = SKY_Z;
+        /*  Clickable, but only ever to let people off. A Container is not hit
+            tested through its children, so it needs its own area — generous,
+            because it is nine pixels wide and moving. */
+        /*  THE ENVELOPE IS THE TARGET, NOT THE BALLOON.
+
+            A hitArea on a Container does not merely describe that container —
+            Pixi prunes the entire subtree when the point falls outside it. So
+            a hit box drawn round the envelope quietly made the passenger
+            hanging beneath it untouchable, and the passenger could not be
+            dragged back off. Draw it big enough to reach them instead and the
+            opposite happens: the passenger is on top, and every click meant
+            for the balloon lands on the person it was trying to put down.
+
+            Both problems are the same mistake. The envelope is a sibling of
+            the passenger, not their parent, so it gets its own hit box and
+            they keep theirs. */
+        g.eventMode = "static";
+        g.hitArea = new P.Rectangle(-14, -16, 28, 36);   // envelope and basket
+        // Deaf for the length of a drag, like the pen — see the walker's
+        // pointerdown. Set here too, for a balloon that arrives mid-drag.
+        bal.interactiveChildren = !host._dragging;
+        /*  Take hold of it and it goes where you put it.
+
+            The drift is a schedule, not a rule. Steering the balloon is how you
+            get it over the person you want to pick up, and how you get it over
+            the column you want to set them down in — without it, boarding is a
+            game of waiting for the thing to drift past somebody.
+
+            Same distance rule as everywhere else on this panel: under four
+            pixels is a click, past that you are moving it. So one gesture on
+            one target does both, and neither has to be explained. */
+        g.cursor = "grab";
+        let downX = null, downY = null, fromX = 0, fromY = 0, shifted = false;
+        const mine = () => (host._balloon && host._balloon.node === bal && !bal.destroyed)
+          ? host._balloon : null;
+        g.on("pointerdown", ev => {
+          const b = mine();
+          if (!b) return;
+          downX = ev.global.x; downY = ev.global.y;
+          fromX = bal.x; fromY = bal.y;
+          shifted = false;
+          b.held = true;                 // the ticker leaves it alone while held
+          host._dragging = true;         // and the street does not pan underneath
+          host._drift = false;
+          g.cursor = "grabbing";
+        });
+        g.on("globalpointermove", ev => {
+          if (downX === null || !mine()) return;
+          const dx = ev.global.x - downX, dy = ev.global.y - downY;
+          if (!shifted && Math.abs(dx) + Math.abs(dy) < 4) return;
+          shifted = true;
+          bal.x = fromX + dx;
+          bal.y = fromY + dy;
+        });
+        const release = () => {
+          if (downX === null) return;
+          downX = null;
+          g.cursor = "grab";
+          host._dragging = false;
+          /*  A press and a release are two events with a frame or more between
+              them, and in that gap the balloon can have left the frame and been
+              destroyed — the handler still runs, on a node whose transform is
+              already gone. */
+          const b = mine();
+          if (!b) return;
+          b.held = false;
+          /*  Hand the height back to the bob without a jump: `from` is the line
+              it hangs about, so it has to be set to wherever it is NOW minus
+              however far through the bob we happen to be. */
+          b.from = bal.y - (b.riders.length * 3 + Math.sin(b.t * 0.7) * 6);
+          if (!shifted) dropOffBalloon(host);
+        };
+        g.on("pointerup", release);
+        g.on("pointerupoutside", release);
+        app.stage.addChild(bal);
+        host._balloon = { node: bal, envelope: g, t: 0, from: bal.y, riders: [], rig: null, held: false };
       }
       if (host._balloon) {
         const b2 = host._balloon;
         b2.t += app.ticker.deltaMS / 1000;
-        b2.node.x += 0.35;
-        b2.node.y = b2.from + Math.sin(b2.t * 0.7) * 6;
-        if (b2.node.x > app.screen.width + 30) {
-          b2.node.destroy({ children: true });
-          host._balloon = null;
+        /*  Held, so the ticker keeps its hands off. Same rule as a walker
+            being carried: whoever has hold of a thing owns its position, and
+            two writers of one x is how a drag stops working. */
+        if (!b2.held) {
+          // Heavier when it is carrying somebody: slower across, riding lower.
+          const load = b2.riders.length;
+          b2.node.x += balloonDrift(load);
+          // Sags a little, but only a little: there is a whole figure on the
+          // rope already and any more hangs them in the road.
+          b2.node.y = b2.from + load * 3 + Math.sin(b2.t * 0.7) * 6;
+          // Passengers keep walking; the walker loop above does it, because
+          // they never left the cast.
+          if (b2.node.x > app.screen.width + 30 + load * 20) landBalloon(host);
         }
       }
 
@@ -3726,7 +4309,7 @@ function renderPromenadePixi(model, host) {
           A skein of three or four, flapping out of step with each other so
           they read as birds rather than a decal. Same rules: sky only, never
           interactive, gone when they leave the frame. */
-      if (!host._birds && Math.random() < 0.0016) {
+      if (SKY && !host._birds && Math.random() < 0.0016) {
         const flock = new P.Container();
         const n = 3 + Math.floor(Math.random() * 3);
         const dir = Math.random() < 0.5 ? 1 : -1;
@@ -3747,7 +4330,8 @@ function renderPromenadePixi(model, host) {
             picking per flock gets both without knowing which sky it is. */
         flock.alpha = 0.75;
         host._birdTone = Math.random() < 0.5 ? 0x11151b : 0xe8ece6;
-        app.stage.addChildAt(flock, 0);
+        flock.zIndex = SKY_Z;               // same sky the balloon crosses
+        app.stage.addChild(flock);
         host._birds = { node: flock, marks, dir, t: 0 };
       }
       if (host._birds) {
@@ -3833,7 +4417,7 @@ function renderPromenadePixi(model, host) {
   if (GRID) {
     // A board, not a landscape: no horizon, because nothing here is standing
     // anywhere. Faint rules instead, so the ranks read as ranks.
-    bg.beginFill(0x141a20).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
+    bg.beginFill(sceneGrid()).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
   } else {
     /*  Floored to the panel, exactly as the grid already was. The world is
         sized to the places in it, so an empty pile — or one where nothing is
@@ -3841,9 +4425,9 @@ function renderPromenadePixi(model, host) {
         and left the rest of the panel blank. There should always be somewhere
         to stand, even before anybody does. */
     const bgW = Math.max(worldW, app.screen.width);
-    bg.beginFill(0x1d2c38).drawRect(0, 0, bgW, H() * GROUND).endFill();
-    bg.beginFill(0x1a1f18).drawRect(0, H() * GROUND, bgW, H()).endFill();
-    bg.beginFill(0x2b3327).drawRect(0, H() * GROUND, bgW, 2).endFill();
+    bg.beginFill(sceneSky()).drawRect(0, 0, bgW, H() * GROUND).endFill();
+    bg.beginFill(sceneGround()).drawRect(0, H() * GROUND, bgW, H()).endFill();
+    bg.beginFill(sceneEdge()).drawRect(0, H() * GROUND, bgW, 2).endFill();
   }
   world.addChild(bg);
 
@@ -3871,6 +4455,16 @@ function renderPromenadePixi(model, host) {
       world.addChild(spr);
     }
   }
+
+  /*  Where scene art goes in: above the ground and above the column gradients,
+      below everything added after this point.
+
+      Scene art used to be inserted at index 1 — above the ground, which was the
+      whole of the stack when that line was written. Once columns could be
+      tinted, index 1 was underneath the gradients, so a colored column washed
+      its own building out. A gradient is sky; a building stands in front of
+      the sky. */
+  const ART_FLOOR = world.children.length;
 
   const label = (text, size, color) => new P.Text(text, {
     fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: color,
@@ -3981,7 +4575,9 @@ function renderPromenadePixi(model, host) {
       spr.y = groundY();
       // Fit the column, never blown up past its own pixels.
       spr.scale.set(Math.min(1, ((wOf.get(c.slug) || STEP) - 8 * Z) / (img.width || 1)) * Z);
-      world.addChildAt(spr, 1);               // above the ground, below everyone
+      // Above the ground and the column's gradient, below everyone. Clamped
+      // because this can land long after the render that asked for it.
+      world.addChildAt(spr, Math.min(ART_FLOOR, world.children.length));
     };
     for (const c of columns) {
       if (!c.slug) continue;
@@ -3998,10 +4594,15 @@ function renderPromenadePixi(model, host) {
   world.addChild(signLayer);
   host._signLayer = signLayer;
   for (const [slug] of placed) {
-    /*  The promenade gets a signpost only when there are places to tell it
-        apart from. On its own it is the whole street, and a post naming the
-        room you are standing in says nothing. */
-    if (!slug && placed.length < 2) continue;
+    /*  The Promenade gets its signpost like everywhere else, including when it
+        is the only column there is.
+
+        It used to be hidden then, on the grounds that a post naming the room
+        you are standing in says nothing. That was true when it was only a
+        place to stand. It is a place you can now put somebody — by dropping
+        them there, or by letting them off a balloon over it — and a column
+        you can be given people by has to say what it is. It is also the only
+        way to reach its backdrop, which is behind its sign. */
     const grp = slug ? groupNameOf(slug) : "The Promenade";
     const e = grp ? null : (model.entities || []).find(x => x.slug === slug);
     const x = xOf.get(slug);
@@ -4146,9 +4747,14 @@ function renderPromenadePixi(model, host) {
   const penW = Math.max(96, Math.min(190, 54 + unplacedList.length * 11)) * Z / 1;
   const penH = (SPR_H + 26) * Z;
   const penBg = new P.Graphics();
-  penBg.beginFill(0x0a0f14, 0.55).drawRect(0, 0, penW, penH).endFill();
+  /*  The pen paints its own ground, and it has to stay a box on any sky. Pushed
+      away from whatever the sky is rather than always toward black: over a pale
+      sky a near-black box was right, and over a pale one it is a hole. */
+  const penGround = mixInt(sceneSky(), lumOf(sceneSky()) > 0.5 ? 0xf2f4f6 : 0x05080b, 0.6);
+  const penInk = sceneInk(penGround, true);
+  penBg.beginFill(penGround, 0.72).drawRect(0, 0, penW, penH).endFill();
   const dash = 4, gapd = 3;
-  penBg.lineStyle(1, 0x7a8a99, 0.55);
+  penBg.lineStyle(1, penInk, 0.55);
   for (let x = 0; x < penW; x += dash + gapd) {
     penBg.moveTo(x, 0); penBg.lineTo(Math.min(x + dash, penW), 0);
     penBg.moveTo(x, penH); penBg.lineTo(Math.min(x + dash, penW), penH);
@@ -4172,7 +4778,7 @@ function renderPromenadePixi(model, host) {
   penGlow.visible = false;
   pen.addChild(penGlow);
   host._penGlow = penGlow;
-  const penCap = label("no place recorded", 8, 0x7a8a99);
+  const penCap = label("no place recorded", 8, sceneInk(penGround, true));
   penCap.resolution = 2;
   penCap.anchor.set(0.5, 0);
   penCap.x = penW / 2; penCap.y = penH + 2;
@@ -4265,6 +4871,24 @@ function renderPromenadePixi(model, host) {
       if (host._penGlow) { host._penGlow.visible = true; host._penGlow.alpha = 0.55; }
       const me = host._walkers.find(k => k.slug === p.slug);
       if (me) { me.held = true; me.falling = false; }
+      /*  Off the rope the moment they are lifted, not when they are put down.
+          What you are holding is a person, not a passenger — and the rope has
+          to close up behind them while you can see it happen. */
+      if (me && me.riding) unboardRider(host, me, P);
+      /*  Nothing above the figure may take the release.
+
+          A drag ends on pointerup, and Pixi sends that to whatever is topmost
+          under the pointer. The pen and the balloon both sit ABOVE a carried
+          figure on purpose — you have to be able to see the box you are aiming
+          at — so releasing onto either one delivered the pointerup to them and
+          the drag simply never finished: no drop, no placement, and the figure
+          left stuck to the stage.
+
+          Deafening their children for the length of the drag fixes both, and
+          keeps them drawn on top, which was the point of putting them there.
+          Handed back in finish(), by every path out of it. */
+      if (host._limbo) host._limbo.interactiveChildren = false;
+      if (host._balloon) host._balloon.node.interactiveChildren = false;
       // Lifted out of the line, the way you pick a piece off a board.
       node.scale.set(node.scale.x < 0 ? -1.25 : 1.25, 1.25);
       /*  Carried on the STAGE while held, so a figure can be lifted out of the
@@ -4290,16 +4914,17 @@ function renderPromenadePixi(model, host) {
       moved = true;
       node.x = downAt.nx + dx;
       node.y = downAt.ny + dy;
-      // The column you are over brightens; the rest stay faint. Nobody should
-      // have to guess which frame is about to catch them.
-      const over = host._columnAt(node.x - world.x);
-      for (const z of host._zones || []) z.g.alpha = z.slug === over ? 1 : 0.3;
-      if (host._penGlow && host._penBox) {
-        const b = host._penBox;
-        const inPen = node.x >= b.x && node.x <= b.x + b.w &&
-                      node.y >= b.y && node.y <= b.y + b.h;
-        host._penGlow.alpha = inPen ? 1 : 0.55;
+      /*  Every region says whether it is the one about to catch you, and all
+          three read the same answer the release will read. A column brightens,
+          the pen glows, the balloon swells — the balloon because a target that
+          small and that mobile has no other language, and because the pen has
+          a dotted frame and it should not be the only one making a promise. */
+      const t = dropTargetAt(host, node.x, node.y);
+      for (const z of host._zones || []) {
+        z.g.alpha = (t.kind === "column" && z.slug === t.slug) ? 1 : 0.3;
       }
+      if (host._penGlow) host._penGlow.alpha = t.kind === "pen" ? 1 : 0.55;
+      if (host._balloon) host._balloon.node.scale.set(t.kind === "balloon" ? 1.25 : 1);
     });
     /*  One ending for both ways a drag can finish.
 
@@ -4310,6 +4935,9 @@ function renderPromenadePixi(model, host) {
     const finish = () => {
       node.cursor = "grab";
       host._dragging = false;
+      // Listening again, now that nothing is being carried over them.
+      if (host._limbo) host._limbo.interactiveChildren = true;
+      if (host._balloon) host._balloon.node.interactiveChildren = true;
       if (host._zoneLayer) host._zoneLayer.visible = false;
       if (host._penGlow) host._penGlow.visible = false;
       if (!downAt) return;
@@ -4321,62 +4949,80 @@ function renderPromenadePixi(model, host) {
         // A click, not a drag. toggleFocus only changes opacity, so nothing
         // re-parents them — they have to go back by hand or they stay on the
         // stage and get doubled by the next rebuild.
-        if (downAt.from) { downAt.from.addChild(node); node.x = downAt.lx; node.y = downAt.ly; }
-        host._lifted = null;
+        /*  A passenger was taken off the rope when they were lifted, so
+            handing the node back to the balloon is not enough — the balloon
+            has forgotten them, and the next rebuild would stand them in their
+            column while this copy still hung there. Put them back on properly. */
+        if (me && host._balloon && downAt.from === host._balloon.node) {
+          host._lifted = null;
+          boardRider(host, me, P);
+        } else {
+          if (downAt.from) { downAt.from.addChild(node); node.x = downAt.lx; node.y = downAt.ly; }
+          host._lifted = null;
+        }
         toggleFocus(host, "person", p.slug);
       }
-      else if (me && host._penBox &&
-               node.x >= host._penBox.x && node.x <= host._penBox.x + host._penBox.w &&
-               node.y >= host._penBox.y && node.y <= host._penBox.y + host._penBox.h) {
-        // Dropped back in the pen: you are saying you no longer know.
-        host._pinned.delete(p.slug);
-        host._savePins();
-        if (node.parent) node.parent.removeChild(node);
-        host._lifted = null;
-        renderPromenadePixi(V(), host);
-      }
       else if (me) {
-        /*  Each place is a column. Let go anywhere inside one and they belong
-            to that column — they fall to the ground and stand with whoever
-            else is there. You are not placing a figure at a coordinate, you
-            are putting a person in a group.
+        /*  One question, asked once, and a case per answer. The three regions
+            used to be three conditions in this chain, each doing its own hit
+            test — which is how the highlight and the drop came to disagree. */
+        const t = dropTargetAt(host, node.x, node.y);
 
-            The landing spot is worked out here rather than by re-rendering,
-            so the fall can actually be watched. */
-        const col = host._columnAt(node.x - world.x);
-        if (col === null) {
-          // Nowhere to put anybody: no place has coordinates yet. Leave them
-          // where they were rather than inventing a group.
+        /*  Forgotten as soon as they are handed to whoever is taking them.
+            The stage is not cleared by a rebuild — only world and pen are — so
+            a figure left on it survives the next render and the rebuilt cast
+            draws a second copy of the same person. Every case below hands the
+            node to something that gets torn down. */
+        host._lifted = null;
+
+        if (t.kind === "balloon" && boardRider(host, me, P)) {
+          host._balloon.node.scale.set(1);   // it swelled to catch them; it has
+        }
+        else if (t.kind === "pen" || t.kind === "nowhere") {
+          /*  The pen means you no longer know where they were. "Nowhere" is
+              the same answer arrived at differently — no column has
+              coordinates yet, so there is no group to join — and it should not
+              invent one. Both clear the pin and let the rebuild place them. */
           host._pinned.delete(p.slug);
           host._savePins();
           if (node.parent) node.parent.removeChild(node);
-          host._lifted = null;
           renderPromenadePixi(V(), host);
-          downAt = null;
-          return;
         }
-        host._pinned.set(p.slug, col);
-        host._savePins();
-        // Back into the street, at the point it was released. world is cleared
-        // by the next rebuild, so this hands the figure back to something that
-        // gets torn down.
-        world.addChild(node);
-        host._lifted = null;
-        node.x -= world.x;
-        const mates = [...host._pinned.entries()].filter(([, v]) => v === col).map(([k]) => k);
-        const rank = Math.max(0, mates.indexOf(p.slug));
-        me.home = host._columnX(col) + (rank - (mates.length - 1) / 2) * SPACING;
-        /*  The column has just grown to hold one more, which moves every
-            column east of it. Reflow once they have landed. */
-        clearTimeout(host._settle);
-        host._settle = setTimeout(() => {
-          host._noTween = true;
-          renderPromenadePixi(V(), host);
-        }, 700);
-        me.toY = groundY();
-        me.t = 1;
-        me.falling = true;
-        me.vy = 0;
+        else if (t.kind === "column") {
+          /*  Each place is a column. Let go anywhere inside one and they belong
+              to that column — they fall to the ground and stand with whoever
+              else is there. You are not placing a figure at a coordinate, you
+              are putting a person in a group.
+
+              The landing spot is worked out here rather than by re-rendering,
+              so the fall can actually be watched. */
+          host._pinned.set(p.slug, t.slug);
+          host._savePins();
+          // Back into the street, at the point it was released. world is
+          // cleared by the next rebuild, so this hands the figure back to
+          // something that gets torn down.
+          world.addChild(node);
+          node.x -= world.x;
+          const mates = [...host._pinned.entries()].filter(([, v]) => v === t.slug).map(([k]) => k);
+          const rank = Math.max(0, mates.indexOf(p.slug));
+          me.home = host._columnX(t.slug) + (rank - (mates.length - 1) / 2) * SPACING;
+          /*  The column has just grown to hold one more, which moves every
+              column east of it. Reflow once they have landed. */
+          clearTimeout(host._settle);
+          host._settle = setTimeout(() => {
+            host._noTween = true;
+            renderPromenadePixi(V(), host);
+          }, 700);
+          me.toY = groundY();
+          me.t = 1;
+          me.falling = true;
+          me.vy = 0;
+        }
+        else {
+          // The balloon refused them — it was already carrying somebody. Put
+          // them back where they were rather than dropping them into the sky.
+          if (downAt.from) { downAt.from.addChild(node); node.x = downAt.lx; node.y = downAt.ly; }
+        }
       }
       downAt = null;
     };
@@ -4397,7 +5043,9 @@ function renderPromenadePixi(model, host) {
         every drop, sort, zoom and resize — for labels that are hidden until
         you hover. Making them on demand is most of what a rebuild was doing. */
     const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "~") + p.birthYear : "");
-    const nameColor = known ? 0xcfd6dc : 0x7a8a99;
+    // A name floats above a head, so it is sitting on the sky — or on the grid
+    // view's flat field, which is the sky with the lights off.
+    const nameColor = sceneInk(GRID ? sceneGrid() : sceneSky(), !known);
     const ensureName = () => {
       const w = host._walkers.find(k => k.slug === p.slug);
       if (!w || w.nameNode) return w && w.nameNode;
@@ -4450,7 +5098,7 @@ function renderPromenadePixi(model, host) {
         const grpName = gName && groupNameOf(gName);
         const e = !grpName && gName && (model.entities || []).find(k => k.slug === gName);
         const cap = label(grpName || (e ? e.name : (gName ? gName : "The Promenade")),
-                          8 * Z, gName ? 0xe8dcc4 : 0x7a8a99);
+                          8 * Z, sceneInk(sceneGrid(), !gName));
         cap.resolution = 2;
         cap.anchor.set(0, 1);
         cap.x = Math.round(x - STEP / 2 + 4);
@@ -4530,6 +5178,27 @@ function renderPromenadePixi(model, host) {
   bg.eventMode = "static";
   bg.cursor = "grab";
   bg.on("pointertap", () => { if (host._focus) toggleFocus(host, null, host._focus); });
+
+  /*  Put the passengers back on the rope.
+
+      Every walker is new after a rebuild, so anybody who was aloft is standing
+      in their column again with a node the balloon has never seen. host._aloft
+      is what survives, and it is a Set, so iterating it restores boarding
+      order — which is depth order, so nobody swaps places on a redraw.
+
+      Cleared if the balloon has gone in the meantime: they are already on the
+      ground where they belong, and holding the set would strand them in the
+      sky for the next balloon along. */
+  if (host._aloft.size) {
+    if (!host._balloon) host._aloft.clear();
+    else {
+      host._balloon.riders = [];
+      for (const slug of [...host._aloft]) {
+        const w = host._walkers.find(k => k.slug === slug);
+        if (w) boardRider(host, w, P); else host._aloft.delete(slug);
+      }
+    }
+  }
 
   applyFocus(host);
 
@@ -4667,30 +5336,104 @@ function renderSpriteEditor(model, host) {
   const touched = {};
   let loadToken = 0;
 
-  function openExisting() {
-    if (touched[slot]) return;
-    const my = ++loadToken;
-    const base = ASSET_BASE + (isPlace() ? "images/places/" : "images/wear/");
-    const named = slugify(nameIn.value.trim());
-    // The one you asked for, then the one everybody shares.
-    const tries = [];
-    if (named) tries.push(base + encodeURIComponent(isPlace() ? named : named + "." + slot) + ".png");
-    tries.push(base + (isPlace() ? "default" : "default." + slot) + ".png");
-    (async () => {
-      for (const url of tries) {
-        const img = await loadImg(url);
-        if (!img) continue;
-        if (my !== loadToken || !host.isConnected || touched[slot]) return;
-        const cv = layers[slot];
-        cv.width = img.width; cv.height = img.height;
-        const g = cv.getContext("2d");
-        g.imageSmoothingEnabled = false;
-        g.clearRect(0, 0, cv.width, cv.height);
-        g.drawImage(img, 0, 0);
-        if (isPlace()) cv.__frames = 1;
-        syncSize(); paint();
-        return;
+  const blitInto = (cv, img) => {
+    cv.width = img.width; cv.height = img.height;
+    const g = cv.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.drawImage(img, 0, 0);
+  };
+
+  /*  The four rows as one file, laid out the way the compositor reads them:
+      centered across, standing on the bottom of their own band. Cell size and
+      frame count are the largest any row asks for, so the sheet fits the
+      broadest hat and every row is cut the same way on the way back in. */
+  function stitchSheet() {
+    const cells = ROWS.map(k => {
+      const cv = layers[k], n = cv.__frames || SPR_FRAMES;
+      return { cv, n, w: cv.width / n, h: cv.height };
+    });
+    const cw = Math.max(SPR_W, ...cells.map(c => c.w));
+    const ch = Math.max(SPR_H, ...cells.map(c => c.h));
+    const out = document.createElement("canvas");
+    out.width = cw * SPR_FRAMES; out.height = ch * ROWS.length;
+    const g = out.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    cells.forEach((cell, i) => {
+      const dx = Math.round((cw - cell.w) / 2), dy = i * ch + (ch - cell.h);
+      // A row with fewer frames than the sheet repeats, so a still hat sits
+      // quietly on a walking body rather than vanishing for three frames.
+      for (let f = 0; f < SPR_FRAMES; f++) {
+        g.drawImage(cell.cv, (f % cell.n) * cell.w, 0, cell.w, cell.h,
+                    f * cw + dx, dy, cell.w, cell.h);
       }
+    });
+    return out;
+  }
+
+  /*  Fill every untouched row from disk, down the same chain the Promenade
+      walks: this name's loose layer, then this name's sheet, then everybody's
+      loose layer, then everybody's sheet, then the built-in.
+
+      Bails when the load has been overtaken — a keystroke in the name box
+      starts another pass, and a slow 404 from the old name must not land on
+      top of the new one. */
+  async function fillFromDisk(my) {
+    const base = ASSET_BASE + "images/wear/";
+    const named = slugify(nameIn.value.trim());
+    const whos = named && named !== "default" ? [named, "default"] : ["default"];
+    const sheets = new Map();
+    const sheetOf = async who => {
+      if (!sheets.has(who)) sheets.set(who, await loadImg(base + encodeURIComponent(who) + ".png"));
+      return sheets.get(who);
+    };
+    for (let i = 0; i < ROWS.length; i++) {
+      const k = ROWS[i];
+      if (touched[k]) continue;
+      let img = null;
+      for (const who of whos) {
+        img = await loadImg(base + encodeURIComponent(who + "." + k) + ".png");
+        if (img) break;
+        const sh = await sheetOf(who);
+        const rows = sh ? sheetRows(sh) : null;
+        if (rows && rows[i]) { img = rows[i]; break; }
+      }
+      if (my !== loadToken || !host.isConnected || touched[k]) return;
+      /*  Nothing anywhere for this row, so the built-in stands in. Restoring
+          it matters on the way back: typing a name that has art and then
+          clearing it would otherwise leave that person's coat on everybody. */
+      blitInto(layers[k], img || wear[k]);
+      layers[k].__frames = SPR_FRAMES;
+    }
+  }
+
+  /*  What the preview is FOR is seeing a layer among the others, so every row
+      is opened, not only the one under the pen. */
+  function openExisting() {
+    const my = ++loadToken;
+    if (isPlace()) {
+      if (touched.place) return;
+      const base = ASSET_BASE + "images/places/";
+      const named = slugify(nameIn.value.trim());
+      const tries = [];
+      if (named) tries.push(base + encodeURIComponent(named) + ".png");
+      tries.push(base + "default.png");
+      (async () => {
+        for (const url of tries) {
+          const img = await loadImg(url);
+          if (!img) continue;
+          if (my !== loadToken || !host.isConnected || touched.place) return;
+          blitInto(layers.place, img);
+          layers.place.__frames = 1;
+          syncSize(); paint();
+          return;
+        }
+      })();
+      return;
+    }
+    (async () => {
+      await fillFromDisk(my);
+      if (my === loadToken && host.isConnected) { syncSize(); paint(); }
     })();
   }
 
@@ -4742,8 +5485,9 @@ function renderSpriteEditor(model, host) {
   }
   el("span", "sp-cap", sizeBar).textContent = "frames";
   const fIn = el("input", "sp-num", sizeBar);
-  fIn.type = "number"; fIn.min = "1"; fIn.max = "24";
-  fIn.title = "how many frames. One is a layer that does not move.";
+  fIn.type = "number"; fIn.min = "1"; fIn.max = String(SPR_FRAMES);
+  fIn.title = "how many frames this row moves through. One is a layer that does "
+            + "not move; the sheet is always " + SPR_FRAMES + " and a shorter row repeats.";
   /*  Size is the FIGURE's, not one layer's.
 
       Every layer shares a cell — that is what lets a hat sit on a head without
@@ -4754,13 +5498,17 @@ function renderSpriteEditor(model, host) {
 
       So the box belongs to all four layers at once. Growing it is headroom for
       everybody; the drawings keep their distance from the ground line, which
-      is the bottom edge. Frames stay per layer — a still hat on a walking
-      body is perfectly sensible. */
+      is the bottom edge.
+
+      Frames stay per row — a still hat on a walking body is perfectly sensible
+      — but they cannot exceed the sheet's four, because the saved file is four
+      columns and nothing in a PNG can say otherwise. A shorter row is written
+      out repeated, which is exactly how a one-frame hat behaves already. */
   const applySize = () => {
     const cap = isPlace() ? 256 : 64;       // scenery is allowed to be a building
     const w = Math.max(1, Math.min(cap, +wIn.value || 1));
     const h = Math.max(1, Math.min(cap, +hIn.value || 1));
-    const n = isPlace() ? 1 : Math.max(1, Math.min(24, +fIn.value || 1));
+    const n = isPlace() ? 1 : Math.max(1, Math.min(SPR_FRAMES, +fIn.value || 1));
     if (isPlace()) {
       layers.place = layerResize(layers.place, w, h, 1);
     } else {
@@ -4895,8 +5643,8 @@ function renderSpriteEditor(model, host) {
   };
   applyBg();
 
-  /*  Who this is for. The slot half of the filename is decided by which
-      layer you are drawing, so this is the only half you choose. */
+  /*  Who this is for — and the whole of the filename, since a wardrobe is one
+      file. Which layer you are drawing is a row inside it, not a name. */
   const nameBar = el("div", "sp-row", right);
   el("span", "sp-cap", nameBar).textContent = "for";
   const nameIn = el("input", null, nameBar);
@@ -4904,7 +5652,15 @@ function renderSpriteEditor(model, host) {
   nameIn.placeholder = "mill-worker";
   nameIn.spellcheck = false;
   nameIn.title = "a person's uid, a trade, or \u201cdefault\u201d for everybody";
-  nameIn.oninput = () => { openExisting(); paint(); };
+  /*  Settled, not per keystroke. Every pass asks for up to six files, and
+      typing "mill-worker" one letter at a time asked for sixty-odd, all but
+      the last set 404s for names that were only ever half-typed. */
+  let nameWait = 0;
+  nameIn.oninput = () => {
+    clearTimeout(nameWait);
+    nameWait = setTimeout(() => { openExisting(); paint(); }, 220);
+    paint();                       // the filename under the box keeps up
+  };
   const nameOut = el("span", "sp-filename", nameBar);
 
   const outBar = el("div", "sp-row", right);
@@ -4914,39 +5670,51 @@ function renderSpriteEditor(model, host) {
   playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "\u275A\u275A" : "\u25B6"; };
   const dl = el("button", null, outBar);
   dl.type = "button"; dl.textContent = "download";
-  dl.title = "save this layer as the PNG the Promenade reads";
-  dl.onclick = () => {
-    layers[slot].toBlob(b => {
-      const a2 = document.createElement("a");
-      a2.href = URL.createObjectURL(b);
-      // Named for the slot, since that half of the filename is fixed. Rename
-      // the front of it for whoever wears it: mill-worker.top.png
-      a2.download = fileName();
-      a2.click();
-      setTimeout(() => URL.revokeObjectURL(a2.href), 1000);
-    });
-  };
+  dl.title = "save all four rows as one wardrobe PNG";
+  const save = (canvas, name) => canvas.toBlob(b => {
+    const a2 = document.createElement("a");
+    a2.href = URL.createObjectURL(b);
+    a2.download = name;
+    a2.click();
+    setTimeout(() => URL.revokeObjectURL(a2.href), 1000);
+  });
+  // Drop either in images/wear/ and anyone whose uid or trade matches is
+  // wearing it on the next load.
+  dl.onclick = () => save(isPlace() ? layers.place : stitchSheet(), fileName());
+  /*  The loose layer, for a hat drawn to be lent around. Hidden on a place,
+      which has no rows to take one from. */
+  const dlRow = el("button", null, outBar);
+  dlRow.type = "button"; dlRow.textContent = "row";
+  dlRow.onclick = () => save(layers[slot], rowFileName());
   const reset = el("button", null, outBar);
   reset.type = "button"; reset.textContent = "reset";
-  reset.title = "this layer back to the built-in one";
+  reset.title = "this layer back to whatever it was before you drew on it";
   reset.onclick = () => {
     if (!confirm("Throw away this " + slot + " and start again?")) return;
     if (isPlace()) {
       const g = layers.place.getContext("2d");
       g.clearRect(0, 0, layers.place.width, layers.place.height);
     } else layers[slot] = layerCopy(wear[slot]);
-    syncSize(); paint();
+    /*  Untouched again, so the name box governs this layer once more. Left
+        touched, a reset layer was frozen on the built-in: typing a name that
+        has a file for it did nothing, because the editor still believed there
+        was work here worth protecting. */
+    touched[slot] = false;
+    syncSize(); openExisting(); paint();
   };
 
   const hint = el("p", "hint sp-hint", right);
 
-  /*  The filename the page will look for. A place is named for the place; a
-      layer is named for the wearer AND the slot, because each slot is its
-      own file. Slugged, so what you type cannot produce a filename that will
+  /*  The filename the page will look for. One name either way — a place is
+      named for the place, a wardrobe for its wearer — because both are one
+      file. Slugged, so what you type cannot produce a filename that will
       never match. */
   function fileName() {
-    const who = slugify(nameIn.value.trim()) || (isPlace() ? "place" : "default");
-    return isPlace() ? who + ".png" : who + "." + slot + ".png";
+    return (slugify(nameIn.value.trim()) || (isPlace() ? "place" : "default")) + ".png";
+  }
+  // The same wearer, one row of them: default.hat.png beats default.png's hat.
+  function rowFileName() {
+    return (slugify(nameIn.value.trim()) || "default") + "." + slot + ".png";
   }
 
   // ---- geometry
@@ -5280,6 +6048,9 @@ function renderSpriteEditor(model, host) {
     g.stroke();
 
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
+    dlRow.hidden = isPlace();
+    dlRow.title = "save just this layer as " + rowFileName() + " — it beats the same "
+                + "wearer's sheet, and can be lent to anyone";
     hint.textContent = (tool === "pencil" ? "drag to draw"
                       : tool === "move" ? "drag to nudge the layer"
                       : "drag to place the shape") +
@@ -9826,6 +10597,7 @@ function setFolderImages(list) {
   for (const f of list) folderImages.set(f.name, { file: f.file, url: "" });
   resetSceneCache();   // art is looked up by filename, and the filenames just changed
   costumeCache.clear();
+  ROW_CACHE.clear();   // the sliced rows belong to sheets that are no longer the sheets
 }
 
 /*  Matching is forgiving on purpose: you should not have to write the path
@@ -9907,9 +10679,11 @@ function renderFileList(body) {
   if (!host) return;
   if (!folderFiles.length) {
     // An empty list that renders nothing is a feature nobody can find — say so
-    // rather than showing a blank gap.
+    // rather than showing a blank gap. And when the list is empty BECAUSE you
+    // excluded everything, say that instead, or the way back is invisible.
     host.innerHTML = '<div class="file-empty">No folder open — <b>Folder…</b> lists its ' +
       "<code>.txt</code> piles here.</div>";
+    hostedExtras(host);
     return;
   }
   host.innerHTML = "";
@@ -9931,8 +10705,50 @@ function renderFileList(body) {
     merge.textContent = "+"; merge.title = "merge this file into what is on the pallet";
     merge.onclick = () => mergeFile(f.name);
     row.append(open, merge);
+    /*  Only this site's files can be dismissed, and dismissing is about the
+        listing, never the file: it stays on the server, and this page stops
+        fetching it. A folder you dropped is re-read from disk each time, so
+        there would be nothing for a dismissal to outlive. */
+    if (isHostedFile(f.name)) {
+      const no = document.createElement("button");
+      no.className = "x";
+      no.textContent = "✕";
+      no.title = "stop loading " + shortName + " from this site";
+      no.onclick = () => ignoreFile(f.name);
+      row.append(no);
+    }
     host.appendChild(row);
   }
+  hostedExtras(host);
+}
+
+/*  What the site loaded that is not a pile, and the way back from excluding it.
+
+    The gazetteer is the other thing a hosted page reads on its own, and it is
+    the easier one to miss: it merges coordinates into your gazetteer without
+    appearing in any list. It gets a row of its own so that what arrived
+    unasked is at least visible, and refusable on the same terms as a pile. */
+function hostedExtras(host) {
+  if (GAZ_ON && !IGNORED.has(GAZ_FILE)) {
+    const row = document.createElement("div");
+    row.className = "file-item";
+    row.innerHTML = '<span class="nm" title="' + esc(GAZ_FILE) + '">gazetteer.csv</span>' +
+                    '<span class="meta">coordinates</span>';
+    const no = document.createElement("button");
+    no.className = "x";
+    no.textContent = "✕";
+    no.title = "stop reading this site's coordinates on load";
+    no.onclick = () => { IGNORED.add(GAZ_FILE); saveIgnored(); refreshPanel("pallet"); };
+    row.append(no);
+    host.appendChild(row);
+  }
+  if (!IGNORED.size) return;
+  const back = document.createElement("div");
+  back.className = "file-empty";
+  back.innerHTML = IGNORED.size + " site file" + (IGNORED.size === 1 ? "" : "s") +
+                   " excluded · <button class=\"lnk\">read them again</button>";
+  back.querySelector("button").onclick = unignoreAll;
+  host.appendChild(back);
 }
 
 /*  Project files found in the research folder.
@@ -10135,8 +10951,11 @@ function ignoreFile(name) {
 function unignoreAll() {
   IGNORED.clear();
   saveIgnored();
-  loadHostedBricks();
+  refreshPanel("pallet");            // the count goes now, not when the fetch lands
+  loadHostedGazetteer().then(loadHostedBricks);
 }
+
+let GAZ_ON = false;   // this site turned out to have coordinates, and they were read
 
 async function loadHostedGazetteer() {
   if (!READ_HOSTED) return;
@@ -10144,7 +10963,10 @@ async function loadHostedGazetteer() {
   if (IGNORED.has(GAZ_FILE)) return;
   try {
     const r = await fetch(GAZ_FILE, { cache: "no-cache" });
-    if (r.ok && mergeGazetteerFile(await r.text())) update();
+    if (!r.ok) return;
+    GAZ_ON = true;
+    if (mergeGazetteerFile(await r.text())) update();
+    refreshPanel("pallet");   // so the row saying it happened appears
   } catch (e) { /* optional */ }
 }
 
@@ -10570,7 +11392,9 @@ loadProject();
 loadTileKey();
 loadStyleUrl();
 loadColumnTints();
+loadSceneBg();
 loadGroups();
+loadIgnored();   // before anything reaches for bricks/, or an exclusion arrives late
 loadMeSource();
 loadMeUrl();
 
@@ -10655,7 +11479,7 @@ el("quickDownload").addEventListener("click", () => {
     only copy should not quietly keep. Export is the undo, which is why it sits
     immediately to the left. */
 const CLEAR_KEYS = [
-  TEXT_KEY, GAZETTEER_KEY, PINNED_KEY, COLTINT_KEY, GROUPS_KEY,
+  TEXT_KEY, GAZETTEER_KEY, PINNED_KEY, COLTINT_KEY, GROUPS_KEY, SCENEBG_KEY,
   BOARD_KEY, FOOTPRINT_KEY,
   MAPPROJECT_KEY, MAPSTYLE_KEY, MAPOVERRIDE_KEY, MAPSOURCE_KEY,
   STYLEURL_KEY, MEURL_KEY, MESOURCE_KEY,
