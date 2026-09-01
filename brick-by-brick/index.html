@@ -70,6 +70,17 @@
   }
   .top-auto input { accent-color: var(--accent2); cursor: pointer; }
   .save-state { font-size: 0.62rem; opacity: 0.4; white-space: nowrap; margin-left: auto; }
+  /*  HIDDEN MEANS HIDDEN.
+
+      The browser's own rule for [hidden] is display:none at the very bottom of
+      the cascade, so ANY display of our own beats it — and every flex or grid
+      box in this file has one. The palette drawer was the third thing to be
+      found toggling its hidden attribute perfectly while staying on screen,
+      which is two too many for a fix per class. The rules below that name a
+      class each are older and now redundant; they are left because they are
+      harmless and removing them proves nothing. */
+  [hidden] { display: none !important; }
+
   .save-state[hidden] { display: none; }
   .save-state.bad { color: var(--bad); opacity: 1; }
   .topsearch.active input { border-color: var(--accent2); }
@@ -279,6 +290,24 @@
     border: 1px solid var(--border);
   }
   .sp-pen.on { outline: 2px solid var(--accent2); outline-offset: 1px; }
+  /*  A swatch and its two shades, stacked. The shades are shorter than the
+      colour itself so the row still reads as nine swatches with tints either
+      side, rather than as twenty-seven equal squares. */
+  .sp-pen-col { display: flex; flex-direction: column; gap: 1px; }
+  .sp-pen-col .sp-pen { border-radius: 2px; }
+  .sp-pen-col .sp-shade { height: 9px; }
+  .sp-pen-set { display: flex; gap: 3px; }
+  .sp-pal-btn { padding: 0 5px; line-height: 1.4; }
+  .sp-pal-btn.on { border-color: var(--accent2); color: var(--accent2); }
+  /* One field and one word of feedback, on one line. */
+  .sp-pal { display: flex; align-items: center; gap: 4px; }
+  .sp-pal-in {
+    flex: 1 1 auto; min-width: 60px; font-family: var(--mono); font-size: 0.64rem;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: var(--field); color: var(--fg); padding: 2px 5px;
+  }
+  .sp-pal-in:focus { border-color: var(--accent2); outline: none; }
+  .sp-pal-note { font-size: 0.6rem; opacity: 0.5; white-space: nowrap; }
   /*  Recents are dashed, so a color you mixed reads as yours rather than as
       another fixed swatch. */
   .sp-recent { border-style: dashed; }
@@ -2790,6 +2819,27 @@ function saveGroups() {
 }
 /*  Prefixed, so a group called Perth and a parish called Perth are different
     columns — the same collision the art folders solve by being folders. */
+/*  Put a group down in a new place in the running order.
+
+    Reordering is only ever within the groups: the places are laid out by
+    longitude and sit before all of them, so a group dropped over Longforgan
+    still lands at the head of the groups rather than in among the parishes.
+    That is a real limit, and it is the honest one — a column you invented has
+    no coordinates, so there is no honest way to interleave it with columns
+    that do. */
+function moveGroupTo(slug, x, xOf) {
+  const i = PROM_GROUPS.findIndex(g => g.slug === slug);
+  if (i < 0) return;
+  const [moved] = PROM_GROUPS.splice(i, 1);
+  let at = 0;
+  for (const other of PROM_GROUPS) {
+    const ox = xOf.get(other.slug);
+    if (ox !== undefined && x > ox) at++;
+  }
+  PROM_GROUPS.splice(at, 0, moved);
+  saveGroups();
+}
+
 function groupNameOf(slug) {
   const g = PROM_GROUPS.find(x => x.slug === slug);
   return g ? g.name : null;
@@ -2888,6 +2938,11 @@ function sceneInk(bgInt, quiet) {
   const ink = lumOf(bgInt) > 0.5 ? 0x14181c : 0xe4ebf0;
   return quiet ? mixInt(ink, bgInt, 0.45) : ink;
 }
+
+/*  The same shift as shadeInt, handed back as a hex string — which is what a
+    swatch, a CSS background and a colour input all want. */
+const shadeHex = (hex, amt) =>
+  "#" + shadeInt(hex, amt).toString(16).padStart(6, "0");
 
 const sceneSky = () => hexInt(SCENE_BG.sky);
 const sceneGround = () => hexInt(SCENE_BG.ground);
@@ -4310,6 +4365,35 @@ function renderPromenadePixi(model, host) {
                                            panFrom.wx + (e.clientX - panFrom.x)));
     });
     window.addEventListener("pointerup", () => { panFrom = null; });
+
+    /*  A LAST RESORT FOR THE BALLOON.
+
+        Taking hold of the envelope sets a `held` flag that stops the ticker
+        moving it, and only the balloon's own pointerup and pointerupoutside
+        clear it again. Neither of those arrives if the button comes up
+        somewhere Pixi never hears about — outside the canvas, outside the
+        window, or a pointercancel from the OS — and the balloon then hangs
+        motionless in the sky for the rest of the session with no way back.
+
+        The pan above has had this same safety net since it was written, for
+        the same reason. Anything that latches on pointerdown needs a release
+        that cannot be missed. */
+    const letGoOfBalloon = () => {
+      const b = host._balloon;
+      if (!b) return;
+      if (b.release) b.release();
+      /*  And if it is still held after that, force it. release() bails when it
+          thinks no drag is in progress, which is exactly the state a lost
+          pointerup leaves behind — the flag set and the gesture forgotten. */
+      if (b.held) {
+        b.held = false;
+        b.from = b.node.y - (b.riders.length * 3 + Math.sin(b.t * 0.7) * 6);
+        host._dragging = false;
+      }
+    };
+    window.addEventListener("pointerup", letGoOfBalloon);
+    window.addEventListener("pointercancel", letGoOfBalloon);
+    window.addEventListener("blur", letGoOfBalloon);
     app.view.addEventListener("wheel", e => {
       host._drift = false;
       host._world.x = Math.min(0, Math.max(-(host._worldW - app.screen.width),
@@ -4719,7 +4803,7 @@ function renderPromenadePixi(model, host) {
         g.on("pointerupoutside", release);
         app.stage.addChild(bal);
         host._balloon = { node: bal, envelope: g, basket, t: 0, from: bal.y,
-                          riders: [], held: false, dir: 1 };
+                          riders: [], held: false, dir: 1, release };
       }
       if (host._balloon) {
         const b2 = host._balloon;
@@ -5328,16 +5412,60 @@ function renderPromenadePixi(model, host) {
     sign.x = x; sign.y = groundY();
     sign.eventMode = "static";
     sign.cursor = "pointer";
-    let dx = null;
-    sign.on("pointerdown", ev => { dx = ev.global.x; });
-    sign.on("pointerup", ev => {
-      if (dx !== null && Math.abs(ev.global.x - dx) < 4) {
+    /*  A GROUP'S RIBBON CAN BE DRAGGED INTO ANOTHER GAP.
+
+        The places are in longitude order and that order IS the information —
+        dragging Longforgan east of Dundee would be a lie about the map. But
+        the order of the columns you invented is arbitrary: it is whichever
+        order you happened to name them in, which is no order at all. So a
+        ribbon can be picked up and put down between two others, and a place's
+        signpost cannot.
+
+        The Promenade stays put as well. It is not one column among several —
+        it is whatever width the places leave over, and it is always the last
+        of them, so there is no gap to move it into.
+
+        Same four pixels as everywhere else on this panel tell a click from a
+        drag, so the ribbon keeps doing what it already did when you click it. */
+    const movable = !!slug && slug.startsWith("grp-");
+    let dx = null, shifted = false, fromX = 0;
+    sign.on("pointerdown", ev => {
+      dx = ev.global.x;
+      fromX = sign.x;
+      shifted = false;
+      if (movable) host._dragging = true;   // stops the street panning underneath
+    });
+    sign.on("globalpointermove", ev => {
+      if (dx === null || !movable) return;
+      if (!shifted && Math.abs(ev.global.x - dx) < 4) return;
+      shifted = true;
+      sign.x = fromX + (ev.global.x - dx);
+      sign.alpha = 0.85;
+      sign.cursor = "grabbing";
+    });
+    const dropSign = ev => {
+      if (dx === null) return;
+      const moved = shifted;
+      dx = null; shifted = false;
+      sign.alpha = 1;
+      sign.cursor = "pointer";
+      if (movable) host._dragging = false;
+      if (!moved) {
         // A group and the promenade are columns, not places: what they light
         // up is whoever you put in them.
         toggleFocus(host, "column", slug);
+        return;
       }
-      dx = null;
-    });
+      /*  Where it was let go decides where it goes: it lands after every group
+          whose own column is to the left of it. Measured against the columns
+          rather than against the other ribbons, since a ribbon being dragged
+          is not where its column is. */
+      moveGroupTo(slug, sign.x, xOf);
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    sign.on("pointerup", dropSign);
+    sign.on("pointerupoutside", dropSign);
     signLayer.addChild(sign);
     host._signs.push({ slug, node: sign });
   }
@@ -6464,8 +6592,28 @@ function renderSpriteEditor(model, host) {
   // ---- what to paint with
   /*  A few colors to hand, and a picker for everything else. Nothing here
       means anything to the page — a pixel is the color you paint it. */
-  const SWATCHES = ["#c9a689", "#aa8970", "#4a3b2a", "#2f3542", "#4a5568",
-                    "#5a4632", "#7a6247", "#8a2f2f", "#3a4a3a"];
+  /*  The palette. Nine colors that suit a Victorian street, and yours to
+      replace — the whole set is editable as a list of hex codes and kept in
+      the browser, because a palette is a decision about a project rather than
+      a fact about the tool. */
+  const SWATCH_KEY = "brick-by-brick:swatches:v1";
+  const DEFAULT_SWATCHES = ["#c9a689", "#aa8970", "#4a3b2a", "#2f3542", "#4a5568",
+                            "#5a4632", "#7a6247", "#8a2f2f", "#3a4a3a"];
+  const SWATCHES = [];
+  const readHexes = text => (String(text).match(/#?[0-9a-fA-F]{6}\b/g) || [])
+    .map(h => "#" + h.replace("#", "").toLowerCase());
+  (() => {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(SWATCH_KEY) || "null"); } catch (e) { raw = null; }
+    const kept = Array.isArray(raw) ? raw.filter(c => /^#[0-9a-f]{6}$/i.test(c)) : [];
+    SWATCHES.push(...(kept.length ? kept : DEFAULT_SWATCHES));
+  })();
+  const saveSwatches = () => {
+    try {
+      if (SWATCHES.join() === DEFAULT_SWATCHES.join()) localStorage.removeItem(SWATCH_KEY);
+      else localStorage.setItem(SWATCH_KEY, JSON.stringify(SWATCHES));
+    } catch (e) { /* unavailable */ }
+  };
   /*  Four slots that fill themselves. A color earns a place here by being
       USED — picked and actually put on the canvas — because a color you tried
       and abandoned is not one you want back. Newest first, and a color already
@@ -6480,12 +6628,48 @@ function renderSpriteEditor(model, host) {
   }
   const penBar = el("div", "sp-row", right);
   el("span", "sp-cap", penBar).textContent = "paint";
-  const penBtns = SWATCHES.map((c, i) => {
-    const b = el("button", "sp-pen", penBar);
-    b.type = "button"; b.style.background = c; b.title = c;
-    b.onclick = () => { pen = i; fixed.value = c; paint(); };
-    return b;
-  });
+  /*  EVERY SWATCH IS THREE.
+
+      Lighter above, the colour itself, darker below. Pixel art at this size is
+      almost entirely shading — a coat is one colour and two shades of it, and
+      the hat brim is the coat's dark — so having to open the picker and mix a
+      highlight by eye every time is most of the work of drawing anything
+      round.
+
+      The two extras are not new colours in their own right: they are ±22% of
+      the one in the middle, which is enough to read as light and shade
+      without leaving the same garment. They pick through the picker rather
+      than the swatch index, since they have no index of their own — which
+      also means using one puts it in the recents, exactly as a mixed colour
+      would. */
+  const SHADE = 0.22;
+  let penBtns = [];
+  /*  Rebuilt rather than patched when the palette changes: the row is a column
+      of three buttons per color wired to its index, and reconciling that in
+      place would be more code than making it again. */
+  const penCols = el("span", "sp-pen-set", penBar);
+  function buildPens() {
+    penCols.innerHTML = "";
+    penBtns = [];
+    SWATCHES.forEach((c, i) => {
+      const col = el("div", "sp-pen-col", penCols);
+      const pick = (hex, cls, tip) => {
+        const b = el("button", "sp-pen " + cls, col);
+        b.type = "button"; b.style.background = hex; b.title = tip;
+        return b;
+      };
+      const up = pick(shadeHex(c, SHADE), "sp-shade", "lighter " + c);
+      const mid = pick(c, "", c);
+      const down = pick(shadeHex(c, -SHADE), "sp-shade", "darker " + c);
+      mid.onclick = () => { pen = i; fixed.value = c; paint(); };
+      up.onclick = () => { pen = -2; fixed.value = shadeHex(c, SHADE); paint(); };
+      down.onclick = () => { pen = -2; fixed.value = shadeHex(c, -SHADE); paint(); };
+      penBtns.push(mid);
+    });
+    // A palette that just shrank could leave the pen pointing past its end.
+    if (pen >= SWATCHES.length) pen = SWATCHES.length - 1;
+  }
+  buildPens();
   const eraseBtn = el("button", "sp-pen sp-erase", penBar);
   eraseBtn.type = "button"; eraseBtn.title = "erase";
   eraseBtn.onclick = () => { pen = -1; paint(); };
@@ -6500,6 +6684,58 @@ function renderSpriteEditor(model, host) {
     return b;
   });
 
+  /*  THE PALETTE LIST.
+
+      Folded away behind one button, because it is a thing you set up once and
+      then want out of the way — the swatches themselves are the everyday
+      control and this is the drawer behind them.
+
+      Free text rather than a row of pickers: a palette usually arrives from
+      somewhere else, as a list off a reference, a Lospec page or another
+      project's file, and pasting that in whole is the fast path. Anything that
+      looks like a six-digit hex is taken and everything else is ignored, so
+      commas, quotes, brackets and a leading # all work and none of them has to
+      be explained. */
+  const palBtn = el("button", "sp-pal-btn", penBar);
+  palBtn.type = "button";
+  palBtn.textContent = "\u22EF";
+  palBtn.title = "edit the palette";
+  const palBox = el("div", "sp-pal", right);
+  palBox.hidden = true;
+  const palIn = el("input", "sp-pal-in", palBox);
+  palIn.type = "text";
+  palIn.spellcheck = false;
+  palIn.placeholder = "hex list \u2014 Enter to apply";
+  palIn.title = "any six-digit hex codes, in any shape: commas, quotes, "
+              + "brackets and a leading # are all ignored";
+  const palNote = el("span", "sp-pal-note", palBox);
+
+  const showPal = () => { palIn.value = SWATCHES.join(", "); palNote.textContent = ""; };
+  palBtn.onclick = () => {
+    palBox.hidden = !palBox.hidden;
+    if (!palBox.hidden) { showPal(); palIn.focus(); }
+    palBtn.classList.toggle("on", !palBox.hidden);
+  };
+  const applyPal = list => {
+    if (!list.length) { palNote.textContent = "no hex codes in that"; return; }
+    SWATCHES.length = 0;
+    SWATCHES.push(...list);
+    saveSwatches();
+    buildPens();
+    showPal();
+    paint();
+    palNote.textContent = list.length + " color" + (list.length === 1 ? "" : "s");
+  };
+  /*  One line, and Enter applies it. It was a four-row box with its own apply
+      button, which is a form — and this is one field holding one list. */
+  palIn.onkeydown = e => {
+    if (e.key === "Enter") { e.preventDefault(); applyPal(readHexes(palIn.value)); }
+    if (e.key === "Escape") { palBox.hidden = true; palBtn.classList.remove("on"); }
+  };
+
+  // Directly under the swatches it edits, rather than at the foot of the panel.
+  right.insertBefore(palBox, penBar.nextSibling);
+
   const toolBar = el("div", "sp-row", right);
   el("span", "sp-cap", toolBar).textContent = "tool";
   const TOOLS = [
@@ -6508,6 +6744,7 @@ function renderSpriteEditor(model, host) {
     ["rect",   "\u25AB", "box outline"],
     ["fill",   "\u25AA", "filled box"],
     ["move",   "\u2725", "nudge what is drawn — drag it into place"],
+    ["copy",   "\u29C9", "drag a box to lift those pixels, then click to stamp them down"],
   ];
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
     const b = el("button", null, toolBar);
@@ -6697,6 +6934,22 @@ function renderSpriteEditor(model, host) {
     if (pen === -2) return fixed.value;             // the picker
     return SWATCHES[pen];
   }
+  /*  One pixel at an exact color — what the clipboard stamps with. Obeys the
+      same "all frames" rule as the pencil: a shape stamped into one frame of a
+      still layer should land in all of them, like any other mark. */
+  function setPixelRGBA(x, y, r, g2, b, a) {
+    if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
+    const g = layers[slot].getContext("2d");
+    const at = linked ? [...Array(nFrames()).keys()] : [frame];
+    for (const f of at) {
+      const sx = f * cellW() + x;
+      g.clearRect(sx, y, 1, 1);
+      if (!a) continue;
+      g.fillStyle = "rgba(" + r + "," + g2 + "," + b + "," + (a / 255) + ")";
+      g.fillRect(sx, y, 1, 1);
+    }
+  }
+
   function setPixel(x, y, erase) {
     if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
     const g = layers[slot].getContext("2d");
@@ -6746,6 +6999,72 @@ function renderSpriteEditor(model, host) {
   let drawing = null;
   let anchor = null;      // where a shape started, while it is being dragged
   let pending = null;     // the shape under the cursor, not yet committed
+
+  /*  THE CLIPBOARD — A SHAPE, NOT A BOX.
+
+      Click a pixel with the copy tool and it lifts that pixel and every pixel
+      of the same color joined to it: the coat, the hat brim, the one dark
+      square that is somebody's eye. Click again and the shape is stamped back
+      down, picked up and put down by the same pixel, so it lands where the
+      cursor says it will.
+
+      A box would be the easier thing to write and the wrong thing to have.
+      What is on this canvas is shapes — a sleeve, a boot, a band of trim — and
+      none of them is rectangular. Copying a sleeve with a marquee means
+      copying the sleeve plus whatever corner of the body shares its bounding
+      box, and then painting that corner down on top of something else.
+
+      It survives changing frame, layer and name, because copying a sleeve from
+      one frame into the next is most of what it is for. It does not survive a
+      resize: the pixels would no longer mean the same thing on a new grid.
+
+      Same rule as the move tool at the edges — anything that would land
+      outside the cell is dropped rather than wrapped into the frame next
+      door. */
+  let clip = null;        // { pts: [[dx, dy, r, g, b, a]] } once something is lifted
+  let hover = null;       // where the stamp would land, for the preview
+
+  const sameColor = (d, i2, j2) =>
+    d[i2] === d[j2] && d[i2 + 1] === d[j2 + 1] &&
+    d[i2 + 2] === d[j2 + 2] && d[i2 + 3] === d[j2 + 3];
+
+  function liftShape(sx, sy) {
+    const w = cellW(), h = cellH();
+    if (sx < 0 || sy < 0 || sx >= w || sy >= h) return false;
+    const g = layers[slot].getContext("2d", { willReadFrequently: true });
+    const d = g.getImageData(frame * w, 0, w, h).data;
+    const seed = (sy * w + sx) * 4;
+    // Nothing there. Lifting the shape of a hole is a puzzle, not a feature.
+    if (!d[seed + 3]) return false;
+
+    const seen = new Uint8Array(w * h);
+    const pts = [];
+    const queue = [[sx, sy]];
+    seen[sy * w + sx] = 1;
+    while (queue.length) {
+      const [x, y] = queue.pop();
+      const at = (y * w + x) * 4;
+      pts.push([x - sx, y - sy, d[at], d[at + 1], d[at + 2], d[at + 3]]);
+      /*  Four-connected. A shape that only touches at a corner is a second
+          shape, which is what anybody drawing pixel art means by it. */
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const k = ny * w + nx;
+        if (seen[k] || !sameColor(d, k * 4, seed)) continue;
+        seen[k] = 1;
+        queue.push([nx, ny]);
+      }
+    }
+    clip = { pts };
+    return true;
+  }
+
+  function stampClip(atX, atY) {
+    if (!clip) return;
+    for (const [dx, dy, r, g2, b, a] of clip.pts) setPixelRGBA(atX + dx, atY + dy, r, g2, b, a);
+    touched[slot] = true;
+  }
+
   const cellAt = e => {
     const r = grid.getBoundingClientRect();
     return { x: Math.floor((e.clientX - r.left) / (r.width / cellW())),
@@ -6758,6 +7077,18 @@ function renderSpriteEditor(model, host) {
     /*  A shape shows before it commits; the pencil goes straight down. Waiting
         to commit is what makes a line adjustable — you see it before you agree
         to it. */
+    /*  Copy is a click, not a drag: the first one lifts a shape, every one
+        after that stamps it. Right-click puts the clipboard down — the same
+        button that erases everywhere else, and this is the erase of a
+        selection. */
+    if (tool === "copy") {
+      if (drawing) clip = null;
+      else if (!clip) liftShape(x, y);
+      else stampClip(x, y);
+      anchor = null;
+      paint();
+      return;
+    }
     if (tool === "pencil") setPixel(x, y, drawing);
     else pending = { x, y };
     paint();
@@ -6766,12 +7097,20 @@ function renderSpriteEditor(model, host) {
     try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
   });
   grid.addEventListener("pointermove", e => {
+    /*  With a shape on the clipboard the cursor is a stamp, so the canvas has
+        to show where it would land whether a button is down or not. */
+    if (tool === "copy") {
+      const at = cellAt(e);
+      if (clip && (!hover || hover.x !== at.x || hover.y !== at.y)) { hover = at; paint(); }
+      return;
+    }
     if (drawing === null) return;
     const { x, y } = cellAt(e);
     if (tool === "pencil") setPixel(x, y, drawing);
     else pending = { x, y };
     paint();
   });
+  grid.addEventListener("pointerleave", () => { if (hover) { hover = null; paint(); } });
   /*  Shift the whole layer by a whole number of pixels. Committed on release,
       so a nudge can be lined up before it is agreed to — and applied to every
       frame when "all frames" is on, or the frames walk out of register with
@@ -6953,6 +7292,28 @@ function renderSpriteEditor(model, host) {
       g.fillText("head height \u00b7 " + ph + "px", 4, y - 4);
     }
 
+    /*  What is on the clipboard, hovering where it would land — in its own
+        colors, faintly, so it reads as a proposal rather than as paint that
+        has already gone down. Outlined as well, because a shape lifted from a
+        dark coat and hovered over a dark coat is otherwise invisible. */
+    if (tool === "copy" && clip && hover) {
+      g.globalAlpha = 0.75;
+      for (const [dx, dy, r, g2, b, a] of clip.pts) {
+        const px = hover.x + dx, py = hover.y + dy;
+        if (px < 0 || py < 0 || px >= cw || py >= ch || !a) continue;
+        g.fillStyle = "rgba(" + r + "," + g2 + "," + b + "," + (a / 255) + ")";
+        g.fillRect(px * z, py * z, z, z);
+      }
+      g.globalAlpha = 1;
+      g.strokeStyle = "rgba(120,220,255,0.9)";
+      g.lineWidth = 1;
+      for (const [dx, dy, , , , a] of clip.pts) {
+        const px = hover.x + dx, py = hover.y + dy;
+        if (px < 0 || py < 0 || px >= cw || py >= ch || !a) continue;
+        g.strokeRect(px * z + 0.5, py * z + 0.5, z - 1, z - 1);
+      }
+    }
+
     /*  The shape under the cursor, not yet committed. Drawn in the pen's own
         color so what you see is what you get, and outlined when erasing,
         where the color is nothing. */
@@ -7011,7 +7372,10 @@ function renderSpriteEditor(model, host) {
     dlRow.hidden = isPlace();
     dlRow.title = "save just this layer as " + rowFileName() + " — it beats the same "
                 + "wearer's sheet, and can be lent to anyone";
-    hint.textContent = (tool === "pencil" ? "drag to draw"
+    hint.textContent = (tool === "copy"
+                        ? (clip ? "click to stamp it — right-click to drop it"
+                                : "click a pixel to lift its shape")
+                      : tool === "pencil" ? "drag to draw"
                       : tool === "move" ? "drag to nudge the layer"
                       : "drag to place the shape") +
       " \u00b7 right-click or ctrl to erase \u00b7 " +
