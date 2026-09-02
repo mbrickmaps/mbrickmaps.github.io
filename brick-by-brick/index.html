@@ -265,15 +265,26 @@
     display: block; image-rendering: pixelated;
     border: 1px solid var(--border); border-radius: 3px;
     cursor: crosshair; touch-action: none;
-    /*  The buffer stays 24x24 sprite pixels; only the display scales. Square
-        is not negotiable — a stretched pixel is a lie about the drawing. */
-    /*  The buffer is sized per layer, and a layer is not square — a hat is
-        wide and shallow. Let the element take the buffer's own proportions and
-        only cap the width, or a brim comes out stretched. */
+    /*  No display size here. The canvas is drawn at the size it is shown at —
+        the cell size is picked to fill the panel (see `fitZ`) — so it renders
+        one buffer pixel to one screen pixel and the grid rules stay hairlines.
+        The cap is only a backstop for the moment before layout has settled;
+        if it ever engages, something is a pixel or two wide too many. */
     max-width: 100%; height: auto;
   }
+  /*  Something is being dragged over the canvas and would land if let go. */
+  /*  A picker tucked under the canvas it tints. */
+  .sp-under { margin-top: 6px; }
+  .sp-grid.sp-drop { outline: 2px dashed var(--accent2); outline-offset: 2px; }
   .sp-right { flex: 1 1 180px; min-width: 170px; max-width: 260px; display: flex; flex-direction: column; gap: 7px; }
   .sp-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  /*  Where the panel stops being about drawing and starts being about the
+      file. A rule, so the eye skips the whole of it while you are working —
+      which is what a drawer was standing in for, without hiding anything. */
+  .sp-row.sp-fold {
+    border-top: 1px solid var(--border);
+    margin-top: 3px; padding-top: 8px;
+  }
   .sp-cap {
     font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--muted); min-width: 34px;
@@ -282,7 +293,35 @@
       need the leading column width that keeps the first ones aligned. */
   .sp-cap + * ~ .sp-cap { min-width: 0; margin-left: 4px; }
   .sp-row button { font-size: 0.68rem; padding: 2px 7px; }
-  .sp-row button.on { border-color: var(--accent2); color: var(--accent2); }
+  /*  A tool button is a picture, not a word, and 0.68rem is a size chosen for
+      words. At that size a pencil and a box outline are two smudges you have
+      to hover to tell apart. Squared off as well, so the row reads as a set of
+      icons rather than as buttons of seven different widths. */
+  .sp-row button.sp-tool {
+    font-size: 1.1rem; line-height: 1;
+    min-width: 27px; height: 25px;
+    padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /*  ON IS FILLED. HOVER IS NOT.
+
+      This rule used to be `border-color: accent2; color: accent2` — which is,
+      character for character, the global `button:hover`. So the moment you
+      clicked a toggle the class came off and the hover put the exact same
+      paint back: the ghost went out, the button still looked lit, and it only
+      told the truth once the pointer left it. Every toggle in the panel read
+      one press behind, and no amount of checking `classList` finds that,
+      because the class was right the whole time.
+
+      A state has to be a different KIND of mark from a pointer's whereabouts,
+      not the same mark in the same colour. So on is filled, and hover stays a
+      tint of the edge. */
+  .sp-row button.on,
+  .sp-row button.on:hover {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: var(--bg);
+  }
   /*  A swatch is the color it draws — a label would only repeat what the
       square already says, and there is no room for one. */
   .sp-pen {
@@ -340,7 +379,10 @@
       and wrapping them apart made two controls look like two subjects. */
   .sp-bg { display: flex; align-items: center; gap: 3px; }
   .sp-bg input[type="color"] { width: 17px; height: 17px; border-radius: 3px; }
-  .sp-num { width: 38px; font-size: 0.68rem; padding: 1px 3px; }
+  /*  38px was the box, not the content: a three-digit place size and the
+      spinner arrows do not both fit in it, and the number is what loses.
+      Wide enough for "256" with the arrows still on the end. */
+  .sp-num { width: 58px; font-size: 0.68rem; padding: 1px 3px; }
   .sp-x { font-size: 0.62rem; color: var(--muted); margin: 0 -1px; }
   .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
   /*  The filename, shown as you type it — the one thing that decides whether
@@ -364,6 +406,27 @@
   .sp-preview canvas { display: block; image-rendering: pixelated; }
   .sp-true { align-self: flex-end; }
   .sp-hint { font-size: 0.63rem; line-height: 1.5; margin: 0; opacity: 0.6; }
+  /*  The rule that makes the whole thing work, kept next to the box you type
+      the name into. Quiet enough to be scenery until you need it. */
+  .sp-conv {
+    border-top: 1px solid var(--border);
+    margin-top: 4px; padding-top: 7px;
+    font-size: 0.6rem; line-height: 1.5; opacity: 0.55;
+  }
+  .sp-conv b { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  /*  Path and meaning on one line each: three lines say what four sentences
+      were saying, and the paths line up so they can be compared at a glance. */
+  .sp-conv dl {
+    margin: 4px 0 0;
+    display: grid; grid-template-columns: auto 1fr; gap: 1px 8px;
+  }
+  .sp-conv dt {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--accent2);
+  }
+  .sp-conv dd { margin: 0; }
+  .sp-conv p { margin: 5px 0 0; }
+  .sp-conv i { font-style: italic; opacity: 0.85; }
   /* One line per role, each led by the badge it explains. */
   .role-key {
     display: flex; flex-direction: column; gap: 3px;
@@ -6513,9 +6576,71 @@ function renderSpriteEditor(model, host) {
       thing for an editor to do without being asked — you draw one stroke and
       three others appear somewhere you were not looking. Switch it on when you
       want a layer that does not move. */
-  let slot = "top", frame = 0, pen = 0, onion = true, playing = true, linked = false;
+  /*  The walk starts STOPPED. It is a drawing tool before it is an animation
+      one, and a figure pacing beside you the whole time you are working on a
+      sleeve is movement in the corner of your eye that you did not ask for.
+      `paint` draws the preview whether or not it is running, so a stopped
+      preview still shows the figure — it just stands still. */
+  let slot = "top", frame = 0, pen = 0, onion = true, playing = false, linked = false;
   let gridOn = true, axesOn = true;
   let tool = "pencil";
+
+  /*  GUIDES.
+
+      The two center lines are fixed and they are the only references this had.
+      A guide is the same idea unfixed: a line you put where the drawing needs
+      one — a shoulder height, a roof pitch, the eaveline every window on a
+      terrace has to sit under.
+
+      All three kinds are one thing. A guide is a cell to pivot on and an angle
+      to leave it at, so horizontal is 0°, vertical is 90°, and a roof is
+      whatever the roof is. Degrees run anticlockwise from east the way anyone
+      reading a slope expects — positive rises to the right — which is the
+      opposite of the canvas's own downward y, and the only place that matters
+      is the one line that turns an angle into a direction.
+
+      A line has no ends, so 0° and 180° are the same guide; angles are kept in
+      [0, 180). They are the editor's, not the layer's — a shoulder line is
+      still the shoulder line when you switch from the coat to the hat — and
+      they are drawn onto the working canvas only, never into a layer, so
+      nothing here can reach the exported PNG. */
+  const GUIDE_KEY = "brick-by-brick:guides:v1";
+  let guides = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(GUIDE_KEY) || "[]");
+    if (Array.isArray(raw)) {
+      guides = raw.filter(g => g && [g.x, g.y, g.deg].every(n => typeof n === "number" && isFinite(n)))
+                  .map(g => ({ x: g.x | 0, y: g.y | 0, deg: normDeg(g.deg) }))
+                  .slice(0, 64);
+    }
+  } catch (e) { /* unavailable */ }
+  const saveGuides = () => {
+    try { localStorage.setItem(GUIDE_KEY, JSON.stringify(guides)); } catch (e) { /* unavailable */ }
+  };
+  /*  Into [0, 180). A guide drawn right-to-left is the same guide. */
+  function normDeg(d) {
+    if (!isFinite(d)) return 0;
+    let n = d % 180;
+    if (n < 0) n += 180;
+    return Math.round(n * 10) / 10;
+  }
+  /*  The unit vector along a guide, in CANVAS space — where y grows downward
+      and the angle does not. This negation is the whole of the conversion. */
+  const guideDir = deg => {
+    const r = deg * Math.PI / 180;
+    return { dx: Math.cos(r), dy: -Math.sin(r) };
+  };
+  /*  Which guide is under a point, if any: the perpendicular distance from an
+      infinite line is the cross product with its direction. */
+  function guideNear(px, py, within) {
+    let best = -1, bestD = within;
+    guides.forEach((g, i) => {
+      const { dx, dy } = guideDir(g.deg);
+      const d = Math.abs((px - (g.x + 0.5)) * dy - (py - (g.y + 0.5)) * dx);
+      if (d <= bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
 
   const el = (tag, cls, parent) => {
     const n = document.createElement(tag);
@@ -6528,6 +6653,41 @@ function renderSpriteEditor(model, host) {
   const left = el("div", "sp-left", wrap);
   const grid = el("canvas", "sp-grid", left);
   const right = el("div", "sp-right", wrap);
+
+  /*  AS BIG AS THE ROOM ALLOWS — AT WHOLE PIXELS.
+
+      The canvas used to be capped by the column's width and nothing else, so
+      a 102-wide place came out at about four screen pixels per drawn one, and
+      the panel's height went unspent besides.
+
+      What it does NOT do is stretch the finished canvas with CSS. That is the
+      obvious way to fill a box and it rescales everything drawn into it: the
+      grid rules, which are one pixel wide by construction, come out three
+      pixels thick and soft. Instead the cell size itself is chosen to fit the
+      room — a whole number of screen pixels per drawn pixel — and the canvas
+      is left at its own size. A rule is then a rule, and a pixel is square. */
+  /*  Set below, once the swatch that sits under the canvas exists. The canvas
+      no longer has the column to itself, and sizing it as though it did would
+      push that row straight off the bottom. */
+  let underGrid = null;
+  const fitZ = (cw, ch) => {
+    const availW = left.clientWidth;
+    /*  `wrap` is the panel's full height, so where `left` starts inside it is
+        the margin above; what sits under the canvas is taken off as well. */
+    const availH = wrap.clientHeight - (left.offsetTop - wrap.offsetTop)
+                 - (underGrid ? underGrid.offsetHeight + 8 : 0);
+    if (!(availW > 0 && availH > 0)) return 8;   // not laid out yet
+    return Math.max(2, Math.min(40, Math.floor(Math.min(availW / cw, availH / ch))));
+  };
+  /*  The room changes when the panel is dragged, not only when we redraw.
+      Watching `wrap` and not `left`: `left` is the box the canvas is sized
+      inside, and watching what you change is how an observer starts a loop.
+      The repaint is skipped unless the cell size actually moved, so settling
+      a scrollbar does not put us in one either. */
+  let lastZ = 0;
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { if (fitZ(cellW(), cellH()) !== lastZ) paint(); }).observe(wrap);
+  }
 
   // ---- which layer
   const slotBar = el("div", "sp-row", right);
@@ -6551,11 +6711,13 @@ function renderSpriteEditor(model, host) {
   for (const [i, t] of [[wIn, "width of one frame, in pixels"], [hIn, "height, in pixels"]]) {
     i.type = "number"; i.min = "1"; i.max = "256"; i.title = t; i.className = "sp-num";
   }
-  el("span", "sp-cap", sizeBar).textContent = "frames";
-  const fIn = el("input", "sp-num", sizeBar);
-  fIn.type = "number"; fIn.min = "1"; fIn.max = String(SPR_FRAMES);
-  fIn.title = "how many frames this row moves through. One is a layer that does "
-            + "not move; the sheet is always " + SPR_FRAMES + " and a shorter row repeats.";
+  /*  There was a "frames" spinner here, capped at four, which read as a
+      limitation rather than a choice — the only honest answers it took were 1
+      and 4, and offering 2 and 3 alongside them invited a question the format
+      cannot answer. The capability it set is untouched: a row still carries
+      its own frame count, a shorter row still repeats across the sheet, and a
+      one-frame hat loaded from disk still sits still on a walking body. It is
+      simply read from the file now instead of typed. */
   /*  Size is the FIGURE's, not one layer's.
 
       Every layer shares a cell — that is what lets a hat sit on a head without
@@ -6576,7 +6738,10 @@ function renderSpriteEditor(model, host) {
     const cap = isPlace() ? 256 : 64;       // scenery is allowed to be a building
     const w = Math.max(1, Math.min(cap, +wIn.value || 1));
     const h = Math.max(1, Math.min(cap, +hIn.value || 1));
-    const n = isPlace() ? 1 : Math.max(1, Math.min(SPR_FRAMES, +fIn.value || 1));
+    //  The row keeps whatever frame count it arrived with; only the box changes.
+    const n = isPlace() ? 1 : nFrames();
+    //  Shrinking crops. Nothing else here can lose pixels without a stroke.
+    if (w !== cellW() || h !== cellH()) snapshot();
     if (isPlace()) {
       layers.place = layerResize(layers.place, w, h, 1);
     } else {
@@ -6587,7 +6752,7 @@ function renderSpriteEditor(model, host) {
     }
     syncSize(); paint();
   };
-  wIn.onchange = hIn.onchange = fIn.onchange = applySize;
+  wIn.onchange = hIn.onchange = applySize;
 
   // ---- what to paint with
   /*  A few colors to hand, and a picker for everything else. Nothing here
@@ -6738,20 +6903,102 @@ function renderSpriteEditor(model, host) {
 
   const toolBar = el("div", "sp-row", right);
   el("span", "sp-cap", toolBar).textContent = "tool";
+  /*  U+25AB and U+25AA are the WHITE and BLACK SMALL SQUARE — small is in the
+      name, and they came out as specks beside the other glyphs. Their
+      full-size counterparts say the same thing and can actually be seen. */
   const TOOLS = [
     ["pencil", "\u270E", "freehand"],
     ["line",   "\u2571", "straight line \u2014 drag from one end to the other"],
-    ["rect",   "\u25AB", "box outline"],
-    ["fill",   "\u25AA", "filled box"],
+    ["rect",   "\u25A1", "box outline"],
+    ["fill",   "\u25A0", "filled box"],
     ["move",   "\u2725", "nudge what is drawn — drag it into place"],
     ["copy",   "\u29C9", "drag a box to lift those pixels, then click to stamp them down"],
+    ["guide",  "\u2220", "drag out a guide \u2014 shift snaps to 15\u00b0, right-click removes one"],
   ];
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
-    const b = el("button", null, toolBar);
+    const b = el("button", "sp-tool", toolBar);
     b.type = "button"; b.textContent = glyph; b.title = tip;
     b.onclick = () => { tool = id; paint(); };
     return b;
   });
+
+  /*  UNDO.
+
+      `empty board` is one press and there is nothing underneath it, which is
+      the case that asked for this — but an undo that only undoes one button is
+      a strange thing to own, so it takes a copy before anything destructive:
+      a stroke, a shape, a nudge, a resize, a dropped file, and the emptying.
+
+      A copy of all five layers, not a diff. At 24x28x4 that is a few hundred
+      kilobytes for a stack of twenty-four and it cannot get out of step with
+      what is on the canvas, which a diff can. `layerCopy` does not carry the
+      frame count across — it copies pixels — so that is put back by hand.
+
+      Snapshots are taken at the START of a stroke, so one undo takes back one
+      stroke rather than one pixel of one. */
+  const UNDO_MAX = 24;
+  const undos = [];
+  const undoBtn = el("button", null, toolBar);
+  undoBtn.type = "button"; undoBtn.textContent = "undo";
+  undoBtn.title = "take back the last thing that changed the drawing \u2014 "
+                + "including emptying the board";
+  const snapshot = () => {
+    const shot = {};
+    for (const k of TARGETS) {
+      shot[k] = layerCopy(layers[k]);
+      shot[k].__frames = layers[k].__frames;
+    }
+    undos.push(shot);
+    if (undos.length > UNDO_MAX) undos.shift();
+    undoBtn.disabled = false;
+  };
+  undoBtn.onclick = () => {
+    const shot = undos.pop();
+    if (!shot) return;
+    /*  Everything comes back touched. A restored layer is your work, and the
+        name box must not be able to fetch a file over the top of it. */
+    for (const k of TARGETS) { layers[k] = shot[k]; touched[k] = true; }
+    undoBtn.disabled = !undos.length;
+    syncSize(); paint();
+  };
+  undoBtn.disabled = true;
+
+  /*  A guide can be dragged out by eye, but a pitch you already know the
+      number of should not have to be. This row is the same guide from the
+      other end: type the angle, press +, and it lands on the middle cell —
+      then drag it where it belongs with the same tool. */
+  const guideBar = el("div", "sp-row", right);
+  el("span", "sp-cap", guideBar).textContent = "angle";
+  const gAng = el("input", "sp-num", guideBar);
+  gAng.type = "number"; gAng.min = "0"; gAng.max = "179.9"; gAng.step = "1";
+  gAng.value = "0";
+  gAng.title = "angle in degrees \u2014 0 lies flat, 90 stands up, and up is to the right";
+  el("span", "sp-x", guideBar).textContent = "\u00b0";
+  const gAdd = el("button", null, guideBar);
+  gAdd.type = "button"; gAdd.textContent = "+";
+  gAdd.title = "a guide at that angle, through the middle";
+  const gClear = el("button", null, guideBar);
+  gClear.type = "button"; gClear.textContent = "clear";
+  gClear.title = "remove every guide";
+  const gNote = el("span", "sp-pal-note", guideBar);
+
+  /*  Typing an angle re-aims the guide you last touched, so a line dragged
+      roughly into place can be made exact without being drawn again. With no
+      guide to aim, the number is simply what the next + will use. */
+  let lastGuide = -1;
+  gAng.oninput = () => {
+    if (lastGuide < 0 || lastGuide >= guides.length) return;
+    guides[lastGuide].deg = normDeg(parseFloat(gAng.value) || 0);
+    saveGuides(); paint();
+  };
+  gAdd.onclick = () => {
+    guides.push({ x: Math.floor(cellW() / 2), y: Math.floor(cellH() / 2),
+                  deg: normDeg(parseFloat(gAng.value) || 0) });
+    lastGuide = guides.length - 1;
+    tool = "guide";
+    saveGuides(); paint();
+  };
+  gClear.onclick = () => { guides = []; lastGuide = -1; saveGuides(); paint(); };
 
   // ---- and how it should look
   const optBar = el("div", "sp-row", right);
@@ -6771,7 +7018,9 @@ function renderSpriteEditor(model, host) {
   axesBtn.onclick = () => { axesOn = !axesOn; paint(); };
 
   const linkBtn = el("button", null, optBar);
-  linkBtn.type = "button"; linkBtn.textContent = "all frames";
+  //  "all frames" named the scope and left out the verb, which is the half
+  //  that says this is a drawing mode and not another view switch.
+  linkBtn.type = "button"; linkBtn.textContent = "paint all frames";
   linkBtn.title = "a stroke goes into every frame at once. Drawing only \u2014 move works on one frame.";
   linkBtn.onclick = () => { linked = !linked; paint(); };
   const frameBar = el("span", null, optBar);
@@ -6784,6 +7033,34 @@ function renderSpriteEditor(model, host) {
   const prevWrap = el("div", "sp-preview", right);
   /*  The backdrop it stands against. Kept in the browser, because it is a
       preference about looking rather than anything about the drawing. */
+  /*  THE GRID'S OWN COLOUR.
+
+      The squares behind the drawing were a fixed near-black, chosen so a
+      bright sprite would sit on them. That is the wrong way round for anyone
+      painting a dark colour: a brown boot on a brown-black grid is a boot you
+      cannot see well enough to draw. So the grid is yours — go pale and dark
+      colours read.
+
+      One colour, not two. The second square is derived, and only a nudge away
+      from the first, because the checker is there to say "nothing is drawn
+      here" and not to compete with what is. The nudge is smaller on a pale
+      grid than a dark one, where the same proportion reads as a hard stripe.
+
+      Kept in the browser, like the preview's backdrop: it is a preference
+      about looking, reaches no file, and cannot land in an export. */
+  const GRIDBG_KEY = "brick-by-brick:gridbg:v1";
+  const GRIDBG_DEFAULT = "#20241c";
+  let gridBg = GRIDBG_DEFAULT;
+  try {
+    const raw = localStorage.getItem(GRIDBG_KEY);
+    if (raw && /^#[0-9a-f]{6}$/i.test(raw)) gridBg = raw;
+  } catch (e) { /* unavailable */ }
+  const gridLight = () => lumOf(hexInt(gridBg)) > 0.5;
+  const gridOther = () => shadeHex(gridBg, gridLight() ? -0.09 : -0.28);
+  /*  Rules and axes have to be drawn in something that survives the squares
+      they are drawn over — white lines on a white grid are no lines at all. */
+  const gridInk = a => (gridLight() ? "rgba(0,0,0," : "rgba(255,255,255,") + a + ")";
+
   const BG_KEY = "brick-by-brick:spritebg:v1";
   let bg = { sky: "#1d2c38", ground: "#1a1f18" };
   try {
@@ -6817,8 +7094,23 @@ function renderSpriteEditor(model, host) {
   bgReset.onclick = () => {
     bg = { sky: "#1d2c38", ground: "#1a1f18" };
     skyIn.value = bg.sky; groundIn.value = bg.ground; applyBg();
+    gridBg = GRIDBG_DEFAULT; gridIn.value = gridBg; saveGridBg(); paint();
   };
   applyBg();
+
+  /*  In with the backdrop, because both are the same kind of thing: what you
+      are looking AT something against, rather than anything about the drawing
+      itself. Neither leaves this browser and neither reaches the PNG. */
+  el("span", "sp-cap", bgBar).textContent = "grid";
+  const gridWrap = el("span", "sp-bg", bgBar);
+  const gridIn = el("input", null, gridWrap);
+  gridIn.type = "color"; gridIn.value = gridBg;
+  gridIn.title = "the squares behind the drawing \u2014 go pale when you are "
+               + "painting dark colours and cannot tell them apart";
+  const saveGridBg = () => {
+    try { localStorage.setItem(GRIDBG_KEY, gridBg); } catch (e) { /* unavailable */ }
+  };
+  gridIn.oninput = () => { gridBg = gridIn.value; saveGridBg(); paint(); };
 
   /*  Who this is for — and the whole of the filename, since a wardrobe is one
       file. Which layer you are drawing is a row inside it, not a name. */
@@ -6841,10 +7133,17 @@ function renderSpriteEditor(model, host) {
   const nameOut = el("span", "sp-filename", nameBar);
 
   const outBar = el("div", "sp-row", right);
+  /*  Parented here and moved to the frame row below, where the preview it
+      starts and stops actually is. It was in the export row for no better
+      reason than that the export row came last. */
   const playBtn = el("button", null, outBar);
-  playBtn.type = "button"; playBtn.textContent = "\u275A\u275A";
-  playBtn.title = "stop or start the walk";
-  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "\u275A\u275A" : "\u25B6"; };
+  /*  A word, not a glyph. This was U+275A twice — two heavy vertical bars,
+      which is what a pause symbol is made of but not what one looks like at
+      eleven pixels beside a row of numbers. The label says what pressing it
+      does, so it reads "pause" while the walk is running. */
+  playBtn.type = "button"; playBtn.textContent = "play";
+  playBtn.title = "stop or start the walk in the preview";
+  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "pause" : "play"; };
   const dl = el("button", null, outBar);
   dl.type = "button"; dl.textContent = "download";
   dl.title = "save all four rows as one wardrobe PNG";
@@ -6858,12 +7157,6 @@ function renderSpriteEditor(model, host) {
   // Drop either in images/wear/ and anyone whose uid or trade matches is
   // wearing it on the next load.
   dl.onclick = () => save(isPlace() ? layers.place : stitchSheet(), fileName());
-  /*  The loose layer, for a hat drawn to be lent around. Hidden on a place,
-      which has no rows to take one from. */
-  const dlRow = el("button", null, outBar);
-  dlRow.type = "button"; dlRow.textContent = "row";
-  dlRow.onclick = () => save(layers[slot], rowFileName());
-
   /*  Straight onto the street, without a deploy.
 
       The same PNG the download button hands you, kept in the browser under the
@@ -6872,7 +7165,12 @@ function renderSpriteEditor(model, host) {
       second — and if you decide it is worth keeping, the Art panel will still
       give you the file to commit. */
   const keep = el("button", null, outBar);
-  keep.type = "button"; keep.textContent = "to page";
+  /*  It was "to page", which named the mechanism — the drawing is held by this
+      page — and not the outcome. What you actually want to know is where it
+      turns up, and the answer is the Promenade: a wearer walks in it, a place
+      stands behind its column. Both land in the same scene, so the button can
+      name it. */
+  keep.type = "button"; keep.textContent = "to promenade";
   keep.onclick = () => {
     const cv = isPlace() ? layers.place : stitchSheet();
     const path = (isPlace() ? "places/" : "wear/") + fileName();
@@ -6881,26 +7179,111 @@ function renderSpriteEditor(model, host) {
       ? "no room left in this browser to keep that — download it instead"
       : "kept as " + path + " — on the street until you clear it";
   };
-  keep.title = "keep this in the browser as the file the Promenade reads, "
-             + "without writing anything to disk";
-  const reset = el("button", null, outBar);
-  reset.type = "button"; reset.textContent = "reset";
-  reset.title = "this layer back to whatever it was before you drew on it";
-  reset.onclick = () => {
-    if (!confirm("Throw away this " + slot + " and start again?")) return;
-    if (isPlace()) {
-      const g = layers.place.getContext("2d");
-      g.clearRect(0, 0, layers.place.width, layers.place.height);
-    } else layers[slot] = layerCopy(wear[slot]);
-    /*  Untouched again, so the name box governs this layer once more. Left
-        touched, a reset layer was frozen on the built-in: typing a name that
-        has a file for it did nothing, because the editor still believed there
-        was work here worth protecting. */
-    touched[slot] = false;
-    syncSize(); openExisting(); paint();
+  keep.title = "put it straight into the scene \u2014 held in this browser only, "
+             + "with nothing written to disk and nothing deployed";
+  /*  Nothing at all, on purpose.
+
+      `reset` puts a layer back to what it was BEFORE you drew — which for a
+      wearer is the built-in figure, not an empty grid. There was no way to
+      start from nothing, and drawing your own person meant rubbing out
+      somebody else's first.
+
+      Every row, not just the one showing: an outfit is four rows, and blanking
+      one at a time leaves you three-quarters dressed as the default. They are
+      marked touched afterwards, or the editor would helpfully fill them back
+      in from disk the moment the name box changed — a blank layer is a
+      decision, and it has to look like one. */
+  const blank = el("button", null, outBar);
+  blank.type = "button"; blank.textContent = "empty board";
+  blank.title = "back to nothing \u2014 every item, all frames, with no figure "
+              + "underneath to rub out first";
+  blank.onclick = () => {
+    snapshot();
+    const wipe = cv => cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+    for (const k of (isPlace() ? ["place"] : ROWS)) { wipe(layers[k]); touched[k] = true; }
+    paint();
   };
 
   const hint = el("p", "hint sp-hint", right);
+
+  /*  THE NAMING CONVENTION, WRITTEN DOWN WHERE IT IS USED.
+
+      Nothing here is configured: a drawing reaches a brickling or a column by
+      being named after them. That is the whole mechanism, and it was knowledge
+      you had to already have — the panel showed you the filename it would
+      write and never said what made that filename find anybody.
+
+      Read straight off `outfitFor`, so it cannot drift from the loader: a
+      person is dressed from their own uid first, then their trade, then
+      default, and within each of those a loose row beats that wearer's
+      sheet. */
+  const conv = el("div", "sp-conv", right);
+  conv.innerHTML =
+    '<b>naming</b>'
+    + '<dl>'
+    + '<dt>wear/<i>who</i>.png</dt><dd>whole outfit</dd>'
+    + '<dt>wear/<i>who</i>.<i>item</i>.png</dt><dd>one item, beats the outfit</dd>'
+    + '<dt>places/<i>place</i>.png</dt><dd>behind that place</dd>'
+    + '</dl>'
+    + '<p><i>who</i>: uid, then trade, then <i>default</i></p>';
+
+  /*  ARRANGED BY WHAT A CONTROL TOUCHES.
+
+      The first attempt at this sorted the rows by how often they get used and
+      hid the unpopular ones behind a button. That is not a structure, it is a
+      popularity contest: the panel still held everything it held before, plus
+      a button and a saved state to get wrong, and it separated `size` from
+      `for` when those are the same decision made in the same breath.
+
+      Three groups, and every control belongs to exactly one:
+
+        the DRAWING   what a stroke does — tool, paint, all frames
+        the VIEW      what you are looking at — none of it changes a pixel
+        the FILE      who it is for and where it goes, below a rule
+
+      Two rows stop existing rather than being hidden. Guides fold into the
+      tool that makes them and appear only while that tool is up. The backdrop
+      and cell colours join the view row, where they always belonged. */
+
+  //  A stroke going into every frame is a DRAWING mode, not a view toggle. It
+  //  sat beside "ghost" and read as one for as long as it was there.
+  toolBar.appendChild(linkBtn);
+
+  //  The frame you are on drives the preview, so it sits directly above it
+  //  rather than at the end of a row of unrelated switches.
+  const frameRow = el("div", "sp-row", right);
+  //  Play leads the row: it is the verb, and "frame 1 2 3 4" is what it acts on.
+  frameRow.appendChild(playBtn);
+  el("span", "sp-cap", frameRow).textContent = "frame";
+  frameRow.appendChild(frameBar);
+  right.insertBefore(frameRow, prevWrap);
+
+  /*  Each colour picker goes to the canvas it colours.
+
+      Both were captioned swatches in a row on the far side of the panel, which
+      meant looking away from the thing you were adjusting to adjust it — and
+      two greyish squares in a list of toggles give you no clue which surface
+      either one belongs to. Under their own canvas the question does not come
+      up: this one tints what is directly above it. */
+  const gridBgRow = el("div", "sp-row sp-under", left);
+  /*  Undo lives under the canvas, not in the tool row: it acts on what is
+      drawn rather than on how you draw, and the drawing is what you are
+      looking at when you want it back. */
+  gridBgRow.appendChild(undoBtn);
+  el("span", "sp-cap", gridBgRow).textContent = "cells";
+  gridBgRow.appendChild(gridWrap);
+  underGrid = gridBgRow;
+
+  const prevBgRow = el("div", "sp-row sp-under", right);
+  el("span", "sp-cap", prevBgRow).textContent = "backdrop";
+  prevBgRow.appendChild(bgWrap);
+  right.insertBefore(prevBgRow, prevWrap.nextSibling);
+  bgBar.remove();
+
+  //  Size is not something you set while drawing — it is part of what the file
+  //  IS, like its name, so it goes with the name and the export buttons.
+  right.insertBefore(sizeBar, outBar);
+  nameBar.classList.add("sp-fold");
 
   /*  The filename the page will look for. One name either way — a place is
       named for the place, a wardrobe for its wearer — because both are one
@@ -6909,16 +7292,12 @@ function renderSpriteEditor(model, host) {
   function fileName() {
     return (slugify(nameIn.value.trim()) || (isPlace() ? "place" : "default")) + ".png";
   }
-  // The same wearer, one row of them: default.hat.png beats default.png's hat.
-  function rowFileName() {
-    return (slugify(nameIn.value.trim()) || "default") + "." + slot + ".png";
-  }
 
   // ---- geometry
   const nFrames = () => layers[slot].__frames || SPR_FRAMES;
   const cellW = () => layers[slot].width / nFrames();
   const cellH = () => layers[slot].height;
-  function syncSize() { wIn.value = cellW(); hIn.value = cellH(); fIn.value = nFrames(); }
+  function syncSize() { wIn.value = cellW(); hIn.value = cellH(); }
 
   /*  Where the body sits behind this layer, in the layer's own pixels.
       Same two rules as everywhere else: centered, and standing on the bottom
@@ -7074,6 +7453,10 @@ function renderSpriteEditor(model, host) {
     drawing = e.button === 2 || e.ctrlKey;
     const { x, y } = cellAt(e);
     anchor = { x, y };
+    /*  Before the first pixel of this stroke, so one undo is one stroke. The
+        guide tool is excluded: it draws nothing into a layer, and filling the
+        stack with no-ops would push real work off the end of it. */
+    if (tool !== "guide") snapshot();
     /*  A shape shows before it commits; the pencil goes straight down. Waiting
         to commit is what makes a line adjustable — you see it before you agree
         to it. */
@@ -7087,6 +7470,34 @@ function renderSpriteEditor(model, host) {
       else stampClip(x, y);
       anchor = null;
       paint();
+      return;
+    }
+    /*  A guide is grabbed, not drawn. Land on one and you are moving that one;
+        land anywhere else and you are pivoting a new one out of that cell.
+        Right-click takes one away — the same button that erases everywhere
+        else in here, and removing a guide is the erase of a guide. */
+    if (tool === "guide") {
+      const hit = guideNear(x + 0.5, y + 0.5, 0.9);
+      if (drawing) {
+        if (hit >= 0) {
+          guides.splice(hit, 1);
+          if (lastGuide >= guides.length) lastGuide = guides.length - 1;
+          saveGuides();
+        }
+        anchor = null;
+      } else {
+        if (hit >= 0) { guides[hit].x = x; guides[hit].y = y; lastGuide = hit; }
+        else {
+          guides.push({ x, y, deg: normDeg(parseFloat(gAng.value) || 0) });
+          lastGuide = guides.length - 1;
+        }
+        /*  Nothing is committed on release, because a guide is not a mark —
+            it is already where it is going the whole time you are aiming it.
+            The anchor is only how the drag knows what to aim. */
+        saveGuides();
+      }
+      paint();
+      try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
     }
     if (tool === "pencil") setPixel(x, y, drawing);
@@ -7106,6 +7517,23 @@ function renderSpriteEditor(model, host) {
     }
     if (drawing === null) return;
     const { x, y } = cellAt(e);
+    /*  Aiming. The pointer is a point on the line, not an end of it: the guide
+        pivots on its cell and runs both ways, so dragging back through the
+        anchor and out the other side changes nothing, which is right. */
+    if (tool === "guide") {
+      if (anchor && lastGuide >= 0 && lastGuide < guides.length) {
+        const g = guides[lastGuide];
+        const rise = (g.y + 0.5) - (y + 0.5), run = (x + 0.5) - (g.x + 0.5);
+        if (rise || run) {
+          let deg = Math.atan2(rise, run) * 180 / Math.PI;
+          if (e.shiftKey) deg = Math.round(deg / 15) * 15;
+          g.deg = normDeg(deg);
+          gAng.value = String(g.deg);
+          saveGuides(); paint();
+        }
+      }
+      return;
+    }
     if (tool === "pencil") setPixel(x, y, drawing);
     else pending = { x, y };
     paint();
@@ -7194,14 +7622,88 @@ function renderSpriteEditor(model, host) {
   grid.addEventListener("pointercancel", stop);
   grid.addEventListener("contextmenu", e => e.preventDefault());
 
+  /*  OPEN A PNG BY DROPPING IT ON THE CANVAS.
+
+      A finished drawing left here by the only door available: you downloaded
+      it, and the editor could not read it back. It reads the server's own
+      images folder and nothing else, so a file in ~/Downloads — the file this
+      panel handed you five minutes ago — was out of reach.
+
+      The FILENAME decides how it is read, because the filenames here already
+      carry that meaning and are the ones this panel writes:
+
+        default.png        a wardrobe sheet — four rows, split back apart
+        default.hat.png    one row, into the slot it names
+        anything, on the place slot — the place
+
+      Not the shape of the image, which cannot tell you: a still one-frame hat
+      and a four-row sheet are both roughly square, and guessing wrong quietly
+      quarters somebody's drawing. A sheet whose height is not divisible by
+      four is not a sheet whatever it is called, so that falls back to the row
+      you are on rather than being cut into quarters that mean nothing. */
+  const dropStop = e => { e.preventDefault(); e.stopPropagation(); };
+  grid.addEventListener("dragenter", e => { dropStop(e); grid.classList.add("sp-drop"); });
+  grid.addEventListener("dragover", dropStop);
+  grid.addEventListener("dragleave", e => { dropStop(e); grid.classList.remove("sp-drop"); });
+  grid.addEventListener("drop", async e => {
+    dropStop(e);
+    grid.classList.remove("sp-drop");
+    const file = [...((e.dataTransfer && e.dataTransfer.files) || [])]
+      .find(f => /^image\//.test(f.type));
+    if (!file) { hint.textContent = "that was not an image"; return; }
+    const url = URL.createObjectURL(file);
+    const img = await loadImg(url);
+    URL.revokeObjectURL(url);
+    if (!img || !host.isConnected) { hint.textContent = "could not read " + file.name; return; }
+    snapshot();
+
+    const named = /\.(body|bottom|top|hat)\.[^.]+$/i.exec(file.name);
+    let note;
+    if (isPlace()) {
+      blitInto(layers.place, img);
+      layers.place.__frames = 1;
+      touched.place = true;
+      note = "opened as the place";
+    } else if (named) {
+      slot = named[1].toLowerCase();
+      blitInto(layers[slot], img);
+      layers[slot].__frames = SPR_FRAMES;
+      touched[slot] = true;
+      note = "opened into " + slot;
+    } else if (img.height % ROWS.length === 0) {
+      const rows = sheetRows(img) || [];
+      let got = 0;
+      rows.forEach((cv, i) => {
+        if (!cv) return;                       // a row this sheet has no opinion about
+        blitInto(layers[ROWS[i]], cv);
+        layers[ROWS[i]].__frames = SPR_FRAMES;
+        touched[ROWS[i]] = true;
+        got++;
+      });
+      if (!got) { hint.textContent = file.name + " has nothing drawn in it"; return; }
+      note = "opened as a sheet \u2014 " + got + (got === 1 ? " row" : " rows");
+    } else {
+      blitInto(layers[slot], img);
+      layers[slot].__frames = SPR_FRAMES;
+      touched[slot] = true;
+      note = "opened into " + slot;
+    }
+    /*  Named after the file, so pressing download gives the same name back
+        instead of quietly saving it as somebody else. */
+    const base = file.name.replace(/\.[^.]+$/, "").replace(/\.(body|bottom|top|hat)$/i, "");
+    if (base) nameIn.value = base;
+    syncSize(); paint();
+    hint.textContent = note + " \u00b7 " + file.name;
+  });
+
   // ---- painting
   let tick = 0;
   function paint() {
-    /*  Buffer zoom, sized against the largest dimension so a wide scene and a
-        tall hat both come out sensible — and generous enough that the grid
-        lines drawn into it stay fine when CSS scales the canvas up. */
+    /*  One cell, in screen pixels. Whole numbers only: a cell of 7.4 pixels
+        has to be rounded somewhere, and wherever that lands is a drawn pixel
+        a row taller than its neighbour. */
     const cw = cellW(), ch = cellH();
-    const z = Math.max(4, Math.min(24, Math.floor(620 / Math.max(cw, ch))));
+    const z = lastZ = fitZ(cw, ch);
     grid.width = cw * z; grid.height = ch * z;
 
     slotBtns.forEach((b, i) => b.classList.toggle("on", ROWS[i] === slot));
@@ -7220,6 +7722,9 @@ function renderSpriteEditor(model, host) {
     toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     onionBtn.classList.toggle("on", onion);
     gridBtn.classList.toggle("on", gridOn);
+    /*  Only while the tool that makes them is up. A guide is not a setting you
+        keep an eye on, it is something you are either placing or not. */
+    guideBar.hidden = tool !== "guide";
     axesBtn.classList.toggle("on", axesOn);
     linkBtn.classList.toggle("on", linked);
     eraseBtn.classList.toggle("on", pen === -1);
@@ -7245,8 +7750,9 @@ function renderSpriteEditor(model, host) {
     g.clearRect(0, 0, grid.width, grid.height);
     // cols is worked out above, with the swatches — the canvas and the pens
     // must never disagree about what a slot looks like.
+    const other = gridOther();
     for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-      g.fillStyle = ((x + y) & 1) ? "#20241c" : "#161a14";
+      g.fillStyle = ((x + y) & 1) ? gridBg : other;
       g.fillRect(x * z, y * z, z, z);
     }
     if (onion && !isPlace()) {
@@ -7282,12 +7788,17 @@ function renderSpriteEditor(model, host) {
     if (onion && isPlace()) {
       const ph = layers.body.height;
       const y = (ch - ph) * z;
-      g.strokeStyle = "rgba(232,220,196,0.8)";
+      /*  Cream, until the grid could be any colour you liked — on a pale one
+          this line and its label went the same way white rules did, which is
+          to say nowhere. It takes its ink from the grid now, like everything
+          else drawn over the top of it. */
+      const ink = gridInk(0.8);
+      g.strokeStyle = ink;
       g.lineWidth = 1;
       g.setLineDash([4, 3]);
       g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(grid.width, y + 0.5); g.stroke();
       g.setLineDash([]);
-      g.fillStyle = "rgba(232,220,196,0.8)";
+      g.fillStyle = ink;
       g.font = "10px ui-monospace, monospace";
       g.fillText("head height \u00b7 " + ph + "px", 4, y - 4);
     }
@@ -7305,7 +7816,7 @@ function renderSpriteEditor(model, host) {
         g.fillRect(px * z, py * z, z, z);
       }
       g.globalAlpha = 1;
-      g.strokeStyle = "rgba(120,220,255,0.9)";
+      g.strokeStyle = gridLight() ? "rgba(0,105,165,0.9)" : "rgba(120,220,255,0.9)";
       g.lineWidth = 1;
       for (const [dx, dy, , , , a] of clip.pts) {
         const px = hover.x + dx, py = hover.y + dy;
@@ -7337,11 +7848,11 @@ function renderSpriteEditor(model, host) {
     g.lineWidth = 1;
     if (gridOn && z >= 5) {
       for (let i = 1; i < cw; i++) {
-        g.strokeStyle = i % 4 ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.3)";
+        g.strokeStyle = gridInk(i % 4 ? 0.13 : 0.3);
         g.beginPath(); g.moveTo(i * z + 0.5, 0); g.lineTo(i * z + 0.5, grid.height); g.stroke();
       }
       for (let i = 1; i < ch; i++) {
-        g.strokeStyle = i % 4 ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.3)";
+        g.strokeStyle = gridInk(i % 4 ? 0.13 : 0.3);
         g.beginPath(); g.moveTo(0, i * z + 0.5); g.lineTo(grid.width, i * z + 0.5); g.stroke();
       }
     }
@@ -7355,28 +7866,76 @@ function renderSpriteEditor(model, host) {
         everything stands on, so it gets its own color and no dashes. */
     if (axesOn) {
       const midX = Math.round(cw / 2) * z, midY = Math.round(ch / 2) * z;
-      g.strokeStyle = "rgba(120,220,255,0.95)";
+      /*  Cyan reads on a dark grid and washes out on a pale one, so the
+          axes take a deeper blue there. Same line, same job. */
+      g.strokeStyle = gridLight() ? "rgba(0,105,165,0.95)" : "rgba(120,220,255,0.95)";
       g.lineWidth = 2;
       g.setLineDash([6, 4]);
       g.beginPath(); g.moveTo(midX + 0.5, 0); g.lineTo(midX + 0.5, grid.height); g.stroke();
       g.beginPath(); g.moveTo(0, midY + 0.5); g.lineTo(grid.width, midY + 0.5); g.stroke();
       g.setLineDash([]);
     }
+
+    /*  The guides, over everything they are guiding.
+
+        Each one is drawn from its cell out to well past both corners, which is
+        the cheap way to draw a line that has no ends. Amber, where the fixed
+        center lines are cyan: they behave differently and should not be
+        mistaken for one another. The anchor gets a dot, because that is the
+        cell you grab to move it and there would otherwise be nothing to aim
+        at on a line that is the same all the way along. */
+    if (guides.length) {
+      const far = (grid.width + grid.height) * 2;
+      guides.forEach((gd, i) => {
+        const { dx, dy } = guideDir(gd.deg);
+        const ax = (gd.x + 0.5) * z, ay = (gd.y + 0.5) * z;
+        const amber = gridLight() ? "185,105,0" : "255,196,92";
+        g.strokeStyle = "rgba(" + amber + (i === lastGuide ? ",0.95)" : ",0.55)");
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(ax - dx * far, ay - dy * far);
+        g.lineTo(ax + dx * far, ay + dy * far);
+        g.stroke();
+        g.fillStyle = "rgba(" + amber + (i === lastGuide ? ",0.95)" : ",0.5)");
+        g.beginPath();
+        g.arc(ax, ay, Math.max(2, z / 3), 0, Math.PI * 2);
+        g.fill();
+      });
+    }
+    gNote.textContent = guides.length
+      ? guides.length + (guides.length === 1 ? " guide" : " guides")
+      : "";
+    gClear.disabled = !guides.length;
+
     g.lineWidth = 1;
     g.strokeStyle = "#d98a5c";
     g.beginPath();
     g.moveTo(0, grid.height - 0.5); g.lineTo(grid.width, grid.height - 0.5);
     g.stroke();
 
+    /*  How big this actually is, on the thing itself.
+
+        The number lives in a box at the far end of the panel, which is no use
+        while you are drawing: what you want to know is whether you are working
+        at 24 wide or 102, and you want to know it without looking away. Top
+        right, because the figure stands centred on the bottom, and quiet
+        enough to be ignored — it takes its ink from the grid, so it survives a
+        pale one as well as a dark. */
+    g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    g.textAlign = "right";
+    g.textBaseline = "top";
+    g.fillStyle = gridInk(0.5);
+    g.fillText(cw + " \u00d7 " + ch, grid.width - 5, 4);
+
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
-    dlRow.hidden = isPlace();
-    dlRow.title = "save just this layer as " + rowFileName() + " — it beats the same "
-                + "wearer's sheet, and can be lent to anyone";
+    if (host._wipQueue) host._wipQueue();
     hint.textContent = (tool === "copy"
                         ? (clip ? "click to stamp it — right-click to drop it"
                                 : "click a pixel to lift its shape")
                       : tool === "pencil" ? "drag to draw"
                       : tool === "move" ? "drag to nudge the layer"
+                      : tool === "guide" ? "drag to aim \u2014 shift snaps to 15\u00b0, "
+                          + "right-click removes, drop on a guide to move it"
                       : "drag to place the shape") +
       " \u00b7 right-click or ctrl to erase \u00b7 " +
       slot + ", frame " + (frame + 1) + " \u00b7 " + cw + " \u00d7 " + ch +
@@ -7436,8 +7995,76 @@ function renderSpriteEditor(model, host) {
     host._spriteRAF = requestAnimationFrame(loop);
   })();
 
+  /*  WORK IN PROGRESS.
+
+      Everything else this editor writes is a finished thing: a PNG you
+      downloaded, or one kept in the browser under the path the loader reads.
+      There was nothing for the half-drawn coat you have to walk away from —
+      close the panel and it was gone, which makes an unfinished drawing a
+      thing you dare not leave.
+
+      So the working layers are kept in the browser as you go. No button:
+      a draft you have to remember to save is a draft you lose. It writes at
+      most once a second, and only the rows you have actually drawn on — an
+      untouched row is still whatever the file says it is, and storing a copy
+      of that would only go stale when the file changed.
+
+      Restoring marks those rows touched, which is what stops `openExisting`
+      from loading the file over the top of them. That is the same rule the
+      editor already uses for a row you have drawn on this session: a mark on
+      the canvas outranks a file on disk. */
+  const WIP_KEY = "brick-by-brick:wip:v1";
+  let wipAt = 0;
+  function saveWip() {
+    try {
+      const rows = {}, frames = {};
+      for (const k of TARGETS) {
+        if (!touched[k]) continue;
+        rows[k] = layers[k].toDataURL("image/png");
+        frames[k] = layers[k].__frames || SPR_FRAMES;
+      }
+      if (!Object.keys(rows).length) { localStorage.removeItem(WIP_KEY); return; }
+      localStorage.setItem(WIP_KEY, JSON.stringify({
+        name: nameIn.value, slot, at: Date.now(), rows, frames,
+      }));
+    } catch (e) { /* full, or unavailable — a draft is not worth an alert */ }
+  }
+  /*  Called from `paint`, which runs after every change there is; the delay is
+      what keeps a stroke from writing the whole sheet out on every pixel. */
+  host._wipQueue = () => {
+    clearTimeout(wipAt);
+    wipAt = setTimeout(saveWip, 900);
+  };
+
+  async function restoreWip() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(WIP_KEY) || "null"); } catch (e) { return false; }
+    if (!d || !d.rows || !Object.keys(d.rows).length) return false;
+    let got = 0;
+    for (const k of TARGETS) {
+      if (!d.rows[k]) continue;
+      const img = await loadImg(d.rows[k]);
+      if (!img || !host.isConnected) continue;
+      blitInto(layers[k], img);
+      layers[k].__frames = d.frames && d.frames[k] ? d.frames[k] : (k === "place" ? 1 : SPR_FRAMES);
+      touched[k] = true;
+      got++;
+    }
+    if (!got) return false;
+    if (typeof d.name === "string") nameIn.value = d.name;
+    if (TARGETS.includes(d.slot)) slot = d.slot;
+    syncSize(); paint();
+    const when = d.at ? new Date(d.at) : null;
+    hint.textContent = "picked up where you left off"
+      + (when ? " — " + when.toLocaleString() : "")
+      + " \u00b7 download it when it is done, or press empty board to drop it";
+    return true;
+  }
+
   syncSize();
-  openExisting();
+  /*  The draft wins over the file. If there is nothing half-drawn, this falls
+      through to the ordinary "open whatever exists for this name". */
+  restoreWip().then(found => { if (!found && host.isConnected) openExisting(); });
   paint();
 }
 
