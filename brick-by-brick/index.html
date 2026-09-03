@@ -384,6 +384,8 @@
       Wide enough for "256" with the arrows still on the end. */
   .sp-num { width: 58px; font-size: 0.68rem; padding: 1px 3px; }
   .sp-x { font-size: 0.62rem; color: var(--muted); margin: 0 -1px; }
+  .sp-unit { width: 34px; font-size: 0.68rem; padding: 1px 3px; }
+  .sp-ans { font-size: 0.68rem; color: var(--accent2); font-variant-numeric: tabular-nums; }
   .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
   /*  The filename, shown as you type it — the one thing that decides whether
       the page ever finds this drawing. */
@@ -6583,6 +6585,18 @@ function renderSpriteEditor(model, host) {
       preview still shows the figure — it just stands still. */
   let slot = "top", frame = 0, pen = 0, onion = true, playing = false, linked = false;
   let gridOn = true, axesOn = true;
+  /*  CURSOR.
+
+      A crosshair is two lines with a hole where the point should be, which is
+      the wrong shape for a job measured in whole cells: it tells you roughly
+      where you are and never which square you are on. The alternative is to
+      hide the pointer entirely and let the outlined cell BE the cursor —
+      exactly as accurate as the thing you are about to do.
+
+      A preference, not a mode, so it is remembered. */
+  const CURSOR_KEY = "brick-by-brick:spcursor:v1";
+  let cellCursor = false;
+  try { cellCursor = localStorage.getItem(CURSOR_KEY) === "1"; } catch (e) { /* unavailable */ }
   let tool = "pencil";
 
   /*  GUIDES.
@@ -6914,11 +6928,18 @@ function renderSpriteEditor(model, host) {
     ["move",   "\u2725", "nudge what is drawn — drag it into place"],
     ["copy",   "\u29C9", "drag a box to lift those pixels, then click to stamp them down"],
     ["guide",  "\u2220", "drag out a guide \u2014 shift snaps to 15\u00b0, right-click removes one"],
+    /*  Spelled out, with the arrows still on it. A lone glyph in a row of
+        glyphs made you hover to find out which one asked a question instead of
+        making a mark, and this is the one tool that changes nothing. */
+    ["measure", "\u2190measure\u2192", "how big is that \u2014 click a shape, or "
+              + "drag across anything. Changes nothing."],
   ];
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
-    const b = el("button", "sp-tool", toolBar);
+    /*  A word is not an icon: the square, oversized box that makes a pencil
+        legible would only stretch a label. */
+    const b = el("button", glyph.length > 2 ? null : "sp-tool", toolBar);
     b.type = "button"; b.textContent = glyph; b.title = tip;
-    b.onclick = () => { tool = id; paint(); };
+    b.onclick = () => { tool = id; if (id !== "measure") measured = null; paint(); };
     return b;
   });
 
@@ -6963,6 +6984,81 @@ function renderSpriteEditor(model, host) {
   };
   undoBtn.disabled = true;
 
+  /*  SCALE — what one pixel is worth, out in the world.
+
+      A place is a building, and buildings come with real numbers attached: a
+      door is about 7 feet, a storey about 10, a kirk tower whatever the record
+      says. None of that helps while you are drawing unless you can turn it
+      into pixels, and the only reference the panel offered was a person 28
+      pixels tall and the arithmetic left to you.
+
+      So: say what one pixel is worth and the panel answers the other question.
+      Units are whatever you type — feet, metres, cubits — because the number
+      is a ratio and the panel never needs to know what it is a ratio OF.
+
+      Place only. A hat has no scale; it is 24 pixels across because that is
+      how wide a hat is here, and inviting somebody to measure one in feet
+      would be inviting nonsense. */
+  const SCALE_KEY = "brick-by-brick:placescale:v1";
+  let scale = { per: 0.25, unit: "ft" };
+  try {
+    const raw = JSON.parse(localStorage.getItem(SCALE_KEY) || "null");
+    if (raw && +raw.per > 0 && typeof raw.unit === "string") {
+      scale = { per: +raw.per, unit: raw.unit.slice(0, 4) };
+    }
+  } catch (e) { /* unavailable */ }
+  const saveScale = () => {
+    try { localStorage.setItem(SCALE_KEY, JSON.stringify(scale)); } catch (e) { /* unavailable */ }
+  };
+
+  const scaleBar = el("div", "sp-row", right);
+  el("span", "sp-cap", scaleBar).textContent = "scale";
+  el("span", "sp-x", scaleBar).textContent = "1px =";
+  const perIn = el("input", "sp-num", scaleBar);
+  perIn.type = "number"; perIn.min = "0"; perIn.step = "0.01";
+  perIn.title = "how much of the world one pixel covers";
+  const unitIn = el("input", "sp-unit", scaleBar);
+  unitIn.type = "text"; unitIn.maxLength = 4;
+  unitIn.title = "whatever you measure in \u2014 ft, m, yd";
+  el("span", "sp-x", scaleBar).textContent = "\u00b7";
+  const askIn = el("input", "sp-num", scaleBar);
+  askIn.type = "number"; askIn.min = "0"; askIn.step = "any";
+  askIn.title = "a real measurement to turn into pixels";
+  const ansOut = el("span", "sp-ans", scaleBar);
+
+  /*  Both directions from one ratio, so a number you already know can be
+      drawn and a thing you have drawn can be read back. */
+  const pxFor = v => (scale.per > 0 ? v / scale.per : 0);
+  /*  AS MANY DECIMALS AS THE RATIO HAS.
+
+      A whole number of cells times a two-decimal ratio is exact to two
+      decimals: 9 cells at 0.25 ft is 2.25 ft, not 2.3. Rounding to one place
+      was discarding a digit that was really there, and on a scale like 0.05
+      it made neighbouring measurements read the same. Capped at six, past
+      which nobody is measuring a wall. */
+  const scaleDp = () => {
+    const t = String(scale.per), dot = t.indexOf(".");
+    return dot < 0 ? 0 : Math.min(6, t.length - dot - 1);
+  };
+  const realOf = n => +(n * scale.per).toFixed(scaleDp());
+  const syncScale = () => {
+    perIn.value = scale.per;
+    unitIn.value = scale.unit;
+    const v = parseFloat(askIn.value);
+    ansOut.textContent = !(v >= 0)
+      ? ""
+      : scale.unit + " = " + Math.round(pxFor(v)) + "px";
+  };
+  perIn.oninput = () => {
+    const v = parseFloat(perIn.value);
+    if (v > 0) { scale.per = v; saveScale(); paint(); }
+    syncScale();
+  };
+  unitIn.oninput = () => { scale.unit = unitIn.value.slice(0, 4); saveScale(); syncScale(); paint(); };
+  askIn.oninput = syncScale;
+  askIn.value = "40";
+  syncScale();
+
   /*  A guide can be dragged out by eye, but a pitch you already know the
       number of should not have to be. This row is the same guide from the
       other end: type the angle, press +, and it lands on the middle cell —
@@ -7004,8 +7100,19 @@ function renderSpriteEditor(model, host) {
   const optBar = el("div", "sp-row", right);
   const onionBtn = el("button", null, optBar);
   onionBtn.type = "button"; onionBtn.textContent = "ghost";
-  onionBtn.title = "show what this has to sit with \u2014 the rest of the figure, or a person for scale on a place";
+  onionBtn.title = "show what this has to sit with \u2014 the rest of the figure, "
+                 + "or on a place the head-height line and the bricklings in the preview";
   onionBtn.onclick = () => { onion = !onion; paint(); };
+
+  const curBtn = el("button", null, optBar);
+  curBtn.type = "button"; curBtn.textContent = "cell cursor";
+  curBtn.title = "hide the crosshair and let the outlined cell be the pointer \u2014 "
+               + "it shows which square you are actually on";
+  curBtn.onclick = () => {
+    cellCursor = !cellCursor;
+    try { localStorage.setItem(CURSOR_KEY, cellCursor ? "1" : "0"); } catch (e) { /* unavailable */ }
+    paint();
+  };
 
   const gridBtn = el("button", null, optBar);
   gridBtn.type = "button"; gridBtn.textContent = "grid";
@@ -7378,6 +7485,17 @@ function renderSpriteEditor(model, host) {
   let drawing = null;
   let anchor = null;      // where a shape started, while it is being dragged
   let pending = null;     // the shape under the cursor, not yet committed
+  /*  Where the pointer is now, for every tool. `pending` only exists for the
+      tools that hold a shape before committing it, and the pencil — the one
+      you are most likely to be counting cells with — is not one of them. */
+  let atCell = null;
+  /*  The last thing measured, kept after the pointer is up. That is the whole
+      point of it: a measurement you have to keep the button held down to read
+      is one you cannot write down or compare against the next one. */
+  let measured = null;
+  /*  The tool to go back to when the middle button is let go. Non-null only
+      for as long as a middle-drag lasts. */
+  let panFrom = null;
 
   /*  THE CLIPBOARD — A SHAPE, NOT A BOX.
 
@@ -7438,6 +7556,41 @@ function renderSpriteEditor(model, host) {
     return true;
   }
 
+  /*  THE BOX ROUND WHATEVER IS UNDER THAT CELL.
+
+      Same four-connected walk as `liftShape` — a shape that only touches at a
+      corner is a second shape, which is what anybody drawing pixel art means
+      by it — but it keeps the extremes instead of the pixels. Nothing is
+      lifted, nothing is changed; the answer is four numbers. */
+  function shapeBox(sx, sy) {
+    const w = cellW(), h = cellH();
+    if (sx < 0 || sy < 0 || sx >= w || sy >= h) return null;
+    const g = layers[slot].getContext("2d", { willReadFrequently: true });
+    const d = g.getImageData(frame * w, 0, w, h).data;
+    const seed = (sy * w + sx) * 4;
+    if (!d[seed + 3]) return null;              // empty cell measures nothing
+
+    const seen = new Uint8Array(w * h);
+    const queue = [[sx, sy]];
+    seen[sy * w + sx] = 1;
+    let x0 = sx, y0 = sy, x1 = sx, y1 = sy;
+    while (queue.length) {
+      const [x, y] = queue.pop();
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const k = ny * w + nx;
+        if (seen[k] || !sameColor(d, k * 4, seed)) continue;
+        seen[k] = 1;
+        queue.push([nx, ny]);
+      }
+    }
+    return { x0, y0, x1, y1, shape: true };
+  }
+
   function stampClip(atX, atY) {
     if (!clip) return;
     for (const [dx, dy, r, g2, b, a] of clip.pts) setPixelRGBA(atX + dx, atY + dy, r, g2, b, a);
@@ -7446,17 +7599,48 @@ function renderSpriteEditor(model, host) {
 
   const cellAt = e => {
     const r = grid.getBoundingClientRect();
-    return { x: Math.floor((e.clientX - r.left) / (r.width / cellW())),
-             y: Math.floor((e.clientY - r.top) / (r.height / cellH())) };
+    /*  MEASURE FROM THE PIXELS, NOT FROM THE BORDER.
+
+        `getBoundingClientRect` gives the BORDER box, and this canvas has a
+        1px border, so the old arithmetic started one pixel outside the drawing
+        and then divided by a cell size 2/510 too big. At the left edge that is
+        invisible; by the right edge the error has grown to most of a cell,
+        which is where a guide node landed somewhere other than where it was
+        put — and every other tool was a fraction out the whole way across.
+
+        `clientLeft`/`clientTop` are the border widths and `clientWidth`/
+        `clientHeight` the content box, all in CSS pixels; `k` carries them
+        into screen pixels if the page itself is zoomed. */
+    const k = grid.offsetWidth ? r.width / grid.offsetWidth : 1;
+    const x0 = r.left + grid.clientLeft * k, y0 = r.top + grid.clientTop * k;
+    const w = grid.clientWidth * k, h = grid.clientHeight * k;
+    return { x: Math.floor((e.clientX - x0) / (w / cellW())),
+             y: Math.floor((e.clientY - y0) / (h / cellH())) };
   };
   grid.addEventListener("pointerdown", e => {
     drawing = e.button === 2 || e.ctrlKey;
+    /*  THE MIDDLE BUTTON NUDGES, WHATEVER TOOL IS UP.
+
+        Moving what you have drawn is the one thing you want while holding
+        another tool — you are drawing a window, it is two pixels left of where
+        it should be, and switching to move and back costs you your place. The
+        middle button borrows the move tool for the length of one drag and
+        hands it back on release, so nothing you had selected is lost.
+
+        preventDefault, or the browser opens its own autoscroll on middle-drag
+        and takes the pointer with it. */
+    if (e.button === 1) {
+      e.preventDefault();
+      panFrom = tool;
+      tool = "move";
+      drawing = false;
+    }
     const { x, y } = cellAt(e);
     anchor = { x, y };
     /*  Before the first pixel of this stroke, so one undo is one stroke. The
         guide tool is excluded: it draws nothing into a layer, and filling the
         stack with no-ops would push real work off the end of it. */
-    if (tool !== "guide") snapshot();
+    if (tool !== "guide" && tool !== "measure") snapshot();
     /*  A shape shows before it commits; the pencil goes straight down. Waiting
         to commit is what makes a line adjustable — you see it before you agree
         to it. */
@@ -7470,6 +7654,19 @@ function renderSpriteEditor(model, host) {
       else stampClip(x, y);
       anchor = null;
       paint();
+      return;
+    }
+    /*  MEASURE. Draws nothing, so it takes no snapshot and sets no pixel.
+
+        A click asks about the shape under it, which is the question you have
+        when you cannot remember how big you made a window. A drag asks about
+        an arbitrary span, for the gaps between things. Right-click clears the
+        answer, the same button that erases everywhere else here. */
+    if (tool === "measure") {
+      if (drawing) { measured = null; anchor = null; paint(); return; }
+      measured = { x0: x, y0: y, x1: x, y1: y, shape: false };
+      paint();
+      try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
     }
     /*  A guide is grabbed, not drawn. Land on one and you are moving that one;
@@ -7500,6 +7697,7 @@ function renderSpriteEditor(model, host) {
       try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
     }
+    atCell = { x, y };
     if (tool === "pencil") setPixel(x, y, drawing);
     else pending = { x, y };
     paint();
@@ -7515,8 +7713,26 @@ function renderSpriteEditor(model, host) {
       if (clip && (!hover || hover.x !== at.x || hover.y !== at.y)) { hover = at; paint(); }
       return;
     }
+    /*  WHICH CELL, WITH NOTHING PRESSED.
+
+        This has to come before the "no button down, nothing to do" guard —
+        answering while nothing is pressed is the entire point of it, and sat
+        below that line it never ran at all. */
+    if (drawing === null && (cellCursor || tool === "guide" || tool === "measure")) {
+      const at = cellAt(e);
+      if (!hover || hover.x !== at.x || hover.y !== at.y) { hover = at; paint(); }
+      return;
+    }
     if (drawing === null) return;
     const { x, y } = cellAt(e);
+    if (tool === "measure") {
+      if (anchor && measured) {
+        measured = { x0: Math.min(anchor.x, x), y0: Math.min(anchor.y, y),
+                     x1: Math.max(anchor.x, x), y1: Math.max(anchor.y, y), shape: false };
+        paint();
+      }
+      return;
+    }
     /*  Aiming. The pointer is a point on the line, not an end of it: the guide
         pivots on its cell and runs both ways, so dragging back through the
         anchor and out the other side changes nothing, which is right. */
@@ -7534,6 +7750,7 @@ function renderSpriteEditor(model, host) {
       }
       return;
     }
+    atCell = { x, y };
     if (tool === "pencil") setPixel(x, y, drawing);
     else pending = { x, y };
     paint();
@@ -7603,10 +7820,23 @@ function renderSpriteEditor(model, host) {
   }
 
   const stop = () => {
+    //  Borrowed for one drag; given back however this drag ends.
+    const back = () => { if (panFrom) { tool = panFrom; panFrom = null; } };
+    /*  A measure drag that never left its starting cell was a click, and a
+        click is a question about the shape there rather than about one cell. */
+    if (tool === "measure") {
+      if (measured && measured.x0 === measured.x1 && measured.y0 === measured.y1) {
+        measured = shapeBox(measured.x0, measured.y0) || measured;
+      }
+      drawing = null; anchor = null; pending = null; atCell = null;
+      paint();
+      return;
+    }
     if (anchor && pending && tool === "move") {
       const m = clampShift(pending.x - anchor.x, pending.y - anchor.y);
       shiftBy(m.dx, m.dy);
-      drawing = null; anchor = null; pending = null; paint();
+      back();
+      drawing = null; anchor = null; pending = null; atCell = null; paint();
       return;
     }
     // Let go and the shape is laid down; until then it is only a proposal.
@@ -7615,7 +7845,8 @@ function renderSpriteEditor(model, host) {
         setPixel(px, py, drawing);
       }
     }
-    drawing = null; anchor = null; pending = null;
+    back();
+    drawing = null; anchor = null; pending = null; atCell = null;
     paint();
   };
   grid.addEventListener("pointerup", stop);
@@ -7722,9 +7953,13 @@ function renderSpriteEditor(model, host) {
     toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     onionBtn.classList.toggle("on", onion);
     gridBtn.classList.toggle("on", gridOn);
+    curBtn.classList.toggle("on", cellCursor);
+    //  The canvas keeps the crosshair unless the drawn cell has replaced it.
+    grid.style.cursor = cellCursor ? "none" : "crosshair";
     /*  Only while the tool that makes them is up. A guide is not a setting you
         keep an eye on, it is something you are either placing or not. */
     guideBar.hidden = tool !== "guide";
+    scaleBar.hidden = !isPlace();
     axesBtn.classList.toggle("on", axesOn);
     linkBtn.classList.toggle("on", linked);
     eraseBtn.classList.toggle("on", pen === -1);
@@ -7800,7 +8035,9 @@ function renderSpriteEditor(model, host) {
       g.setLineDash([]);
       g.fillStyle = ink;
       g.font = "10px ui-monospace, monospace";
-      g.fillText("head height \u00b7 " + ph + "px", 4, y - 4);
+      g.fillText("head height \u00b7 " + ph + "px"
+                 + (scale.per > 0 ? " \u00b7 " + realOf(ph) + " " + scale.unit : ""),
+                 4, y - 4);
     }
 
     /*  What is on the clipboard, hovering where it would land — in its own
@@ -7927,6 +8164,187 @@ function renderSpriteEditor(model, host) {
     g.fillStyle = gridInk(0.5);
     g.fillText(cw + " \u00d7 " + ch, grid.width - 5, 4);
 
+    /*  WHICH TOOL IS IN YOUR HAND, ON THE CANVAS.
+
+        Seven glyphs and a word, and the only thing saying which was live was a
+        green fill you had to compare against six neighbours — a pencil and a
+        lifted-shape stamp are one hover apart at eleven pixels. The name
+        settles it, and it belongs where you are looking rather than in the
+        panel you are not.
+
+        Bottom left: the size has the top right, the pointer's coordinates the
+        top left, and the figure stands centred on the bottom edge, so this is
+        the one corner nothing else wants. */
+    g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    g.textBaseline = "alphabetic";
+    g.textAlign = "left";
+    /*  Neon, with a fallback that keeps it neon.
+
+        #33ff33 is the app's own accent and it burns against a dark grid — but
+        the grid is yours now, and neon green on cream is a luminance away from
+        nothing: about 1.3:1, which is a colour you can see and a word you
+        cannot read. Rather than swap the colour for a duller one and lose the
+        thing that makes the label findable, the ground under it changes: when
+        the contrast falls below 3:1 the label gets a dark plate to sit on and
+        the green stays exactly as green.
+
+        Plain luminance contrast, which is what actually fails here — the
+        letters are one flat colour on one flat ground, with no hue trickery to
+        account for. */
+    const TOOL_NEON = "#33ff33";
+    const lumA = lumOf(hexInt(TOOL_NEON)), lumB = lumOf(hexInt(gridBg));
+    const ratio = (Math.max(lumA, lumB) + 0.05) / (Math.min(lumA, lumB) + 0.05);
+    const tw2 = g.measureText(tool).width;
+    if (ratio < 3) {
+      g.fillStyle = "rgba(10,12,9,0.86)";
+      g.fillRect(2, grid.height - 17, tw2 + 8, 15);
+    }
+    g.fillStyle = TOOL_NEON;
+    g.fillText(tool, 6, grid.height - 6);
+
+    /*  WHICH CELL THE POINTER IS ON.
+
+        A crosshair cursor has no pixel — it is a pair of lines with a hole
+        where the point should be — so the tools that place a single deliberate
+        point had you guessing which cell you were about to commit to. The cell
+        is outlined instead, and its coordinates written in the corner, so the
+        answer is on the canvas rather than under the cursor.
+
+        Only for the tools that need it. A pencil shows you where it went the
+        instant it goes there, and outlining every cell you pass over would be
+        a light chasing the hand for no reason. */
+    const showCell = cellCursor ? (drawing === null ? hover : atCell)
+                                : (drawing === null && (tool === "guide" || tool === "measure") ? hover : null);
+    if (showCell) {
+      const hx = showCell.x * z, hy = showCell.y * z;
+      g.strokeStyle = gridInk(0.9);
+      g.lineWidth = 1;
+      g.strokeRect(hx + 0.5, hy + 0.5, z - 1, z - 1);
+      /*  A second, brighter ring inside it when the cell is small: at five
+          screen pixels a single hairline square is easy to lose among the
+          rules it sits on. */
+      if (z >= 6) {
+        /*  The tool's own colour where it has one, so an amber ring means a
+            guide is about to be placed and a magenta one a measurement. Every
+            other tool gets plain ink: it is a pointer, not a claim about what
+            kind of mark is coming. */
+        g.strokeStyle = tool === "guide"
+          ? (gridLight() ? "rgba(185,105,0,0.9)" : "rgba(255,196,92,0.9)")
+          : tool === "measure"
+          ? (gridLight() ? "rgba(150,60,180,0.9)" : "rgba(226,150,255,0.9)")
+          : gridInk(0.55);
+        g.strokeRect(hx + 1.5, hy + 1.5, z - 3, z - 3);
+      }
+      /*  Coordinates share the top-left corner with the drag readout, and the
+          drag readout is the better answer while a drag is happening. */
+      if (drawing === null) {
+        const txt = showCell.x + ", " + showCell.y;
+        g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+        g.textBaseline = "top";
+        g.textAlign = "left";
+        const pad = 4, tw = g.measureText(txt).width;
+        g.fillStyle = gridLight() ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.72)";
+        g.fillRect(3, 3, tw + pad * 2, 15);
+        g.fillStyle = gridInk(0.95);
+        g.fillText(txt, 3 + pad, 5);
+      }
+    }
+
+    /*  THE MEASUREMENT, STILL THERE AFTER THE POINTER IS UP.
+
+        Boxed in the measuring colour so it cannot be mistaken for a guide or
+        for something drawn, and labelled with the same numbers the live
+        readout uses — cells, and real units on a place, so a window can be
+        compared against the door you drew an hour ago. */
+    if (measured) {
+      const { x0, y0, x1, y1 } = measured;
+      const w = x1 - x0 + 1, h = y1 - y0 + 1;
+      g.strokeStyle = gridLight() ? "rgba(150,60,180,0.95)" : "rgba(226,150,255,0.95)";
+      g.lineWidth = 1;
+      g.setLineDash([3, 2]);
+      g.strokeRect(x0 * z + 0.5, y0 * z + 0.5, w * z - 1, h * z - 1);
+      g.setLineDash([]);
+
+      let txt = w + " \u00d7 " + h;
+      if (isPlace() && scale.per > 0) {
+        txt += "  \u00b7  " + realOf(w) + " \u00d7 " + realOf(h) + " " + scale.unit;
+      }
+      if (measured.shape) txt += "  (shape)";
+      g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+      g.textBaseline = "top";
+      g.textAlign = "left";
+      /*  KEPT INSIDE THE CANVAS, ON ALL FOUR SIDES.
+
+          It preferred to sit above the box and flipped below when there was no
+          room. That covered three edges and not the fourth: measure something
+          against the bottom and the flip put the label past the bottom of the
+          canvas, where it is simply clipped away — the tool looked broken at
+          exactly the moment it had an answer for you.
+
+          So: above by preference, below if that does not fit, and then clamped
+          into the canvas whatever happens. A label half over its own box is
+          worth more than a label you cannot read. */
+      const pad = 4, tw = g.measureText(txt).width, bw = tw + pad * 2, bh = 15;
+      let bx = x0 * z, by = y0 * z - bh - 2;
+      if (by < 0) by = y1 * z + z + 3;
+      bx = Math.max(0, Math.min(bx, grid.width - bw));
+      by = Math.max(0, Math.min(by, grid.height - bh));
+      g.fillStyle = gridLight() ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.78)";
+      g.fillRect(bx, by, bw, bh);
+      g.fillStyle = gridLight() ? "rgb(120,40,150)" : "rgb(232,170,255)";
+      g.fillText(txt, bx + pad, by + 2);
+    }
+
+    /*  HOW FAR THIS STROKE HAS GONE, WHILE IT IS GOING.
+
+        You cannot count cells on a grid while your hand is moving, and the
+        thing you usually want is not where you are but how far you have come:
+        a wall eleven cells long, a window three by four. So the extent of the
+        drag is written down live, and it goes the moment you let go — it is a
+        measurement of an action, not a label on a drawing.
+
+        TOP LEFT, not beside the pointer. Following the cursor put the label
+        squarely over the line while you dragged sideways, which is the one
+        direction you most want to watch: it was hiding the thing it was
+        describing. A fixed corner never covers what is under the hand, and
+        being always in the same place beats being near — you learn where to
+        look once instead of hunting for it on every drag. It sits opposite
+        the size, so the two numbers do not crowd each other.
+
+        Inclusive counts, because a drag from cell 4 to cell 6 draws THREE
+        cells and reporting two would be arithmetic rather than an answer.
+
+        The pencil is left out. It commits as it goes, proposing no shape, so
+        a box measured from wherever you happened to press describes nothing
+        you are about to do.
+
+        `move` gets a signed offset instead: nudging is about displacement,
+        and "3 x 1" tells you nothing about which way. */
+    if (anchor && atCell && drawing !== null
+        && tool !== "guide" && tool !== "measure" && tool !== "pencil") {
+      const dx = atCell.x - anchor.x, dy = atCell.y - anchor.y;
+      const w = Math.abs(dx) + 1, h = Math.abs(dy) + 1;
+      const sign = n => (n > 0 ? "+" : n < 0 ? "\u2212" : "\u00b1") + Math.abs(n);
+      let txt = tool === "move" ? sign(dx) + ", " + sign(dy) : w + " \u00d7 " + h;
+      //  A line's answer is its run, not the box it happens to sit in.
+      if (tool === "line") txt = Math.max(w, h) + " cells";
+      //  On a place, the same measurement in the units the building is in.
+      if (isPlace() && scale.per > 0 && tool !== "move") {
+        txt += "  \u00b7  " + (tool === "line"
+          ? realOf(Math.max(w, h)) + " " + scale.unit
+          : realOf(w) + " \u00d7 " + realOf(h) + " " + scale.unit);
+      }
+
+      g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+      g.textBaseline = "top";
+      g.textAlign = "left";
+      const pad = 4, tw = g.measureText(txt).width;
+      g.fillStyle = gridLight() ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.72)";
+      g.fillRect(3, 3, tw + pad * 2, 15);
+      g.fillStyle = gridInk(0.95);
+      g.fillText(txt, 3 + pad, 5);
+    }
+
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
     if (host._wipQueue) host._wipQueue();
     hint.textContent = (tool === "copy"
@@ -7936,8 +8354,10 @@ function renderSpriteEditor(model, host) {
                       : tool === "move" ? "drag to nudge the layer"
                       : tool === "guide" ? "drag to aim \u2014 shift snaps to 15\u00b0, "
                           + "right-click removes, drop on a guide to move it"
+                      : tool === "measure" ? "click a shape to size it, or drag across "
+                          + "anything \u00b7 right-click clears"
                       : "drag to place the shape") +
-      " \u00b7 right-click or ctrl to erase \u00b7 " +
+      " \u00b7 right-click or ctrl to erase \u00b7 middle-drag to nudge \u00b7 " +
       slot + ", frame " + (frame + 1) + " \u00b7 " + cw + " \u00d7 " + ch +
       " \u00b7 grows from the center, so it stays on the body";
     drawPreview();
@@ -7980,6 +8400,11 @@ function renderSpriteEditor(model, host) {
       c.drawImage(sc, 0, 0, sc.width, sc.height,
                   Math.round((w - sc.width) / 2) * zz, (groundY - sc.height) * zz,
                   sc.width * zz, sc.height * zz);
+      /*  The three bricklings are a scale reference, which is exactly what
+          `ghost` already means on a place — so they answer to it rather than
+          to a fourth toggle. Off, the mini view is the scene alone, which is
+          what the Promenade shows anyone who is not standing in it. */
+      if (!onion) continue;
       const fw = swapped.__cellW || fig.__cellW, fh = swapped.__cellH || fig.__cellH;
       const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
       for (const dx of [w * 0.3, w * 0.5, w * 0.68]) {
