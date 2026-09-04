@@ -336,7 +336,19 @@
     width: 20px; height: 20px; padding: 0; border-radius: 3px;
     border: 1px solid var(--border);
   }
-  .sp-pen.on { outline: 2px solid var(--accent2); outline-offset: 1px; }
+  /*  The ring has to paint ABOVE its neighbours.
+
+      A swatch is one of three stacked a pixel apart, and an outline offset by
+      a pixel reaches into both of them. With no stacking order the shade below
+      — a later sibling, so painted later — covered the bottom of the ring, and
+      the column to the right covered its side. You got two thirds of a
+      highlight, which reads as none.
+
+      `position: relative` is only there to make `z-index` mean something. */
+  .sp-pen.on {
+    outline: 2px solid var(--accent2); outline-offset: 1px;
+    position: relative; z-index: 2;
+  }
   /*  A swatch and its two shades, stacked. The shades are shorter than the
       colour itself so the row still reads as nine swatches with tints either
       side, rather than as twenty-seven equal squares. */
@@ -473,7 +485,10 @@
       view toggles, because on a place it is the preview it changes — those
       bricklings are there to be turned on and off. Absolute, so it costs the
       layout nothing and the figure keeps the whole box. */
-  .sp-ghost { position: absolute; top: 4px; right: 4px; z-index: 1; }
+  .sp-prevbtns {
+    position: absolute; top: 4px; right: 4px; z-index: 1;
+    display: flex; gap: 3px;
+  }
   .sp-true { align-self: flex-end; }
   .sp-hint { font-size: 0.63rem; line-height: 1.5; margin: 0; opacity: 0.6; }
   /*  The rule that makes the whole thing work, kept next to the box you type
@@ -7981,9 +7996,13 @@ function renderSpriteEditor(model, host) {
       and the centre lines all change what the CANVAS looks like and nothing
       else, so they belong under it rather than across the panel from it. */
   left.appendChild(optBar);
-  //  Into the corner of the thing it acts on.
-  onionBtn.classList.add("sp-ghost");
-  prevWrap.appendChild(onionBtn);
+  /*  ONE switch over the preview, for everything drawn on top of the scene:
+      the dotted bounds and the bricklings together. They are both answers to
+      the same question — what is here that is not the drawing — and splitting
+      them into two buttons put a second control in a corner to solve a problem
+      nobody had. */
+  const prevBtns = el("span", "sp-prevbtns", prevWrap);
+  prevBtns.appendChild(onionBtn);
   /*  Grid last, with its number. It is the only one of these carrying a
       setting, so it ends the row rather than splitting the plain toggles in
       half with an input box. */
@@ -7994,6 +8013,11 @@ function renderSpriteEditor(model, host) {
   optBar.insertBefore(axesBtn, optBar.firstChild);
   gridBgRow.appendChild(undoBtn);
   gridBgRow.appendChild(redoBtn);
+  /*  Emptying the board is a thing you do TO the drawing, like undoing one —
+      it sat with download and to-promenade because it was next to them in the
+      file row, which put "throw this away" beside "keep this" and neither of
+      them anywhere near the canvas. */
+  gridBgRow.appendChild(blank);
   gridBgRow.appendChild(recBtn);
   gridBgRow.appendChild(replayBtn);
   gridBgRow.appendChild(dropRecBtn);
@@ -8021,6 +8045,17 @@ function renderSpriteEditor(model, host) {
   scaleBar.classList.add("sp-under");
   left.insertBefore(scaleBar, grid);
   nameBar.classList.add("sp-fold");
+  /*  THE THINGS YOU PRESS GO ABOVE THE THING YOU LOOK AT.
+
+      The name and the export buttons sat under the preview, at the bottom of a
+      column that wants six hundred pixels — so on any tile shorter than that,
+      `empty board` and half its neighbours were below the panel's edge and
+      simply not there as far as anyone could tell.
+
+      The preview is the one thing in this column you only ever read, so it can
+      be the part that falls off the bottom. */
+  right.insertBefore(nameBar, prevWrap);
+  right.insertBefore(outBar, prevWrap);
 
   /*  The filename the page will look for. One name either way — a place is
       named for the place, a wardrobe for its wearer — because both are one
@@ -9156,16 +9191,22 @@ function renderSpriteEditor(model, host) {
         So the canvas's own bounds are outlined. Inside the window you can see
         how much of the box is empty; past the top the two side rules simply
         run off, which reads as "it keeps going" rather than "it stopped". */
-    c.save();
-    c.strokeStyle = "rgba(120,220,255,0.5)";
-    c.lineWidth = 1;
-    c.setLineDash([4, 3]);
-    c.strokeRect(px0 + 0.5, py0 + 0.5, pxw - 1, pxh - 1);
-    c.restore();
+    if (onion) {
+      c.save();
+      c.strokeStyle = "rgba(120,220,255,0.5)";
+      c.lineWidth = 1;
+      c.setLineDash([4, 3]);
+      c.strokeRect(px0 + 0.5, py0 + 0.5, pxw - 1, pxh - 1);
+      c.restore();
+    }
 
-    /*  The bricklings are a scale reference, which is what `ghost` already
-        means on a place. Off, this is the scene alone — what the Promenade
-        shows anyone not standing in it. */
+    /*  `ghost` is the DOTTED BOUNDS, not the people.
+
+        On a wear slot it shows what the layer has to sit with; here the
+        equivalent is where the drawing's edges are — the box that tells you
+        how much of that sky is empty and whether the top is being cropped.
+        The bricklings are the scale reference and stay put: they are the
+        reason to look at this box at all, and they go with it. */
     if (!onion) return;
     const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
     for (const at of [0.28, 0.5, 0.72]) {
