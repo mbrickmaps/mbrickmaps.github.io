@@ -261,6 +261,7 @@
       102-wide scene tiny in a panel with space to spare — and a place is the
       one thing here you cannot judge small. */
   .sp-left { flex: 2 1 260px; min-width: 160px; }
+  .sp-left { position: relative; }
   .sp-grid {
     display: block; image-rendering: pixelated;
     border: 1px solid var(--border); border-radius: 3px;
@@ -273,8 +274,15 @@
     max-width: 100%; height: auto;
   }
   /*  Something is being dragged over the canvas and would land if let go. */
-  /*  A picker tucked under the canvas it tints. */
-  .sp-under { margin-top: 6px; }
+  /*  A picker tucked under the canvas it tints, and the row it is in pushed to
+      the right so it ends where the canvas ends. Ragged left under a hard edge
+      reads as deliberate; ragged right reads as unfinished. */
+  .sp-under { margin-top: 6px; justify-content: flex-end; }
+  /*  The tool row sits directly on the canvas otherwise, and a button touching
+      a drawing surface reads as part of it. `fitZ` measures from the canvas's
+      own top, so this comes out of the space it is given rather than pushing
+      it off the bottom. */
+  .sp-left > .sp-row:first-child { margin-bottom: 6px; }
   .sp-grid.sp-drop { outline: 2px dashed var(--accent2); outline-offset: 2px; }
   .sp-right { flex: 1 1 180px; min-width: 170px; max-width: 260px; display: flex; flex-direction: column; gap: 7px; }
   .sp-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
@@ -335,7 +343,50 @@
   .sp-pen-col { display: flex; flex-direction: column; gap: 1px; }
   .sp-pen-col .sp-pen { border-radius: 2px; }
   .sp-pen-col .sp-shade { height: 9px; }
-  .sp-pen-set { display: flex; gap: 3px; }
+  /*  The set shrinks; it does not wrap.
+
+      Nine swatches and the caption used every pixel of the row, so anything
+      added to the line went to the next one — the arrows kept landing beside
+      the erase square instead of beside the stacks they move. Letting the
+      columns give up a pixel or two each buys the room, and a swatch is a
+      block of colour: eighteen pixels wide says exactly what twenty did. */
+  .sp-pen-set { display: flex; gap: 3px; flex: 1 1 auto; min-width: 0; }
+  /*  The column's own height is PINNED, and only its three parts move inside
+      it. Without that, the sliding heights changed the row's height, which
+      changed the panel's, which woke the observer that sizes the drawing
+      canvas — so nudging a swatch made the whole editor jump. The parts add up
+      to this number: 20 + 9 + 9 and two 1px gaps. */
+  .sp-pen-col { flex: 0 1 20px; min-width: 11px; height: 40px; }
+  .sp-pen-col > button { width: 100%; }
+  /*  The stack slides between which row is the tall one. Height only, so the
+      row never reflows sideways and the colours stay where your hand learned
+      them. */
+  .sp-pen-col > button { transition: height 0.16s ease; }
+  .sp-focus-light .sp-pen-col > :nth-child(1) { height: 20px; }
+  .sp-focus-light .sp-pen-col > :nth-child(2) { height: 9px; }
+  .sp-focus-dark .sp-pen-col > :nth-child(3) { height: 20px; }
+  .sp-focus-dark .sp-pen-col > :nth-child(2) { height: 9px; }
+  /*  A flex line ends where a 100%-wide item begins. Zero height, so it costs
+      the row nothing but the break itself. */
+  .sp-break { flex: 1 0 100%; height: 0; }
+  /*  As tall as the stack beside it, split in half: the pair is one control
+      the height of one swatch column, not two little buttons floating against
+      it. `stretch` takes the height from the row, so it stays right if a
+      swatch ever changes size. */
+  .sp-tone-col {
+    display: flex; flex-direction: column; gap: 1px;
+    margin-left: auto;                       /* the far right of the swatches */
+    flex: 0 0 auto;                          /* never the thing that shrinks */
+    align-self: stretch;
+  }
+  .sp-tone {
+    flex: 1 1 0; min-height: 0;
+    padding: 0 4px; line-height: 1; font-size: 0.55rem;
+    border-radius: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sp-pen-col > button { transition: none; }
+  }
   .sp-pal-btn { padding: 0 5px; line-height: 1.4; }
   .sp-pal-btn.on { border-color: var(--accent2); color: var(--accent2); }
   /* One field and one word of feedback, on one line. */
@@ -386,6 +437,18 @@
   .sp-x { font-size: 0.62rem; color: var(--muted); margin: 0 -1px; }
   .sp-unit { width: 34px; font-size: 0.68rem; padding: 1px 3px; }
   .sp-ans { font-size: 0.68rem; color: var(--accent2); font-variant-numeric: tabular-nums; }
+  /*  Pushed to the right of its line, so it ends where the canvas ends. */
+  .sp-sizenote { margin-left: auto; display: flex; align-items: center; gap: 3px; }
+  .sp-sizenote .sp-ans { opacity: 0.75; }
+  /*  Narrower than the cell boxes: a world size is usually two or three
+      digits and a decimal, and the row has no width to spare.
+
+      Green, as it was when it was a read-only note. The colour was doing work
+      — it says "this number is the world's, not the drawing's" — and turning
+      the note into an input handed it the default text colour and lost the
+      distinction. It is the same figure whether or not you can type in it. */
+  .sp-real.sp-num { width: 50px; color: var(--accent2); }
+  .sp-real.sp-x { color: var(--accent2); opacity: 0.75; }
   .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
   /*  The filename, shown as you type it — the one thing that decides whether
       the page ever finds this drawing. */
@@ -397,15 +460,20 @@
       while drawing a 24px sleeve. Both sizes, because 4x flatters and 1x does
       not, and the street runs at 1x. */
   .sp-preview {
+    position: relative;
     display: flex; gap: 10px; align-items: flex-end;
     padding: 8px; border: 1px dashed var(--border); border-radius: 4px;
     /*  Set from the two swatches below it — a figure reads differently against
         a night sky and a bright one, and which one you are drawing for is your
         business, not a constant in a stylesheet. */
-    background: linear-gradient(180deg, var(--sp-sky) 0%, var(--sp-sky) 72%,
-                                var(--sp-ground) 72%);
+    background: var(--sp-back, #1d2c38);
   }
   .sp-preview canvas { display: block; image-rendering: pixelated; }
+  /*  The ghost switch sits in the preview's corner rather than in the row of
+      view toggles, because on a place it is the preview it changes — those
+      bricklings are there to be turned on and off. Absolute, so it costs the
+      layout nothing and the figure keeps the whole box. */
+  .sp-ghost { position: absolute; top: 4px; right: 4px; z-index: 1; }
   .sp-true { align-self: flex-end; }
   .sp-hint { font-size: 0.63rem; line-height: 1.5; margin: 0; opacity: 0.6; }
   /*  The rule that makes the whole thing work, kept next to the box you type
@@ -1424,6 +1492,8 @@
     <button data-act="next" title="next document">&rarr;</button>
     <button data-act="open" hidden title="open the original in a new tab">open &#8599;</button>
     <button data-act="edit" hidden title="load this brick into the Brick Builder">edit</button>
+    <button data-act="ref" title="open an image from disk to draw from — this session only">ref&hellip;</button>
+    <input type="file" accept="image/*" data-el="reffile" hidden>
   </div>
   <div class="doc-viewport" data-el="viewport">
     <canvas data-el="canvas"></canvas>
@@ -6468,6 +6538,8 @@ function renderSpriteEditor(model, host) {
       are drawing, not a request to throw it away. */
   const touched = {};
   let loadToken = 0;
+  //  What each kind of drawing measured when it came off disk. See `defaultCell`.
+  const bornCell = { wear: null, place: null };
 
   const blitInto = (cv, img) => {
     cv.width = img.width; cv.height = img.height;
@@ -6558,6 +6630,7 @@ function renderSpriteEditor(model, host) {
           if (my !== loadToken || !host.isConnected || touched.place) return;
           blitInto(layers.place, img);
           layers.place.__frames = 1;
+          bornCell.place = { w: layers.place.width, h: layers.place.height };
           syncSize(); paint();
           return;
         }
@@ -6566,7 +6639,10 @@ function renderSpriteEditor(model, host) {
     }
     (async () => {
       await fillFromDisk(my);
-      if (my === loadToken && host.isConnected) { syncSize(); paint(); }
+      if (my === loadToken && host.isConnected) {
+        bornCell.wear = { w: cellW(), h: cellH() };
+        syncSize(); paint();
+      }
     })();
   }
 
@@ -6585,6 +6661,12 @@ function renderSpriteEditor(model, host) {
       preview still shows the figure — it just stands still. */
   let slot = "top", frame = 0, pen = 0, onion = true, playing = false, linked = false;
   let gridOn = true, axesOn = true;
+  const GRIDSTEP_KEY = "brick-by-brick:gridstep:v1";
+  let gridStep = 4;
+  try {
+    const n = +localStorage.getItem(GRIDSTEP_KEY);
+    if (n >= 2 && n <= 32) gridStep = Math.round(n);
+  } catch (e) { /* unavailable */ }
   /*  CURSOR.
 
       A crosshair is two lines with a hole where the point should be, which is
@@ -6666,6 +6748,7 @@ function renderSpriteEditor(model, host) {
   const wrap = el("div", "sp-wrap", host);
   const left = el("div", "sp-left", wrap);
   const grid = el("canvas", "sp-grid", left);
+
   const right = el("div", "sp-right", wrap);
 
   /*  AS BIG AS THE ROOM ALLOWS — AT WHOLE PIXELS.
@@ -6680,16 +6763,28 @@ function renderSpriteEditor(model, host) {
       pixels thick and soft. Instead the cell size itself is chosen to fit the
       room — a whole number of screen pixels per drawn pixel — and the canvas
       is left at its own size. A rule is then a rule, and a pixel is square. */
-  /*  Set below, once the swatch that sits under the canvas exists. The canvas
-      no longer has the column to itself, and sizing it as though it did would
-      push that row straight off the bottom. */
-  let underGrid = null;
+  /*  Everything stacked under the canvas, whatever it turns out to be. It was
+      a single named row; it is two now and could be three, and a count that
+      has to be kept in step with the markup is a count that will not be. */
+  const belowGrid = () => {
+    let h = 0;
+    for (let n = grid.nextElementSibling; n; n = n.nextElementSibling) {
+      if (n.offsetParent === null) continue;             // hidden costs nothing
+      h += n.offsetHeight + 6;                           // plus its own gap
+    }
+    return h;
+  };
   const fitZ = (cw, ch) => {
     const availW = left.clientWidth;
-    /*  `wrap` is the panel's full height, so where `left` starts inside it is
-        the margin above; what sits under the canvas is taken off as well. */
-    const availH = wrap.clientHeight - (left.offsetTop - wrap.offsetTop)
-                 - (underGrid ? underGrid.offsetHeight + 8 : 0);
+    /*  Measured from the CANVAS, not from the column. There is a tool row over
+        it now, so "where the column starts" stopped being where the drawing
+        starts — and sizing against the column's top pushed the canvas down
+        past the bottom of the panel by exactly the height of that row.
+
+        The canvas's own top does not depend on its height (it is laid out
+        after the row above it), so reading it here cannot chase itself. */
+    const rw = wrap.getBoundingClientRect(), rg = grid.getBoundingClientRect();
+    const availH = rw.height - (rg.top - rw.top) - belowGrid();
     if (!(availW > 0 && availH > 0)) return 8;   // not laid out yet
     return Math.max(2, Math.min(40, Math.floor(Math.min(availW / cw, availH / ch))));
   };
@@ -6706,6 +6801,11 @@ function renderSpriteEditor(model, host) {
   // ---- which layer
   const slotBar = el("div", "sp-row", right);
   el("span", "sp-cap", slotBar).textContent = "type";
+  /*  The caption takes a line of its own so the five buttons get the whole
+      width. They are one set and they were breaking four-and-one, which reads
+      as "place" being a different kind of thing from the rest — it is not, it
+      is the fifth thing you can draw. */
+  el("span", "sp-break", slotBar);
   const slotBtns = TARGETS.map(name => {
     const b = el("button", null, slotBar);
     b.type = "button"; b.textContent = name;
@@ -6767,6 +6867,14 @@ function renderSpriteEditor(model, host) {
     syncSize(); paint();
   };
   wIn.onchange = hIn.onchange = applySize;
+
+  /*  `change` fires on blur, so the real-world size sat on the old numbers
+      the whole time you were typing new ones — which looks exactly like a
+      conversion that does not work. This answers as you type; the resize
+      still waits for you to finish, because resizing per keystroke would
+      crop the drawing to 1 x 1 on the way to 120. */
+  wIn.oninput = hIn.oninput = () =>
+    syncReal(Math.max(1, +wIn.value || 0), Math.max(1, +hIn.value || 0));
 
   // ---- what to paint with
   /*  A few colors to hand, and a picker for everything else. Nothing here
@@ -6849,6 +6957,10 @@ function renderSpriteEditor(model, host) {
     if (pen >= SWATCHES.length) pen = SWATCHES.length - 1;
   }
   buildPens();
+  /*  Ends the swatch line. The erase square, the picker and the palette button
+      are what you reach for BETWEEN colours, not among them, and on the same
+      line they read as a tenth and eleventh swatch. */
+  el("span", "sp-break", penBar);
   const eraseBtn = el("button", "sp-pen sp-erase", penBar);
   eraseBtn.type = "button"; eraseBtn.title = "erase";
   eraseBtn.onclick = () => { pen = -1; paint(); };
@@ -6879,6 +6991,43 @@ function renderSpriteEditor(model, host) {
   palBtn.type = "button";
   palBtn.textContent = "\u22EF";
   palBtn.title = "edit the palette";
+  /*  WHICH OF THE THREE IS THE BIG ONE.
+
+      Every colour is a stack: lighter, the colour, darker. The middle one is
+      the tall square and the shades are slivers either side, which is right
+      when you are painting the colour and wrong the moment you are working in
+      its highlights — then the sliver is the one you keep aiming at.
+
+      These two nudge the stack so a different row is the tall one. Nothing
+      about the colours changes and nothing is recomputed; it is which row your
+      pointer can hit easily, and it slides rather than jumping so you can see
+      which way it went. */
+  /*  Stacked, and pushed to the end of the row: up above down is the shape the
+      thing they move already has, so the pair reads as one control rather than
+      as two more buttons in a row of buttons. */
+  const toneCol = el("span", "sp-tone-col", penBar);
+  const toneUp = el("button", "sp-tone", toneCol);
+  toneUp.type = "button"; toneUp.textContent = "\u25B2";
+  toneUp.title = "make the lighter shades the easy ones to hit";
+  const toneDown = el("button", "sp-tone", toneCol);
+  toneDown.type = "button"; toneDown.textContent = "\u25BC";
+  toneDown.title = "make the darker shades the easy ones to hit";
+  let toneFocus = 0;                    // -1 dark, 0 the colour, +1 light
+  const syncTone = () => {
+    penCols.classList.toggle("sp-focus-light", toneFocus > 0);
+    penCols.classList.toggle("sp-focus-dark", toneFocus < 0);
+    toneUp.disabled = toneFocus >= 1;
+    toneDown.disabled = toneFocus <= -1;
+  };
+  /*  Onto the swatch line itself. Built last but belonging first: the row
+      wraps, and appended at the end these landed on the second line with the
+      picker and the palette button — beside the erase square rather than
+      beside the stacks they move. */
+  penCols.appendChild(toneCol);
+  toneUp.onclick = () => { toneFocus = Math.min(1, toneFocus + 1); syncTone(); };
+  toneDown.onclick = () => { toneFocus = Math.max(-1, toneFocus - 1); syncTone(); };
+  syncTone();
+
   const palBox = el("div", "sp-pal", right);
   palBox.hidden = true;
   const palIn = el("input", "sp-pal-in", palBox);
@@ -6916,7 +7065,7 @@ function renderSpriteEditor(model, host) {
   right.insertBefore(palBox, penBar.nextSibling);
 
   const toolBar = el("div", "sp-row", right);
-  el("span", "sp-cap", toolBar).textContent = "tool";
+  el("span", "sp-cap", toolBar).textContent = "tools";
   /*  U+25AB and U+25AA are the WHITE and BLACK SMALL SQUARE — small is in the
       name, and they came out as specks beside the other glyphs. Their
       full-size counterparts say the same thing and can actually be seen. */
@@ -6958,31 +7107,341 @@ function renderSpriteEditor(model, host) {
       Snapshots are taken at the START of a stroke, so one undo takes back one
       stroke rather than one pixel of one. */
   const UNDO_MAX = 24;
-  const undos = [];
-  const undoBtn = el("button", null, toolBar);
+  const undos = [], redos = [];
+  const undoBtn = el("button", null, null);
   undoBtn.type = "button"; undoBtn.textContent = "undo";
   undoBtn.title = "take back the last thing that changed the drawing \u2014 "
                 + "including emptying the board";
-  const snapshot = () => {
+  const redoBtn = el("button", null, null);
+  redoBtn.type = "button"; redoBtn.textContent = "redo";
+  redoBtn.title = "put back the last thing you took away";
+
+  //  A copy of all five layers. `layerCopy` carries pixels and not the frame
+  //  count, so that goes across by hand.
+  const capture = () => {
     const shot = {};
     for (const k of TARGETS) {
       shot[k] = layerCopy(layers[k]);
       shot[k].__frames = layers[k].__frames;
     }
-    undos.push(shot);
-    if (undos.length > UNDO_MAX) undos.shift();
-    undoBtn.disabled = false;
+    return shot;
   };
-  undoBtn.onclick = () => {
-    const shot = undos.pop();
-    if (!shot) return;
-    /*  Everything comes back touched. A restored layer is your work, and the
-        name box must not be able to fetch a file over the top of it. */
+  /*  Everything comes back touched. A restored layer is your work, and the
+      name box must not be able to fetch a file over the top of it. */
+  const restore = shot => {
     for (const k of TARGETS) { layers[k] = shot[k]; touched[k] = true; }
-    undoBtn.disabled = !undos.length;
-    syncSize(); paint();
   };
-  undoBtn.disabled = true;
+  const syncHistory = () => {
+    undoBtn.disabled = !undos.length;
+    redoBtn.disabled = !redos.length;
+  };
+  const snapshot = () => {
+    undos.push(capture());
+    if (undos.length > UNDO_MAX) undos.shift();
+    /*  A new mark ends the branch you had stepped back from. Keeping those
+        futures would let redo paste in work that never followed what is on
+        the canvas now. */
+    redos.length = 0;
+    syncHistory();
+  };
+  const step = (from, to) => {
+    if (!from.length) return;
+    to.push(capture());
+    if (to.length > UNDO_MAX) to.shift();
+    restore(from.pop());
+    syncHistory();
+    syncSize(); paint();
+    recordStep();
+  };
+  undoBtn.onclick = () => step(undos, redos);
+  redoBtn.onclick = () => step(redos, undos);
+  syncHistory();
+
+  /*  RECORDING.
+
+      Every drawing here is a sequence of decisions and the file keeps only the
+      last one. This keeps the rest: a picture of the whole drawing after each
+      committed change, so you can watch it arrive.
+
+      A PNG per step rather than a canvas per step. A canvas is 69KB of raw
+      RGBA whatever is on it; the same frame as a PNG is a kilobyte or so,
+      because pixel art is flat colour and compresses enormously. Five hundred
+      steps is then under a megabyte instead of thirty-five, and the encoding
+      lands after your stroke rather than during it.
+
+      A BUDGET, and it counts down where you can see it. Recording that quietly
+      fills memory until something gives is worse than recording that stops and
+      says so — and the number on the button means you always know how much
+      room is left rather than finding out at the end.
+
+      Memory only. Frames go when the tab does: a session's worth of drawing is
+      not something this browser's storage should be holding, and that storage
+      is the pile's. */
+  const REC_BUDGET = 500;
+  /*  TWO RECORDINGS, NOT ONE.
+
+      A wardrobe is one drawing made of four layers — you go body, bottom, top,
+      hat and back again, and every one of those steps belongs to the same
+      figure arriving. A place is a different drawing entirely, on a different
+      canvas at a different size.
+
+      One shared list put both in the same reel: switch to the place mid-record
+      and a 102x64 building appeared in the middle of somebody getting dressed,
+      and the export letterboxed the whole thing to whichever shape it met
+      first. So the wear layers share a recording and the place keeps its own,
+      and the buttons follow whichever you are drawing. */
+  const recSets = { wear: { frames: [], left: 0, on: false, k: 0, fw: 0, fh: 0, used: false },
+                    place: { frames: [], left: 0, on: false, k: 0, fw: 0, fh: 0, used: false } };
+  const rec = () => recSets[isPlace() ? "place" : "wear"];
+  let replaying = 0;
+  /*  Drawn instead of the layers while a replay runs, so nothing in the file
+      is touched by watching it. Declared up here because `paint` reads it and
+      `paint` runs while this panel is still being built. */
+  let replayShot = null;
+
+  const recBtn = el("button", null, null);
+  recBtn.type = "button";
+  const replayBtn = el("button", null, null);
+  replayBtn.type = "button"; replayBtn.textContent = "replay";
+  replayBtn.title = "watch it arrive, from the first mark";
+  /*  There was no way to throw a reel away — you could stop recording and
+      start again, and the new steps simply piled onto the old ones. Discard
+      empties this reel and hands its budget back, so the next `record` starts
+      from five hundred rather than from wherever the last one left off. */
+  const dropRecBtn = el("button", null, null);
+  dropRecBtn.type = "button"; dropRecBtn.textContent = "clear";
+  dropRecBtn.onclick = () => {
+    if (replaying) { replaying = 0; replayShot = null; }
+    const r = rec();
+    r.frames = []; r.left = 0; r.on = false; r.k = 0; r.fw = 0; r.fh = 0;
+    expK.value = "";                          // `used` stays: you still want these
+    hint.textContent = "recording discarded";
+    syncRec();
+    paint();
+  };
+
+  const syncRec = () => {
+    const r = rec();
+    recBtn.textContent = r.on ? "rec " + r.left
+                       : r.left === 0 && r.frames.length ? "rec +" + REC_BUDGET
+                       : "record";
+    recBtn.classList.toggle("on", r.on);
+    recBtn.title = r.on
+      ? "stop recording \u2014 " + r.left + " steps left of " + REC_BUDGET
+        + ", frames kept in memory only"
+      : r.frames.length
+      ? r.frames.length + " frames recorded for " + (isPlace() ? "this place" : "this wardrobe")
+      : "keep a picture of the drawing after every change";
+    /*  SHOWN ONCE ASKED FOR, THEN THEY STAY.
+
+        These appeared with the first frame and vanished with the last, so
+        clearing a reel took the controls away with it — you pressed clear and
+        the row you were working in collapsed, which reads as the thing having
+        closed rather than emptied. Once you have pressed record they are
+        yours; empty they are simply disabled, which says "nothing to replay"
+        without moving anything.
+
+        Available WHILE recording, too. Watching what you have so far is most
+        useful mid-way, and nothing here writes to a layer, so a replay cannot
+        disturb the take it is showing you. */
+    const shown = r.used || r.frames.length > 0;
+    const empty = r.frames.length === 0;
+    for (const n of [replayBtn, dropRecBtn, expBtn, expK, expX, expOut]) n.hidden = !shown;
+    for (const n of [replayBtn, dropRecBtn, expBtn, expK]) n.disabled = empty;
+    if (empty) expOut.textContent = "";
+    dropRecBtn.title = "throw away these " + r.frames.length
+                     + " frames and hand the budget back";
+    /*  Filled as soon as there is anything to export, not only once the
+        controls are on screen — they were hidden while recording, so the
+        defaults never ran and the boxes were empty when they appeared, which
+        the export then clamped to its 16px floor. */
+    if (r.frames.length) {
+      if (!r.k) expDefaults();
+      expK.value = r.k;
+      expOut.textContent = (r.fw * r.k) + " \u00d7 " + (r.fh * r.k);
+    }
+  };
+  recBtn.onclick = () => {
+    const r = rec();
+    if (r.on) { r.on = false; }
+    else { r.on = true; r.used = true; if (r.left <= 0) r.left = REC_BUDGET; recordStep(); }
+    syncRec();
+  };
+  /*  What the drawing IS, not what the canvas happens to be showing: the same
+      image `download` would hand you, so a replay is the artwork arriving
+      rather than a recording of a panel. */
+  /*  WHAT A REPLAY IS OF.
+
+      It was `stitchSheet()` — the four rows and four frames laid out as they
+      go into the PNG. That is the FILE's shape, not the drawing's: watching it
+      back you saw sixteen little cells changing rather than a person being
+      dressed, which is nobody's idea of what they were doing.
+
+      So a wear reel records the figure, composed the way the street composes
+      it, at the frame you are standing on. A place already recorded the thing
+      itself and is unchanged. */
+  function recordShot() {
+    if (isPlace()) return layers.place;
+    const who = dressBody(ROWS.map(k => ({ img: layers[k], slot: k })), false);
+    if (!who) return stitchSheet();
+    const fw = who.__cellW || SPR_W, fh = who.__cellH || SPR_H;
+    const n = who.__frames || SPR_FRAMES;
+    const one = document.createElement("canvas");
+    one.width = fw; one.height = fh;
+    const g2 = one.getContext("2d");
+    g2.imageSmoothingEnabled = false;
+    g2.drawImage(who, (frame % n) * fw, 0, fw, fh, 0, 0, fw, fh);
+    return one;
+  }
+
+  function recordStep() {
+    const r = rec();
+    if (!r.on || r.left <= 0) return;
+    try {
+      const cv = recordShot();
+      const url = cv.toDataURL("image/png");
+      //  A step that changed nothing is not a step.
+      if (r.frames.length && r.frames[r.frames.length - 1] === url) return;
+      r.frames.push(url);
+      r.fw = cv.width; r.fh = cv.height;      // what the export scales up from
+      r.left--;
+      if (r.left <= 0) r.on = false;          // stops itself rather than creeping on
+      syncRec();
+    } catch (e) { r.on = false; syncRec(); }
+  }
+  /*  EXPORT.
+
+      The frames are already the drawing at each step; this puts them in a file
+      somebody else can open. WebM through MediaRecorder, because it is in the
+      browser already — a GIF encoder would be a library to carry for a format
+      with 256 colours and worse compression.
+
+      OUTPUT DIMENSIONS, because a 96-pixel sheet is not a video. It is scaled
+      with smoothing OFF, so a pixel becomes a block of pixels rather than a
+      blur, and letterboxed on the grid's own colour when the numbers you give
+      do not match the drawing's shape — cropping would silently lose part of
+      the thing you are exporting, and stretching would lie about it.
+
+      Nearest whole multiple by default: at a whole number of screen pixels per
+      drawn pixel every block is the same size, and at 3.7 they are not. */
+  const expBtn = el("button", null, null);
+  expBtn.type = "button"; expBtn.textContent = "export";
+  /*  A FACTOR, NOT A WIDTH AND A HEIGHT.
+
+      Two boxes let you ask for 500 x 300 of a 102 x 64 drawing, which is 4.9
+      pixels across and 4.7 down — every block a slightly different size, which
+      is the one thing pixel art cannot survive. It also meant carrying
+      letterboxing and aspect maths for a shape mismatch that should never have
+      been expressible.
+
+      One number, and the answer is shown beside it. Whole multiples only, so
+      every drawn pixel becomes exactly the same square. */
+  const expK = el("input", "sp-num", null);
+  expK.type = "number"; expK.min = "1"; expK.max = "32"; expK.step = "1";
+  expK.title = "how many screen pixels per drawn pixel";
+  const expX = el("span", "sp-x", null); expX.textContent = "\u00d7";
+  const expOut = el("span", "sp-ans", null);
+  /*  THE SIZE BELONGS TO THE RECORDING, NOT TO THE PANEL.
+
+      These two boxes were one pair shared by both reels, filled the first time
+      anything was recorded and never revisited — so a wardrobe recorded first
+      left 384x448 in them, and exporting the place afterwards squeezed a
+      102x64 building into a wardrobe's shape. The place was taking its
+      dimensions from body, bottom, top and hat.
+
+      Each recording now carries its own, worked out from its own drawing. */
+  const expDefaults = () => {
+    const r = rec();
+    if (!r.fw || !r.fh) { const cv = recordShot(); r.fw = cv.width; r.fh = cv.height; }
+    //  Big enough to see, at a whole multiple.
+    r.k = Math.max(1, Math.min(32, Math.round(480 / Math.max(r.fw || 1, r.fh || 1))));
+  };
+  //  Typed in, and remembered against the reel you typed it for.
+  expK.oninput = () => { rec().k = Math.max(1, Math.min(32, +expK.value || 1)); syncRec(); };
+  const EXP_FPS = 12;
+  expBtn.onclick = async () => {
+    const frames = rec().frames;
+    if (!frames.length || replaying) return;
+    if (typeof MediaRecorder === "undefined") {
+      hint.textContent = "this browser cannot record video";
+      return;
+    }
+    const r = rec();
+    if (!r.k) expDefaults();
+    const k = Math.max(1, Math.min(32, r.k));
+    /*  Even numbers. H.264 stores colour at half resolution, so an odd width
+        or height has no whole chroma sample to sit in — encoders either refuse
+        it or pad it and hand you a green edge. Both cell sizes here are even
+        already; a hand-typed 25 is not. */
+    const w = (r.fw * k + 1) & ~1, h = (r.fh * k + 1) & ~1;
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    /*  A stream fed by hand: one frame per step, held for the same time each,
+        rather than whatever the browser felt like sampling. */
+    const stream = cv.captureStream(0);
+    const track = stream.getVideoTracks()[0];
+    /*  MP4 FIRST, BECAUSE THAT IS WHAT ANYTHING WILL TAKE.
+
+        This asked for WebM, which the browser makes happily and Instagram
+        will not accept — nor will most places you would want to put a
+        timelapse. Chrome and Safari both encode H.264 in an MP4 container
+        through MediaRecorder now, so ask for that and keep WebM as the
+        fallback for a browser that cannot. */
+    const type = ["video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=avc1", "video/mp4",
+                  "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+      .find(t => MediaRecorder.isTypeSupported(t)) || "";
+    const ext = /^video\/mp4/.test(type) ? "mp4" : "webm";
+    const chunks = [];
+    const mr = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const done = new Promise(r => { mr.onstop = r; });
+    mr.start();
+    expBtn.disabled = true;
+    for (let i = 0; i < frames.length; i++) {
+      const img = await loadImg(frames[i]);
+      if (!host.isConnected) break;
+      c.fillStyle = gridBg;
+      c.fillRect(0, 0, w, h);
+      /*  A whole factor of the frame's own size, so it fills the canvas
+          exactly — no letterbox, no crop, no fractional block. */
+      if (img) c.drawImage(img, 0, 0, img.width, img.height, 0, 0, w, h);
+      if (track.requestFrame) track.requestFrame();
+      else if (stream.requestFrame) stream.requestFrame();
+      hint.textContent = "exporting \u2014 frame " + (i + 1) + " of " + frames.length;
+      await new Promise(r => setTimeout(r, 1000 / EXP_FPS));
+    }
+    mr.stop();
+    await done;
+    expBtn.disabled = false;
+    const blob = new Blob(chunks, { type: type || "video/mp4" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName().replace(/\.png$/, "") + "-" + w + "x" + h + "." + ext;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    hint.textContent = "exported " + frames.length + " frames at " + w + " \u00d7 " + h
+                     + " as " + ext.toUpperCase();
+  };
+
+  replayBtn.onclick = async () => {
+    const frames = rec().frames;
+    if (replaying || !frames.length) return;
+    const token = ++replaying;
+    for (let i = 0; i < frames.length; i++) {
+      if (token !== replaying) return;
+      const img = await loadImg(frames[i]);
+      if (token !== replaying || !host.isConnected) return;
+      replayShot = img;
+      paint();
+      await new Promise(r => setTimeout(r, 80));
+    }
+    replayShot = null;
+    replaying = 0;
+    paint();
+  };
+
 
   /*  SCALE — what one pixel is worth, out in the world.
 
@@ -7020,15 +7479,11 @@ function renderSpriteEditor(model, host) {
   const unitIn = el("input", "sp-unit", scaleBar);
   unitIn.type = "text"; unitIn.maxLength = 4;
   unitIn.title = "whatever you measure in \u2014 ft, m, yd";
-  el("span", "sp-x", scaleBar).textContent = "\u00b7";
-  const askIn = el("input", "sp-num", scaleBar);
-  askIn.type = "number"; askIn.min = "0"; askIn.step = "any";
-  askIn.title = "a real measurement to turn into pixels";
-  const ansOut = el("span", "sp-ans", scaleBar);
-
-  /*  Both directions from one ratio, so a number you already know can be
-      drawn and a thing you have drawn can be read back. */
-  const pxFor = v => (scale.per > 0 ? v / scale.per : 0);
+  /*  Just the ratio. There was a converter on the end of this row — type a
+      measurement, read back the pixels — and it answered a question nobody
+      asks: you do not sit down knowing a wall is forty feet and needing the
+      pixel count, you draw the wall and want to know what you have drawn. The
+      measure tool is that direction, and this ratio is what it reads. */
   /*  AS MANY DECIMALS AS THE RATIO HAS.
 
       A whole number of cells times a two-decimal ratio is exact to two
@@ -7044,10 +7499,6 @@ function renderSpriteEditor(model, host) {
   const syncScale = () => {
     perIn.value = scale.per;
     unitIn.value = scale.unit;
-    const v = parseFloat(askIn.value);
-    ansOut.textContent = !(v >= 0)
-      ? ""
-      : scale.unit + " = " + Math.round(pxFor(v)) + "px";
   };
   perIn.oninput = () => {
     const v = parseFloat(perIn.value);
@@ -7055,8 +7506,6 @@ function renderSpriteEditor(model, host) {
     syncScale();
   };
   unitIn.oninput = () => { scale.unit = unitIn.value.slice(0, 4); saveScale(); syncScale(); paint(); };
-  askIn.oninput = syncScale;
-  askIn.value = "40";
   syncScale();
 
   /*  A guide can be dragged out by eye, but a pitch you already know the
@@ -7104,10 +7553,13 @@ function renderSpriteEditor(model, host) {
                  + "or on a place the head-height line and the bricklings in the preview";
   onionBtn.onclick = () => { onion = !onion; paint(); };
 
+  /*  Names the pointer you have, and pressing gives you the other one.
+
+      It read "cell cursor" whichever mode was up, with a green fill for the
+      difference — two words for two modes in one label, and you had to know
+      which of them the fill meant. A cycler should say where it IS. */
   const curBtn = el("button", null, optBar);
-  curBtn.type = "button"; curBtn.textContent = "cell cursor";
-  curBtn.title = "hide the crosshair and let the outlined cell be the pointer \u2014 "
-               + "it shows which square you are actually on";
+  curBtn.type = "button";
   curBtn.onclick = () => {
     cellCursor = !cellCursor;
     try { localStorage.setItem(CURSOR_KEY, cellCursor ? "1" : "0"); } catch (e) { /* unavailable */ }
@@ -7116,8 +7568,29 @@ function renderSpriteEditor(model, host) {
 
   const gridBtn = el("button", null, optBar);
   gridBtn.type = "button"; gridBtn.textContent = "grid";
-  gridBtn.title = "rule every cell, with a firmer line every fourth";
+  gridBtn.title = "rule every cell, with a firmer line every so many";
   gridBtn.onclick = () => { gridOn = !gridOn; paint(); };
+  /*  HOW OFTEN THE FIRM LINE FALLS.
+
+      It was every fourth, always, and the four came from the figure: a
+      brickling is 24 x 28, which divides into blocks of four, and the sheet is
+      four frames by four rows. On a place it divides into nothing — 102 leaves
+      a remainder of 2 — so the heavy lines drifted out of step with the edges
+      of the thing being drawn.
+
+      It is a reading aid and nothing else: no pixel, no file and no export
+      depends on it, so it can be whatever number helps you count. Ten for a
+      place, eight for a wide building, four for a figure. */
+  const stepIn = el("input", "sp-num", optBar);
+  stepIn.type = "number"; stepIn.min = "2"; stepIn.max = "32"; stepIn.step = "1";
+  stepIn.title = "a firmer rule every this many cells \u2014 counting help only, "
+               + "it changes nothing in the drawing";
+  stepIn.value = gridStep;
+  stepIn.oninput = () => {
+    gridStep = Math.max(2, Math.min(32, +stepIn.value || 4));
+    try { localStorage.setItem(GRIDSTEP_KEY, String(gridStep)); } catch (e) { /* unavailable */ }
+    paint();
+  };
 
   const axesBtn = el("button", null, optBar);
   axesBtn.type = "button"; axesBtn.textContent = "center";
@@ -7168,48 +7641,78 @@ function renderSpriteEditor(model, host) {
       they are drawn over — white lines on a white grid are no lines at all. */
   const gridInk = a => (gridLight() ? "rgba(0,0,0," : "rgba(255,255,255,") + a + ")";
 
-  const BG_KEY = "brick-by-brick:spritebg:v1";
-  let bg = { sky: "#1d2c38", ground: "#1a1f18" };
+  /*  WHAT THE PREVIEW STANDS AGAINST.
+
+      A figure and a place want different things behind them. The figure wants
+      ONE flat colour: you are looking at whether a coat reads, and a horizon
+      crossing it at the knee is an edge to mistake for part of the drawing.
+      A place wants TWO — it is a building, it meets the ground somewhere, and
+      where that line falls is half of what you are judging.
+
+      So the row shows one picker or two depending on what you are drawing, and
+      remembers all three colours either way. */
+  const BG_KEY = "brick-by-brick:spritebg:v2";
+  const BG_DEFAULT = { one: "#1d2c38", sky: "#1d2c38", ground: "#1a1f18" };
+  let bg = { ...BG_DEFAULT };
   try {
     const raw = JSON.parse(localStorage.getItem(BG_KEY) || "null");
-    if (raw && /^#[0-9a-f]{6}$/i.test(raw.sky) && /^#[0-9a-f]{6}$/i.test(raw.ground)) bg = raw;
+    if (raw) for (const k of ["one", "sky", "ground"]) {
+      if (/^#[0-9a-f]{6}$/i.test(raw[k])) bg[k] = raw[k];
+    }
   } catch (e) { /* unavailable */ }
   const applyBg = () => {
-    prevWrap.style.setProperty("--sp-sky", bg.sky);
-    prevWrap.style.setProperty("--sp-ground", bg.ground);
+    prevWrap.style.setProperty("--sp-back", bg.one);
     try { localStorage.setItem(BG_KEY, JSON.stringify(bg)); } catch (e) { /* unavailable */ }
   };
   const prev = el("canvas", null, prevWrap);
   const prev1 = el("canvas", "sp-true", prevWrap);
-
-  /*  Size sits under the preview, not above the canvas: it is a thing you
-      adjust while looking at the result, not before you start. */
-  right.appendChild(sizeBar);
-
-  const bgBar = el("div", "sp-row", right);
-  el("span", "sp-cap", bgBar).textContent = "backdrop";
-  const bgWrap = el("span", "sp-bg", bgBar);
-  const skyIn = el("input", null, bgWrap), groundIn = el("input", null, bgWrap);
-  skyIn.type = groundIn.type = "color";
-  skyIn.title = "sky"; groundIn.title = "ground";
-  skyIn.value = bg.sky; groundIn.value = bg.ground;
-  skyIn.oninput = () => { bg.sky = skyIn.value; applyBg(); };
-  groundIn.oninput = () => { bg.ground = groundIn.value; applyBg(); };
-  const bgReset = el("button", null, bgWrap);
-  bgReset.type = "button"; bgReset.textContent = "\u21ba";
-  bgReset.title = "back to the street's own colors";
-  bgReset.onclick = () => {
-    bg = { sky: "#1d2c38", ground: "#1a1f18" };
-    skyIn.value = bg.sky; groundIn.value = bg.ground; applyBg();
-    gridBg = GRIDBG_DEFAULT; gridIn.value = gridBg; saveGridBg(); paint();
+  const backRow = el("div", "sp-row sp-under", right);
+  el("span", "sp-cap", backRow).textContent = "behind";
+  const backWrap = el("span", "sp-bg", backRow);
+  const mk = (key, tip) => {
+    const i = el("input", null, backWrap);
+    i.type = "color"; i.value = bg[key]; i.title = tip;
+    i.oninput = () => { bg[key] = i.value; applyBg(); paint(); };
+    return i;
   };
+  const backOne = mk("one", "what the figure stands against in this preview");
+  const backSky = mk("sky", "the place's sky in this preview");
+  const backGround = mk("ground", "the ground the place stands on");
+  const backReset = el("button", null, backWrap);
+  backReset.type = "button"; backReset.textContent = "\u21ba";
+  backReset.title = "back to the street's own colours";
+  backReset.onclick = () => {
+    bg = { ...BG_DEFAULT };
+    backOne.value = bg.one; backSky.value = bg.sky; backGround.value = bg.ground;
+    applyBg(); paint();
+  };
+  /*  One picker or two, never all three at once. */
+  const syncBack = () => {
+    backOne.hidden = isPlace();
+    backSky.hidden = backGround.hidden = !isPlace();
+  };
+  applyBg();
+
+
+  /*  No pickers for these two.
+
+      The preview's sky and ground were yours to set, which sounded useful and
+      was not: the preview exists to show you the figure against the street,
+      and the street has its own colours. Changing them here changed nothing
+      about the drawing, nothing about the Promenade, and gave you a figure
+      standing in front of a backdrop nobody else will ever see it against.
+
+      The values stay — the preview still needs a sky — and the grid keeps its
+      own picker under the canvas, because THAT one is about being able to see
+      what you are drawing. */
   applyBg();
 
   /*  In with the backdrop, because both are the same kind of thing: what you
       are looking AT something against, rather than anything about the drawing
       itself. Neither leaves this browser and neither reaches the PNG. */
-  el("span", "sp-cap", bgBar).textContent = "grid";
-  const gridWrap = el("span", "sp-bg", bgBar);
+  /*  Parentless: it is moved under the drawing canvas a few lines below, and
+      the row it used to sit in went with the backdrop pickers. */
+  const gridWrap = el("span", "sp-bg", null);
   const gridIn = el("input", null, gridWrap);
   gridIn.type = "color"; gridIn.value = gridBg;
   gridIn.title = "the squares behind the drawing \u2014 go pale when you are "
@@ -7309,6 +7812,7 @@ function renderSpriteEditor(model, host) {
     const wipe = cv => cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
     for (const k of (isPlace() ? ["place"] : ROWS)) { wipe(layers[k]); touched[k] = true; }
     paint();
+    recordStep();
   };
 
   const hint = el("p", "hint sp-hint", right);
@@ -7355,6 +7859,103 @@ function renderSpriteEditor(model, host) {
   //  A stroke going into every frame is a DRAWING mode, not a view toggle. It
   //  sat beside "ghost" and read as one for as long as it was there.
   toolBar.appendChild(linkBtn);
+  /*  The glyph tools take the first line and the two worded ones the second,
+      which is where the break falls anyway once `paint all frames` is in the
+      row — better to put it where it means something than to let it land
+      wherever the column width decides. */
+  toolBar.insertBefore(el("span", "sp-break", null),
+                       toolBtns[TOOLS.findIndex(t => t[0] === "measure")]);
+  /*  The size, at the end of that second line rather than painted into the
+      corner of the drawing. On the canvas it sat over whatever was drawn up
+      there; here it is out of the picture and still directly above it. */
+  /*  And it is the SIZE CONTROL, not a caption of one.
+
+      It was a read-only note here and a pair of boxes in the side column, so
+      the number you looked at and the number you changed were in different
+      places. Same two boxes, moved to where the answer already was. */
+  const sizeGrp = el("span", "sp-sizenote", toolBar);
+  sizeGrp.appendChild(wIn);
+  el("span", "sp-x", sizeGrp).textContent = "\u00d7";
+  sizeGrp.appendChild(hIn);
+  /*  THE SAME SIZE IN THE WORLD, AND SETTABLE THERE TOO.
+
+      It was a read-only echo — cells in, feet out. But a building is a thing
+      you know the real size of first: a kirk is sixty feet to the ridge, and
+      working out that sixty feet is 240 cells at a quarter of a foot each is
+      arithmetic the panel already knows how to do.
+
+      So these are inputs, and they step by one CELL — `step` is the ratio
+      itself, so an arrow press moves the drawing by exactly one pixel and
+      never lands between two. Typed values are rounded to the nearest whole
+      cell, because there is no such thing as two thirds of a pixel. */
+  const realW = el("input", "sp-num sp-real", sizeGrp);
+  const realX = el("span", "sp-x sp-real", sizeGrp); realX.textContent = "\u00d7";
+  const realH = el("input", "sp-num sp-real", sizeGrp);
+  const realU = el("span", "sp-ans sp-real", sizeGrp);
+  /*  BACK TO THE SIZE THE FORMAT EXPECTS.
+
+      Both defaults are answers to something, not round numbers: a place is
+      102 wide because that is the widest that draws pixel-for-pixel in a
+      column, and a figure is whatever the built-in one is, because that is
+      what every hat and coat in the folder was drawn to fit. Having wandered
+      away from either by typing or by feet, this is the way back.
+
+      Read from the built-in art rather than written down again — a constant
+      copied here would be a second opinion about the same thing, and one of
+      them would eventually be wrong. */
+  const sizeReset = el("button", null, sizeGrp);
+  sizeReset.type = "button"; sizeReset.textContent = "\u21ba";
+  /*  THE SIZE IT ARRIVED AT, not the size the code falls back to.
+
+      This first read the built-in body sheet, which is 24 x 24 — but the
+      wardrobe on disk is 24 x 28, and every hat in that folder is drawn to
+      sit on a 28-tall figure. Resetting to the fallback would quietly crop
+      four rows off the top of a coat.
+
+      So the size each kind of drawing had when it was LOADED is remembered,
+      and that is what this goes back to. The constants are only the answer
+      before a file has had its say. */
+  const defaultCell = () => (isPlace() ? bornCell.place : bornCell.wear)
+    || (isPlace()
+        ? { w: PLACE_W, h: PLACE_H }
+        : { w: Math.round(wear.body.width / (wear.body.__frames || SPR_FRAMES)),
+            h: wear.body.height });
+  sizeReset.onclick = () => {
+    const d = defaultCell();
+    wIn.value = d.w; hIn.value = d.h;
+    applySize();
+  };
+  for (const i of [realW, realH]) {
+    i.type = "number"; i.min = "0";
+    i.title = "the same size out in the world \u2014 one step is one pixel";
+  }
+  const cellsFor = v => Math.max(1, Math.round((+v || 0) / scale.per));
+  const applyReal = () => {
+    if (!(isPlace() && scale.per > 0)) return;
+    wIn.value = cellsFor(realW.value);
+    hIn.value = cellsFor(realH.value);
+    applySize();
+  };
+  realW.onchange = realH.onchange = applyReal;
+  //  Kept in step with the cell boxes without fighting whichever one has focus.
+  const syncReal = (w, h) => {
+    const on = isPlace() && scale.per > 0;
+    for (const n of [realW, realX, realH, realU]) n.hidden = !on;
+    if (!on) return;
+    realU.textContent = scale.unit;
+    realW.step = realH.step = String(scale.per);
+    if (document.activeElement !== realW) realW.value = realOf(w);
+    if (document.activeElement !== realH) realH.value = realOf(h);
+  };
+
+  /*  THE TOOLS GO OVER THE CANVAS.
+
+      They were in the side column with everything else, so choosing a tool
+      meant looking away from the drawing and back again — and the column is
+      narrow, which wrapped seven glyphs and a mode onto two lines. Above the
+      canvas they are in the same glance as the thing they act on, and the full
+      width of the drawing fits them on one. */
+  left.insertBefore(toolBar, grid);
 
   //  The frame you are on drives the preview, so it sits directly above it
   //  rather than at the end of a row of unrelated switches.
@@ -7376,20 +7977,49 @@ function renderSpriteEditor(model, host) {
   /*  Undo lives under the canvas, not in the tool row: it acts on what is
       drawn rather than on how you draw, and the drawing is what you are
       looking at when you want it back. */
+  /*  The view switches join the drawing side too: ghost, the cursor, the grid
+      and the centre lines all change what the CANVAS looks like and nothing
+      else, so they belong under it rather than across the panel from it. */
+  left.appendChild(optBar);
+  //  Into the corner of the thing it acts on.
+  onionBtn.classList.add("sp-ghost");
+  prevWrap.appendChild(onionBtn);
+  /*  Grid last, with its number. It is the only one of these carrying a
+      setting, so it ends the row rather than splitting the plain toggles in
+      half with an input box. */
+  optBar.appendChild(gridBtn);
+  optBar.appendChild(stepIn);
+  //  Centre first: it is the reference every layer is drawn against, so it
+  //  leads the row rather than sitting between two view switches.
+  optBar.insertBefore(axesBtn, optBar.firstChild);
   gridBgRow.appendChild(undoBtn);
+  gridBgRow.appendChild(redoBtn);
+  gridBgRow.appendChild(recBtn);
+  gridBgRow.appendChild(replayBtn);
+  gridBgRow.appendChild(dropRecBtn);
+  gridBgRow.appendChild(expBtn);
+  gridBgRow.appendChild(expX);
+  gridBgRow.appendChild(expK);
+  gridBgRow.appendChild(expOut);
+  syncRec();
   el("span", "sp-cap", gridBgRow).textContent = "cells";
   gridBgRow.appendChild(gridWrap);
-  underGrid = gridBgRow;
 
-  const prevBgRow = el("div", "sp-row sp-under", right);
-  el("span", "sp-cap", prevBgRow).textContent = "backdrop";
-  prevBgRow.appendChild(bgWrap);
-  right.insertBefore(prevBgRow, prevWrap.nextSibling);
-  bgBar.remove();
 
-  //  Size is not something you set while drawing — it is part of what the file
-  //  IS, like its name, so it goes with the name and the export buttons.
-  right.insertBefore(sizeBar, outBar);
+
+  //  Its two boxes are over the canvas now; the row they were in is empty.
+  sizeBar.remove();
+
+  /*  The ratio goes under the canvas with the rest of the drawing's own
+      settings. `sp-under` is what right-aligns that side of the column, and
+      because the row is hidden on a wear slot the canvas gets the height back
+      there — `belowGrid` counts only what is actually on screen. */
+  /*  Over the canvas, at the right — with the size boxes it feeds rather than
+      below the drawing they describe. `sp-under` is only the class that
+      right-aligns a row and puts a gap above it; the name is now a lie about
+      where this one sits, and not worth a second class to fix. */
+  scaleBar.classList.add("sp-under");
+  left.insertBefore(scaleBar, grid);
   nameBar.classList.add("sp-fold");
 
   /*  The filename the page will look for. One name either way — a place is
@@ -7837,6 +8467,7 @@ function renderSpriteEditor(model, host) {
       shiftBy(m.dx, m.dy);
       back();
       drawing = null; anchor = null; pending = null; atCell = null; paint();
+      recordStep();
       return;
     }
     // Let go and the shape is laid down; until then it is only a proposal.
@@ -7848,6 +8479,7 @@ function renderSpriteEditor(model, host) {
     back();
     drawing = null; anchor = null; pending = null; atCell = null;
     paint();
+    recordStep();
   };
   grid.addEventListener("pointerup", stop);
   grid.addEventListener("pointercancel", stop);
@@ -7924,6 +8556,7 @@ function renderSpriteEditor(model, host) {
     const base = file.name.replace(/\.[^.]+$/, "").replace(/\.(body|bottom|top|hat)$/i, "");
     if (base) nameIn.value = base;
     syncSize(); paint();
+    recordStep();
     hint.textContent = note + " \u00b7 " + file.name;
   });
 
@@ -7936,6 +8569,19 @@ function renderSpriteEditor(model, host) {
     const cw = cellW(), ch = cellH();
     const z = lastZ = fitZ(cw, ch);
     grid.width = cw * z; grid.height = ch * z;
+    /*  THE ROWS ARE NOT SIZED FROM THE CANVAS.
+
+        They were, briefly, so their right edge would line up exactly with the
+        drawing instead of with the column — a few pixels of tidiness that cost
+        the panel its layout. The rows narrow, so the tool row wraps onto more
+        lines, so it is taller, so there is less height for the canvas, so the
+        canvas narrows, so the rows narrow again. It settled at a 216-pixel
+        canvas in a 533-pixel column.
+
+        The column's width is fixed by the panel and does not depend on
+        anything below it, which is what makes it safe to measure. A row is as
+        wide as the column; the canvas is as wide as the fit allows. They can
+        differ by up to a cell, and that is a better answer than a spiral. */
 
     slotBtns.forEach((b, i) => b.classList.toggle("on", ROWS[i] === slot));
     // Rebuilt, because the count is the layer's and changes with it.
@@ -7951,8 +8597,24 @@ function renderSpriteEditor(model, host) {
     }
     [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
     toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
+    /*  Cells first, always — that is what you draw in and what every other
+        number here counts. The world size follows on a place, because a
+        building has a real one: both, not either, since "25.5 x 16 ft" tells
+        you nothing about where to put the next pixel. */
+    syncReal(cellW(), cellH());
+    const d = defaultCell();
+    sizeReset.disabled = cellW() === d.w && cellH() === d.h;
+    sizeReset.title = "back to " + d.w + " \u00d7 " + d.h
+                    + (isPlace() ? " \u2014 the widest a place draws 1:1 in a column"
+                                 : " \u2014 what the wardrobe art is drawn to");
     onionBtn.classList.toggle("on", onion);
     gridBtn.classList.toggle("on", gridOn);
+    stepIn.hidden = !gridOn;
+    curBtn.textContent = cellCursor ? "cell" : "crosshair";
+    curBtn.title = cellCursor
+      ? "the outlined cell is the pointer \u2014 press for the crosshair back"
+      : "the system crosshair \u2014 press to let the outlined cell be the pointer, "
+        + "which shows which square you are actually on";
     curBtn.classList.toggle("on", cellCursor);
     //  The canvas keeps the crosshair unless the drawn cell has replaced it.
     grid.style.cursor = cellCursor ? "none" : "crosshair";
@@ -7960,6 +8622,9 @@ function renderSpriteEditor(model, host) {
         keep an eye on, it is something you are either placing or not. */
     guideBar.hidden = tool !== "guide";
     scaleBar.hidden = !isPlace();
+    syncBack();
+    //  Which recording these buttons are talking about changes with the slot.
+    syncRec();
     axesBtn.classList.toggle("on", axesOn);
     linkBtn.classList.toggle("on", linked);
     eraseBtn.classList.toggle("on", pen === -1);
@@ -8005,7 +8670,13 @@ function renderSpriteEditor(model, host) {
         g.globalAlpha = 1;
       }
     }
-    if (anchor && pending && tool === "move") {
+    /*  A replay stands in for the layers entirely: watching a drawing must not
+        be able to change it. Scaled into the cell grid, so a wear sheet's four
+        frames read at the size they are drawn. */
+    if (replayShot) {
+      g.drawImage(replayShot, 0, 0, replayShot.width, replayShot.height,
+                  0, 0, grid.width, grid.height);
+    } else if (anchor && pending && tool === "move") {
       // Shown where it would land, so the nudge is judged before it is made.
       const m = clampShift(pending.x - anchor.x, pending.y - anchor.y);
       g.drawImage(layers[slot], frame * cw, 0, cw, ch,
@@ -8014,31 +8685,17 @@ function renderSpriteEditor(model, host) {
       g.drawImage(layers[slot], frame * cw, 0, cw, ch, 0, 0, grid.width, grid.height);
     }
 
-    /*  On a place, the scale reference is a LINE at head height.
 
-        A block was still too much: the only thing you cannot judge by eye when
-        drawing a kirk is how far up the wall a person reaches, and a line says
-        that and nothing else. It obscures nothing, so there is no need to draw
-        through it or fade it. */
-    if (onion && isPlace()) {
-      const ph = layers.body.height;
-      const y = (ch - ph) * z;
-      /*  Cream, until the grid could be any colour you liked — on a pale one
-          this line and its label went the same way white rules did, which is
-          to say nowhere. It takes its ink from the grid now, like everything
-          else drawn over the top of it. */
-      const ink = gridInk(0.8);
-      g.strokeStyle = ink;
-      g.lineWidth = 1;
-      g.setLineDash([4, 3]);
-      g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(grid.width, y + 0.5); g.stroke();
-      g.setLineDash([]);
-      g.fillStyle = ink;
-      g.font = "10px ui-monospace, monospace";
-      g.fillText("head height \u00b7 " + ph + "px"
-                 + (scale.per > 0 ? " \u00b7 " + realOf(ph) + " " + scale.unit : ""),
-                 4, y - 4);
-    }
+    /*  There was a head-height line across a place, drawn from the body
+        sprite's height — a person's 28 pixels ruled onto a building.
+
+        It only meant anything while both were measured the same way, and they
+        are not: a place carries its own ratio now (1px = so many feet) while a
+        figure is 28 pixels because that is how tall a brickling is drawn, not
+        because anybody measured one. Ruling the second onto the first was two
+        scales in one picture pretending to be one. The scale row is the honest
+        version of that question, and the bricklings in the preview are the
+        eyeball check. */
 
     /*  What is on the clipboard, hovering where it would land — in its own
         colors, faintly, so it reads as a proposal rather than as paint that
@@ -8083,13 +8740,27 @@ function renderSpriteEditor(model, host) {
         miscounting a sleeve. Skipped when the cells are too small to rule,
         where a grid is only noise. */
     g.lineWidth = 1;
-    if (gridOn && z >= 5) {
+    /*  THE GRID THINS OUT RATHER THAN SWITCHING OFF.
+
+        It drew every cell above five screen pixels and nothing at all below,
+        which was fine while the canvas was always big — then the panel filled
+        up with rows, the fit dropped to two pixels a cell, and the grid simply
+        vanished with the button still lit.
+
+        A rule needs a few pixels of cell either side to read as a rule rather
+        than as a texture. So under that, only the firm ones are drawn: you
+        lose the per-cell mesh and keep the counting marks, which is the half
+        that was doing the work at that size anyway. */
+    if (gridOn && z >= 2) {
+      const every = z >= 5;                  // room for a line on every cell
       for (let i = 1; i < cw; i++) {
-        g.strokeStyle = gridInk(i % 4 ? 0.13 : 0.3);
+        if (!every && i % gridStep) continue;
+        g.strokeStyle = gridInk(i % gridStep ? 0.13 : 0.3);
         g.beginPath(); g.moveTo(i * z + 0.5, 0); g.lineTo(i * z + 0.5, grid.height); g.stroke();
       }
       for (let i = 1; i < ch; i++) {
-        g.strokeStyle = gridInk(i % 4 ? 0.13 : 0.3);
+        if (!every && i % gridStep) continue;
+        g.strokeStyle = gridInk(i % gridStep ? 0.13 : 0.3);
         g.beginPath(); g.moveTo(0, i * z + 0.5); g.lineTo(grid.width, i * z + 0.5); g.stroke();
       }
     }
@@ -8162,7 +8833,7 @@ function renderSpriteEditor(model, host) {
     g.textAlign = "right";
     g.textBaseline = "top";
     g.fillStyle = gridInk(0.5);
-    g.fillText(cw + " \u00d7 " + ch, grid.width - 5, 4);
+
 
     /*  WHICH TOOL IS IN YOUR HAND, ON THE CANVAS.
 
@@ -8373,6 +9044,7 @@ function renderSpriteEditor(model, host) {
     const cw = dressed.__cellW, ch = dressed.__cellH;
     const n = dressed.__frames || SPR_FRAMES;
     const f = playing ? Math.floor(tick / 9) % n : Math.min(frame, n - 1);
+    prev.hidden = prev1.hidden = false;       // the place preview hides one
     for (const [cv, z] of [[prev, 4], [prev1, 1]]) {
       cv.width = cw * z; cv.height = ch * z;
       const c = cv.getContext("2d");
@@ -8385,32 +9057,121 @@ function renderSpriteEditor(model, host) {
   /*  Scenery in its column: sky, ground, the scene standing on the line, and
       people in front of it. A building drawn on its own always looks right;
       the question is whether it still reads with a crowd in front of it. */
+  /*  THE PREVIEW SHOWS WHAT THE STREET WILL SHOW.
+
+      Two things were wrong with it. It sized its canvas FROM the drawing, so a
+      200-pixel building made a 424-pixel preview and pushed itself out of a
+      260-pixel column — a preview that grows with its subject is not a
+      preview. And it scaled the building and the bricklings together, which
+      the Promenade never does.
+
+      The street's rule is one line: a place is drawn at
+      `min(1, (column - 8) / width)` and a person is drawn at 1:1. So a place
+      narrower than 102 appears pixel-for-pixel and a wider one is SHRUNK
+      against people who stay the size they are — which is the whole question
+      you are asking when you look at this box. Getting that wrong meant a
+      240-wide kirk looked right here and came out half the height of the
+      person standing in front of it on the street.
+
+      So the scene is composed in the street's own units — a 110-wide column,
+      a ground line, the place on it at the street's scale, bricklings at
+      theirs — and only then scaled as a whole to fit the window. Whole
+      multiples while they fit, so blocks stay square. */
+  /*  Tall enough for the scene to fit at TWICE size rather than once. A
+      102x64 place plus the sky and ground it stands in is 78 units, and a
+      window of 132 could only take one whole multiple of that — so the
+      preview sat at 1:1 and was half the size it had room to be. */
+  const PREV_COL = 110;                       // the Promenade's narrowest column
   function drawPlacePreview(fig) {
     const sc = layers.place;
-    const swapped = fig;
-    const z = 2, pad = 6;
-    const w = Math.max(sc.width, 110) + pad * 2, h = Math.max(sc.height, 40) + 18;
-    for (const [cv, zz] of [[prev, z], [prev1, 1]]) {
-      cv.width = w * zz; cv.height = h * zz;
-      const c = cv.getContext("2d");
-      c.imageSmoothingEnabled = false;
-      const groundY = h - 10;
-      c.fillStyle = bg.sky; c.fillRect(0, 0, cv.width, groundY * zz);
-      c.fillStyle = bg.ground; c.fillRect(0, groundY * zz, cv.width, cv.height);
-      c.drawImage(sc, 0, 0, sc.width, sc.height,
-                  Math.round((w - sc.width) / 2) * zz, (groundY - sc.height) * zz,
-                  sc.width * zz, sc.height * zz);
-      /*  The three bricklings are a scale reference, which is exactly what
-          `ghost` already means on a place — so they answer to it rather than
-          to a fourth toggle. Off, the mini view is the scene alone, which is
-          what the Promenade shows anyone who is not standing in it. */
-      if (!onion) continue;
-      const fw = swapped.__cellW || fig.__cellW, fh = swapped.__cellH || fig.__cellH;
-      const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
-      for (const dx of [w * 0.3, w * 0.5, w * 0.68]) {
-        c.drawImage(swapped, f * fw, 0, fw, fh,
-                    Math.round(dx - fw / 2) * zz, (groundY - fh) * zz, fw * zz, fh * zz);
-      }
+    const fw = fig.__cellW || SPR_W, fh = fig.__cellH || SPR_H;
+
+    //  Exactly the expression the Promenade uses, at zoom 1.
+    const world = Math.min(1, (PREV_COL - 8) / Math.max(1, sc.width));
+    const pw = Math.max(1, Math.round(sc.width * world));
+    const ph = Math.max(1, Math.round(sc.height * world));
+
+    /*  THE WINDOW GROWS WITH THE BUILDING, THEN THE SCENE SHRINKS.
+
+        A tall place used to be cropped at a fixed height, on the argument that
+        fitting the height would shrink it out of proportion. That argument was
+        wrong: `zz` scales the WHOLE scene — the place and the bricklings
+        together — so shrinking to fit costs nothing of the comparison this box
+        exists to make. What must never happen is the place being scaled apart
+        from the people, and the street's own rule (`world`, above) is the only
+        thing that does that.
+
+        So: a taller drawing gets a taller preview, and NOTHING ELSE CHANGES.
+        The zoom comes from the width of the column and nothing but that, so a
+        place stays the same size across the box however tall it grows — you
+        are watching a building get taller, not a preview rearranging itself
+        around one. Letting the height drive the zoom shrank a spire and every
+        brickling beside it, which reads as the whole scene stepping backwards
+        the moment you added a storey. */
+    const sky = 6, ground = 8;
+    const sceneH = Math.max(ph, fh) + sky + ground;
+    const boxW = Math.max(80, prevWrap.clientWidth - 18);
+    let zz = boxW / PREV_COL;
+    if (zz >= 1) zz = Math.floor(zz);
+
+    /*  THREE TIMES TALL, AND NO TALLER.
+
+        Height is the free axis, but free is not the same as unbounded: a
+        256-pixel place made a 540-pixel preview, which is most of the side
+        panel spent on one box. Three times the default scene is a spire's
+        worth of room.
+
+        Past it the top is CROPPED, not scaled — shrinking would mean the width
+        moving, and the width is the column's and does not move. Cropping is
+        also what the street does with a place taller than its sky. */
+    const shownH = Math.min(sceneH, 3 * (PLACE_H + sky + ground));
+    const off = sceneH - shownH;              // units lost off the top
+
+    prev1.hidden = true;                      // no true-size copy of a building
+    prev.hidden = false;
+    prev.width = Math.max(1, Math.round(PREV_COL * zz));
+    prev.height = Math.max(1, Math.round(shownH * zz));
+    const c = prev.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    /*  Everything is measured up from the ground, and the canvas is only as
+        tall as it is allowed to be — so when the scene overflows, what is lost
+        is the top of the sky, never the ground the figures stand on. */
+    const groundY = sceneH - ground - off;    // the ground never moves; the sky is what goes
+    c.fillStyle = bg.sky; c.fillRect(0, 0, prev.width, Math.round(groundY * zz));
+    c.fillStyle = bg.ground;
+    c.fillRect(0, Math.round(groundY * zz), prev.width, prev.height);
+
+    //  Centred in the column, standing on the ground line — the street again.
+    const px0 = Math.round((PREV_COL - pw) / 2 * zz), py0 = Math.round((groundY - ph) * zz);
+    const pxw = Math.round(pw * zz), pxh = Math.round(ph * zz);
+    c.drawImage(sc, 0, 0, sc.width, sc.height, px0, py0, pxw, pxh);
+
+    /*  WHERE THE DRAWING'S EDGES ARE.
+
+        A place taller than this window has its top cropped, the same way a
+        place taller than the sky is cropped on the street. That is honest but
+        it is not legible: a blank upper half looks like a blank upper half,
+        not like a spire continuing past the frame.
+
+        So the canvas's own bounds are outlined. Inside the window you can see
+        how much of the box is empty; past the top the two side rules simply
+        run off, which reads as "it keeps going" rather than "it stopped". */
+    c.save();
+    c.strokeStyle = "rgba(120,220,255,0.5)";
+    c.lineWidth = 1;
+    c.setLineDash([4, 3]);
+    c.strokeRect(px0 + 0.5, py0 + 0.5, pxw - 1, pxh - 1);
+    c.restore();
+
+    /*  The bricklings are a scale reference, which is what `ghost` already
+        means on a place. Off, this is the scene alone — what the Promenade
+        shows anyone not standing in it. */
+    if (!onion) return;
+    const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
+    for (const at of [0.28, 0.5, 0.72]) {
+      c.drawImage(fig, f * fw, 0, fw, fh,
+                  Math.round((PREV_COL * at - fw / 2) * zz), Math.round((groundY - fh) * zz),
+                  Math.round(fw * zz), Math.round(fh * zz));
     }
   }
 
@@ -11575,6 +12336,19 @@ let selectedDoc = null;   // line number, never an index into a filtered list
     The buffer is sized in device pixels so a census page at 1:1 shows the
     ink, not a resampled blur — the entire reason for reading a scan at all. */
 const docView = { img: null, natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0, src: "", fitted: false };
+/*  A REFERENCE IMAGE, IN THE VIEWER THAT ALREADY EXISTS.
+
+    Drawing a kirk from a photograph wants exactly what this panel already does
+    — an image, zoomable, pannable, big — and building a second panel for it
+    would have been a second copy of that viewport to keep in step. So a local
+    file can be put into this one directly. It is not a document: it belongs to
+    no brick, it is never written anywhere, and it holds the viewport until you
+    clear it.
+
+    An object URL rather than a data URL, and session-only. A photograph is
+    megabytes and this browser's storage is the pile's; a reference is
+    something you have on screen while you draw, not something you keep. */
+let docRef = "", docRefName = "";
 // Sources (a thumbnail grid of every scan) was removed — the Document panel and
 // its arrows are the only way to reach a scan now.
 
@@ -11752,11 +12526,40 @@ function stepDocument(dir) {
   selectDocument(docs[next].lineNumber);
 }
 
+function setDocRef(body, file) {
+  if (docRef) URL.revokeObjectURL(docRef);    // the old one is unreachable now
+  docRef = file ? URL.createObjectURL(file) : "";
+  docRefName = file ? file.name : "";
+  docView.fitted = false;                     // a new image gets a new fit
+  renderDocument(body);
+}
+
 function renderDocument(body) {
   if (!body.dataset.built) {
     body.dataset.built = "1";
     body.querySelector('[data-act="prev"]').onclick = () => stepDocument(-1);
     body.querySelector('[data-act="next"]').onclick = () => stepDocument(1);
+    const refFile = body.querySelector('[data-el="reffile"]');
+    body.querySelector('[data-act="ref"]').onclick = () => {
+      if (docRef) setDocRef(body, null);
+      else refFile.click();
+    };
+    refFile.onchange = () => {
+      const f = refFile.files && refFile.files[0];
+      if (f) setDocRef(body, f);
+      refFile.value = "";                     // so the same file can be picked twice
+    };
+    /*  Dropping onto the viewport is the obvious gesture and costs two lines.
+        preventDefault on dragover as well, or the browser navigates to the
+        file and takes the whole pile off screen with it. */
+    const vp = body.querySelector('[data-el="viewport"]');
+    vp.addEventListener("dragover", e => e.preventDefault());
+    vp.addEventListener("drop", e => {
+      e.preventDefault();
+      const f = [...((e.dataTransfer && e.dataTransfer.files) || [])]
+        .find(x => /^image\//.test(x.type));
+      if (f) setDocRef(body, f);
+    });
     wireDocViewport(body);
     resizeDocCanvas(body);
   }
@@ -11770,6 +12573,21 @@ function renderDocument(body) {
   const view = body.querySelector('[data-el="view"]');
   const openBtn = body.querySelector('[data-act="open"]');
   const editBtn = body.querySelector('[data-act="edit"]');
+
+  /*  A reference outranks the document, and it has to be checked BEFORE the
+      "no documents" bail below — an empty pile is exactly when you are most
+      likely to be drawing from a photograph, and that return was throwing the
+      reference off the screen the moment it was dropped. */
+  const refBtn = body.querySelector('[data-act="ref"]');
+  refBtn.textContent = docRef ? "clear ref" : "ref\u2026";
+  if (docRef) {
+    body.querySelector('[data-el="pos"]').textContent = docRefName;
+    openBtn.hidden = editBtn.hidden = true;
+    body.querySelector('[data-el="overlay"]').hidden = true;
+    loadDocImage(body, docRef);
+    view.innerHTML = "";
+    return;
+  }
 
   if (!b) {
     body.querySelector('[data-el="pos"]').textContent = "";
