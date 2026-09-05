@@ -6951,6 +6951,18 @@ function renderSpriteEditor(model, host) {
       place would be more code than making it again. */
   const penCols = el("span", "sp-pen-set", penBar);
   function buildPens() {
+    /*  THE TONE ARROWS LIVE IN THIS ROW TOO, and have to survive the rebuild.
+
+        They were put in here deliberately — appended to the bar instead, the
+        row wraps and they land on the second line beside the erase square,
+        nowhere near the stacks they move. But that also put them in the way of
+        `innerHTML = ""`: apply a palette of your own and the arrows vanished
+        until the panel was reopened.
+
+        Found through the DOM rather than by name because this runs once before
+        that binding exists. Taking the node out and putting it back keeps its
+        handlers — the element is detached, not destroyed. */
+    const tone = penCols.querySelector(".sp-tone-col");
     penCols.innerHTML = "";
     penBtns = [];
     SWATCHES.forEach((c, i) => {
@@ -6968,6 +6980,7 @@ function renderSpriteEditor(model, host) {
       down.onclick = () => { pen = -2; fixed.value = shadeHex(c, -SHADE); paint(); };
       penBtns.push(mid);
     });
+    if (tone) penCols.appendChild(tone);   // last again, after the new stacks
     // A palette that just shrank could leave the pen pointing past its end.
     if (pen >= SWATCHES.length) pen = SWATCHES.length - 1;
   }
@@ -7096,14 +7109,24 @@ function renderSpriteEditor(model, host) {
         glyphs made you hover to find out which one asked a question instead of
         making a mark, and this is the one tool that changes nothing. */
     ["measure", "\u2190measure\u2192", "how big is that \u2014 click a shape, or "
-              + "drag across anything. Changes nothing."],
+              + "drag across anything. Changes nothing. Mark as many as you like "
+              + "— they stay while you draw. ⊗ drops one, right-click "
+              + "drops the lot."],
   ];
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
     /*  A word is not an icon: the square, oversized box that makes a pencil
         legible would only stretch a label. */
     const b = el("button", glyph.length > 2 ? null : "sp-tool", toolBar);
     b.type = "button"; b.textContent = glyph; b.title = tip;
-    b.onclick = () => { tool = id; if (id !== "measure") measured = null; paint(); };
+    /*  THE MARKS OUTLIVE THE TOOL.
+
+        Switching away used to wipe them, which got the point of measuring
+        exactly backwards: you measure a doorway so you can go and draw against
+        it, and the moment you picked up the pencil the answer disappeared. They
+        stay now, through every tool, until you press the ⊗ on one. Nothing in
+        this row takes them away — a measurement is dismissed where it is, not
+        from a button somewhere else. */
+    b.onclick = () => { tool = id; paint(); };
     return b;
   });
 
@@ -8154,27 +8177,67 @@ function renderSpriteEditor(model, host) {
       tools that hold a shape before committing it, and the pencil — the one
       you are most likely to be counting cells with — is not one of them. */
   let atCell = null;
-  /*  The last thing measured, kept after the pointer is up. That is the whole
-      point of it: a measurement you have to keep the button held down to read
-      is one you cannot write down or compare against the next one. */
-  let measured = null;
+  /*  EVERY THING MEASURED, kept after the pointer is up.
+
+      That they survive the pointer is the whole point: a measurement you have
+      to hold a button down to read is one you cannot write down or compare
+      against the next one. That there are several is the same argument taken
+      one step further — the question is almost never "how big is this", it is
+      "is this the same as that", and one at a time makes you hold the first
+      answer in your head while you go and get the second.
+
+      They pile up. The one being dragged is always the last.
+
+      ONE SET PER TYPE, not one per panel. A measurement is about the thing it
+      was taken from — the coat's shoulder, the mill's door — and body, bottom,
+      top, hat and place are five different drawings that happen to share a
+      canvas. Marks made on one followed you onto the next, sitting over art
+      they had nothing to do with; on a place they were worse than meaningless,
+      because a place is a different size and a box drawn in a 24-cell figure
+      lands somewhere arbitrary on a 102-cell street.
+
+      Read through the slot rather than swapped when the slot changes: every
+      place that switches type — the type buttons, a dropped file, the draft
+      coming back — would otherwise need to remember to swap it, and one that
+      forgot would put somebody else's marks on your drawing. */
+  const measuresBy = Object.create(null);
+  const measures = () => (measuresBy[slot] || (measuresBy[slot] = []));
+  /*  Where each label's ⊗ ended up, in canvas pixels, with the index of the
+      measurement it belongs to. Written by `paint`, because only `paint` knows
+      where a label was clamped and nudged to, and read by the pointer
+      handler. Empty whenever there is nothing measured. */
+  let measCloses = [];
+  let overClose = false;         // the pointer is on that × right now
+  /*  The canvas keeps the crosshair unless the drawn cell has replaced it —
+      except over the ×, which is a button and says so. In one place because
+      both the settings sync and the pointer move need to set it, and a repaint
+      landing mid-hover was quietly putting the crosshair back. */
+  const syncCursor = () => {
+    grid.style.cursor = overClose ? "pointer" : (cellCursor ? "none" : "crosshair");
+  };
   /*  The tool to go back to when the middle button is let go. Non-null only
       for as long as a middle-drag lasts. */
   let panFrom = null;
 
-  /*  THE CLIPBOARD — A SHAPE, NOT A BOX.
+  /*  THE CLIPBOARD — A BOX YOU DRAG ROUND WHAT YOU WANT.
 
-      Click a pixel with the copy tool and it lifts that pixel and every pixel
-      of the same color joined to it: the coat, the hat brim, the one dark
-      square that is somebody's eye. Click again and the shape is stamped back
-      down, picked up and put down by the same pixel, so it lands where the
-      cursor says it will.
+      This used to lift by color: click a pixel and it took that pixel and
+      every pixel of the same color joined to it. The argument for it was that
+      what is on this canvas is shapes — a sleeve, a boot, a band of trim — and
+      none of them is rectangular, so a box copies the sleeve plus whatever
+      corner of the body shares its bounding box.
 
-      A box would be the easier thing to write and the wrong thing to have.
-      What is on this canvas is shapes — a sleeve, a boot, a band of trim — and
-      none of them is rectangular. Copying a sleeve with a marquee means
-      copying the sleeve plus whatever corner of the body shares its bounding
-      box, and then painting that corner down on top of something else.
+      The argument was fine and the tool was not. What you get is decided by
+      what the flood fill happens to find, which is not what you can see: a
+      sleeve drawn in two shades is two shapes, one shade that leaks through a
+      single-pixel join takes half the coat with it, and either way you do not
+      find out until it is already on the clipboard. A tool where the selection
+      is a guess is a tool you cannot aim.
+
+      So: drag a box, and what is in the box is what you get — which is the one
+      thing about a marquee that is never in doubt. Transparent pixels inside
+      it stay transparent and stamp nothing, so a box drawn generously round a
+      sleeve still only puts the sleeve down.
 
       It survives changing frame, layer and name, because copying a sleeve from
       one frame into the next is most of what it is for. It does not survive a
@@ -8190,40 +8253,38 @@ function renderSpriteEditor(model, host) {
     d[i2] === d[j2] && d[i2 + 1] === d[j2 + 1] &&
     d[i2 + 2] === d[j2 + 2] && d[i2 + 3] === d[j2 + 3];
 
-  function liftShape(sx, sy) {
+  /*  Everything inside the box, offset from its top left corner — which is
+      then the corner the cursor holds it by, so a selection is picked up and
+      put down by the same pixel and lands where the preview says it will.
+
+      Transparent pixels are dropped on the way in rather than carried and
+      skipped on the way out: an empty pixel is not part of what you selected,
+      it is the gap you drew the box across. Keeping them would make the
+      clipboard an eraser wherever it was generous. */
+  function liftBox(ax, ay, bx, by) {
     const w = cellW(), h = cellH();
-    if (sx < 0 || sy < 0 || sx >= w || sy >= h) return false;
+    const x0 = Math.max(0, Math.min(ax, bx)), x1 = Math.min(w - 1, Math.max(ax, bx));
+    const y0 = Math.max(0, Math.min(ay, by)), y1 = Math.min(h - 1, Math.max(ay, by));
+    if (x1 < x0 || y1 < y0) return false;
     const g = layers[slot].getContext("2d", { willReadFrequently: true });
     const d = g.getImageData(frame * w, 0, w, h).data;
-    const seed = (sy * w + sx) * 4;
-    // Nothing there. Lifting the shape of a hole is a puzzle, not a feature.
-    if (!d[seed + 3]) return false;
-
-    const seen = new Uint8Array(w * h);
     const pts = [];
-    const queue = [[sx, sy]];
-    seen[sy * w + sx] = 1;
-    while (queue.length) {
-      const [x, y] = queue.pop();
-      const at = (y * w + x) * 4;
-      pts.push([x - sx, y - sy, d[at], d[at + 1], d[at + 2], d[at + 3]]);
-      /*  Four-connected. A shape that only touches at a corner is a second
-          shape, which is what anybody drawing pixel art means by it. */
-      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
-        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const k = ny * w + nx;
-        if (seen[k] || !sameColor(d, k * 4, seed)) continue;
-        seen[k] = 1;
-        queue.push([nx, ny]);
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const at = (y * w + x) * 4;
+        if (!d[at + 3]) continue;
+        pts.push([x - x0, y - y0, d[at], d[at + 1], d[at + 2], d[at + 3]]);
       }
     }
-    clip = { pts };
+    //  A box drawn over nothing at all is not a selection, it is a slip.
+    if (!pts.length) return false;
+    clip = { pts, w: x1 - x0 + 1, h: y1 - y0 + 1 };
     return true;
   }
 
   /*  THE BOX ROUND WHATEVER IS UNDER THAT CELL.
 
-      Same four-connected walk as `liftShape` — a shape that only touches at a
+      A four-connected flood fill — a shape that only touches at a
       corner is a second shape, which is what anybody drawing pixel art means
       by it — but it keeps the extremes instead of the pixels. Nothing is
       lifted, nothing is changed; the answer is four numbers. */
@@ -8282,7 +8343,44 @@ function renderSpriteEditor(model, host) {
     return { x: Math.floor((e.clientX - x0) / (w / cellW())),
              y: Math.floor((e.clientY - y0) / (h / cellH())) };
   };
+  /*  The same measurement, stopping one step short of the divide by a cell.
+      Anything drawn on the canvas rather than into it — the × on the
+      measurement label — is placed in these, not in cells. */
+  const pixAt = e => {
+    const r = grid.getBoundingClientRect();
+    const k = grid.offsetWidth ? r.width / grid.offsetWidth : 1;
+    const sx = grid.clientWidth * k, sy = grid.clientHeight * k;
+    if (!(sx > 0 && sy > 0)) return { x: -1, y: -1 };
+    return { x: (e.clientX - r.left - grid.clientLeft * k) / (sx / grid.width),
+             y: (e.clientY - r.top - grid.clientTop * k) / (sy / grid.height) };
+  };
+  /*  Which measurement's ⊗ is under the pointer, or -1. Searched newest first:
+      where two labels do overlap, the one drawn on top is the one you meant. */
+  const closeAt = e => {
+    if (!measCloses.length) return -1;
+    const p = pixAt(e);
+    for (let i = measCloses.length - 1; i >= 0; i--) {
+      const c = measCloses[i];
+      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) return c.i;
+    }
+    return -1;
+  };
   grid.addEventListener("pointerdown", e => {
+    /*  BEFORE ANY TOOL GETS THE PRESS.
+
+        The × sits over the drawing, so whatever is underneath it would
+        otherwise get painted the moment you dismissed the label — you would
+        clear the measurement and leave a pixel behind every time. It takes the
+        press and nothing else sees it. */
+    if (e.button === 0) {
+      const hit = closeAt(e);
+      if (hit >= 0) {
+        e.preventDefault();
+        measures().splice(hit, 1);
+        paint();
+        return;
+      }
+    }
     drawing = e.button === 2 || e.ctrlKey;
     /*  THE MIDDLE BUTTON NUDGES, WHATEVER TOOL IS UP.
 
@@ -8303,33 +8401,43 @@ function renderSpriteEditor(model, host) {
     const { x, y } = cellAt(e);
     anchor = { x, y };
     /*  Before the first pixel of this stroke, so one undo is one stroke. The
-        guide tool is excluded: it draws nothing into a layer, and filling the
-        stack with no-ops would push real work off the end of it. */
-    if (tool !== "guide" && tool !== "measure") snapshot();
+        guide, measure and copy tools are excluded: none of them writes a pixel
+        on the way down — copy takes its own snapshot at the stamp, which is
+        the moment it does — and filling the stack with no-ops would push real
+        work off the end of it. */
+    if (tool !== "guide" && tool !== "measure" && tool !== "copy") snapshot();
     /*  A shape shows before it commits; the pencil goes straight down. Waiting
         to commit is what makes a line adjustable — you see it before you agree
         to it. */
-    /*  Copy is a click, not a drag: the first one lifts a shape, every one
-        after that stamps it. Right-click puts the clipboard down — the same
-        button that erases everywhere else, and this is the erase of a
-        selection. */
+    /*  Copy is a drag and then clicks: the drag draws the box, and every click
+        after it stamps what was in the box. Right-click puts the clipboard
+        down — the same button that erases everywhere else, and this is the
+        erase of a selection.
+
+        The snapshot is taken where the pixels change, which is the stamp.
+        Selecting alters nothing, and an undo step that undoes nothing is a
+        press of undo that looks broken. */
     if (tool === "copy") {
-      if (drawing) clip = null;
-      else if (!clip) liftShape(x, y);
-      else stampClip(x, y);
-      anchor = null;
+      if (drawing) { clip = null; anchor = null; pending = null; paint(); return; }
+      if (clip) { snapshot(); stampClip(x, y); anchor = null; paint(); return; }
+      anchor = { x, y };
+      pending = { x, y };
       paint();
+      try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
     }
     /*  MEASURE. Draws nothing, so it takes no snapshot and sets no pixel.
 
         A click asks about the shape under it, which is the question you have
         when you cannot remember how big you made a window. A drag asks about
-        an arbitrary span, for the gaps between things. Right-click clears the
-        answer, the same button that erases everywhere else here. */
+        an arbitrary span, for the gaps between things.
+
+        Right-click clears them ALL — the same button that erases everywhere
+        else in here, and with marks piling up there has to be one gesture that
+        takes the lot away. The ⊗ on a label is how you drop just that one. */
     if (tool === "measure") {
-      if (drawing) { measured = null; anchor = null; paint(); return; }
-      measured = { x0: x, y0: y, x1: x, y1: y, shape: false };
+      if (drawing) { measures().length = 0; anchor = null; paint(); return; }
+      measures().push({ x0: x, y0: y, x1: x, y1: y, shape: false });
       paint();
       try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
@@ -8371,10 +8479,28 @@ function renderSpriteEditor(model, host) {
     try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
   });
   grid.addEventListener("pointermove", e => {
+    /*  OVER THE ×, THE CANVAS STOPS BEING A CANVAS.
+
+        A crosshair — or nothing at all, with the cell pointer on — hanging
+        over the one pressable thing on this surface reads as "you cannot click
+        here", which is the opposite of true. The hand says otherwise, and it
+        is also the only hint that the × is a button and not decoration. */
+    if (drawing === null) {
+      const over = closeAt(e) >= 0;
+      if (over !== overClose) { overClose = over; syncCursor(); }
+      if (over) return;
+    }
     /*  With a shape on the clipboard the cursor is a stamp, so the canvas has
         to show where it would land whether a button is down or not. */
     if (tool === "copy") {
       const at = cellAt(e);
+      /*  Two different jobs on the same tool: with nothing on the clipboard
+          the pointer is drawing the box, and with something on it the pointer
+          is carrying that something. */
+      if (!clip && anchor) {
+        if (!pending || pending.x !== at.x || pending.y !== at.y) { pending = at; paint(); }
+        return;
+      }
       if (clip && (!hover || hover.x !== at.x || hover.y !== at.y)) { hover = at; paint(); }
       return;
     }
@@ -8391,9 +8517,13 @@ function renderSpriteEditor(model, host) {
     if (drawing === null) return;
     const { x, y } = cellAt(e);
     if (tool === "measure") {
-      if (anchor && measured) {
-        measured = { x0: Math.min(anchor.x, x), y0: Math.min(anchor.y, y),
-                     x1: Math.max(anchor.x, x), y1: Math.max(anchor.y, y), shape: false };
+      //  The one under the hand is always the one most recently pushed.
+      const mine = measures();
+      if (anchor && mine.length) {
+        const m = mine[mine.length - 1];
+        m.x0 = Math.min(anchor.x, x); m.y0 = Math.min(anchor.y, y);
+        m.x1 = Math.max(anchor.x, x); m.y1 = Math.max(anchor.y, y);
+        m.shape = false;
         paint();
       }
       return;
@@ -8487,11 +8617,38 @@ function renderSpriteEditor(model, host) {
   const stop = () => {
     //  Borrowed for one drag; given back however this drag ends.
     const back = () => { if (panFrom) { tool = panFrom; panFrom = null; } };
+    /*  The box is only a selection once you let go of it. A drag that never
+        left its cell is a one-pixel box, which is a legitimate thing to want —
+        the single dark square that is somebody's eye — so it is not treated as
+        a mis-click. */
+    if (tool === "copy" && !clip && anchor && pending) {
+      const got = liftBox(anchor.x, anchor.y, pending.x, pending.y);
+      hover = pending;
+      drawing = null; anchor = null; pending = null; atCell = null;
+      paint();
+      //  After the repaint, which writes the hint line itself and would
+      //  otherwise wipe this the instant it was set.
+      if (!got) hint.textContent = "nothing drawn inside that box";
+      return;
+    }
     /*  A measure drag that never left its starting cell was a click, and a
         click is a question about the shape there rather than about one cell. */
     if (tool === "measure") {
-      if (measured && measured.x0 === measured.x1 && measured.y0 === measured.y1) {
-        measured = shapeBox(measured.x0, measured.y0) || measured;
+      const mine = measures();
+      const last = mine.length - 1, m = mine[last];
+      if (m && m.x0 === m.x1 && m.y0 === m.y1) {
+        mine[last] = shapeBox(m.x0, m.y0) || m;
+      }
+      /*  THE SAME THING TWICE IS ONE MARK.
+
+          Clicking a shape you have already measured used to stack an identical
+          box on an identical box: nothing looked different, and dismissing it
+          left a second one behind that you had no way of knowing was there.
+          Now the second click is simply the first answer again. */
+      const now = mine[last];
+      if (now && mine.some((o, i) => i !== last && o.x0 === now.x0
+            && o.y0 === now.y0 && o.x1 === now.x1 && o.y1 === now.y1)) {
+        mine.pop();
       }
       drawing = null; anchor = null; pending = null; atCell = null;
       paint();
@@ -8651,8 +8808,7 @@ function renderSpriteEditor(model, host) {
       : "the system crosshair \u2014 press to let the outlined cell be the pointer, "
         + "which shows which square you are actually on";
     curBtn.classList.toggle("on", cellCursor);
-    //  The canvas keeps the crosshair unless the drawn cell has replaced it.
-    grid.style.cursor = cellCursor ? "none" : "crosshair";
+    syncCursor();
     /*  Only while the tool that makes them is up. A guide is not a setting you
         keep an eye on, it is something you are either placing or not. */
     guideBar.hidden = tool !== "guide";
@@ -8736,6 +8892,26 @@ function renderSpriteEditor(model, host) {
         colors, faintly, so it reads as a proposal rather than as paint that
         has already gone down. Outlined as well, because a shape lifted from a
         dark coat and hovered over a dark coat is otherwise invisible. */
+    /*  THE BOX BEING DRAWN.
+
+        A marching-ants outline and nothing else — no fill, no tint. The whole
+        promise of a marquee is that you can see exactly what is inside it, and
+        a wash over the pixels breaks that at the moment you most need it.
+        Dashed, so it cannot be read as a rectangle you have drawn, and in the
+        same blue the stamp preview uses, because it is the same operation one
+        step earlier. */
+    if (tool === "copy" && !clip && anchor && pending) {
+      const bx0 = Math.min(anchor.x, pending.x), bx1 = Math.max(anchor.x, pending.x);
+      const by0 = Math.min(anchor.y, pending.y), by1 = Math.max(anchor.y, pending.y);
+      g.save();
+      g.strokeStyle = gridLight() ? "rgba(0,105,165,0.95)" : "rgba(120,220,255,0.95)";
+      g.lineWidth = 1;
+      g.setLineDash([3, 2]);
+      g.strokeRect(bx0 * z + 0.5, by0 * z + 0.5,
+                   (bx1 - bx0 + 1) * z - 1, (by1 - by0 + 1) * z - 1);
+      g.restore();
+    }
+
     if (tool === "copy" && clip && hover) {
       g.globalAlpha = 0.75;
       for (const [dx, dy, r, g2, b, a] of clip.pts) {
@@ -8757,7 +8933,7 @@ function renderSpriteEditor(model, host) {
     /*  The shape under the cursor, not yet committed. Drawn in the pen's own
         color so what you see is what you get, and outlined when erasing,
         where the color is nothing. */
-    if (anchor && pending && tool !== "pencil" && tool !== "move") {
+    if (anchor && pending && tool !== "pencil" && tool !== "move" && tool !== "copy") {
       const col = drawing ? null : colorNow();
       for (const [px, py] of shapePixels(anchor.x, anchor.y, pending.x, pending.y)) {
         if (px < 0 || py < 0 || px >= cw || py >= ch) continue;
@@ -8962,7 +9138,10 @@ function renderSpriteEditor(model, host) {
         for something drawn, and labelled with the same numbers the live
         readout uses — cells, and real units on a place, so a window can be
         compared against the door you drew an hour ago. */
-    if (measured) {
+    measCloses = [];
+    const mine = measures();
+    for (let mi = 0; mi < mine.length; mi++) {
+      const measured = mine[mi];
       const { x0, y0, x1, y1 } = measured;
       const w = x1 - x0 + 1, h = y1 - y0 + 1;
       g.strokeStyle = gridLight() ? "rgba(150,60,180,0.95)" : "rgba(226,150,255,0.95)";
@@ -8990,15 +9169,79 @@ function renderSpriteEditor(model, host) {
           So: above by preference, below if that does not fit, and then clamped
           into the canvas whatever happens. A label half over its own box is
           worth more than a label you cannot read. */
-      const pad = 4, tw = g.measureText(txt).width, bw = tw + pad * 2, bh = 15;
+      /*  THE × THAT PUTS IT AWAY.
+
+          A measurement that survives every tool needs somewhere obvious to
+          die, and the obvious place is on the thing itself, next to the
+          numbers it is about — not back on a tool button three rows up, which
+          is where you would have to go looking for it.
+
+          It is drawn, not a DOM node, because the label it hangs off is drawn:
+          a real button would have to be positioned over a canvas whose cell
+          size, offset and clamping all move underneath it. So the box is
+          remembered in `measCloses` and the pointer handler tests it first. */
+      const pad = 4, gap = 6, xw = 11;
+      const tw = g.measureText(txt).width;
+      const bw = tw + pad * 2 + gap + xw, bh = 15;
       let bx = x0 * z, by = y0 * z - bh - 2;
       if (by < 0) by = y1 * z + z + 3;
       bx = Math.max(0, Math.min(bx, grid.width - bw));
+      by = Math.max(0, Math.min(by, grid.height - bh));
+      /*  NUDGED OFF THE LABEL ALREADY THERE.
+
+          Two marks that start on the same row put their labels in exactly the
+          same place, and the second one drawn wins — the first is unreadable
+          and its ⊗ is unreachable, buried under an opaque box. Measure a row of
+          windows along a wall and that is every one of them but the last.
+
+          So a label that would land on one already placed steps down past it,
+          as many times as it takes. Sideways would leave the label pointing at
+          the wrong box; downwards it stays over its own. */
+      for (let guard = 0; guard < measCloses.length + 1; guard++) {
+        const clash = measCloses.find(o =>
+          Math.abs(o.ly - by) < bh && bx < o.lx + o.lw && o.lx < bx + bw);
+        if (!clash) break;
+        by = clash.ly + bh + 1;
+      }
       by = Math.max(0, Math.min(by, grid.height - bh));
       g.fillStyle = gridLight() ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.78)";
       g.fillRect(bx, by, bw, bh);
       g.fillStyle = gridLight() ? "rgb(120,40,150)" : "rgb(232,170,255)";
       g.fillText(txt, bx + pad, by + 2);
+
+      /*  A RING AROUND IT, so it reads as a control.
+
+          A bare × in a line of type is just another character — it sat beside
+          `9 × 11` looking like part of the sum, which is the one thing this
+          label already has two of. Circled, it stops being type: a ring is a
+          button everywhere on a screen, and nothing else drawn on this canvas
+          is round.
+
+          Drawn rather than set as ⊗, because the glyph is a different size in
+          every font it falls back through and lands off the baseline in most
+          of them. Two strokes and an arc are the same shape at any size and
+          land exactly where they are put. */
+      const cx = bx + pad + tw + gap, cy = by + bh / 2, rr = 5;
+      g.save();
+      g.lineWidth = 1;
+      g.strokeStyle = gridLight() ? "rgb(120,40,150)" : "rgb(232,170,255)";
+      g.beginPath();
+      g.arc(cx + rr, cy, rr - 0.5, 0, Math.PI * 2);
+      g.stroke();
+      const arm = 2;
+      g.beginPath();
+      g.moveTo(cx + rr - arm, cy - arm); g.lineTo(cx + rr + arm, cy + arm);
+      g.moveTo(cx + rr + arm, cy - arm); g.lineTo(cx + rr - arm, cy + arm);
+      g.stroke();
+      g.restore();
+      /*  Bigger than it looks: the ring is 10px across and the whole right end
+          of the label takes the press, because a 10px target is not one you can
+          hit with a mouse in a hurry, let alone a finger. */
+      measCloses.push({
+        i: mi,
+        x: cx - gap / 2, y: by, w: xw + gap / 2 + pad, h: bh,
+        lx: bx, ly: by, lw: bw,          // the whole label, for the nudge above
+      });
     }
 
     /*  HOW FAR THIS STROKE HAS GONE, WHILE IT IS GOING.
@@ -9054,8 +9297,10 @@ function renderSpriteEditor(model, host) {
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
     if (host._wipQueue) host._wipQueue();
     hint.textContent = (tool === "copy"
-                        ? (clip ? "click to stamp it — right-click to drop it"
-                                : "click a pixel to lift its shape")
+                        ? (clip ? clip.w + " × " + clip.h
+                                    + " on the clipboard · click to stamp it "
+                                    + "— right-click to drop it"
+                                : "drag a box round what you want")
                       : tool === "pencil" ? "drag to draw"
                       : tool === "move" ? "drag to nudge the layer"
                       : tool === "guide" ? "drag to aim \u2014 shift snaps to 15\u00b0, "
