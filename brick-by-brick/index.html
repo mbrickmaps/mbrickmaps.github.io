@@ -278,6 +278,43 @@
       the right so it ends where the canvas ends. Ragged left under a hard edge
       reads as deliberate; ragged right reads as unfinished. */
   .sp-under { margin-top: 6px; justify-content: flex-end; }
+
+  /*  THE PHOTO RULER.
+
+      Deliberately not the sprite canvas: that one is a few hundred pixels
+      across at the fit, does not zoom, and counts in cells — three good
+      reasons why you cannot put a measurement endpoint on the corner of a
+      window in a photograph with it. */
+  .rl-wrap { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+  .rl-bar { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .rl-stage {
+    flex: 1 1 auto; min-height: 120px; position: relative; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: var(--bg-soft, rgba(127,127,127,0.06));
+  }
+  .rl-stage.drop { outline: 2px dashed var(--accent2); outline-offset: -3px; }
+  /*  TAKEN OUT OF THE FLOW ENTIRELY.
+
+      It was `display: block` and in it, which made the canvas's height part of
+      what sized the stage — and the stage's height is what sizes the canvas.
+      Painting set the canvas taller, which grew the stage, which fired the
+      resize observer, which painted, and the fit oscillated between two values
+      forever. Absolute, it cannot influence its own container. */
+  .rl-stage canvas {
+    position: absolute; top: 0; left: 0;
+    touch-action: none; cursor: crosshair;
+  }
+  .rl-empty {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; text-align: center; padding: 0 18px;
+    color: var(--muted); font-size: 0.78rem; line-height: 1.5;
+  }
+  .rl-num { width: 74px; }
+  .rl-unit { width: 54px; }
+  /*  The calibration reads as a sentence, so the row it is in is spaced like
+      one rather than like a form. */
+  .rl-say { font-size: 0.72rem; color: var(--muted); }
+  .rl-cal { font-size: 0.72rem; color: var(--accent2); }
   /*  The tool row sits directly on the canvas otherwise, and a button touching
       a drawing surface reads as part of it. `fitZ` measures from the canvas's
       own top, so this comes out of the space it is given rather than pushing
@@ -2535,6 +2572,15 @@ Brick.viz.register("art", {
     "on the Promenade, exactly as though it were in images/places/. Download " +
     "one when it earns a place in the repository.",
   render: (model, el) => renderArtHeld(model, el),
+});
+
+Brick.viz.register("ruler", {
+  emoji: "📐", label: "Photo Ruler", w: 3, h: 2,
+  description: "Measure a photograph. Draw a line along something whose size " +
+    "you know, say what it is worth, and every other line you draw reads in " +
+    "those units. For working out how wide a door actually is before you " +
+    "draw it a pixel at a time.",
+  render: (model, el) => renderRuler(model, el),
 });
 
 Brick.viz.register("map", {
@@ -6514,6 +6560,659 @@ function renderArtHeld(model, host) {
     list.appendChild(row);
   }
 
+}
+
+/* ==========================================================================
+   THE PHOTO RULER — what is that, in feet?
+
+   The question this answers comes up before a single pixel is drawn: you have
+   a photograph of a mill, you are about to draw it 102 cells wide, and you do
+   not know how wide the real door is. Nothing on the sprite canvas can tell
+   you. Its measure tool counts CELLS — the unit of the drawing you have not
+   made yet — and it is a few hundred screen pixels across, does not zoom, and
+   snaps to a grid, so you cannot even put an endpoint on the corner of a
+   window.
+
+   So the photo gets its own surface, at its own resolution, and measuring here
+   is in image pixels, which are meaningless until you say otherwise. You say
+   otherwise by drawing one line along something you DO know the size of — a
+   scale bar, a doorway, a car, a person — and typing what it is worth. Every
+   line on the photo then reads in those units, including the ones you had
+   already drawn.
+
+   That is the whole tool. Not a perspective correction, not a rectification:
+   one ratio, applied everywhere. It is honest about the cost of that, which is
+   that a line running away from the camera reads short, and it says so rather
+   than pretending. Measuring across the face of a building is the case that
+   matters and the case this gets right.
+   ========================================================================== */
+function renderRuler(model, host) {
+  //  Built once. The model has nothing to do with this panel, and rebuilding
+  //  would throw away the photo and every line on it.
+  if (host._rulerBuilt) return;
+  host._rulerBuilt = true;
+  host.innerHTML = "";
+
+  const el = (tag, cls, parent) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+
+  const wrap = el("div", "rl-wrap", host);
+  const bar = el("div", "rl-bar", wrap);
+  const stage = el("div", "rl-stage", wrap);
+  const cv = el("canvas", null, stage);
+  const empty = el("div", "rl-empty", stage);
+  empty.innerHTML = "Drop a photograph here, or <b>open…</b> one.<br>"
+    + "Draw a line along something you know the size of, say what it is worth, "
+    + "and everything else you draw reads in those units.";
+  const foot = el("div", "rl-bar", wrap);
+
+  let img = null;              // the photograph, at its own resolution
+  let fit = 1;                 // image pixels per screen pixel, from the fit
+  let ox = 0, oy = 0;          // where the fitted image sits in the canvas
+  const lines = [];            // { x0, y0, x1, y1 } in IMAGE pixels
+  let ref = null;              // index of the calibrating line, or null
+
+  /*  EVERYTHING IS HELD IN METRES.
+
+      Not because metres are the right unit to think in — you will want feet
+      for a Victorian mill — but because a calibration held in the unit it was
+      typed in cannot be read back in another one without carrying the original
+      around anyway. One base unit, converted on the way in and on the way out,
+      and switching what you are reading in is then a change to one number and
+      not a recalibration.
+
+      The list is what you would actually measure a building in. Adding to it
+      is a line. */
+  const UNITS = { mm: 0.001, cm: 0.01, m: 1, in: 0.0254, ft: 0.3048, yd: 0.9144 };
+  let perM = 0;                // metres for one image pixel
+  let unit = "ft";             // what the numbers are being READ in
+  const per = () => (perM > 0 ? perM / UNITS[unit] : 0);
+
+  /*  PERSPECTIVE.
+
+      One ratio is a lie about a photograph taken at an angle. It is true only
+      for things lying parallel to the film at one particular depth: the moment
+      a wall runs away from the camera, a foot at the far end covers fewer
+      pixels than a foot at the near end, and no single number can be right for
+      both.
+
+      What fixes it is knowing ONE RECTANGLE. Four points that you know are the
+      corners of a real rectangle — a door, a window, a gable, a panel — carry
+      enough information to undo the projection across the whole of the flat
+      surface they lie on. Say what that rectangle really measures and the
+      surface is not just square again, it is to scale, and everything on it
+      can be measured including the diagonals.
+
+      This is a homography and it is eight numbers. There is no camera in it,
+      no lens, no guessing: four points in, four points out, solve the linear
+      system. What it cannot do is measure anything off that surface — the roof
+      is a different plane, and the yard in front of the building is another
+      one again. Measuring the side wall means squaring up the side wall. */
+  let quad = null;             // 4 image points known to be a real rectangle
+  let quadW = 0, quadH = 0;    // what that rectangle really measures, in metres
+  let plane = null;            // the homography, image pixels -> metres
+  let picking = null;          // corners collected so far, while collecting
+
+  /*  Eight unknowns from four correspondences, by plain Gaussian elimination
+      with partial pivoting. An 8x8 solve is nothing, and a closed form for
+      this would be a page of algebra nobody could check. */
+  function solve(A, y) {
+    const n = y.length;
+    for (let c = 0; c < n; c++) {
+      let best = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[best][c])) best = r;
+      if (Math.abs(A[best][c]) < 1e-12) return null;      // degenerate: no answer
+      [A[c], A[best]] = [A[best], A[c]];
+      [y[c], y[best]] = [y[best], y[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        if (!f) continue;
+        for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+        y[r] -= f * y[c];
+      }
+    }
+    return y.map((v, i) => v / A[i][i]);
+  }
+
+  /*  The corners are taken in the order they were clicked and mapped onto the
+      rectangle's corners in the same order, so any starting corner and either
+      direction round works — what must not happen is clicking them in a figure
+      of eight, which maps the surface onto a bow tie. */
+  function buildPlane() {
+    plane = null;
+    if (!quad || quad.length !== 4 || !(quadW > 0) || !(quadH > 0)) return;
+    const dst = [[0, 0], [quadW, 0], [quadW, quadH], [0, quadH]];
+    const A = [], y = [];
+    for (let i = 0; i < 4; i++) {
+      const [x, v] = [quad[i].x, quad[i].y];
+      const [u, w] = dst[i];
+      A.push([x, v, 1, 0, 0, 0, -u * x, -u * v]); y.push(u);
+      A.push([0, 0, 0, x, v, 1, -w * x, -w * v]); y.push(w);
+    }
+    const h = solve(A, y);
+    if (h) plane = h;
+  }
+
+  //  An image pixel, in metres on the squared-up surface.
+  const onPlane = p => {
+    const [a, b2, c, d, e, f, g2, h2] = plane;
+    const w = g2 * p.x + h2 * p.y + 1;
+    if (!w) return { x: 0, y: 0 };
+    return { x: (a * p.x + b2 * p.y + c) / w, y: (d * p.x + e * p.y + f) / w };
+  };
+  let anchor = null;           // the line being dragged, while it is dragged
+  let live = null;
+
+  /*  Kept for the session and no longer. The photograph is somebody's 4MB
+      holiday snap and localStorage is a 5MB drawer that the sprite editor's
+      draft is already living in; quietly filling it to save a reference you
+      are done with in ten minutes is a bad trade. */
+
+  const len = l => Math.hypot(l.x1 - l.x0, l.y1 - l.y0);
+  /*  Two decimals is a lie about a measurement taken by eye off a photograph,
+      and none is unusable for anything under a foot. One, and it can say
+      "8 ft" flat when the number is round. */
+  const say = n => {
+    /*  Millimetres do not want a decimal and metres want two — a tenth of a
+        millimetre off a photograph is a fiction, and 3.7 m loses the 5 cm that
+        might matter. The unit decides, not one rule for all of them. */
+    const dp = unit === "mm" ? 0 : (unit === "m" || unit === "yd") ? 2 : 1;
+    const r = +n.toFixed(dp);
+    return (Number.isInteger(r) ? r : r.toFixed(dp)) + " " + unit;
+  };
+  /*  Through the squared-up surface when one has been set, which is the only
+      honest answer on an angled photograph, and by the flat ratio otherwise. */
+  const realOfLine = l => {
+    if (plane) {
+      const a = onPlane({ x: l.x0, y: l.y0 }), b = onPlane({ x: l.x1, y: l.y1 });
+      return Math.hypot(b.x - a.x, b.y - a.y) / UNITS[unit];
+    }
+    return perM > 0 ? len(l) * per() : 0;
+  };
+  const label = l => ((plane || perM > 0) ? say(realOfLine(l))
+                                          : Math.round(len(l)) + " px");
+
+  /*  The fit, recomputed on every paint because a panel can be resized by its
+      own corner handle at any moment. Never magnified past 1:1 — blowing a
+      small photograph up adds no detail and only makes the endpoints harder to
+      place, since a screen pixel then covers less than an image pixel. */
+  function layout() {
+    const box = stage.getBoundingClientRect();
+    const w = Math.max(40, Math.floor(box.width));
+    const h = Math.max(40, Math.floor(box.height));
+    cv.width = w; cv.height = h;
+    if (!img) { fit = 1; ox = oy = 0; return; }
+    const s = Math.min(w / img.width, h / img.height, 1);
+    fit = 1 / s;
+    ox = Math.round((w - img.width * s) / 2);
+    oy = Math.round((h - img.height * s) / 2);
+  }
+
+  //  Screen to image and back. Every line is stored in image pixels, so a
+  //  resize of the panel moves the drawing and not the measurements.
+  const toImg = e => {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left - ox) * fit, y: (e.clientY - r.top - oy) * fit };
+  };
+  const sx = x => ox + x / fit;
+  const sy = y => oy + y / fit;
+
+  function paint() {
+    layout();
+    const g = cv.getContext("2d");
+    g.clearRect(0, 0, cv.width, cv.height);
+    if (!img) { empty.hidden = false; sync(); return; }
+    empty.hidden = true;
+    /*  Smoothed, unlike everywhere else in this file. This is a photograph
+        being shrunk to fit a panel, not pixel art being blown up: nearest
+        neighbour here would drop every second row of a 3000px image and throw
+        away the detail you are trying to measure. */
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
+    g.drawImage(img, 0, 0, img.width, img.height,
+                ox, oy, img.width / fit, img.height / fit);
+
+    /*  THE RECTANGLE, IF ONE HAS BEEN NAMED.
+
+        Magenta and dashed, in nothing like the colour of a measurement, and
+        drawn under them: it is not a thing you measured, it is the statement
+        about the ground that makes the measurements mean anything. */
+    const corners = quad || picking;
+    if (corners && corners.length) {
+      g.save();
+      g.strokeStyle = plane ? "rgba(255,120,220,0.95)" : "rgba(255,120,220,0.6)";
+      g.lineWidth = 1.5;
+      g.setLineDash([5, 3]);
+      g.beginPath();
+      corners.forEach((c, i) => {
+        const X = sx(c.x), Y = sy(c.y);
+        if (i) g.lineTo(X, Y); else g.moveTo(X, Y);
+      });
+      if (corners.length === 4) g.closePath();
+      g.stroke();
+      g.setLineDash([]);
+      corners.forEach((c, i) => {
+        g.fillStyle = "rgba(0,0,0,0.6)";
+        g.beginPath(); g.arc(sx(c.x), sy(c.y), 4.5, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "rgb(255,140,225)";
+        g.beginPath(); g.arc(sx(c.x), sy(c.y), 2.5, 0, Math.PI * 2); g.fill();
+        //  Numbered while picking, because the order is the one thing that can
+        //  go wrong and the one thing you cannot see afterwards.
+        if (!quad) {
+          g.font = "10px ui-monospace, monospace";
+          g.fillStyle = "rgb(255,190,240)";
+          g.fillText(String(i + 1), sx(c.x) + 6, sy(c.y) - 6);
+        }
+      });
+      g.restore();
+    }
+
+    const all = anchor && live ? lines.concat([{ x0: anchor.x, y0: anchor.y,
+                                                 x1: live.x, y1: live.y }]) : lines;
+    all.forEach((l, i) => {
+      const isRef = i === ref;
+      const a = { x: sx(l.x0), y: sy(l.y0) }, b = { x: sx(l.x1), y: sy(l.y1) };
+      /*  Drawn twice, dark under light. A thin bright line over a photograph
+          disappears the moment it crosses anything pale, and a photograph is
+          mostly pale somewhere. */
+      g.lineCap = "round";
+      g.strokeStyle = "rgba(0,0,0,0.55)"; g.lineWidth = 3.5;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+      g.strokeStyle = isRef ? "rgb(120,235,150)" : "rgb(255,235,120)";
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+      //  End caps, so you can see exactly where you put it.
+      for (const p of [a, b]) {
+        g.fillStyle = "rgba(0,0,0,0.55)";
+        g.beginPath(); g.arc(p.x, p.y, 3.5, 0, Math.PI * 2); g.fill();
+        g.fillStyle = isRef ? "rgb(120,235,150)" : "rgb(255,235,120)";
+        g.beginPath(); g.arc(p.x, p.y, 2, 0, Math.PI * 2); g.fill();
+      }
+
+      const txt = label(l) + (isRef ? "  ✓" : "");
+      g.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+      g.textBaseline = "top";
+      const tw = g.measureText(txt).width, bw = tw + 8, bh = 15;
+      /*  On the line's middle rather than an end: an end is where your hand
+          is, and a label under the pointer is a label you cannot read while
+          placing the thing it belongs to. */
+      let lx = (a.x + b.x) / 2 - bw / 2, ly = (a.y + b.y) / 2 - bh - 5;
+      lx = Math.max(0, Math.min(lx, cv.width - bw));
+      ly = Math.max(0, Math.min(ly, cv.height - bh));
+      g.fillStyle = "rgba(0,0,0,0.72)";
+      g.fillRect(lx, ly, bw, bh);
+      g.fillStyle = isRef ? "rgb(150,245,175)" : "rgb(255,240,160)";
+      g.fillText(txt, lx + 4, ly + 2);
+    });
+    sync();
+  }
+
+  // ---- the bar
+  const openBtn = el("button", null, bar);
+  openBtn.type = "button"; openBtn.textContent = "open…";
+  openBtn.title = "choose a photograph to measure";
+  const fileIn = el("input", null, bar);
+  fileIn.type = "file"; fileIn.accept = "image/*"; fileIn.hidden = true;
+  openBtn.onclick = () => fileIn.click();
+  fileIn.onchange = () => { if (fileIn.files && fileIn.files[0]) take(fileIn.files[0]); };
+
+  const clearBtn = el("button", null, bar);
+  clearBtn.type = "button"; clearBtn.textContent = "clear lines";
+  clearBtn.onclick = () => { lines.length = 0; ref = null; perM = 0; paint(); };
+
+  const dropBtn = el("button", null, bar);
+  dropBtn.type = "button"; dropBtn.textContent = "close photo";
+  dropBtn.onclick = () => {
+    if (img && img.__url) URL.revokeObjectURL(img.__url);
+    img = null; lines.length = 0; ref = null; perM = 0;
+    paint();
+  };
+
+  const named = el("span", "rl-say", bar);
+
+  /*  THE SENTENCE THAT MAKES THE NUMBERS MEAN ANYTHING.
+
+      "this line is [12] [ft]" — read left to right, it says what it does. It
+      was a labelled pair of boxes first, which is the same three facts
+      arranged as a form and reads as one more thing to fill in. */
+  const saidWhich = el("span", "rl-say", foot);
+  saidWhich.textContent = "this line is";
+  const amtIn = el("input", "rl-num", foot);
+  amtIn.type = "number"; amtIn.min = "0"; amtIn.step = "any";
+  amtIn.placeholder = "12";
+  amtIn.title = "what that line is worth in the real world";
+  const unitIn = el("select", "rl-unit", foot);
+  for (const u of Object.keys(UNITS)) {
+    const o = el("option", null, unitIn);
+    o.value = u; o.textContent = u;
+  }
+  unitIn.value = unit;
+  unitIn.title = "read every measurement in this — change it any time and "
+               + "they all convert";
+  /*  CHANGING THIS IS NOT A RECALIBRATION.
+
+      The photograph did not change and neither did the line you measured; you
+      have only asked to be told in different words. So the scale stays exactly
+      where it is and the sentence above rewrites itself to match — set it to
+      40 ft, switch to m, and it reads 12.19 m, which is the same fact. */
+  unitIn.onchange = () => {
+    unit = unitIn.value;
+    if (perM > 0 && ref !== null) {
+      const metres = len(lines[ref]) * perM;
+      amtIn.value = +(metres / UNITS[unit]).toFixed(4);
+    }
+    paint();
+  };
+  const setBtn = el("button", null, foot);
+  setBtn.type = "button"; setBtn.textContent = "set the scale";
+  const calNote = el("span", "rl-cal", foot);
+
+  /*  ITS OWN LINE, because it is a different claim about the photograph. The
+      line above says how big one thing is; this says what shape the ground
+      under everything is. */
+  const foot2 = el("div", "rl-bar", wrap);
+  const sqBtn = el("button", null, foot2);
+  sqBtn.type = "button"; sqBtn.textContent = "square up\u2026";
+  sqBtn.title = "click the four corners of something you know is a real "
+              + "rectangle \u2014 a door, a window, a wall panel";
+  el("span", "rl-say", foot2).textContent = "that rectangle is";
+  const rwIn = el("input", "rl-num", foot2);
+  rwIn.type = "number"; rwIn.min = "0"; rwIn.step = "any"; rwIn.placeholder = "wide";
+  el("span", "rl-say", foot2).textContent = "\u00d7";
+  const rhIn = el("input", "rl-num", foot2);
+  rhIn.type = "number"; rhIn.min = "0"; rhIn.step = "any"; rhIn.placeholder = "tall";
+  const sqNote = el("span", "rl-cal", foot2);
+  const sqClear = el("button", null, foot2);
+  sqClear.type = "button"; sqClear.textContent = "\u2297";
+  sqClear.title = "forget the rectangle and go back to the flat ratio";
+
+  const applyPlane = () => {
+    quadW = (+rwIn.value || 0) * UNITS[unit];
+    quadH = (+rhIn.value || 0) * UNITS[unit];
+    buildPlane();
+    paint();
+  };
+  sqBtn.onclick = () => { picking = []; quad = null; plane = null; paint(); };
+  rwIn.oninput = applyPlane;
+  rhIn.oninput = applyPlane;
+  sqClear.onclick = () => {
+    quad = null; plane = null; picking = null; quadW = quadH = 0;
+    rwIn.value = ""; rhIn.value = "";
+    paint();
+  };
+
+  /*  What you TYPED, kept as the fact it is. The length in units is what you
+      said; the length in pixels is what you drew; the ratio between them is
+      derived. Storing the ratio alone would mean that nudging the reference
+      line's end changed how long the reference line is in feet, which is
+      backwards — you did not move the doorway, you corrected where you had
+      put the line on it. */
+  let refMetres = 0;
+  const recalibrate = () => {
+    if (ref === null || !(refMetres > 0)) return;
+    const px = len(lines[ref]);
+    if (px > 0) perM = refMetres / px;
+  };
+
+  /*  Always the last line drawn, which is what the sentence says. Changing
+      which line is the reference is done by drawing another one, not by a
+      selection mode nobody asked for. */
+  const calibrate = () => {
+    if (!lines.length) return;
+    const amt = +amtIn.value;
+    const i = ref === null ? lines.length - 1 : ref;
+    if (!lines[i] || !(amt > 0) || !(len(lines[i]) > 0)) return;
+    unit = unitIn.value;
+    refMetres = amt * UNITS[unit];
+    ref = i;
+    recalibrate();
+    paint();
+  };
+  setBtn.onclick = calibrate;
+  amtIn.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); calibrate(); } };
+  unitIn.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); calibrate(); } };
+
+  /*  The box shows what the selected line is worth right now — the figure you
+      typed if it is calibrated, and the reading otherwise. Selecting a
+      different line and pressing set the scale then means what it looks like
+      it means, instead of quietly reusing the last number you typed for a
+      completely different line. */
+  const syncAmount = () => {
+    if (ref === null || !lines[ref]) return;
+    amtIn.value = perM > 0
+      ? +(len(lines[ref]) * per()).toFixed(4)
+      : "";
+  };
+
+  function sync() {
+    const has = !!img, n = lines.length;
+    clearBtn.disabled = !n;
+    dropBtn.disabled = !has;
+    unitIn.disabled = false;
+    named.textContent = has ? (img.__name || "") : "";
+    //  Nothing derived. "1 px = 0.034 ft" is arithmetic you did not ask for
+    //  and cannot use; the numbers on the lines are the answer.
+    calNote.textContent = plane ? "" : (perM > 0 ? "scale set" : "");
+    //  While a rectangle is doing the work, the single ratio is not.
+    amtIn.disabled = setBtn.disabled = !n || !!plane;
+    sqClear.hidden = !quad && !picking;
+    sqBtn.disabled = !has || !!picking;
+    rwIn.disabled = rhIn.disabled = !quad;
+    sqNote.textContent = picking
+      ? "click corner " + (picking.length + 1) + " of 4"
+      : plane ? "squared up \u2014 measurements on that surface are true"
+      : quad ? "say how big it really is"
+      : "";
+  }
+
+  // ---- taking a photograph
+  async function take(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    const url = URL.createObjectURL(file);
+    const got = await new Promise(res => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
+      im.src = url;
+    });
+    if (!got) { URL.revokeObjectURL(url); return; }
+    if (img && img.__url) URL.revokeObjectURL(img.__url);
+    got.__url = url;
+    got.__name = file.name + "  ·  " + got.width + " × " + got.height;
+    img = got;
+    /*  A new photograph is a new subject, so the lines and the scale go with
+        the old one. Keeping them would silently report the last building's
+        measurements over this one. */
+    lines.length = 0; ref = null; perM = 0;
+    quad = null; plane = null; picking = null; quadW = quadH = 0;
+    paint();
+  }
+
+  const stop = e => { e.preventDefault(); e.stopPropagation(); };
+  stage.addEventListener("dragenter", e => { stop(e); stage.classList.add("drop"); });
+  stage.addEventListener("dragover", stop);
+  stage.addEventListener("dragleave", e => { stop(e); stage.classList.remove("drop"); });
+  stage.addEventListener("drop", e => {
+    stop(e);
+    stage.classList.remove("drop");
+    const f = [...((e.dataTransfer && e.dataTransfer.files) || [])]
+      .find(x => /^image\//.test(x.type));
+    if (f) take(f);
+  });
+
+  // ---- drawing lines
+  /*  Within six screen pixels of an end. Generous, because the whole job is
+      putting an endpoint exactly on a corner, and a target you have to hit
+      precisely in order to correct where you were imprecise is a joke. */
+  const NEAR = 6;
+  const endNear = p => {
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const l = lines[i];
+      if (Math.hypot(sx(l.x0) - sx(p.x), sy(l.y0) - sy(p.y)) < NEAR) return { i, end: 0 };
+      if (Math.hypot(sx(l.x1) - sx(p.x), sy(l.y1) - sy(p.y)) < NEAR) return { i, end: 1 };
+    }
+    return null;
+  };
+  /*  How far the pointer is from the line ITSELF, not from its ends. Clicking
+      a line is how you say "this is the one that is 12 metres", so the whole
+      length of it has to be a target. */
+  const segNear = p => {
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const l = lines[i];
+      const ax = sx(l.x0), ay = sy(l.y0), bx = sx(l.x1), by = sy(l.y1);
+      const px = sx(p.x), py = sy(p.y);
+      const vx = bx - ax, vy = by - ay, ll = vx * vx + vy * vy;
+      const t = ll ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / ll)) : 0;
+      if (Math.hypot(px - (ax + t * vx), py - (ay + t * vy)) < NEAR) return i;
+    }
+    return null;
+  };
+  let dragEnd = null;
+  let dragLine = null;      // { i, x, y, from } while a whole line is moved
+
+  cv.addEventListener("pointerdown", e => {
+    if (!img) return;
+    e.preventDefault();
+    const p = toImg(e);
+    /*  Right-click takes a line away — the same button that erases in the
+        sprite editor, and removing a line is the erase of a line. */
+    if (e.button === 2) {
+      //  Anywhere on the line, not only its ends — you delete a line by
+      //  pointing at the line.
+      const hit = endNear(p);
+      const i = hit ? hit.i : segNear(p);
+      if (i !== null && i !== undefined) {
+        lines.splice(i, 1);
+        if (ref === i) { ref = null; perM = 0; }
+        else if (ref !== null && ref > i) ref--;
+        paint();
+      }
+      return;
+    }
+    if (e.button !== 0) return;
+    /*  Collecting corners takes the press ahead of everything else: while you
+        are picking a rectangle you are not drawing lines, and a stray line
+        across the middle of the four clicks is exactly what would happen. */
+    if (picking) {
+      picking.push(p);
+      if (picking.length === 4) { quad = picking; picking = null; applyPlane(); }
+      paint();
+      return;
+    }
+    /*  Grab an end and you are moving that end. Measuring a photograph is
+        mostly adjusting a line you have already drawn — you get it roughly
+        right, then look closely and find you were two pixels off the corner. */
+    const hit = endNear(p);
+    if (hit) { dragEnd = hit; }
+    else {
+      /*  ON a line, and you are picking that line rather than starting a new
+          one across it. That is the gesture for "this one is the twelve
+          metres" — it was whichever you happened to have drawn last, which
+          meant re-drawing a line you already had in order to point at it. */
+      /*  A press on a line is either "this is the one that is 12 metres" or
+          "this one is in the wrong place", and which of the two it is only
+          becomes clear when you either move or do not move. So it is held as
+          a possible move, and settles into a selection on release if the
+          pointer never went anywhere. */
+      const on = segNear(p);
+      if (on !== null) {
+        const l = lines[on];
+        dragLine = { i: on, x: p.x, y: p.y, moved: false,
+                     from: { x0: l.x0, y0: l.y0, x1: l.x1, y1: l.y1 } };
+        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+        return;
+      }
+      anchor = p; live = p;
+    }
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+    paint();
+  });
+
+  cv.addEventListener("pointermove", e => {
+    if (!img) return;
+    const p = toImg(e);
+    if (dragLine) {
+      const dx = p.x - dragLine.x, dy = p.y - dragLine.y;
+      //  A hair of slop, so a click with a shaky hand is still a click.
+      if (Math.hypot(dx, dy) / fit > 2) dragLine.moved = true;
+      const l = lines[dragLine.i], f = dragLine.from;
+      l.x0 = f.x0 + dx; l.y0 = f.y0 + dy;
+      l.x1 = f.x1 + dx; l.y1 = f.y1 + dy;
+      if (ref === dragLine.i) recalibrate();
+      paint();
+      return;
+    }
+    if (dragEnd) {
+      const l = lines[dragEnd.i];
+      if (dragEnd.end) { l.x1 = p.x; l.y1 = p.y; } else { l.x0 = p.x; l.y0 = p.y; }
+      //  The ruler moved, so everything measured against it moves with it.
+      if (ref === dragEnd.i) recalibrate();
+      paint();
+      return;
+    }
+    if (anchor) { live = p; paint(); return; }
+    cv.style.cursor = endNear(p) ? "move"
+                    : segNear(p) !== null ? "grab"
+                    : "crosshair";
+  });
+
+  const done = e => {
+    if (dragLine) {
+      //  Never moved, so it was a click, so it was a choice of reference.
+      if (!dragLine.moved) { ref = dragLine.i; syncAmount(); }
+      dragLine = null;
+      paint();
+      return;
+    }
+    if (dragEnd) { dragEnd = null; paint(); return; }
+    if (!anchor) return;
+    const p = live || anchor;
+    /*  A click that never moved is not a line. It is where somebody meant to
+        press something, and leaving a zero-length dot on the photograph with
+        "0 ft" beside it helps nobody. */
+    if (Math.hypot(p.x - anchor.x, p.y - anchor.y) * (1 / fit) >= 3) {
+      lines.push({ x0: anchor.x, y0: anchor.y, x1: p.x, y1: p.y });
+      /*  ONLY WHILE THERE IS NO SCALE YET.
+
+          A new line used to become the reference every time, which meant that
+          once you had set your scale, the next line you drew silently took the
+          job over and the box under the photograph filled with ITS length. The
+          scale you set is a decision; drawing another line is not a request to
+          change it. So a fresh line adopts the reference only when nothing has
+          been calibrated — which is the one case where it is what you want,
+          because it is the line you are about to type a number for. */
+      if (!plane && !(perM > 0)) { ref = lines.length - 1; syncAmount(); }
+    }
+    anchor = null; live = null;
+    paint();
+  };
+  cv.addEventListener("pointerup", done);
+  cv.addEventListener("pointercancel", done);
+  cv.addEventListener("contextmenu", e => e.preventDefault());
+
+  /*  The panel is resizable by its own corner, and the fit is computed from
+      the stage. Without this the photograph keeps the size it had when it was
+      opened and the lines drift off it. */
+  /*  And only when the box has actually changed. Belt as well as braces: a
+      resize observer that repaints unconditionally is one stylesheet change
+      away from being a loop again, and this one is cheap to make impossible. */
+  if (typeof ResizeObserver === "function") {
+    let lastW = 0, lastH = 0;
+    const ro = new ResizeObserver(() => {
+      const b = stage.getBoundingClientRect();
+      const w = Math.floor(b.width), h = Math.floor(b.height);
+      if (w === lastW && h === lastH) return;
+      lastW = w; lastH = h;
+      paint();
+    });
+    ro.observe(stage);
+  }
+  paint();
 }
 
 function renderSpriteEditor(model, host) {
