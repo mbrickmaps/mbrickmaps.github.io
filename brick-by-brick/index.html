@@ -3509,12 +3509,78 @@ function loadImg(src) {
   });
 }
 
+/*  THE ANCHOR PIXEL.
+
+    A place drawing says where its own name goes, by carrying one pixel of a
+    colour nothing else uses. It travels inside the PNG, which is the only
+    place it can travel: the whole pipeline here is draw it, download it,
+    commit it, and anything held beside the file in this browser is lost at the
+    first `git pull` on another machine.
+
+    WHERE the pixel is says WHAT it is:
+
+      on the bottom row   a signpost, planted in the ground at that x. The
+                          building decides where its own post stands — beside
+                          the door, at the gable end — instead of it landing in
+                          the middle of the column whatever is drawn there.
+
+      anywhere else       a floating label at that exact point, with no post.
+                          For the things a post would be a lie about: a name
+                          over a roof, a hill, a stretch of water.
+
+    Magenta because no one paints with it. It is stripped on the way in, so the
+    pixel is a note to the renderer and never a mark on the picture. */
+const SIGN_MARK = { r: 255, g: 0, b: 255 };
+
+function readSignMark(img) {
+  const w = img.width, h = img.height;
+  if (!w || !h) return { img, at: null };
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingEnabled = false;
+  g.drawImage(img, 0, 0);
+  let d;
+  //  A picture from another origin taints the canvas and cannot be read back.
+  //  That is not a failure worth breaking the scene over: no mark, carry on.
+  try { d = g.getImageData(0, 0, w, h); } catch (e) { return { img, at: null }; }
+  const px = d.data;
+  const isMark = i => px[i] === SIGN_MARK.r && px[i + 1] === SIGN_MARK.g
+                   && px[i + 2] === SIGN_MARK.b && px[i + 3] > 0;
+  /*  The bottom row first and on its own, because that row is the question
+      being asked — is this a post? — and a magenta pixel in the sky is a
+      different answer, not a better one. */
+  let at = null;
+  for (let x = 0; x < w; x++) {
+    if (isMark(((h - 1) * w + x) * 4)) { at = { x, y: h - 1, ground: true }; break; }
+  }
+  if (!at) {
+    for (let y = 0; y < h - 1 && !at; y++) {
+      for (let x = 0; x < w; x++) {
+        if (isMark((y * w + x) * 4)) { at = { x, y, ground: false }; break; }
+      }
+    }
+  }
+  if (!at) return { img, at: null };
+  /*  Every one of them, not only the one that was found. Two marks is a
+      mistake, and leaving the second one painted on the building is a worse
+      answer than quietly taking both off. */
+  for (let i = 0; i < px.length; i += 4) if (isMark(i)) px[i + 3] = 0;
+  g.putImageData(d, 0, 0);
+  cv.__signAt = at;
+  return { img: cv, at };
+}
+
 function sceneImage(slug) {
   if (sceneCache.has(slug)) return sceneCache.get(slug);
   // The place's own picture, then the one everywhere shares.
   const pending = loadImg(sceneSrc(slug))
     .then(img => img || (slug === "default" ? null : loadImg(sceneSrc("default"))))
-    .then(img => { sceneCache.set(slug, img || null); return img || null; });
+    .then(img => {
+      const got = img ? readSignMark(img).img : null;
+      sceneCache.set(slug, got);
+      return got;
+    });
   sceneCache.set(slug, pending);
   return pending;
 }
@@ -5588,24 +5654,63 @@ function renderPromenadePixi(model, host) {
       sign.hitArea = new P.Rectangle(-half - tw, bandY - arc - 3 * Z,
                                      wide + tw * 2, hh * 2.4 + arc);
     } else {
-      /*  A signpost stands over the people, not among them. A person is 24
-          units tall, so the post runs to 40 and the board sits above that —
-          high enough that a crowded column never buries the name of the place
-          it is in. */
-      const POST_H = 40, BOARD_Y = -52;
-      const post = new P.Graphics();
-      post.beginFill(0x3a2f20).drawRect(-Z, -POST_H * Z, 2 * Z, POST_H * Z).endFill();
-      t.y = BOARD_Y * Z + 2;
+      /*  A signpost stands over the people, not among them — but it was
+          standing a long way over them. A person is 24 units tall and the post
+          ran to 40 with the board above that, which is a sign twice the height
+          of everyone under it: it read as scaffolding rather than as a
+          waymarker, and it pushed the name so far up that the eye had to
+          travel to connect it to the ground it names.
+
+          28 clears a head with room to spare, which is all the clearance the
+          rule ever needed. */
+      /*  WHERE THE DRAWING SAYS, IF IT SAYS ANYTHING.
+
+          A place picture may carry one magenta pixel naming its own anchor —
+          see `readSignMark`. On the bottom row it moves the post sideways to
+          that point of the building; anywhere else it means there is no post
+          at all and the name floats at that spot.
+
+          Held in the art's own pixels and converted here, because the scale
+          the picture is drawn at is not known until it is placed in a
+          column. */
+      const art = sceneCache.get(slug);
+      const at = art && !(art instanceof Promise) ? art.__signAt : null;
+      let offX = 0, floatY = null;
+      if (at && art) {
+        const artS = Math.min(1, ((wOf.get(slug) || STEP) - 8 * Z) / (art.width || 1)) * Z;
+        //  The art is anchored 0.5, 1 — centre, on the ground — so the pixel's
+        //  offset is measured from the middle of the picture and from its foot.
+        offX = (at.x + 0.5 - art.width / 2) * artS;
+        if (!at.ground) floatY = (at.y + 0.5 - art.height) * artS;
+      }
+
+      const POST_H = 28, BOARD_Y = -38;
       const board = new P.Graphics();
+      /*  A floating label hangs at the pixel; a planted one keeps the height
+          it has always had, so a street of ordinary places still reads as one
+          row of signs. */
+      const boardTop = floatY === null ? BOARD_Y * Z : floatY - (t.height + 4) / 2;
+      t.y = boardTop + 2;
       board.beginFill(0x4a3b28)
-        .drawRect(-t.width / 2 - 3, BOARD_Y * Z, t.width + 6, t.height + 4).endFill();
-      sign.addChild(post, board, t);
+        .drawRect(-t.width / 2 - 3, boardTop, t.width + 6, t.height + 4).endFill();
+      /*  NO POST WHEN IT IS NOT PLANTED.
+
+          A post running down from a name over a rooftop to the ground would be
+          drawing a claim the picture did not make. */
+      if (floatY === null) {
+        const post = new P.Graphics();
+        post.beginFill(0x3a2f20).drawRect(-Z, -POST_H * Z, 2 * Z, POST_H * Z).endFill();
+        sign.addChild(post);
+      }
+      sign.addChild(board, t);
       // Same reason as the walkers: a Container needs its own hit area, or the
       // Graphics and Text inside it are never tested.
-      sign.hitArea = new P.Rectangle(-t.width / 2 - 4, BOARD_Y * Z - 2, t.width + 8,
-                                     Math.abs(BOARD_Y) * Z + 6);
+      const hitTop = Math.min(boardTop, floatY === null ? -POST_H * Z : boardTop) - 2;
+      sign.hitArea = new P.Rectangle(-t.width / 2 - 4, hitTop, t.width + 8,
+                                     Math.abs(hitTop) + t.height + 8);
+      sign.__offX = offX;
     }
-    sign.x = x; sign.y = groundY();
+    sign.x = x + (sign.__offX || 0); sign.y = groundY();
     sign.eventMode = "static";
     sign.cursor = "pointer";
     /*  A GROUP'S RIBBON CAN BE DRAGGED INTO ANOTHER GAP.
@@ -6128,21 +6233,20 @@ function renderPromenadePixi(model, host) {
       if (!w || w.nameNode) return w && w.nameNode;
       const n = label(nameText, 8 * Z, nameColor);
       n.resolution = 2;
-      /*  Above the head on the street, under the feet in the grid.
+      /*  UNDER THE FEET, in both views.
 
-          On the street a name has to clear a crowd standing shoulder to
-          shoulder, and the only free space is upward. The grid is ruled into
-          rows with a gap under every figure and nobody beside them, so a
-          caption belongs where a caption goes — and above the head it collided
-          with the row above and with the group name written over the first
-          person in each run. */
-      if (GRID) {
-        n.anchor.set(0.5, 0);
-        n.y = 4 * Z;
-      } else {
-        n.anchor.set(0.5, 1);
-        n.y = -(SPR_H + 3) * Z;
-      }
+          It used to go above the head on the street, on the argument that a
+          crowd standing shoulder to shoulder leaves no free space except
+          upward. But up there it shares the sky with the signposts, the group
+          ribbons and the balloons, and a name floating at head height among
+          three other kinds of floating text is one more thing to read rather
+          than a caption on a person.
+
+          Under the feet it is where a caption goes, and it is unambiguous
+          about whom it belongs to: it touches them. The grid view had it there
+          already and was the better of the two. */
+      n.anchor.set(0.5, 0);
+      n.y = 4 * Z;
       n.scale.x = 1;   // counter-scaled so a walker turning does not write backwards
       node.addChild(n);
       w.nameNode = n;
@@ -6605,7 +6709,16 @@ function renderRuler(model, host) {
   const stage = el("div", "rl-stage", wrap);
   const cv = el("canvas", null, stage);
   const empty = el("div", "rl-empty", stage);
-  empty.innerHTML = "Drop a photograph here, or <b>open…</b> one.<br>"
+  /*  ONE CHILD, NOT LOOSE TEXT.
+
+      This is a centring flex container, and a flex container turns each run of
+      bare text between its element children into its own anonymous flex item.
+      With a <b> and a <br> in the middle, the sentence was chopped into three
+      items and laid out side by side in columns — "Drop a photograph here, or"
+      stacked in one narrow column, "open…" in the next. A single wrapper is
+      one item, and the text inside it flows as text. */
+  const emptyText = el("span", null, empty);
+  emptyText.innerHTML = "Drop a photograph here, or <b>open…</b> one.<br>"
     + "Draw a line along something you know the size of, say what it is worth, "
     + "and everything else you draw reads in those units.";
   const foot = el("div", "rl-bar", wrap);
@@ -7811,6 +7924,10 @@ function renderSpriteEditor(model, host) {
               + "drag across anything. Changes nothing. Mark as many as you like "
               + "— they stay while you draw. ⊗ drops one, right-click "
               + "drops the lot."],
+    /*  Place only, and hidden on the others — a coat has no signpost. */
+    ["anchor", "⚑", "where this place's name stands. On the bottom row it "
+             + "plants the signpost at that point; anywhere else the name "
+             + "floats there with no post. Right-click takes it off."],
   ];
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
     /*  A word is not an icon: the square, oversized box that makes a pencil
@@ -8823,6 +8940,23 @@ function renderSpriteEditor(model, host) {
     }
   }
 
+  /*  Every magenta pixel in the layer, across every frame. A place has one
+      frame, but the sweep costs nothing and an anchor stranded in a frame you
+      are not looking at would be invisible and permanent. */
+  function clearAnchor() {
+    const cv = layers[slot];
+    const g = cv.getContext("2d", { willReadFrequently: true });
+    const d = g.getImageData(0, 0, cv.width, cv.height);
+    const px = d.data;
+    let hit = false;
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i] === 255 && px[i + 1] === 0 && px[i + 2] === 255 && px[i + 3] > 0) {
+        px[i + 3] = 0; hit = true;
+      }
+    }
+    if (hit) g.putImageData(d, 0, 0);
+  }
+
   function setPixel(x, y, erase) {
     if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
     const g = layers[slot].getContext("2d");
@@ -9123,6 +9257,21 @@ function renderSpriteEditor(model, host) {
       pending = { x, y };
       paint();
       try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+      return;
+    }
+    /*  ONE ANCHOR, MOVED RATHER THAN ADDED TO.
+
+        A second magenta pixel is never what anybody meant, and the reader
+        would have to pick one of them. So placing an anchor clears whatever
+        anchor was there first — pressing again moves it, and right-click takes
+        it away entirely, which is the erase of an anchor. */
+    if (tool === "anchor") {
+      clearAnchor();
+      if (!drawing) setPixelRGBA(x, y, 255, 0, 255, 255);
+      touched[slot] = true;
+      anchor = null;
+      paint();
+      recordStep();
       return;
     }
     /*  MEASURE. Draws nothing, so it takes no snapshot and sets no pixel.
@@ -9487,7 +9636,13 @@ function renderSpriteEditor(model, host) {
       }
     }
     [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
-    toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
+    toolBtns.forEach((b, i) => {
+      b.classList.toggle("on", TOOLS[i][0] === tool);
+      if (TOOLS[i][0] === "anchor") b.hidden = !isPlace();
+    });
+    //  Switching to a wear layer with the anchor up would leave you holding a
+    //  tool whose button is not there any more.
+    if (tool === "anchor" && !isPlace()) tool = "pencil";
     /*  Cells first, always — that is what you draw in and what every other
         number here counts. The world size follows on a place, because a
         building has a real one: both, not either, since "25.5 x 16 ft" tells
