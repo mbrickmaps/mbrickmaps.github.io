@@ -1347,6 +1347,14 @@
   }
   .pr-find[hidden] { display: none; }
   .pr-tint input[type="range"] { width: 54px; accent-color: var(--accent2); }
+  /*  Stacked in the order they appear on the street: the box for the line
+      over the roof sits over the box for the line on the ground. */
+  .pr-notes { display: flex; flex-direction: column; gap: 2px; }
+  .pr-note-in {
+    width: 170px; font-size: 0.66rem; padding: 1px 4px;
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+    border-radius: 3px; color: inherit;
+  }
   .pr-tint button { font-size: 0.62rem; padding: 0 5px; line-height: 1.5; }
   .pr-scene { position: relative; height: 100%; min-height: 150px; }
   .pr-sky {
@@ -2276,6 +2284,30 @@ const MAPSTYLE_KEY = "brick-by-brick:mapstyle:v1";        // the settings
 const MAPOVERRIDE_KEY = "brick-by-brick:mapstyle-raw:v1"; // a hand-edited style file
 const IGNORED_KEY = "brick-by-brick:ignored:v1";          // site files told not to come back
 const SCENEBG_KEY = "brick-by-brick:promenade-bg:v1";     // the street's own sky and ground
+/*  HOW HIGH EACH SIGN HANGS, once you have said.
+
+    Every sign — a place's post, a group's ribbon — sits at a height the code
+    chose. That height is a guess about a scene it has not seen: a building
+    drawn tall puts its roof through the ribbon above it, and a short one
+    leaves the name marooned in empty sky. The person who can see the scene is
+    you.
+
+    So a sign can be dragged up and down and it stays where you put it. Kept by
+    slug, in world units rather than screen pixels, so it means the same thing
+    at any zoom and at any panel size. */
+const SIGNY_KEY = "brick-by-brick:signy:v1";
+let SIGN_Y = {};
+function loadSignY() {
+  try { SIGN_Y = JSON.parse(localStorage.getItem(SIGNY_KEY) || "{}") || {}; }
+  catch (e) { SIGN_Y = {}; }
+}
+function saveSignY() {
+  try {
+    if (Object.keys(SIGN_Y).length) localStorage.setItem(SIGNY_KEY, JSON.stringify(SIGN_Y));
+    else localStorage.removeItem(SIGNY_KEY);
+  } catch (e) { /* full, or unavailable */ }
+}
+loadSignY();
 const ARTKEY = "brick-by-brick:art:v1";                   // drawings kept in the browser
 const RIBBON_KEY = "brick-by-brick:ribbons:v1";           // what color each ribbon is
 
@@ -3156,6 +3188,59 @@ const sceneGrid = () => shadeInt(SCENE_BG.sky, -0.38);      // the pictogram boa
 
     The default is the signboard timber every other label on the street is
     painted in, so an uncolored ribbon still belongs to the picture. */
+/*  A LINE OF YOUR OWN, PER COLUMN.
+
+    The scene knows what the records know: a name, a parish, who stood there.
+    It does not know that the mill burned in 1874, or that this is the only
+    place in the pile anybody was born. Those are the things you learn while
+    reading, and until now there was nowhere on the street to put one.
+
+    So a column can carry text above the roofline and text on the ground under
+    it — both at once, because they are answers to different questions. The one
+    over the roof is what this place IS; the one on the ground is what happened
+    there. Making them exclusive meant choosing which half of that to lose.
+
+    It wraps, so a sentence is allowed to be a sentence. The cap is generous
+    rather than absent: past a few lines this stops being a caption on a scene
+    and starts being a document, and there is already somewhere for those.
+
+    Kept per slug beside the tints and the ribbon colours, and carried in the
+    same sidecar — it is the same kind of fact about the same kind of thing. */
+const NOTE_KEY = "brick-by-brick:colnote:v1";
+const NOTE_MAX = 400;
+const COL_NOTE = new Map();          // slug -> { above: string, below: string }
+const noteOf = slug => COL_NOTE.get(slug) || { above: "", below: "" };
+function loadColNotes() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(NOTE_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  for (const [slug, v] of raw) {
+    if (typeof slug !== "string" || !v) continue;
+    /*  A file written when a column had ONE note, on one side. Read it into
+        the side it was on rather than dropping it: somebody's captions are not
+        worth losing to a format change. */
+    if (typeof v.text === "string") {
+      const at = v.at === "below" ? "below" : "above";
+      COL_NOTE.set(slug, { above: "", below: "", [at]: v.text.slice(0, NOTE_MAX) });
+      continue;
+    }
+    const above = typeof v.above === "string" ? v.above.slice(0, NOTE_MAX) : "";
+    const below = typeof v.below === "string" ? v.below.slice(0, NOTE_MAX) : "";
+    const num = k => (typeof v[k] === "number" && isFinite(v[k]) ? v[k] : 0);
+    //  Where you dragged it, alongside what it says.
+    if (above || below) {
+      COL_NOTE.set(slug, { above, below,
+        ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by") });
+    }
+  }
+}
+function saveColNotes() {
+  try {
+    if (COL_NOTE.size) localStorage.setItem(NOTE_KEY, JSON.stringify([...COL_NOTE.entries()]));
+    else localStorage.removeItem(NOTE_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
 const RIBBON = new Map();
 const RIBBON_DEFAULT = "#4a3b28";
 const ribbonOf = slug => RIBBON.get(slug) || RIBBON_DEFAULT;
@@ -3239,6 +3324,9 @@ function sidecarJSON(host) {
     columns: {
       tints: [...COLUMN_TINT.entries()],
       ribbons: [...RIBBON.entries()],
+      //  Your own line about each column, which is the part of a saved scene
+      //  a file cannot regenerate — nothing in the records says it.
+      notes: [...COL_NOTE.entries()],
       // The scene behind all of them, which is the same kind of decision.
       scene: { ...SCENE_BG },
     },
@@ -3297,6 +3385,31 @@ function applySidecar(text, host) {
       if (typeof slug === "string" && /^#[0-9a-f]{6}$/i.test(c)) RIBBON.set(slug, c);
     }
     saveRibbons();
+  }
+
+  /*  Absent in a file written before notes existed. Same rule as the scene
+      below: an older file says nothing about them rather than saying they
+      should all go. */
+  const notes = data.columns && data.columns.notes;
+  if (Array.isArray(notes)) {
+    COL_NOTE.clear();
+    for (const [slug, v] of notes) {
+      if (typeof slug !== "string" || !v) continue;
+      //  Same one-note-per-column file the loader forgives, forgiven here too.
+      if (typeof v.text === "string") {
+        const at = v.at === "below" ? "below" : "above";
+        COL_NOTE.set(slug, { above: "", below: "", [at]: v.text.slice(0, NOTE_MAX) });
+        continue;
+      }
+      const above = typeof v.above === "string" ? v.above.slice(0, NOTE_MAX) : "";
+      const below = typeof v.below === "string" ? v.below.slice(0, NOTE_MAX) : "";
+      const num = k => (typeof v[k] === "number" && isFinite(v[k]) ? v[k] : 0);
+      if (above || below) {
+        COL_NOTE.set(slug, { above, below,
+          ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by") });
+      }
+    }
+    saveColNotes();
   }
 
   /*  Absent in a file written before the scene was settable, which must leave
@@ -3842,7 +3955,17 @@ const PEN_SLUG = "\u2205";
     moves the drawing and the seating together. */
 const BAL = { rx: 14, ry: 17, rim: 34, floor: 48, deep: 16, half: 9 };
 
-const balloonDrift = load => 0.35 - load * 0.03;   // always forward, and always +x
+/*  Heavier is slower, but never slower than stopped and never NEGATIVE.
+
+    It was `0.35 - load * 0.03`, written when the balloon only ever went one
+    way. A direction was added later, and the two then disagreed: past eleven
+    passengers the speed goes below zero, so the balloon creeps backwards while
+    `dir` — and therefore every passenger's facing — still says forward. A
+    balloon walking one way and travelling the other.
+
+    Twelve people in a wicker basket is absurd, which is exactly why it was
+    never noticed. The floor costs one `max`. */
+const balloonDrift = load => Math.max(0.08, 0.35 - load * 0.03);
 
 // Standing on the floor of the basket, in the middle of it. No lean: a
 // passenger in a basket is not being dragged through the air, they are riding.
@@ -4284,11 +4407,24 @@ function renderPromenadePixi(model, host) {
     driftBtn.className = "pr-zoom pr-drift on";
     driftBtn.textContent = "❚❚";
     host._driftBtn = driftBtn;
+    /*  THE ONLY WRITER OF THE DRIFT STATE.
+
+        There were five: the button, the idle timer, and three places that set
+        `host._drift = false` by hand — the pan, the wheel, and picking somebody
+        up. The three by hand never touched the button, so the street could be
+        standing perfectly still with a pause icon showing, which is the panel
+        telling you the opposite of what it is doing.
+
+        The flag and the icon are one fact and now have one place that sets
+        them. */
+    host._setDrift = on => {
+      host._drift = on;
+      driftBtn.textContent = on ? "❚❚" : "▶";
+      driftBtn.classList.toggle("on", on);
+    };
     driftBtn.onclick = () => {
       clearTimeout(host._idleTimer);        // an explicit choice outranks the timer
-      host._drift = !host._drift;
-      driftBtn.textContent = host._drift ? "❚❚" : "▶";
-      driftBtn.classList.toggle("on", host._drift);
+      host._setDrift(!host._drift);
     };
     shell.appendChild(driftBtn);
 
@@ -4507,7 +4643,31 @@ function renderPromenadePixi(model, host) {
           so the control goes away rather than sitting there doing nothing. */
       '<input type="color" data-k="ribbon" class="pr-ribbon" ' +
         'title="the color of this column\u2019s ribbon">' +
-      '<button data-k="clear" title="no gradient for this place">×</button>';
+      /*  RESET IS ↺, CLOSE IS ×.
+
+          They were the same button. The × threw the colours away, which is
+          not what an × means anywhere else on this panel or anywhere else at
+          all — every other × here shuts a thing, and the scene bar three
+          controls along already uses ↺ for exactly this reset. So somebody
+          finished choosing a colour, pressed the obvious button to put the
+          picker away, and lost the colour they had just chosen. */
+      '<button data-k="reset" title="no gradient for this place">↺</button>' +
+      /*  TWO BOXES, NOT ONE BOX AND A SWITCH.
+
+          A switch made them one note that could be in either place, so writing
+          the second thing you wanted to say overwrote the first. They are two
+          notes about two different questions — what this place is, and what
+          happened there — and the controls say so by being two. Stacked in the
+          order they appear on the street, so the top box is the top line. */
+      '<span class="pr-notes">' +
+        '<input type="text" data-k="above" class="pr-note-in" ' +
+          'maxlength="400" placeholder="over the roof\u2026" ' +
+          'title="shown above this column">' +
+        '<input type="text" data-k="below" class="pr-note-in" ' +
+          'maxlength="400" placeholder="on the ground\u2026" ' +
+          'title="shown below this column">' +
+      '</span>' +
+      '<button data-k="close" title="done">×</button>';
     shell.appendChild(tintBar);
     host._tintBar = tintBar;
 
@@ -4541,7 +4701,7 @@ function renderPromenadePixi(model, host) {
       host._noTween = true;
       renderPromenadePixi(V(), host);
     });
-    tintBar.querySelector('[data-k="clear"]').onclick = () => {
+    tintBar.querySelector('[data-k="reset"]').onclick = () => {
       const slug = host._focusKind === "column" ? host._focus : null;
       if (slug === null) return;
       COLUMN_TINT.delete(slug);
@@ -4550,6 +4710,40 @@ function renderPromenadePixi(model, host) {
       saveRibbons();
       host._noTween = true;
       renderPromenadePixi(V(), host);
+    };
+    /*  THE NOTE.
+
+        Written as you type, because the point of it is watching the line land
+        on the scene and finding out it is too long, or in the wrong place. A
+        save button would put a round trip between the words and the answer. */
+    const aboveIn = tintBar.querySelector('[data-k="above"]');
+    const belowIn = tintBar.querySelector('[data-k="below"]');
+    const writeNote = () => {
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (slug === null) return;
+      const above = aboveIn.value.trim(), below = belowIn.value.trim();
+      //  Nothing on either side is no note at all, not an empty one.
+      if (!above && !below) COL_NOTE.delete(slug);
+      else {
+        //  Merged, not replaced: what it says and where you put it are two
+        //  facts, and typing is only about one of them.
+        const was = COL_NOTE.get(slug) || {};
+        COL_NOTE.set(slug, { ...was, above, below });
+      }
+      saveColNotes();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    aboveIn.addEventListener("input", writeNote);
+    belowIn.addEventListener("input", writeNote);
+
+    /*  Letting the column go is what hides this bar — it appears because
+        something is selected, so it leaves the same way. Nothing is changed
+        and nothing is lost. */
+    tintBar.querySelector('[data-k="close"]').onclick = () => {
+      host._focus = null;
+      host._focusKind = null;
+      applyFocus(host);
     };
 
     host._syncTint = model2 => {
@@ -4574,6 +4768,14 @@ function renderPromenadePixi(model, host) {
       const rb = tintBar.querySelector('[data-k="ribbon"]');
       rb.hidden = !grp;               // only the columns that hang one
       rb.value = ribbonOf(slug);
+      /*  Not while you are typing in it. This runs on every render, and a
+          render happens on every keystroke — writing the value back mid-word
+          fights the person holding the keyboard. */
+      const n = noteOf(slug);
+      for (const at of ["above", "below"]) {
+        const box = tintBar.querySelector('[data-k="' + at + '"]');
+        if (document.activeElement !== box) box.value = n[at] || "";
+      }
     };
 
     const app = new P.Application({
@@ -4619,7 +4821,7 @@ function renderPromenadePixi(model, host) {
     app.view.addEventListener("pointerdown", e => {
       if (host._dragging) return;          // a walker took it
       panFrom = { x: e.clientX, wx: host._world.x };
-      host._drift = false;
+      host._setDrift(false);
     });
     window.addEventListener("pointermove", e => {
       if (!panFrom || host._dragging) return;
@@ -4657,7 +4859,7 @@ function renderPromenadePixi(model, host) {
     window.addEventListener("pointercancel", letGoOfBalloon);
     window.addEventListener("blur", letGoOfBalloon);
     app.view.addEventListener("wheel", e => {
-      host._drift = false;
+      host._setDrift(false);
       host._world.x = Math.min(0, Math.max(-(host._worldW - app.screen.width),
                                            host._world.x - e.deltaY));
       e.preventDefault();
@@ -4748,24 +4950,30 @@ function renderPromenadePixi(model, host) {
         broken one — you cannot tell a paused promenade from one that failed to
         start, and the first thing this panel has to say is that these are
         people rather than a chart. Reach for anyone and it stops. */
-    host._drift = true;
+    //  Through the setter like everything else, so the button starts in step.
+    host._setDrift(true);
     host._idleMs = 30000;
-    host._bumpIdle = () => {
-      host._drift = false;
-      if (host._driftBtn) {
-        host._driftBtn.textContent = "▶";
-        host._driftBtn.classList.remove("on");
-      }
+    /*  THE PAUSE BUTTON HAD TO FIGHT THIS, AND LOST.
+
+        These listeners are on the shell, and the drift button is IN the shell,
+        so pressing it fired a pointerdown here first. This handler turned the
+        drift off and armed the 30-second timer; the button's own click then
+        toggled from that fresh `false` back to `true`, and cleared the timer.
+
+        So pressing pause STARTED the drift, and with the timer cleared nothing
+        was left that could ever turn it off again — the street slid on for
+        ever and the button only restated it. That is the stuck screensaver.
+
+        A press on that button is not "the user is busy elsewhere", it is an
+        instruction about this exact thing, so it does not count as a poke. */
+    host._bumpIdle = e => {
+      const t = e && e.target;
+      if (t && t.closest && t.closest(".pr-drift")) return;
+      host._setDrift(false);
       clearTimeout(host._idleTimer);
       // A stilled scene is what someone asked for; do not override that.
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      host._idleTimer = setTimeout(() => {
-        host._drift = true;
-        if (host._driftBtn) {
-          host._driftBtn.textContent = "❚❚";
-          host._driftBtn.classList.add("on");
-        }
-      }, host._idleMs);
+      host._idleTimer = setTimeout(() => host._setDrift(true), host._idleMs);
     };
     for (const t of ["pointerdown", "pointermove", "wheel"]) {
       shell.addEventListener(t, host._bumpIdle, { passive: true });
@@ -5032,7 +5240,7 @@ function renderPromenadePixi(model, host) {
           shifted = false;
           b.held = true;                 // the ticker leaves it alone while held
           host._dragging = true;         // and the street does not pan underneath
-          host._drift = false;
+          host._setDrift(false);
           g.cursor = "grabbing";
         });
         g.on("globalpointermove", ev => {
@@ -5231,6 +5439,10 @@ function renderPromenadePixi(model, host) {
 
   const H = () => app.screen.height || 150;
   const groundY = () => H() * GROUND;
+  /*  How high a signpost's board hangs, in world units off the ground. Shared,
+      because the notes under the street have to know where the board is in
+      order to sit below it rather than through it. */
+  const SIGN_BOARD_Y = -38;
 
   // Ground and sky, redrawn with the scene so a resized panel keeps its horizon.
   const bg = new P.Graphics();
@@ -5476,6 +5688,127 @@ function renderPromenadePixi(model, host) {
   signLayer.alpha = host._signLayer ? host._signLayer.alpha : (GRID ? 0 : 1);
   world.addChild(signLayer);
   host._signLayer = signLayer;
+
+  /*  THE NOTES.
+
+      In the sign layer, so they come and go with the signposts — a caption on
+      a street is part of the street, and on the grid there is no street for it
+      to be a caption on.
+
+      Not parented to the sign itself: the sign can be dragged up and down, and
+      a note is about the column rather than about where you happened to put
+      its board. */
+  for (const c of columns) {
+    const note = COL_NOTE.get(c.slug);
+    if (!note) continue;
+    /*  WRAPPED TO THE COLUMN, NOT SHRUNK TO IT.
+
+        A long line used to be scaled down until it fitted, which is how you
+        get a caption nobody can read — the longer the thing you had to say,
+        the smaller it was written. Wrapping keeps the type one size and lets
+        the note grow downward, which is the direction there is room in. */
+    const room = Math.max(40, (wOf.get(c.slug) || STEP) - 8 * Z);
+    for (const at of ["above", "below"]) {
+      const text = note[at];
+      if (!text) continue;
+      const n = new P.Text(text, {
+        fontFamily: "ui-monospace, Menlo, monospace",
+        fontSize: 7 * Z, fill: 0xbfae92,
+        align: "center", wordWrap: true, wordWrapWidth: room,
+        lineHeight: 9 * Z,
+      });
+      n.resolution = 2;
+      /*  Both grow AWAY from the street. The one above is anchored at its
+          foot so extra lines climb into the sky; the one below is anchored at
+          its head so they run down into the ground band. Anchored the other
+          way round, a second line would walk into the scene. */
+      n.anchor.set(0.5, at === "below" ? 0 : 1);
+      n.x = c.x;
+      /*  Above: clear of the tallest thing a column has, its signpost.
+
+          Below: ON the ground, which is a narrower target than it sounds. The
+          band is the bottom 28% of the panel — about sixty pixels — and it has
+          to hold the walkers' own name labels (4 units under their feet) and
+          then this. Pushed down far enough to clear those names, a note of any
+          length hangs off the bottom edge of the panel entirely.
+
+          So it starts below the names and is then pulled back up by however
+          much it overhangs, which puts the LAST line on the ground rather than
+          the first. A long note ends up snug under the names; a short one sits
+          where it was put. */
+      /*  A STARTING POSITION, NOT A LAYOUT.
+
+          Three things want the strip under the ground line — a walker's name,
+          a signpost brought down to the street, and this — and they arrive
+          from three different places at three different times. Every rule for
+          arranging them automatically was right for one scene and wrong for
+          the next, because which of them is even present depends on what you
+          have drawn and where you have put it.
+
+          So each one opens somewhere sensible and is then dragged where it
+          belongs. You can see the scene; the arithmetic cannot. */
+      const home = () => (at === "below" ? groundY() + 18 * Z : groundY() - 62 * Z);
+      /*  UP AND DOWN ONLY. A note is centred on its column and stays there —
+          sideways it drifts off the place it is about and onto the next one,
+          and there is nothing sideways can say that is worth that. */
+      const dy = (at === "below" ? note.by : note.ay) || 0;
+      n.x = c.x;
+      n.y = home() + dy * Z;
+
+      n.eventMode = "static";
+      n.cursor = "ns-resize";      // says which way it goes before you try it
+      /*  Its own target, a little bigger than the type. These are seven pixels
+          tall and the anchor is at the foot or the head, so the box has to be
+          placed by hand rather than left to the default. */
+      n.hitArea = new P.Rectangle(-n.width / 2 - 4,
+                                  at === "below" ? -4 : -n.height - 4,
+                                  n.width + 8, n.height + 8);
+      let px = null, py = null, fy = 0, went = false;
+      n.on("pointerdown", ev => {
+        px = ev.global.x; py = ev.global.y;
+        fy = (at === "below" ? note.by : note.ay) || 0;
+        went = false;
+        host._dragging = true;          // the street does not pan underneath
+        n.cursor = "ns-resize";
+      });
+      n.on("globalpointermove", ev => {
+        if (px === null) return;
+        const mx = ev.global.x - px, my = ev.global.y - py;
+        if (!went && Math.abs(mx) + Math.abs(my) < 4) return;
+        went = true;
+        n.y = home() + fy * Z + my;     // x never moves
+        n.alpha = 0.8;
+      });
+      const letGo = () => {
+        if (px === null) return;
+        px = py = null;
+        n.alpha = 1;
+        n.cursor = "ns-resize";
+        host._dragging = false;
+        if (!went) return;
+        //  World units off where it opened, so it survives a zoom and a resize
+        //  exactly as a sign's height does.
+        const ry = Math.round(((n.y - home()) / Z) * 10) / 10;
+        const cur = COL_NOTE.get(c.slug);
+        if (!cur) return;
+        if (at === "below") cur.by = ry; else cur.ay = ry;
+        saveColNotes();
+      };
+      n.on("pointerup", letGo);
+      n.on("pointerupoutside", letGo);
+      /*  Right-click puts it back where it opened — the same erase as a guide,
+          a measurement, an anchor pixel and a signpost's height. */
+      n.on("rightdown", ev => {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        const cur = COL_NOTE.get(c.slug);
+        if (!cur) return;
+        if (at === "below") cur.by = 0; else cur.ay = 0;
+        saveColNotes();
+        n.y = home();
+      });
+      signLayer.addChild(n);
+    }
+  }
   for (const [slug] of placed) {
     /*  A POST IS A PLACE. A SIGN IN THE SKY IS AN IDEA.
 
@@ -5684,33 +6017,76 @@ function renderPromenadePixi(model, host) {
         if (!at.ground) floatY = (at.y + 0.5 - art.height) * artS;
       }
 
-      const POST_H = 28, BOARD_Y = -38;
+      const POST_H = 28, BOARD_Y = SIGN_BOARD_Y;
       const board = new P.Graphics();
       /*  A floating label hangs at the pixel; a planted one keeps the height
           it has always had, so a street of ordinary places still reads as one
           row of signs. */
-      const boardTop = floatY === null ? BOARD_Y * Z : floatY - (t.height + 4) / 2;
-      t.y = boardTop + 2;
-      board.beginFill(0x4a3b28)
-        .drawRect(-t.width / 2 - 3, boardTop, t.width + 6, t.height + 4).endFill();
+      const baseTop = floatY === null ? BOARD_Y * Z : floatY - (t.height + 4) / 2;
       /*  NO POST WHEN IT IS NOT PLANTED.
 
           A post running down from a name over a rooftop to the ground would be
           drawing a claim the picture did not make. */
-      if (floatY === null) {
-        const post = new P.Graphics();
-        post.beginFill(0x3a2f20).drawRect(-Z, -POST_H * Z, 2 * Z, POST_H * Z).endFill();
-        sign.addChild(post);
-      }
+      const post = floatY === null ? new P.Graphics() : null;
+      if (post) sign.addChild(post);
       sign.addChild(board, t);
-      // Same reason as the walkers: a Container needs its own hit area, or the
-      // Graphics and Text inside it are never tested.
-      const hitTop = Math.min(boardTop, floatY === null ? -POST_H * Z : boardTop) - 2;
-      sign.hitArea = new P.Rectangle(-t.width / 2 - 4, hitTop, t.width + 8,
-                                     Math.abs(hitTop) + t.height + 8);
+
+      /*  A POST IS PLANTED. IT DOES NOT SLIDE.
+
+          Setting the height by moving the whole container was the obvious
+          thing and the wrong one: the post went with it, so lowering a sign
+          drove its foot through the ground and left it hanging by nothing.
+          A signpost is a post in the earth with a board nailed to it — the
+          board is what moves, and the post is however long it has to be to
+          reach it.
+
+          So the offset moves the board and REDRAWS the post to match. Below
+          the ground there is no post left to draw and the board sits on the
+          earth, which is what a sign lying against a wall looks like. */
+      sign.__applyOff = off => {
+        const top = baseTop + off * Z;
+        board.clear();
+        board.beginFill(0x4a3b28)
+          .drawRect(-t.width / 2 - 3, top, t.width + 6, t.height + 4).endFill();
+        t.y = top + 2;
+        if (post) {
+          const h = Math.max(0, (POST_H - off) * Z);
+          post.clear();
+          if (h > 0) post.beginFill(0x3a2f20).drawRect(-Z, -h, 2 * Z, h).endFill();
+        }
+        //  The target has to follow the board, or a sign you moved is a sign
+        //  you cannot pick up again.
+        const hitTop = Math.min(top, post ? -Math.max(0, (POST_H - off) * Z) : top) - 2;
+        const hitBot = top + t.height + 6;
+        sign.hitArea = new P.Rectangle(-t.width / 2 - 4, hitTop,
+                                       t.width + 8, hitBot - hitTop);
+      };
+      /*  HOW FAR IT MAY GO.
+
+          Down to where the board rests on the ground, up to just under the top
+          of the panel. Computed here because this is the only place that knows
+          where the board actually starts. */
+      sign.__clampOff = off => {
+        const abs = groundY() + baseTop + off * Z;
+        const lo = 6, hi = app.screen.height - 6 - (t.height + 4);
+        const fixed = Math.max(lo, Math.min(hi, abs));
+        return (fixed - groundY() - baseTop) / Z;
+      };
       sign.__offX = offX;
     }
-    sign.x = x + (sign.__offX || 0); sign.y = groundY();
+    /*  A ribbon has no post, so for a group the offset is simply where it
+        hangs. Both kinds answer to the same pair of calls. */
+    if (!sign.__applyOff) {
+      sign.__applyOff = off => { sign.y = groundY() + off * Z; };
+      sign.__clampOff = off => {
+        const abs = groundY() + off * Z;
+        return (Math.max(20, Math.min(app.screen.height - 6, abs)) - groundY()) / Z;
+      };
+    }
+    sign.x = x + (sign.__offX || 0);
+    sign.y = groundY();
+    //  The height you set for it, if you set one; otherwise its own.
+    sign.__applyOff(SIGN_Y[slug] || 0);
     sign.eventMode = "static";
     sign.cursor = "pointer";
     /*  A GROUP'S RIBBON CAN BE DRAGGED INTO ANOTHER GAP.
@@ -5729,28 +6105,66 @@ function renderPromenadePixi(model, host) {
         Same four pixels as everywhere else on this panel tell a click from a
         drag, so the ribbon keeps doing what it already did when you click it. */
     const movable = !!slug && slug.startsWith("grp-");
-    let dx = null, shifted = false, fromX = 0;
+    /*  SIDEWAYS IS AN ARGUMENT ABOUT ORDER. UP AND DOWN IS NOT.
+
+        Only a group's ribbon can be dragged sideways, because sideways means
+        "put this column between those two" and the places are in longitude
+        order — dragging Longforgan east of Dundee would be a lie about the
+        map.
+
+        Height says nothing about order, so every sign can be moved up and
+        down: a place's post as freely as a group's ribbon. It is a statement
+        about this scene, where the roof is and where the sky is empty, and
+        only the person looking at it can make it. */
+    let dx = null, dy = null, shifted = false, fromX = 0, fromOff = 0;
+    let liveOff = SIGN_Y[slug] || 0;
     sign.on("pointerdown", ev => {
-      dx = ev.global.x;
-      fromX = sign.x;
+      dx = ev.global.x; dy = ev.global.y;
+      fromX = sign.x; fromOff = liveOff;
       shifted = false;
-      if (movable) host._dragging = true;   // stops the street panning underneath
+      host._dragging = true;                // stops the street panning underneath
     });
     sign.on("globalpointermove", ev => {
-      if (dx === null || !movable) return;
-      if (!shifted && Math.abs(ev.global.x - dx) < 4) return;
+      if (dx === null) return;
+      const mx = ev.global.x - dx, my = ev.global.y - dy;
+      if (!shifted && Math.abs(mx) + Math.abs(my) < 4) return;
       shifted = true;
-      sign.x = fromX + (ev.global.x - dx);
+      //  Sideways only where sideways is allowed; the height is always yours.
+      if (movable) sign.x = fromX + mx;
+      /*  In world units, because that is what gets stored — converting once
+          here beats converting on every read. Clamped so the sign stays on the
+          panel: one dragged off the top is one you cannot get hold of again,
+          and it would be saved that way. */
+      liveOff = sign.__clampOff(fromOff + my / Z);
+      sign.__applyOff(liveOff);
       sign.alpha = 0.85;
       sign.cursor = "grabbing";
     });
     const dropSign = ev => {
       if (dx === null) return;
       const moved = shifted;
-      dx = null; shifted = false;
+      dx = null; dy = null; shifted = false;
       sign.alpha = 1;
       sign.cursor = "pointer";
-      if (movable) host._dragging = false;
+      host._dragging = false;
+      if (moved && slug) {
+        //  World units off the sign's own resting place — the one measurement
+        //  that survives a zoom, a resize and a different screen.
+        const was = SIGN_Y[slug];
+        if (Math.abs(liveOff) < 0.5) { liveOff = 0; delete SIGN_Y[slug]; }
+        else SIGN_Y[slug] = liveOff = Math.round(liveOff * 10) / 10;
+        sign.__applyOff(liveOff);
+        saveSignY();
+        /*  The note under this column is placed BELOW the board, so moving the
+            board is a question about where the note goes. Only the render
+            knows that, and the drag was not asking for one — so a sign brought
+            down to the street landed on top of its own caption and stayed
+            there until something else happened to redraw. */
+        if (was !== SIGN_Y[slug] && COL_NOTE.has(slug)) {
+          host._noTween = true;
+          renderPromenadePixi(V(), host);
+        }
+      }
       if (!moved) {
         // A group and the promenade are columns, not places: what they light
         // up is whoever you put in them.
@@ -5761,12 +6175,31 @@ function renderPromenadePixi(model, host) {
           whose own column is to the left of it. Measured against the columns
           rather than against the other ribbons, since a ribbon being dragged
           is not where its column is. */
-      moveGroupTo(slug, sign.x, xOf);
-      host._noTween = true;
-      renderPromenadePixi(V(), host);
+      /*  Only when it actually went sideways. Nudging a ribbon up used to
+          re-sort the columns against an x that had not changed — usually
+          landing it back where it was, and occasionally not. */
+      if (movable && Math.abs(sign.x - (x + (sign.__offX || 0))) > 2) {
+        moveGroupTo(slug, sign.x, xOf);
+        host._noTween = true;
+        renderPromenadePixi(V(), host);
+      }
     };
     sign.on("pointerup", dropSign);
     sign.on("pointerupoutside", dropSign);
+    /*  BACK TO WHERE IT WOULD HAVE BEEN.
+
+        A height you set is a height you have to be able to unset, and there is
+        no obvious place to put a control for something you can only want while
+        pointing at the sign itself. Right-click is the erase everywhere else in
+        this project — a guide, a measurement, a clipboard, an anchor pixel —
+        so it is the erase of a height too. */
+    sign.on("rightdown", ev => {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      if (!slug || SIGN_Y[slug] === undefined) return;
+      delete SIGN_Y[slug];
+      saveSignY();
+      sign.__applyOff(liveOff = 0);
+    });
     signLayer.addChild(sign);
     host._signs.push({ slug, node: sign });
   }
@@ -6028,7 +6461,7 @@ function renderPromenadePixi(model, host) {
           still sliding means they walk out from under the cursor before the
           pointer goes down — which reads as "I cannot drag anyone" even though
           the drag itself works perfectly. */
-      host._drift = false;
+      host._setDrift(false);
       node.cursor = "grabbing";
       if (host._buildZones) host._buildZones();
       if (host._zoneLayer) host._zoneLayer.visible = true;
@@ -15727,6 +16160,7 @@ loadTileKey();
 loadStyleUrl();
 loadColumnTints();
 loadRibbons();
+loadColNotes();
 loadSceneBg();
 loadLocalArt();   // before the first render, or the street draws without it
 loadGroups();
