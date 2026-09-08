@@ -321,6 +321,27 @@
       it off the bottom. */
   .sp-left > .sp-row:first-child { margin-bottom: 6px; }
   .sp-grid.sp-drop { outline: 2px dashed var(--accent2); outline-offset: 2px; }
+  /*  The tray. A row that scrolls sideways rather than wrapping: it sits under
+      the canvas, and a row that grows taller as you save parts takes that
+      height out of the drawing. */
+  .sp-parts { margin-top: 6px; flex-wrap: nowrap; }
+  .sp-parts.drop { outline: 2px dashed var(--accent2); outline-offset: 2px; }
+  .sp-part-list {
+    display: flex; gap: 3px; align-items: center;
+    flex: 1 1 auto; min-width: 0; overflow-x: auto; padding: 1px 0;
+  }
+  .sp-part {
+    flex: 0 0 auto; width: 30px; height: 30px; padding: 1px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(127,127,127,0.10);
+  }
+  /*  Its own pixels, never smoothed and never blown up past the box — the
+      point of a thumbnail here is telling one window from another. */
+  .sp-part img {
+    max-width: 100%; max-height: 100%;
+    image-rendering: pixelated; display: block;
+  }
+  .sp-part-none { font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
   .sp-right { flex: 1 1 180px; min-width: 170px; max-width: 260px; display: flex; flex-direction: column; gap: 7px; }
   .sp-row { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
   /*  Where the panel stops being about drawing and starts being about the
@@ -451,6 +472,15 @@
       another fixed swatch. */
   .sp-recent { border-style: dashed; }
   .sp-recent[hidden] { display: none; }
+  /*  A marker, not a swatch. Squared off and captioned with a glyph, so a
+      row of colours does not gain two members that behave differently from
+      the rest without saying so. */
+  .sp-mark {
+    width: 22px; font-size: 0.62rem; line-height: 1;
+    color: rgba(0,0,0,0.75); text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .sp-mark.on { outline: 2px solid var(--accent2); outline-offset: 1px;
+                position: relative; z-index: 2; }
   .sp-pen.sp-erase {
     background-image: linear-gradient(45deg, var(--border) 25%, transparent 25%,
       transparent 75%, var(--border) 75%),
@@ -1285,6 +1315,7 @@
   .pr-zoom { min-width: 24px; }
   .pr-zoom-out { right: 34px; }
   .pr-zoom:disabled { opacity: 0.3; cursor: default; }
+  .pr-night { font-size: 0.72rem; padding: 1px 5px; }
   .pr-mode { right: 66px; min-width: 46px; }
   .pr-drift { right: 120px; min-width: 26px; }
   .pr-drift.on { border-color: var(--accent2); color: var(--accent2); }
@@ -2309,6 +2340,44 @@ function saveSignY() {
 }
 loadSignY();
 const ARTKEY = "brick-by-brick:art:v1";                   // drawings kept in the browser
+/*  THE PARTS TRAY.
+
+    A place is made of the same handful of things over and over — a window, a
+    door, a chimney, a course of stone — and drawing the fourth window of a
+    terrace by hand is work the machine should be doing. The copy tool already
+    lifts a rectangle and stamps it down; the only thing it could not do was
+    remember one, so lifting a second window meant losing the first.
+
+    A part is exactly that lift, kept: a small PNG and a name. Nothing about
+    stamping changes — a part reaching the clipboard is indistinguishable from
+    a box you dragged a moment ago, which is why it inherits the preview, the
+    edge clamping, the undo and the frame handling without any of it being
+    written twice.
+
+    Kept as data URLs in this browser, like the art store above and for the
+    same reason: these are working materials, not files anybody committed. A
+    window is a few hundred bytes, so a tray of fifty costs less than one
+    photograph. */
+const PARTS_KEY = "brick-by-brick:parts:v1";
+const PARTS = new Map();              // name -> data: URL
+function loadParts() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(PARTS_KEY) || "null"); } catch (e) { return; }
+  if (!raw || typeof raw !== "object") return;
+  for (const [name, url] of Object.entries(raw)) {
+    if (typeof url === "string" && url.startsWith("data:image/")) PARTS.set(name, url);
+  }
+}
+function saveParts() {
+  try {
+    if (!PARTS.size) { localStorage.removeItem(PARTS_KEY); return true; }
+    localStorage.setItem(PARTS_KEY, JSON.stringify(Object.fromEntries(PARTS)));
+    return true;
+  } catch (e) {
+    //  Out of room. The caller says so rather than losing it quietly.
+    return false;
+  }
+}
 const RIBBON_KEY = "brick-by-brick:ribbons:v1";           // what color each ribbon is
 
 // Which tiles the map draws. Remembered, because it is a preference about the
@@ -3109,21 +3178,45 @@ const ROWS = ["body", "bottom", "top", "hat"];
     little, so it reads as an edge without being chosen; the grid view's flat
     field is the sky taken down, because a board of pictograms is the same
     room with the lights off. */
-const SCENE_BG_DEFAULT = { sky: "#1d2c38", ground: "#1a1f18" };
+/*  ONE PAIR PER HOUR, NOT ONE PAIR AND A RULE.
+
+    The first try kept a single sky and ground, and let the hour override them
+    only while you had not chosen your own — which meant the moment you picked
+    a colour you liked, the day/night switch stopped changing the sky at all.
+    Choosing a colour turned the feature off.
+
+    So there are two pairs and the switch says which one you are looking at and
+    editing. Setting the sky at night sets the night sky. */
+const SCENE_BG_DEFAULT = { sky: "#a8c6dd", ground: "#6f7d52" };   // daylight
+const SCENE_BG_NIGHT_DEFAULT = { sky: "#0b1522", ground: "#0d120e" };
 let SCENE_BG = { ...SCENE_BG_DEFAULT };
+let SCENE_BG_NIGHT = { ...SCENE_BG_NIGHT_DEFAULT };
+
+//  What the street is painted, for the hour it is.
+function sceneColors() { return NIGHT ? SCENE_BG_NIGHT : SCENE_BG; }
+
+const okBg = v => v && /^#[0-9a-f]{6}$/i.test(v.sky) && /^#[0-9a-f]{6}$/i.test(v.ground);
 
 function loadSceneBg() {
   let raw;
   try { raw = JSON.parse(localStorage.getItem(SCENEBG_KEY) || "null"); } catch (e) { return; }
-  if (raw && /^#[0-9a-f]{6}$/i.test(raw.sky) && /^#[0-9a-f]{6}$/i.test(raw.ground)) {
-    SCENE_BG = { sky: raw.sky, ground: raw.ground };
-  }
+  if (!raw) return;
+  /*  A file written when there was one pair. It was the only sky there was,
+      so it is the day one — reading it as night would black out a scene
+      somebody chose deliberately. */
+  if (okBg(raw)) { SCENE_BG = { sky: raw.sky, ground: raw.ground }; return; }
+  if (okBg(raw.day)) SCENE_BG = { sky: raw.day.sky, ground: raw.day.ground };
+  if (okBg(raw.night)) SCENE_BG_NIGHT = { sky: raw.night.sky, ground: raw.night.ground };
 }
 function saveSceneBg() {
   try {
-    const d = SCENE_BG.sky === SCENE_BG_DEFAULT.sky && SCENE_BG.ground === SCENE_BG_DEFAULT.ground;
-    if (d) localStorage.removeItem(SCENEBG_KEY);
-    else localStorage.setItem(SCENEBG_KEY, JSON.stringify(SCENE_BG));
+    const same = (a, b) => a.sky === b.sky && a.ground === b.ground;
+    if (same(SCENE_BG, SCENE_BG_DEFAULT) && same(SCENE_BG_NIGHT, SCENE_BG_NIGHT_DEFAULT)) {
+      localStorage.removeItem(SCENEBG_KEY);
+      return;
+    }
+    localStorage.setItem(SCENEBG_KEY,
+      JSON.stringify({ day: SCENE_BG, night: SCENE_BG_NIGHT }));
   } catch (e) { /* unavailable */ }
 }
 
@@ -3172,12 +3265,14 @@ function sceneInk(bgInt, quiet) {
 const shadeHex = (hex, amt) =>
   "#" + shadeInt(hex, amt).toString(16).padStart(6, "0");
 
-const sceneSky = () => hexInt(SCENE_BG.sky);
-const sceneGround = () => hexInt(SCENE_BG.ground);
+//  All four read through sceneColors(), so the hour reaches every one of them
+//  — including the ink that is picked to contrast with the sky.
+const sceneSky = () => hexInt(sceneColors().sky);
+const sceneGround = () => hexInt(sceneColors().ground);
 // 0.08 rather than a rounder number because it lands on #2c312a for the
 // default ground, which is the #2b3327 this line was hand-picked as.
-const sceneEdge = () => shadeInt(SCENE_BG.ground, 0.08);    // the horizon line
-const sceneGrid = () => shadeInt(SCENE_BG.sky, -0.38);      // the pictogram board
+const sceneEdge = () => shadeInt(sceneColors().ground, 0.08);   // the horizon line
+const sceneGrid = () => shadeInt(sceneColors().sky, -0.38);     // the pictogram board
 
 /*  THE RIBBONS.
 
@@ -3328,7 +3423,8 @@ function sidecarJSON(host) {
       //  a file cannot regenerate — nothing in the records says it.
       notes: [...COL_NOTE.entries()],
       // The scene behind all of them, which is the same kind of decision.
-      scene: { ...SCENE_BG },
+      //  Both hours. An older file carrying one pair still reads as the day.
+      scene: { day: { ...SCENE_BG }, night: { ...SCENE_BG_NIGHT } },
     },
   }, null, 2);
 }
@@ -3415,8 +3511,12 @@ function applySidecar(text, host) {
   /*  Absent in a file written before the scene was settable, which must leave
       the current one alone rather than resetting it to the default. */
   const scene = data.columns && data.columns.scene;
-  if (scene && /^#[0-9a-f]{6}$/i.test(scene.sky) && /^#[0-9a-f]{6}$/i.test(scene.ground)) {
-    SCENE_BG = { sky: scene.sky, ground: scene.ground };
+  if (scene) {
+    if (okBg(scene)) SCENE_BG = { sky: scene.sky, ground: scene.ground };
+    else {
+      if (okBg(scene.day)) SCENE_BG = { sky: scene.day.sky, ground: scene.day.ground };
+      if (okBg(scene.night)) SCENE_BG_NIGHT = { sky: scene.night.sky, ground: scene.night.ground };
+    }
     saveSceneBg();
     if (host && host._syncSceneBg) host._syncSceneBg();
   }
@@ -3645,6 +3745,96 @@ function loadImg(src) {
     pixel is a note to the renderer and never a mark on the picture. */
 const SIGN_MARK = { r: 255, g: 0, b: 255 };
 
+/*  MARKED GLASS, AND A MARKED DOOR.
+
+    Two more reserved colours, on the same principle as the anchor pixel above
+    and for the same reason: what a drawing MEANS has to ride inside the PNG,
+    because the PNG is the only thing that gets committed.
+
+    The difference is that these mark a region rather than a point, and they
+    are not stripped — they are repainted. A window pixel is drawn dull by day
+    and lit at night, so the scene decides what glass looks like and every
+    window on the street changes together. You paint the shape; the time of day
+    paints the colour.
+
+    Chosen to be unpaintable: nobody reaches for pure cyan or pure yellow on a
+    Perthshire mill, and they appear in the paint row as `window` and `door`
+    rather than as hex, so the numbers never have to be remembered. */
+const GLASS_MARK = { r: 0, g: 255, b: 255 };     // window
+const DOOR_MARK  = { r: 255, g: 255, b: 0 };     // door
+/*  GLASS IS NOT ONE COLOUR.
+
+    Filling every marked pixel with the same yellow gave a row of flat squares
+    — a window sticker, not a lit room. What a candle actually does is fall off
+    from wherever it stands: bright at the middle of the pane, dying towards
+    the frame, and never the same twice from one window to the next because
+    the rooms behind them are not the same.
+
+    So each pane is lit from the inside out. The distance of every glass pixel
+    from the edge of its own pane gives the falloff, and the pane's position
+    gives it a fixed warmth of its own, so one window burns a little hotter
+    than its neighbour and stays that way between renders.
+
+    Daylight gets the same treatment much more faintly — glass is not flat by
+    day either, it is a dull sheet with the sky in it. */
+/*  A candle is a POINT, not a filled pane.
+
+    Lighting every pixel by its distance from the frame gave an even glow with
+    a bright middle — which is a lightbox, and a lightbox is what electric
+    light looks like. A flame sits somewhere: low, on a sill or a table, off to
+    one side, and everything above it is lit by falling off from there. It also
+    burns much redder at the edge of its reach than a lamp does.
+
+    Three stops rather than two, because the interesting part of candlelight is
+    the middle of the falloff — the amber between the white heart and the dark
+    — and a straight blend between two colours walks past it. */
+const GLASS_NIGHT_EDGE = "#2b1200";     // beyond the light
+const GLASS_NIGHT_MID  = "#ff6a00";     // vivid orange, most of the pane
+const GLASS_NIGHT_CORE = "#ffc74f";     // the flame — bright, warm, not white
+const GLASS_DAY_EDGE  = "#2f3c46";      // the frame's shadow
+const GLASS_DAY_CORE  = "#46596a";      // sky in the pane
+const DOOR_PAINT = "#3a2b22";           // a door is a door at any hour
+
+/*  NIGHT.
+
+    Not a theme — the panel's own light or dark has nothing to do with what
+    time it is on this street. A separate switch, kept beside the scene's sky
+    and ground because it is the same kind of decision about the same scene. */
+const NIGHT_KEY = "brick-by-brick:night:v1";
+/*  WHERE IT HANGS.
+
+    As fractions of the panel, not pixels: the promenade is resized by its own
+    corner handle and shown at three zooms, and a sun pinned to a pixel would
+    sit in the middle of the street on one of them. Both hours share the one
+    position — the sun sets where the moon rises, which is wrong about the sky
+    and right about a scene you arranged deliberately. */
+const SUNPOS_KEY = "brick-by-brick:sunpos:v1";
+let SUN_POS = null;                  // { fx, fy } once you have moved it
+function loadSunPos() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(SUNPOS_KEY) || "null"); } catch (e) { return; }
+  if (raw && isFinite(raw.fx) && isFinite(raw.fy)) {
+    SUN_POS = { fx: Math.max(0, Math.min(1, raw.fx)), fy: Math.max(0, Math.min(1, raw.fy)) };
+  }
+}
+function saveSunPos() {
+  try {
+    if (SUN_POS) localStorage.setItem(SUNPOS_KEY, JSON.stringify(SUN_POS));
+    else localStorage.removeItem(SUNPOS_KEY);
+  } catch (e) { /* unavailable */ }
+}
+let NIGHT = false;
+function loadNight() {
+  try { NIGHT = localStorage.getItem(NIGHT_KEY) === "1"; } catch (e) { NIGHT = false; }
+}
+function saveNight() {
+  try {
+    if (NIGHT) localStorage.setItem(NIGHT_KEY, "1");
+    else localStorage.removeItem(NIGHT_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+
 function readSignMark(img) {
   const w = img.width, h = img.height;
   if (!w || !h) return { img, at: null };
@@ -3663,6 +3853,27 @@ function readSignMark(img) {
   /*  The bottom row first and on its own, because that row is the question
       being asked — is this a post? — and a magenta pixel in the sky is a
       different answer, not a better one. */
+  /*  THE MARKED REGIONS, REPAINTED FOR THE HOUR.
+
+      Glass is dull by day and lit at night; a door is a door either way but is
+      remembered, because it is the way into this place and something will want
+      to know where it is. Done here, on the one pass that already reads every
+      pixel of every scene image — a second sweep for this would be a second
+      sweep for nothing. */
+  const glass = [], doors = [];
+  const eq = (i, m) => px[i] === m.r && px[i + 1] === m.g && px[i + 2] === m.b && px[i + 3] > 0;
+  const dcol = hexBytes(DOOR_PAINT);
+  const isGlass = new Uint8Array(w * h);
+  for (let i = 0; i < px.length; i += 4) {
+    const p = i / 4;
+    if (eq(i, GLASS_MARK)) { glass.push([p % w, Math.floor(p / w)]); isGlass[p] = 1; }
+    else if (eq(i, DOOR_MARK)) {
+      doors.push([p % w, Math.floor(p / w)]);
+      px[i] = dcol[0]; px[i + 1] = dcol[1]; px[i + 2] = dcol[2];
+    }
+  }
+  if (glass.length) lightGlass(px, isGlass, w, h);
+
   let at = null;
   for (let x = 0; x < w; x++) {
     if (isMark(((h - 1) * w + x) * 4)) { at = { x, y: h - 1, ground: true }; break; }
@@ -3674,14 +3885,180 @@ function readSignMark(img) {
       }
     }
   }
-  if (!at) return { img, at: null };
-  /*  Every one of them, not only the one that was found. Two marks is a
+  /*  Every anchor pixel, not only the one that was found. Two marks is a
       mistake, and leaving the second one painted on the building is a worse
       answer than quietly taking both off. */
   for (let i = 0; i < px.length; i += 4) if (isMark(i)) px[i + 3] = 0;
+  /*  The canvas is returned whenever ANYTHING was rewritten, not only when an
+      anchor was found — a drawing with windows and no anchor still has to come
+      back repainted rather than as the original image. */
+  if (!at && !glass.length && !doors.length) return { img, at: null };
   g.putImageData(d, 0, 0);
   cv.__signAt = at;
+  cv.__glass = glass;
+  cv.__doors = doors;
   return { img: cv, at };
+}
+
+/*  Every marked pane, lit from its own middle outwards.
+
+    One multi-source walk inward from the frame gives each pixel its depth into
+    the pane; a second pass over each pane turns depth into a fraction of its
+    own deepest point, so a one-pixel slit and a ten-pixel casement are both
+    lit across their whole width rather than the slit coming out uniformly
+    dim.
+
+    Panes are found four-connected, the same rule the fill and the measure
+    tools use, so what counts as one window here is what looks like one window
+    everywhere else. */
+function lightGlass(px, isGlass, w, h) {
+  const N = w * h;
+  const depth = new Int32Array(N).fill(-1);
+  const pane = new Int32Array(N).fill(-1);
+  //  Depth 0 is any glass pixel touching something that is not glass — the
+  //  frame, or the edge of the picture.
+  const queue = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (!isGlass[k]) continue;
+      const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1
+        || !isGlass[k - 1] || !isGlass[k + 1] || !isGlass[k - w] || !isGlass[k + w];
+      if (edge) { depth[k] = 0; queue.push(k); }
+    }
+  }
+  for (let qi = 0; qi < queue.length; qi++) {
+    const k = queue[qi], x = k % w, y = (k - x) / w;
+    for (const n of [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1,
+                     y > 0 ? k - w : -1, y < h - 1 ? k + w : -1]) {
+      if (n < 0 || !isGlass[n] || depth[n] >= 0) continue;
+      depth[n] = depth[k] + 1;
+      queue.push(n);
+    }
+  }
+
+  //  Which pane each pixel belongs to, and how deep that pane goes.
+  const deepest = [], seeds = [], bounds = [];
+  let panes = 0;
+  for (let k = 0; k < N; k++) {
+    if (!isGlass[k] || pane[k] >= 0) continue;
+    const id = panes++;
+    let max = 0;
+    const seed = k;
+    let x0 = k % w, x1 = x0, y0 = (k - x0) / w, y1 = y0;
+    const stack = [k];
+    pane[k] = id;
+    while (stack.length) {
+      const c = stack.pop(), x = c % w, y = (c - x) / w;
+      if (depth[c] > max) max = depth[c];
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const n of [x > 0 ? c - 1 : -1, x < w - 1 ? c + 1 : -1,
+                       y > 0 ? c - w : -1, y < h - 1 ? c + w : -1]) {
+        if (n < 0 || !isGlass[n] || pane[n] >= 0) continue;
+        pane[n] = id;
+        stack.push(n);
+      }
+    }
+    deepest.push(max);
+    seeds.push(seed);
+    bounds.push({ x0, y0, x1, y1 });
+  }
+
+  const edge = hexBytes(NIGHT ? GLASS_NIGHT_EDGE : GLASS_DAY_EDGE);
+  const mid  = hexBytes(NIGHT ? GLASS_NIGHT_MID  : GLASS_DAY_EDGE);
+  const core = hexBytes(NIGHT ? GLASS_NIGHT_CORE : GLASS_DAY_CORE);
+  //  edge -> mid over the first half of the ramp, mid -> core over the second.
+  /*  The amber holds most of the ramp and the pale heart is the last fifth of
+      it. Split evenly, half of every window came out near-white and the whole
+      thing read yellow rather than orange — a candle is orange nearly all the
+      way in, and only the flame itself is pale. */
+  const KNEE = 0.72;
+  const ramp = t => {
+    const a2 = t < KNEE ? edge : mid, b2 = t < KNEE ? mid : core;
+    const f = t < KNEE ? t / KNEE : (t - KNEE) / (1 - KNEE);
+    return [0, 1, 2].map(ch => a2[ch] + (b2[ch] - a2[ch]) * f);
+  };
+
+  /*  WHERE THE FLAME STANDS.
+
+      Low in the pane and off to one side, from the pane's own position — so
+      one window has its candle on the left sill and the next has it on the
+      right, and neither moves between renders. Not Math.random: the scene is
+      rebuilt on every drop, sort, zoom and resize, and windows that jumped on
+      each of those would be a fault rather than a flame. */
+  for (let id = 0; id < panes; id++) {
+    const box = bounds[id];
+    const bw = box.x1 - box.x0 + 1, bh = box.y1 - box.y0 + 1;
+    const rnd = ((seeds[id] * 2654435761) >>> 0);
+    //  Between a third and two thirds across, and two thirds of the way down.
+    const fx = box.x0 + (0.33 + (rnd % 34) / 100) * (bw - 1);
+    const fy = box.y0 + 0.68 * (bh - 1);
+    //  How far the light carries, as a fraction of the pane. Under one and the
+    //  far corner of a wide window goes dark, which is what a candle does.
+    /*  Well under the pane, so the lit part is a pool around the flame and
+        the rest of the glass stays dark. Filling the pane reads as a room with
+        the lights on. */
+    const reach = Math.max(bw, bh) * (0.95 + ((rnd >> 8) % 30) / 100);
+    box.fx = fx; box.fy = fy; box.reach = reach;
+    //  One candle is not the next: some rooms are brighter.
+    /*  Over 1, so the middle of a pane saturates at the flame colour and the
+        falloff happens across the glass rather than all of it being partway to
+        dark. A window has to read as LIT at the size a place is actually drawn
+        — sixty pixels wide in a column — and a subtle one reads as grey. */
+    box.warm = 1.15 + ((rnd >> 16) % 40) / 100;
+  }
+
+  for (let k = 0; k < N; k++) {
+    if (!isGlass[k]) continue;
+    const id = pane[k], b2 = bounds[id];
+    const x = k % w, y = (k - x) / w;
+    const r = Math.hypot(x - b2.fx, y - b2.fy) / (b2.reach || 1);
+    /*  Inverse-square-ish rather than linear: a flame is very bright very
+        close and gives out fast, and a linear falloff is the thing that made
+        the first attempt look like a sticker. */
+    let lum = b2.warm / (1 + 1.5 * r * r);
+    /*  And the frame still darkens it, so a pane reads as glass in a hole
+        rather than as a glowing tile stuck on the wall. `depth` is 0 at the
+        frame, so the outermost ring keeps only half its light. */
+    if (depth[k] === 0) lum *= 0.72;
+    const c3 = ramp(Math.max(0, Math.min(1, lum)));
+    const i = k * 4;
+    for (let ch = 0; ch < 3; ch++) {
+      px[i + ch] = Math.max(0, Math.min(255, Math.round(c3[ch])));
+    }
+  }
+
+  /*  THE SPILL.
+
+      A lit window throws a little light onto the wall around it. Without it
+      the pane is a bright rectangle sitting on unlit stone, which is the last
+      thing that keeps it looking pasted on. One pixel of it, warm and very
+      faint, and only at night. */
+  if (!NIGHT) return;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (isGlass[k]) continue;
+      const i = k * 4;
+      if (!px[i + 3]) continue;                 // nothing there to catch it
+      let near = false;
+      for (const n of [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1,
+                       y > 0 ? k - w : -1, y < h - 1 ? k + w : -1]) {
+        if (n >= 0 && isGlass[n]) { near = true; break; }
+      }
+      if (!near) continue;
+      for (let ch = 0; ch < 3; ch++) {
+        px[i + ch] = Math.round(px[i + ch] + (core[ch] - px[i + ch]) * 0.18);
+      }
+    }
+  }
+}
+
+//  "#rrggbb" as three numbers, for writing straight into pixel data.
+function hexBytes(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
 function sceneImage(slug) {
@@ -4577,11 +4954,16 @@ function renderPromenadePixi(model, host) {
       '<span class="pr-bg-cap">scene</span>' +
       '<input type="color" data-k="sky" title="the sky behind the whole street">' +
       '<input type="color" data-k="ground" title="the ground everybody stands on">' +
+      '<button data-k="night" class="pr-night" title="day or night — at night ' +
+        'the marked windows light up">\u2600</button>' +
       '<button data-k="reset" title="back to the street’s own colors">↺</button>';
     fileBar.insertBefore(bgBar, groupBtn.nextSibling);
+    //  Shows the hour that is on screen, which is the one the pickers edit.
+
     const syncBgBar = () => {
-      bgBar.querySelector('[data-k="sky"]').value = SCENE_BG.sky;
-      bgBar.querySelector('[data-k="ground"]').value = SCENE_BG.ground;
+      const now = sceneColors();
+      bgBar.querySelector('[data-k="sky"]').value = now.sky;
+      bgBar.querySelector('[data-k="ground"]').value = now.ground;
     };
     const redrawScene = () => {
       saveSceneBg();
@@ -4591,11 +4973,44 @@ function renderPromenadePixi(model, host) {
     bgBar.addEventListener("input", e => {
       const k = e.target.dataset.k;
       if (k !== "sky" && k !== "ground") return;
-      SCENE_BG[k] = e.target.value;
+      //  Into the hour on screen. Setting the sky at night sets the night sky.
+      (NIGHT ? SCENE_BG_NIGHT : SCENE_BG)[k] = e.target.value;
       redrawScene();
     });
+    /*  NIGHT IS NOT A THEME.
+
+        The panel's own light or dark says what the room you are sitting in is
+        like. This says what time it is on the street, which is a fact about
+        the scene and nothing to do with the room. So it is its own switch,
+        beside the sky and the ground it changes.
+
+        Every scene image has to be read again, because the marked windows are
+        repainted on the way in — the cache is holding daylight. */
+    const nightBtn = bgBar.querySelector('[data-k="night"]');
+    const syncNight = () => {
+      nightBtn.textContent = NIGHT ? "\u263e" : "\u2600";
+      nightBtn.classList.toggle("on", NIGHT);
+      nightBtn.title = NIGHT ? "night — press for day" : "day — press for night";
+    };
+    /*  One flip, two ways in. The bar button and the sun in the sky both call
+        this, so they cannot come apart the way the drift button and the idle
+        timer did. */
+    host._toggleNight = () => {
+      NIGHT = !NIGHT;
+      saveNight();
+      syncNight();
+      resetSceneCache();
+      syncBgBar();
+      redrawScene();
+    };
+    nightBtn.onclick = () => host._toggleNight();
+    syncNight();
+
+    /*  This hour only. Resetting the night sky should not undo the daylight
+        you spent ten minutes on. */
     bgBar.querySelector('[data-k="reset"]').onclick = () => {
-      SCENE_BG = { ...SCENE_BG_DEFAULT };
+      if (NIGHT) SCENE_BG_NIGHT = { ...SCENE_BG_NIGHT_DEFAULT };
+      else SCENE_BG = { ...SCENE_BG_DEFAULT };
       syncBgBar();
       redrawScene();
     };
@@ -5462,6 +5877,116 @@ function renderPromenadePixi(model, host) {
     bg.beginFill(sceneEdge()).drawRect(0, H() * GROUND, bgW, 2).endFill();
   }
   world.addChild(bg);
+
+  /*  THE SUN, OR THE MOON.
+
+      One of the two is always up, and which one is the plainest possible
+      statement of what hour it is — plainer than a sky colour, which somebody
+      may have set to anything.
+
+      On the STAGE rather than in the world, so it does not slide past as you
+      walk the street. The sun over Longforgan is the same sun over Dundee; a
+      second copy scrolling by would be a lie about a very old fact.
+
+      Drawn rather than fetched, like everything else in this sky. */
+  if (!GRID) {
+    if (host._sun && !host._sun.destroyed) host._sun.destroy();
+    const sun = new P.Graphics();
+    const R = 9 * Z;
+    /*  Where you put it, or — until you have — over toward the left. NOT the
+        top right corner, which is where the zoom, the view switch and the play
+        button live; a moon behind a row of buttons reads as a stray graphic
+        rather than as the sky.
+
+        Drawn at the origin and moved by the container's own x and y, so
+        dragging it is one assignment rather than a redraw. */
+    const cx = 0, cy = 0;
+    sun.x = SUN_POS ? SUN_POS.fx * app.screen.width
+                    : Math.max(46 * Z, app.screen.width * 0.17);
+    sun.y = SUN_POS ? SUN_POS.fy * app.screen.height : 30 * Z;
+    if (NIGHT) {
+      /*  A crescent, cut rather than drawn: a filled disc with a second disc
+          taken out of it by a hole, which is the only way to get a true
+          crescent's cusps. A drawn arc gives you a banana with blunt ends. */
+      sun.beginFill(0xf2f0e2, 0.92);
+      sun.drawCircle(cx, cy, R);
+      sun.beginHole();
+      sun.drawCircle(cx + R * 0.62, cy - R * 0.28, R * 0.92);
+      sun.endHole();
+      sun.endFill();
+    } else {
+      //  A disc with a soft corona, which is two more discs underneath it.
+      sun.beginFill(0xffd66b, 0.10); sun.drawCircle(cx, cy, R * 2.1); sun.endFill();
+      sun.beginFill(0xffd66b, 0.16); sun.drawCircle(cx, cy, R * 1.5); sun.endFill();
+      sun.beginFill(0xffe9a8, 0.95); sun.drawCircle(cx, cy, R); sun.endFill();
+    }
+    /*  Below the balloon and the birds, which cross in FRONT of it — a bird
+        passing behind the moon would be a bird in space. */
+    sun.zIndex = SKY_Z - 1;
+    /*  PRESS THE SKY TO CHANGE THE HOUR.
+
+        The switch in the bar is a button among nine other buttons and reads as
+        a setting. The sun is the thing itself: putting it down and bringing
+        the moon up is what you actually mean, and it is where you are already
+        looking when you think of it.
+
+        The bar keeps its switch — this is a second way to the same place, not
+        a replacement, and a control you can only reach by finding a nine-pixel
+        disc in a dark sky would be a worse one. */
+    sun.eventMode = "static";
+    sun.cursor = "grab";
+    //  A Graphics is hit tested by what it drew, and a crescent has a bite out
+    //  of it — so it gets a square box you can actually hit.
+    sun.hitArea = new P.Rectangle(-R * 1.6, -R * 1.6, R * 3.2, R * 3.2);
+    /*  PRESS TO CHANGE THE HOUR, DRAG TO HANG IT SOMEWHERE ELSE.
+
+        Same four pixels that tell a click from a drag everywhere else on this
+        panel, so one gesture on one target does both and neither has to be
+        explained. */
+    let sdx = null, sdy = null, sfx = 0, sfy = 0, smoved = false;
+    sun.on("pointerdown", ev => {
+      sdx = ev.global.x; sdy = ev.global.y;
+      sfx = sun.x; sfy = sun.y;
+      smoved = false;
+      host._dragging = true;               // the street does not pan underneath
+      sun.cursor = "grabbing";
+    });
+    sun.on("globalpointermove", ev => {
+      if (sdx === null) return;
+      const mx = ev.global.x - sdx, my = ev.global.y - sdy;
+      if (!smoved && Math.abs(mx) + Math.abs(my) < 4) return;
+      smoved = true;
+      //  Kept on the panel and out of the ground, which is not sky.
+      sun.x = Math.max(R, Math.min(app.screen.width - R, sfx + mx));
+      sun.y = Math.max(R, Math.min(H() * GROUND - R, sfy + my));
+    });
+    const sunDrop = () => {
+      if (sdx === null) return;
+      sdx = sdy = null;
+      sun.cursor = "grab";
+      host._dragging = false;
+      if (!smoved) { if (host._toggleNight) host._toggleNight(); return; }
+      SUN_POS = { fx: sun.x / app.screen.width, fy: sun.y / app.screen.height };
+      saveSunPos();
+    };
+    sun.on("pointerup", sunDrop);
+    sun.on("pointerupoutside", sunDrop);
+    /*  Right-click puts it back where it started, the same erase as everywhere
+        else here. */
+    sun.on("rightdown", ev => {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      SUN_POS = null;
+      saveSunPos();
+      sun.x = Math.max(46 * Z, app.screen.width * 0.17);
+      sun.y = 30 * Z;
+    });
+    app.stage.addChild(sun);
+    host._sun = sun;
+  } else if (host._sun && !host._sun.destroyed) {
+    //  No horizon on the grid, so nothing for it to be above.
+    host._sun.destroy();
+    host._sun = null;
+  }
 
   /*  The scenery. One Graphics for the lot, in behind everything else the
       street draws — see SCENERY for what is in it and how to add to it. */
@@ -8237,6 +8762,54 @@ function renderSpriteEditor(model, host) {
   const eraseBtn = el("button", "sp-pen sp-erase", penBar);
   eraseBtn.type = "button"; eraseBtn.title = "erase";
   eraseBtn.onclick = () => { pen = -1; paint(); };
+  /*  NOT COLOURS. MEANINGS.
+
+      Beside the erase square, because that is where the things you paint with
+      that are not colours already live. A place only — a coat has no windows —
+      so they are hidden on the wear layers rather than sitting there inviting
+      you to mark a sleeve as glass.
+
+      They paint the reserved marker colours, which the street then repaints
+      according to the hour. What you see on the editor canvas is the marker
+      itself, which is loud on purpose: a window you cannot pick out from the
+      wall around it is a window you cannot tell you have drawn. */
+  const hexOf = m => "#" + [m.r, m.g, m.b].map(v => v.toString(16).padStart(2, "0")).join("");
+  el("span", "sp-break", penBar);
+  /*  THE THREE MARKERS, TOGETHER.
+
+      A window, a door and the anchor are one idea in three parts: a reserved
+      colour that the street reads as a meaning rather than as paint. Split
+      between two rows — two here and the anchor up in the tools — you had to
+      already know they were related to find the third.
+
+      The anchor is still a tool and the other two are still pens, because that
+      is what they are: one puts a single pixel, the others draw. But they are
+      chosen from one place. */
+  const markBtns = [
+    ["window", GLASS_MARK, "\u25a3", "glass \u2014 dull by day, lit at night"],
+    ["door", DOOR_MARK, "\u25af", "a doorway \u2014 the way into this place"],
+    ["anchor", null, "\u2691", "where this place's name stands. On the bottom "
+      + "row it plants the signpost there; anywhere else the name floats with "
+      + "no post. Right-click takes it off."],
+  ].map(([name, mark, glyph, tip]) => {
+    const b = el("button", "sp-pen sp-mark", penBar);
+    b.type = "button";
+    b.textContent = glyph;
+    b.title = name + " \u2014 " + tip;
+    if (mark) {
+      b.style.background = hexOf(mark);
+      b.dataset.mark = hexOf(mark);
+      /*  Picking a marker colour does not change the tool: you want the
+          pencil for a pane and the box for a doorway, and forcing one of them
+          would be choosing for you. */
+      b.onclick = () => { pen = -2; fixed.value = hexOf(mark); paint(); };
+    } else {
+      b.dataset.tool = "anchor";
+      b.onclick = () => { tool = "anchor"; paint(); };
+    }
+    return b;
+  });
+
   const fixed = el("input", null, penBar);
   fixed.type = "color"; fixed.value = "#8a2f2f";
   fixed.title = "any other color";
@@ -8357,11 +8930,13 @@ function renderSpriteEditor(model, host) {
               + "drag across anything. Changes nothing. Mark as many as you like "
               + "— they stay while you draw. ⊗ drops one, right-click "
               + "drops the lot."],
-    /*  Place only, and hidden on the others — a coat has no signpost. */
-    ["anchor", "⚑", "where this place's name stands. On the bottom row it "
-             + "plants the signpost at that point; anywhere else the name "
-             + "floats there with no post. Right-click takes it off."],
   ];
+  /*  THE ANCHOR IS NOT IN THIS ROW.
+
+      It was, and it did not belong: this row is how you MAKE a mark — pencil,
+      line, box, fill — and the anchor is one of three things that say what a
+      mark MEANS. Those three now sit together beside the erase square, which
+      is where the things you paint with that are not colours already live. */
   const toolBtns = TOOLS.map(([id, glyph, tip]) => {
     /*  A word is not an icon: the square, oversized box that makes a pencil
         legible would only stretch a label. */
@@ -9301,6 +9876,152 @@ function renderSpriteEditor(model, host) {
   el("span", "sp-cap", gridBgRow).textContent = "cells";
   gridBgRow.appendChild(gridWrap);
 
+  /* ----------------------------------------------------------------------
+     THE PARTS TRAY
+
+     Under the canvas, because a part is a thing you put ON the drawing and
+     everything else that acts on the drawing lives down here too.
+     ---------------------------------------------------------------------- */
+  const partRow = el("div", "sp-row sp-parts", left);
+  el("span", "sp-cap", partRow).textContent = "parts";
+  const partList = el("div", "sp-part-list", partRow);
+  const keepBtn = el("button", null, partRow);
+  keepBtn.type = "button"; keepBtn.textContent = "keep";
+  keepBtn.title = "save what is on the clipboard as a part you can stamp again";
+
+  /*  A part is a PNG, not a list of points: it has to survive being written to
+      localStorage, read back next week, and dropped in from a file — and a
+      PNG is the one shape all three of those already speak. */
+  const clipToPng = () => {
+    if (!clip || !clip.pts.length) return null;
+    const c = document.createElement("canvas");
+    c.width = clip.w || 1; c.height = clip.h || 1;
+    const g = c.getContext("2d");
+    const d = g.createImageData(c.width, c.height);
+    for (const [dx, dy, r, g2, b, a] of clip.pts) {
+      if (dx < 0 || dy < 0 || dx >= c.width || dy >= c.height) continue;
+      const i = (dy * c.width + dx) * 4;
+      d.data[i] = r; d.data[i + 1] = g2; d.data[i + 2] = b; d.data[i + 3] = a;
+    }
+    g.putImageData(d, 0, 0);
+    return c.toDataURL("image/png");
+  };
+
+  /*  And back the other way. Identical to what `liftBox` builds, so from here
+      on nothing can tell a part from a selection. */
+  const pngToClip = async url => {
+    const img = await loadImg(url);
+    if (!img) return false;
+    const c = document.createElement("canvas");
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    const pts = [];
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        if (!d[i + 3]) continue;
+        pts.push([x, y, d[i], d[i + 1], d[i + 2], d[i + 3]]);
+      }
+    }
+    if (!pts.length) return false;
+    clip = { pts, w: c.width, h: c.height };
+    return true;
+  };
+
+  /*  Named after what it is, because a tray of eight unnamed thumbnails is a
+      puzzle at the size these are drawn. The name is editable in place. */
+  let partSeq = 0;
+  const keepClip = () => {
+    const url = clipToPng();
+    if (!url) { hint.textContent = "nothing on the clipboard to keep"; return; }
+    let name = "part " + (++partSeq);
+    while (PARTS.has(name)) name = "part " + (++partSeq);
+    PARTS.set(name, url);
+    if (!saveParts()) {
+      PARTS.delete(name);
+      hint.textContent = "no room left in this browser for another part";
+      return;
+    }
+    drawParts();
+    hint.textContent = "kept as " + name;
+  };
+  keepBtn.onclick = keepClip;
+
+  function drawParts() {
+    partList.innerHTML = "";
+    keepBtn.disabled = !clip;
+    if (!PARTS.size) {
+      const none = el("span", "sp-part-none", partList);
+      none.textContent = "marquee something and press keep, or drop a png here";
+      return;
+    }
+    for (const [name, url] of PARTS) {
+      const item = el("button", "sp-part", partList);
+      item.type = "button";
+      item.title = name + " \u2014 click to pick it up, right-click to forget it";
+      const im = el("img", null, item);
+      im.src = url; im.alt = name;
+      item.onclick = async () => {
+        if (!(await pngToClip(url))) { hint.textContent = "could not read " + name; return; }
+        /*  Straight onto the clipboard AND into the tool that uses it, because
+            picking up a part with the pencil still selected does nothing
+            visible and looks broken. */
+        tool = "copy";
+        paint();
+        hint.textContent = name + " \u2014 click to stamp it";
+      };
+      item.oncontextmenu = e => {
+        e.preventDefault();
+        PARTS.delete(name);
+        saveParts();
+        drawParts();
+      };
+    }
+  }
+
+  /*  Dropping a PNG on the tray adds a part; dropping one on the CANVAS still
+      opens it as a drawing. Two targets, two meanings, and the one you are
+      over is the one you get. */
+  const partStop = e => { e.preventDefault(); e.stopPropagation(); };
+  partRow.addEventListener("dragenter", e => { partStop(e); partRow.classList.add("drop"); });
+  partRow.addEventListener("dragover", partStop);
+  partRow.addEventListener("dragleave", e => { partStop(e); partRow.classList.remove("drop"); });
+  partRow.addEventListener("drop", async e => {
+    partStop(e);
+    partRow.classList.remove("drop");
+    const files = [...((e.dataTransfer && e.dataTransfer.files) || [])]
+      .filter(f => /^image\//.test(f.type));
+    if (!files.length) { hint.textContent = "that was not an image"; return; }
+    for (const f of files) {
+      const url = URL.createObjectURL(f);
+      const img = await loadImg(url);
+      URL.revokeObjectURL(url);
+      if (!img) continue;
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext("2d");
+      g.imageSmoothingEnabled = false;
+      g.drawImage(img, 0, 0);
+      const name = f.name.replace(/\.[^.]+$/, "") || ("part " + (++partSeq));
+      PARTS.set(name, c.toDataURL("image/png"));
+    }
+    if (!saveParts()) hint.textContent = "no room left in this browser for that";
+    drawParts();
+  });
+  /*  NOT CALLED HERE.
+
+      `drawParts` reads `clip` to decide whether `keep` is pressable, and the
+      clipboard is declared a few hundred lines below this — so calling it
+      during the build hit the temporal dead zone, threw, and took the whole
+      panel down with it. The first draw goes at the end of the build with
+      everything else that needs the panel to exist first. */
+  /*  Only the enabled state, on every repaint — rebuilding the thumbnails
+      sixty times a second would throw away the one you are hovering. */
+  function drawPartsSync() { keepBtn.disabled = !clip; }
+
 
 
   //  Its two boxes are over the canvas now; the row they were in is empty.
@@ -10069,10 +10790,15 @@ function renderSpriteEditor(model, host) {
       }
     }
     [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
-    toolBtns.forEach((b, i) => {
-      b.classList.toggle("on", TOOLS[i][0] === tool);
-      if (TOOLS[i][0] === "anchor") b.hidden = !isPlace();
-    });
+    //  `keep` is pressable exactly when there is something to keep.
+    drawPartsSync();
+    for (const b of markBtns) {
+      b.hidden = !isPlace();
+      b.classList.toggle("on", b.dataset.tool
+        ? tool === b.dataset.tool
+        : pen === -2 && fixed.value.toLowerCase() === b.dataset.mark);
+    }
+    toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     //  Switching to a wear layer with the anchor up would leave you holding a
     //  tool whose button is not there any more.
     if (tool === "anchor" && !isPlace()) tool = "pencil";
@@ -10821,6 +11547,7 @@ function renderSpriteEditor(model, host) {
   }
 
   syncSize();
+  drawParts();
   /*  The draft wins over the file. If there is nothing half-drawn, this falls
       through to the ordinary "open whatever exists for this name". */
   restoreWip().then(found => { if (!found && host.isConnected) openExisting(); });
@@ -16161,6 +16888,9 @@ loadStyleUrl();
 loadColumnTints();
 loadRibbons();
 loadColNotes();
+loadParts();
+loadNight();
+loadSunPos();
 loadSceneBg();
 loadLocalArt();   // before the first render, or the street draws without it
 loadGroups();
