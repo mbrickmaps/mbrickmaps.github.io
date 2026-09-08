@@ -475,10 +475,15 @@
   /*  A marker, not a swatch. Squared off and captioned with a glyph, so a
       row of colours does not gain two members that behave differently from
       the rest without saying so. */
+  /*  Not a swatch — these mark, they do not paint, so they do not carry a
+      colour the way the stacks beside them do. */
   .sp-mark {
-    width: 22px; font-size: 0.62rem; line-height: 1;
-    color: rgba(0,0,0,0.75); text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+    width: 22px; font-size: 0.7rem; line-height: 1;
+    background: rgba(127,127,127,0.14);
   }
+  /*  Names the mode you are IN, like the cursor button — a switch labelled
+      with the thing it would do next is one you have to test to read. */
+  .sp-fx { font-size: 0.62rem; padding: 1px 6px; min-width: 54px; }
   .sp-mark.on { outline: 2px solid var(--accent2); outline-offset: 1px;
                 position: relative; z-index: 2; }
   .sp-pen.sp-erase {
@@ -3760,8 +3765,30 @@ const SIGN_MARK = { r: 255, g: 0, b: 255 };
     Chosen to be unpaintable: nobody reaches for pure cyan or pure yellow on a
     Perthshire mill, and they appear in the paint row as `window` and `door`
     rather than as hex, so the numbers never have to be remembered. */
-const GLASS_MARK = { r: 0, g: 255, b: 255 };     // window
-const DOOR_MARK  = { r: 255, g: 255, b: 0 };     // door
+/*  THE MARK IS NOT A COLOUR. IT IS AN ALPHA.
+
+    Painting the marker over the glass destroyed the glass: the mullions, the
+    astragals, the four panes you drew and the shade you put on the sill were
+    all replaced by one flat cyan, and the only way to see your own window
+    again was to undo the marking.
+
+    So the flag moved out of the colour and into the alpha channel. A pixel at
+    alpha 254 is glass; at 253 it is a door. Both are indistinguishable from
+    fully opaque on any screen — 254/255 of the way there — and both survive a
+    PNG, which is lossless, and a canvas round trip, which preserves alpha
+    exactly.
+
+    What that buys is that the drawing is still the drawing. At night the panes
+    are TINTED toward the flame rather than replaced by it, so a window with
+    dark astragals over pale glass stays a window with dark astragals: the
+    glass lights and the astragals stay dark, because they were darker to begin
+    with and a tint keeps that. */
+const GLASS_A = 254;
+const DOOR_A  = 253;
+/*  The anchor is a flag like the other two now. It used to be a magenta pixel,
+    which meant the one mode whose promise is "this cannot change your drawing"
+    began by painting on it. */
+const ANCHOR_A = 252;
 /*  GLASS IS NOT ONE COLOUR.
 
     Filling every marked pixel with the same yellow gave a row of flat squares
@@ -3848,8 +3875,6 @@ function readSignMark(img) {
   //  That is not a failure worth breaking the scene over: no mark, carry on.
   try { d = g.getImageData(0, 0, w, h); } catch (e) { return { img, at: null }; }
   const px = d.data;
-  const isMark = i => px[i] === SIGN_MARK.r && px[i + 1] === SIGN_MARK.g
-                   && px[i + 2] === SIGN_MARK.b && px[i + 3] > 0;
   /*  The bottom row first and on its own, because that row is the question
       being asked — is this a post? — and a magenta pixel in the sky is a
       different answer, not a better one. */
@@ -3861,34 +3886,37 @@ function readSignMark(img) {
       pixel of every scene image — a second sweep for this would be a second
       sweep for nothing. */
   const glass = [], doors = [];
-  const eq = (i, m) => px[i] === m.r && px[i + 1] === m.g && px[i + 2] === m.b && px[i + 3] > 0;
-  const dcol = hexBytes(DOOR_PAINT);
   const isGlass = new Uint8Array(w * h);
   for (let i = 0; i < px.length; i += 4) {
     const p = i / 4;
-    if (eq(i, GLASS_MARK)) { glass.push([p % w, Math.floor(p / w)]); isGlass[p] = 1; }
-    else if (eq(i, DOOR_MARK)) {
+    if (px[i + 3] === GLASS_A) {
+      glass.push([p % w, Math.floor(p / w)]);
+      isGlass[p] = 1;
+      px[i + 3] = 255;                 // the flag has been read; it is opaque now
+    } else if (px[i + 3] === DOOR_A) {
       doors.push([p % w, Math.floor(p / w)]);
-      px[i] = dcol[0]; px[i + 1] = dcol[1]; px[i + 2] = dcol[2];
+      px[i + 3] = 255;
+      //  A door keeps whatever you painted it. It is marked so that it can be
+      //  clicked, not so that it can be recoloured.
     }
   }
   if (glass.length) lightGlass(px, isGlass, w, h);
 
   let at = null;
+  const isMark2 = i => px[i + 3] === ANCHOR_A;
   for (let x = 0; x < w; x++) {
-    if (isMark(((h - 1) * w + x) * 4)) { at = { x, y: h - 1, ground: true }; break; }
+    if (isMark2(((h - 1) * w + x) * 4)) { at = { x, y: h - 1, ground: true }; break; }
   }
   if (!at) {
     for (let y = 0; y < h - 1 && !at; y++) {
       for (let x = 0; x < w; x++) {
-        if (isMark((y * w + x) * 4)) { at = { x, y, ground: false }; break; }
+        if (isMark2((y * w + x) * 4)) { at = { x, y, ground: false }; break; }
       }
     }
   }
-  /*  Every anchor pixel, not only the one that was found. Two marks is a
-      mistake, and leaving the second one painted on the building is a worse
-      answer than quietly taking both off. */
-  for (let i = 0; i < px.length; i += 4) if (isMark(i)) px[i + 3] = 0;
+  //  Every anchor flag, not only the one that was found: the flag is read and
+  //  then the pixel goes back to being an ordinary opaque pixel.
+  for (let i = 0; i < px.length; i += 4) if (isMark2(i)) px[i + 3] = 255;
   /*  The canvas is returned whenever ANYTHING was rewritten, not only when an
       anchor was found — a drawing with windows and no anchor still has to come
       back repainted rather than as the original image. */
@@ -4022,10 +4050,23 @@ function lightGlass(px, isGlass, w, h) {
         rather than as a glowing tile stuck on the wall. `depth` is 0 at the
         frame, so the outermost ring keeps only half its light. */
     if (depth[k] === 0) lum *= 0.72;
-    const c3 = ramp(Math.max(0, Math.min(1, lum)));
+    const t = Math.max(0, Math.min(1, lum));
+    const c3 = ramp(t);
     const i = k * 4;
+    /*  TINTED, NOT REPLACED.
+
+        The pixel you drew is the base and the light is laid over it, weighted
+        by how much light reaches there. So a pane with astragals across it
+        keeps them: the glass is pale and lights, the astragal is dark and
+        stays darker than the glass beside it, because both moved the same
+        distance toward the same flame from different places.
+
+        By day the mix is barely anything — daylight through glass is the
+        drawing itself, very slightly cooled. */
+    const mix = NIGHT ? 0.30 + 0.62 * t : 0.16;
     for (let ch = 0; ch < 3; ch++) {
-      px[i + ch] = Math.max(0, Math.min(255, Math.round(c3[ch])));
+      const lit = px[i + ch] + (c3[ch] - px[i + ch]) * mix;
+      px[i + ch] = Math.max(0, Math.min(255, Math.round(lit)));
     }
   }
 
@@ -4059,6 +4100,29 @@ function lightGlass(px, isGlass, w, h) {
 function hexBytes(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/*  An image averaged down to a fraction of its size.
+
+    `imageSmoothingQuality: "high"` is a box filter in every engine that
+    implements it, which is the right filter for minifying: every source pixel
+    contributes, so a single bright pane becomes a dimmer pixel rather than
+    being skipped. Done in one step because the reductions here are modest —
+    a place is 102 wide in a column of about 100. */
+function shrunk(img, fit) {
+  const w = Math.max(1, Math.round(img.width * fit));
+  const h = Math.max(1, Math.round(img.height * fit));
+  if (img.__shrunk && img.__shrunk.width === w && img.__shrunk.height === h) {
+    return img.__shrunk;
+  }
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "high";
+  g.drawImage(img, 0, 0, img.width, img.height, 0, 0, w, h);
+  try { img.__shrunk = c; } catch (e) { /* a plain Image will take it too */ }
+  return c;
 }
 
 function sceneImage(slug) {
@@ -6157,13 +6221,32 @@ function renderPromenadePixi(model, host) {
     const myRender = host._renderId;
     const place = (c, img) => {
       if (!img || host._renderId !== myRender) return;
-      const spr = new P.Sprite(P.Texture.from(img));
+      // Fit the column, never blown up past its own pixels.
+      const fit = Math.min(1, ((wOf.get(c.slug) || STEP) - 8 * Z) / (img.width || 1));
+      /*  A ONE-PIXEL WINDOW MUST NOT VANISH.
+
+          Nearest neighbour is right when a drawing is blown UP — it is what
+          keeps pixel art crisp instead of soft. Shrinking, it is exactly
+          wrong: it picks one source pixel per destination pixel and throws
+          the rest away, so at the zoomed-out street a pane one pixel wide
+          fell in the gap between samples and the window went out. Not dimmer.
+          Gone.
+
+          So a picture being made smaller is averaged down first, once, into a
+          canvas at the size it will actually be drawn — a lit pane then
+          survives as a dimmer pixel rather than as no pixel. Above 1:1 nothing
+          changes and nearest still does the work.
+
+          Cached on the image itself and keyed by the width asked for, because
+          this runs for every column on every render and the answer only
+          changes when the column does. */
+      const src = fit < 1 ? shrunk(img, fit) : img;
+      const spr = new P.Sprite(P.Texture.from(src));
       spr.texture.baseTexture.scaleMode = P.SCALE_MODES.NEAREST;
       spr.anchor.set(0.5, 1);
       spr.x = c.x;
       spr.y = groundY();
-      // Fit the column, never blown up past its own pixels.
-      spr.scale.set(Math.min(1, ((wOf.get(c.slug) || STEP) - 8 * Z) / (img.width || 1)) * Z);
+      spr.scale.set(fit < 1 ? Z : fit * Z);
       // Above the ground and the column's gradient, below everyone. Clamped
       // because this can land long after the render that asked for it.
       world.addChildAt(spr, Math.min(ART_FLOOR, world.children.length));
@@ -6591,27 +6674,45 @@ function renderPromenadePixi(model, host) {
           Down to where the board rests on the ground, up to just under the top
           of the panel. Computed here because this is the only place that knows
           where the board actually starts. */
-      sign.__clampOff = off => {
-        const abs = groundY() + baseTop + off * Z;
-        const lo = 6, hi = app.screen.height - 6 - (t.height + 4);
-        const fixed = Math.max(lo, Math.min(hi, abs));
-        return (fixed - groundY() - baseTop) / Z;
-      };
       sign.__offX = offX;
     }
     /*  A ribbon has no post, so for a group the offset is simply where it
-        hangs. Both kinds answer to the same pair of calls. */
-    if (!sign.__applyOff) {
-      sign.__applyOff = off => { sign.y = groundY() + off * Z; };
-      sign.__clampOff = off => {
-        const abs = groundY() + off * Z;
-        return (Math.max(20, Math.min(app.screen.height - 6, abs)) - groundY()) / Z;
-      };
-    }
+        hangs. Both kinds answer to the same call. */
+    if (!sign.__applyOff) sign.__applyOff = off => { sign.y = groundY() + off * Z; };
+
+    /*  CLAMPED BY WHAT IS DRAWN, NOT BY THE ORIGIN.
+
+        A signpost's origin is its foot and everything it draws is above it. A
+        group's ribbon hangs its banner far above an origin that is still on
+        the ground. Clamping the origin therefore meant two different things
+        for the two kinds — and for a ribbon it meant pushing the banner clean
+        off the top of the panel while the origin sat obediently at y=20. The
+        label was not missing. It was above the sky.
+
+        So the clamp asks the sign where it actually draws. `getLocalBounds` is
+        the union of whichever parts this one has — post, board, text, banner —
+        and the offset is limited so that box stays on the panel. One rule for
+        both kinds, and it cannot drift from what is drawn because it is
+        measured from it. */
+    sign.__clampOff = off => {
+      sign.__applyOff(0);
+      const b2 = sign.getLocalBounds();
+      const top = sign.y + b2.y, bot = sign.y + b2.y + b2.height;
+      const lo = (10 - top) / Z;                      // no higher than this
+      const hi = (app.screen.height - 6 - bot) / Z;   // no lower than this
+      if (lo > hi) return 0;                          // taller than the panel
+      return Math.max(lo, Math.min(hi, off));
+    };
     sign.x = x + (sign.__offX || 0);
     sign.y = groundY();
-    //  The height you set for it, if you set one; otherwise its own.
-    sign.__applyOff(SIGN_Y[slug] || 0);
+    /*  CLAMPED ON THE WAY IN, NOT ONLY ON THE WAY OUT.
+
+        A height is stored in world units off the ground, and the ground moves
+        when the panel is resized — so an offset set in a tall panel puts the
+        sign off the top of a short one, where it cannot be seen and therefore
+        cannot be dragged back or right-clicked. The same clamp the drag uses,
+        applied against the panel as it is now. */
+    sign.__applyOff(sign.__clampOff(SIGN_Y[slug] || 0));
     sign.eventMode = "static";
     sign.cursor = "pointer";
     /*  A GROUP'S RIBBON CAN BE DRAGGED INTO ANOTHER GAP.
@@ -8144,6 +8245,7 @@ function renderRuler(model, host) {
     return null;
   };
   let dragEnd = null;
+
   let dragLine = null;      // { i, x, y, from } while a whole line is moved
 
   cv.addEventListener("pointerdown", e => {
@@ -8445,6 +8547,8 @@ function renderSpriteEditor(model, host) {
       `paint` draws the preview whether or not it is running, so a stopped
       preview still shows the figure — it just stands still. */
   let slot = "top", frame = 0, pen = 0, onion = true, playing = false, linked = false;
+  //  Drawing the picture, or marking what parts of it mean.
+  let fxMode = false, fxKind = GLASS_A;
   let gridOn = true, axesOn = true;
   const GRIDSTEP_KEY = "brick-by-brick:gridstep:v1";
   let gridStep = 4;
@@ -8773,7 +8877,6 @@ function renderSpriteEditor(model, host) {
       according to the hour. What you see on the editor canvas is the marker
       itself, which is loud on purpose: a window you cannot pick out from the
       wall around it is a window you cannot tell you have drawn. */
-  const hexOf = m => "#" + [m.r, m.g, m.b].map(v => v.toString(16).padStart(2, "0")).join("");
   el("span", "sp-break", penBar);
   /*  THE THREE MARKERS, TOGETHER.
 
@@ -8785,30 +8888,47 @@ function renderSpriteEditor(model, host) {
       The anchor is still a tool and the other two are still pens, because that
       is what they are: one puts a single pixel, the others draw. But they are
       chosen from one place. */
+  /*  TWO MODES, NOT A SPECIAL SET OF TOOLS.
+
+      Marking had its own tools, which meant learning a second way to draw: a
+      marker that filled a region, a marker that painted a pixel, neither of
+      them the pencil or the box you already know. That is a second editor
+      bolted to the side of the first one.
+
+      It is one editor with a switch. In EFFECTS the drawing goes faint and
+      every tool you already have — pencil, line, box, fill — paints a MARK
+      instead of a colour. Erase unmarks. Nothing else changes: the same tools,
+      the same undo, the same right-click.
+
+      What you are marking is chosen here; what you mark WITH is the whole tool
+      row, unchanged. */
+  el("span", "sp-break", penBar);
+  const fxBtn = el("button", "sp-fx", penBar);
+  fxBtn.type = "button"; fxBtn.textContent = "paint";
   const markBtns = [
-    ["window", GLASS_MARK, "\u25a3", "glass \u2014 dull by day, lit at night"],
-    ["door", DOOR_MARK, "\u25af", "a doorway \u2014 the way into this place"],
-    ["anchor", null, "\u2691", "where this place's name stands. On the bottom "
-      + "row it plants the signpost there; anywhere else the name floats with "
-      + "no post. Right-click takes it off."],
-  ].map(([name, mark, glyph, tip]) => {
+    ["glass", "\u25a3", "glass \u2014 these panes light at night"],
+    ["door", "\u25af", "a doorway \u2014 the way into this place"],
+  ].map(([id, glyph, tip]) => {
     const b = el("button", "sp-pen sp-mark", penBar);
     b.type = "button";
     b.textContent = glyph;
-    b.title = name + " \u2014 " + tip;
-    if (mark) {
-      b.style.background = hexOf(mark);
-      b.dataset.mark = hexOf(mark);
-      /*  Picking a marker colour does not change the tool: you want the
-          pencil for a pane and the box for a doorway, and forcing one of them
-          would be choosing for you. */
-      b.onclick = () => { pen = -2; fixed.value = hexOf(mark); paint(); };
-    } else {
-      b.dataset.tool = "anchor";
-      b.onclick = () => { tool = "anchor"; paint(); };
-    }
+    b.title = tip;
+    b.dataset.kind = id;
+    b.onclick = () => { fxKind = id === "glass" ? GLASS_A : DOOR_A; paint(); };
     return b;
   });
+  const anchorBtn = el("button", "sp-pen sp-mark", penBar);
+  anchorBtn.type = "button"; anchorBtn.textContent = "\u2691";
+  anchorBtn.title = "where this place's name stands. On the bottom row it plants "
+    + "the signpost there; anywhere else the name floats with no post. "
+    + "Right-click takes it off.";
+  anchorBtn.onclick = () => { tool = "anchor"; paint(); };
+  fxBtn.onclick = () => {
+    fxMode = !fxMode;
+    //  Coming out of effects holding the anchor would leave a tool with no row.
+    if (!fxMode && tool === "anchor") tool = "pencil";
+    paint();
+  };
 
   const fixed = el("input", null, penBar);
   fixed.type = "color"; fixed.value = "#8a2f2f";
@@ -8991,6 +9111,7 @@ function renderSpriteEditor(model, host) {
   /*  Everything comes back touched. A restored layer is your work, and the
       name box must not be able to fetch a file over the top of it. */
   const restore = shot => {
+    wipSeq++;                       // undo changes the drawing like anything else
     for (const k of TARGETS) { layers[k] = shot[k]; touched[k] = true; }
   };
   const syncHistory = () => {
@@ -10081,7 +10202,13 @@ function renderSpriteEditor(model, host) {
   /*  One pixel at an exact color — what the clipboard stamps with. Obeys the
       same "all frames" rule as the pencil: a shape stamped into one frame of a
       still layer should land in all of them, like any other mark. */
+  /*  Bumped by everything that changes a layer. The lit preview is cached
+      against it, so a stroke invalidates the cache and a repaint that changed
+      nothing does not. */
+  let wipSeq = 0;
+
   function setPixelRGBA(x, y, r, g2, b, a) {
+    wipSeq++;
     if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
     const g = layers[slot].getContext("2d");
     const at = linked ? [...Array(nFrames()).keys()] : [frame];
@@ -10098,21 +10225,56 @@ function renderSpriteEditor(model, host) {
       frame, but the sweep costs nothing and an anchor stranded in a frame you
       are not looking at would be invisible and permanent. */
   function clearAnchor() {
+    wipSeq++;
     const cv = layers[slot];
     const g = cv.getContext("2d", { willReadFrequently: true });
     const d = g.getImageData(0, 0, cv.width, cv.height);
     const px = d.data;
     let hit = false;
+    //  Unflags, rather than deleting: the pixel is somebody's drawing.
     for (let i = 0; i < px.length; i += 4) {
-      if (px[i] === 255 && px[i + 1] === 0 && px[i + 2] === 255 && px[i + 3] > 0) {
-        px[i + 3] = 0; hit = true;
-      }
+      if (px[i + 3] === ANCHOR_A) { px[i + 3] = 255; hit = true; }
     }
     if (hit) g.putImageData(d, 0, 0);
   }
 
+  /*  One pixel's flag. The colour is not touched — that is the entire point —
+      and a transparent pixel is left alone, because a flag on nothing is a
+      pixel that appears from nowhere the moment somebody paints there. */
+  function flagPixel(x, y, want) {
+    const w = cellW(), h = cellH();
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const cv = layers[slot], g = cv.getContext("2d", { willReadFrequently: true });
+    const at = linked ? [...Array(nFrames()).keys()] : [frame];
+    for (const f of at) {
+      const sx = f * w + x;
+      const d = g.getImageData(sx, y, 1, 1);
+      if (!d.data[3]) continue;
+      d.data[3] = want;
+      g.putImageData(d, sx, y);
+    }
+  }
+
   function setPixel(x, y, erase) {
+    wipSeq++;
     if (x < 0 || y < 0 || x >= cellW() || y >= cellH()) return;
+    /*  IN EFFECTS, EVERY TOOL WRITES A FLAG.
+
+        This is the one place a tool actually puts something down, so it is the
+        only place the mode has to exist. The pencil, the line, the box and the
+        fill all arrive here and all of them now mark instead of paint — which
+        is why the mode needed no tools of its own. */
+    if (fxMode) {
+      /*  The erase square unmarks, exactly as it erases in paint. It was being
+          ignored here, so picking erase in effects and drawing carefully over
+          a window MARKED it — the one action whose whole purpose is to undo
+          the previous one did the previous one again.
+
+          `colorNow()` is null for the erase square, which is the same test the
+          painting path below already uses. */
+      flagPixel(x, y, (erase || !colorNow()) ? 255 : fxKind);
+      return;
+    }
     const g = layers[slot].getContext("2d");
     const c = colorNow();
     // Linked: the same pixel in every frame, so one drawing is a whole layer.
@@ -10305,6 +10467,9 @@ function renderSpriteEditor(model, host) {
   }
 
   function stampClip(atX, atY) {
+    wipSeq++;
+    //  Effects marks; it never paints. Stamping pixels down is painting.
+    if (fxMode) return;
     if (!clip) return;
     for (const [dx, dy, r, g2, b, a] of clip.pts) setPixelRGBA(atX + dx, atY + dy, r, g2, b, a);
     touched[slot] = true;
@@ -10421,11 +10586,13 @@ function renderSpriteEditor(model, host) {
         it away entirely, which is the erase of an anchor. */
     if (tool === "anchor") {
       clearAnchor();
-      if (!drawing) setPixelRGBA(x, y, 255, 0, 255, 255);
+      if (!drawing) flagPixel(x, y, ANCHOR_A);
       touched[slot] = true;
       anchor = null;
       paint();
       recordStep();
+      //  Captured like every other press, so the release comes back here.
+      try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
       return;
     }
     /*  MEASURE. Draws nothing, so it takes no snapshot and sets no pixel.
@@ -10492,6 +10659,21 @@ function renderSpriteEditor(model, host) {
       if (over !== overClose) { overClose = over; syncCursor(); }
       if (over) return;
     }
+    /*  THE BUTTON ITSELF IS THE TRUTH, NOT WHAT WE REMEMBER OF IT.
+
+        A stroke ends when `stop` runs, and `stop` runs on pointerup — so a
+        release the canvas never sees leaves `drawing` set to false rather than
+        null, and false is not null, so every later MOVE paints. You then draw
+        by hovering, before pressing anything.
+
+        It is easy to lose that release: several tools return from pointerdown
+        before the pointer is captured, and letting go outside the canvas then
+        delivers pointerup somewhere else entirely.
+
+        `e.buttons` is the hardware answer — a bitmask of what is physically
+        held right now. If nothing is held, no stroke is in progress, whatever
+        we thought. */
+    if (drawing !== null && !e.buttons) { stop(); return; }
     /*  With a shape on the clipboard the cursor is a stamp, so the canvas has
         to show where it would land whether a button is down or not. */
     if (tool === "copy") {
@@ -10600,6 +10782,9 @@ function renderSpriteEditor(model, host) {
       moving is how you fix a frame that sits wrong against the others, and
       shifting them all together leaves you exactly where you started. */
   function shiftBy(dx, dy) {
+    wipSeq++;
+    //  Same rule: moving the drawing is changing the drawing.
+    if (fxMode) return;
     if (!dx && !dy) return;
     touched[slot] = true;
     const cv = layers[slot], w = cellW(), h = cellH();
@@ -10792,12 +10977,22 @@ function renderSpriteEditor(model, host) {
     [...frameBar.children].forEach(b => b.classList.toggle("on", +b.dataset.frame === frame));
     //  `keep` is pressable exactly when there is something to keep.
     drawPartsSync();
+    /*  A coat has no windows, so the whole idea is hidden off a place — and
+        a mode you cannot see you are in is the worst kind. */
+    if (!isPlace() && fxMode) fxMode = false;
+    fxBtn.hidden = !isPlace();
+    fxBtn.textContent = fxMode ? "effects" : "paint";
+    fxBtn.title = fxMode
+      ? "marking what the drawing MEANS \u2014 press to go back to painting"
+      : "painting the drawing \u2014 press to mark lighting and entries on it";
+    fxBtn.classList.toggle("on", fxMode);
     for (const b of markBtns) {
-      b.hidden = !isPlace();
-      b.classList.toggle("on", b.dataset.tool
-        ? tool === b.dataset.tool
-        : pen === -2 && fixed.value.toLowerCase() === b.dataset.mark);
+      b.hidden = !isPlace() || !fxMode;
+      b.classList.toggle("on",
+        fxKind === (b.dataset.kind === "glass" ? GLASS_A : DOOR_A));
     }
+    anchorBtn.hidden = !isPlace() || !fxMode;
+    anchorBtn.classList.toggle("on", tool === "anchor");
     toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     //  Switching to a wear layer with the anchor up would leave you holding a
     //  tool whose button is not there any more.
@@ -10886,7 +11081,16 @@ function renderSpriteEditor(model, host) {
       g.drawImage(layers[slot], frame * cw, 0, cw, ch,
                   m.dx * z, m.dy * z, grid.width, grid.height);
     } else {
+      /*  FAINT WHILE YOU MARK.
+
+          In effects the drawing is the thing you are marking, not the thing
+          you are making — it has to be legible enough to aim at and quiet
+          enough that the marks are what you see. Full strength, a cyan wash
+          over a pale wall is invisible; too faint and you cannot find the
+          window. */
+      if (fxMode) g.globalAlpha = 0.45;
       g.drawImage(layers[slot], frame * cw, 0, cw, ch, 0, 0, grid.width, grid.height);
+      g.globalAlpha = 1;
     }
 
 
@@ -11145,6 +11349,52 @@ function renderSpriteEditor(model, host) {
       }
     }
 
+    /*  WHAT IS MARKED, SHOWN WITHOUT BEING PAINTED.
+
+        The flag lives in the alpha channel and is invisible by design, which
+        is right for the street and useless in the editor — you cannot mark a
+        window you cannot see you have already marked.
+
+        So the editor washes the marked area in colour: the whole cell, faint
+        enough to read the drawing straight through it, so what you see is the
+        REGION you have marked rather than a scatter of dots you have to join
+        up. A window is a shape, and the thing you need to know is whether the
+        shape is right.
+
+        Bordered where the wash meets unmarked pixels, because a translucent
+        tint over dark paint is nearly invisible and the edge is exactly what
+        you are checking. It is an overlay, never paint, and it appears only
+        while a marker tool is up — put the tool down and you are looking at
+        the window itself, which is the thing you are designing. */
+    if (isPlace() && fxMode) {
+      const lg = layers[slot].getContext("2d", { willReadFrequently: true });
+      const md = lg.getImageData(frame * cw, 0, cw, ch).data;
+      const kind = (x, y) => {
+        if (x < 0 || y < 0 || x >= cw || y >= ch) return 0;
+        const a2 = md[(y * cw + x) * 4 + 3];
+        return a2 === GLASS_A ? 1 : a2 === DOOR_A ? 2 : a2 === ANCHOR_A ? 3 : 0;
+      };
+      g.save();
+      for (let y = 0; y < ch; y++) {
+        for (let x = 0; x < cw; x++) {
+          const k = kind(x, y);
+          if (!k) continue;
+          g.fillStyle = k === 1 ? "rgba(70,210,255,0.34)"
+                      : k === 2 ? "rgba(255,190,50,0.34)" : "rgba(255,120,235,0.5)";
+          g.fillRect(x * z, y * z, z, z);
+          //  The outline of the region, drawn only on sides that leave it.
+          g.fillStyle = k === 1 ? "rgba(120,235,255,0.95)"
+                      : k === 2 ? "rgba(255,215,90,0.95)" : "rgba(255,150,240,0.95)";
+          const t = Math.max(1, Math.round(z / 8));
+          if (kind(x, y - 1) !== k) g.fillRect(x * z, y * z, z, t);
+          if (kind(x, y + 1) !== k) g.fillRect(x * z, (y + 1) * z - t, z, t);
+          if (kind(x - 1, y) !== k) g.fillRect(x * z, y * z, t, z);
+          if (kind(x + 1, y) !== k) g.fillRect((x + 1) * z - t, y * z, t, z);
+        }
+      }
+      g.restore();
+    }
+
     /*  THE MEASUREMENT, STILL THERE AFTER THE POINTER IS UP.
 
         Boxed in the measuring colour so it cannot be mistaken for a guide or
@@ -11375,6 +11625,26 @@ function renderSpriteEditor(model, host) {
       window of 132 could only take one whole multiple of that — so the
       preview sat at 1:1 and was half the size it had room to be. */
   const PREV_COL = 110;                       // the Promenade's narrowest column
+  /*  The place with its marked windows lit, kept until the drawing changes.
+
+      Keyed on a cheap signature rather than the pixels: the width, the height,
+      the hour, and a count of what is flagged. Any of those moving is a
+      different picture; none of them moving means the last answer still
+      stands. A stroke that changes a colour without changing a flag is caught
+      by `wipSeq`, which every edit bumps. */
+  let litCache = null, litKey = "";
+
+  function litPlace(sc) {
+    const key = sc.width + "x" + sc.height + ":" + (NIGHT ? "n" : "d") + ":" + wipSeq;
+    if (litCache && litKey === key) return litCache;
+    const copy = document.createElement("canvas");
+    copy.width = sc.width; copy.height = sc.height;
+    copy.getContext("2d").drawImage(sc, 0, 0);
+    litCache = readSignMark(copy).img;
+    litKey = key;
+    return litCache;
+  }
+
   function drawPlacePreview(fig) {
     const sc = layers.place;
     const fw = fig.__cellW || SPR_W, fh = fig.__cellH || SPR_H;
@@ -11437,7 +11707,18 @@ function renderSpriteEditor(model, host) {
     //  Centred in the column, standing on the ground line — the street again.
     const px0 = Math.round((PREV_COL - pw) / 2 * zz), py0 = Math.round((groundY - ph) * zz);
     const pxw = Math.round(pw * zz), pxh = Math.round(ph * zz);
-    c.drawImage(sc, 0, 0, sc.width, sc.height, px0, py0, pxw, pxh);
+    /*  LIT HERE TOO.
+
+        Marking a window and then having to push the drawing to the street to
+        find out whether it worked is not a preview, it is a round trip. Same
+        function the Promenade uses, so what you see here is what will happen
+        there — including the hour, which the sun in the sky sets.
+
+        Cached against the layer's own content, because this runs on every
+        repaint and reading a whole place back out of a canvas sixty times a
+        second is real work. */
+    const lit = litPlace(sc);
+    c.drawImage(lit, 0, 0, lit.width, lit.height, px0, py0, pxw, pxh);
 
     /*  WHERE THE DRAWING'S EDGES ARE.
 
