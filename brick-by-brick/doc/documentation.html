@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Brick by Brick — a notation system where you define the symbols. The research folder, the notation, and every panel.">
-<title>Brick by Brick — documentation</title>
+<meta name="description" content="Brick by Brick. A notation system where you define the symbols. The research folder, the notation, and every panel.">
+<title>Brick by Brick documentation</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="doc.css">
 <style>.panel-h{scroll-margin-top:1.4rem}.panel-h:target{background:linear-gradient(90deg,var(--accent-wash),transparent);box-shadow:-0.7rem 0 0 var(--accent-wash);border-radius:2px}</style>
@@ -32,12 +32,12 @@
 <div class="wrap">
 
   <div class="note caution" role="note">
-    <p><strong>Note on this document.</strong> Written by an AI assistant during development, and not yet reviewed line by line. It describes the code as it stood when written, so some of it will have drifted. Treat it as a working draft — to be rewritten properly later.</p>
+    <p><strong>Note on this document.</strong> An AI assistant wrote this during development, and nobody has reviewed it line by line. It describes the code as it stood when written, Parts of it have drifted. Treat it as a working draft.</p>
   </div>
 
 
   <div class="note">
-    <p>New to this? The <a href="quick-guide.html"><strong>quick guide</strong></a> covers what a brick is, what the panels do, and how to keep your work safe — in about five minutes. This page is the full detail.</p>
+    <p>New to this? The <a href="quick-guide.html"><strong>quick guide</strong></a> covers what a brick is and how to keep your work safe. Five minutes. This page carries the full detail.</p>
   </div>
 
   <nav class="toc" aria-label="Contents">
@@ -53,16 +53,16 @@
 
   <section id="folder">
     <h2>The research folder</h2>
-    <p class="lede">Everything a piece of research needs, in one directory. Open it with <strong>Folder…</strong> in the Pallet and all of it is read at once.</p>
+    <p class="lede">Everything a piece of research needs, in one directory. Open it with <strong>Folder…</strong> in the Pallet and the page reads all of it at once.</p>
 
 <pre><code>my-research/
-├── bricks/                     the piles — *.txt, any number, any nesting
+├── bricks/                     the piles: *.txt, any number, any nesting
 │   ├── moncur-bricks.txt
 │   └── places.txt
 ├── images/
 │   ├── scans/                  what a document brick points at
-│   ├── places/                 longforgan.png — scenery behind that column
-│   └── wear/                   who wears what — see the Promenade
+│   ├── places/                 longforgan.png, scenery behind that column
+│   └── wear/                   who wears what. See the Promenade
 ├── gazetteer.csv               uid,lat,lng,label,icon
 ├── project.json                an Atlas project file (map context)
 └── brick.json                  placements and column colors</code></pre>
@@ -70,18 +70,18 @@
     <div class="field">
       <div>
         <h3 style="margin-top:0">A uid is declared once</h3>
-        <p>Merging is concatenation, so two files both declaring <code>&lt;james&gt;</code> is an error by design. Declare once, reference everywhere.</p>
+        <p>Merging concatenates. Two files both declaring <code>&lt;james&gt;</code> is an error by design. Declare once, reference everywhere.</p>
       </div>
       <div>
         <h3 style="margin-top:0">Images are indexed, not linked</h3>
-        <p>As a plain <code>&lt;img src&gt;</code>, <code>images/scans/x.jpg</code> would resolve against the <em>page</em>, not your folder — a local scan would never load. Opening a folder maps each image to a blob URL, so the same brick file works from disk and hosted, with nothing uploaded.</p>
+        <p>As a plain <code>&lt;img src&gt;</code>, <code>images/scans/x.jpg</code> would resolve against the <em>page</em> rather than your folder. A local scan never loads. Opening a folder maps each image to a blob URL. The same brick file then works from disk and hosted, with nothing uploaded.</p>
       </div>
     </div>
   </section>
 
   <section id="notation">
     <h2>The notation</h2>
-    <p class="lede">One record per line, pipe-separated, read by <strong>shape rather than position</strong>.</p>
+    <p class="lede">One record per line, pipe-separated. The parser reads it by <strong>shape rather than position</strong>.</p>
 
 <pre><code>+|👤|&lt;george-isles&gt;|George Isles|Powerloom Tender|@dora-edmed
 │  │       │             │              │              │
@@ -97,8 +97,8 @@
     <div class="table-wrap">
       <table>
         <tbody>
-          <tr><td class="k">+</td><td>verified — a document says so</td></tr>
-          <tr><td class="k">−</td><td>draft — your inference, or not yet checked</td></tr>
+          <tr><td class="k">+</td><td>verified. A document says so.</td></tr>
+          <tr><td class="k">−</td><td>draft. Your inference, or not yet checked.</td></tr>
           <tr><td class="k">&lt;uid&gt;</td><td>declares this record's identity. Optional.</td></tr>
           <tr><td class="k">@a,b</td><td>links to other uids</td></tr>
           <tr><td class="k">&lt;4&gt;&lt;george&gt;</td><td>a numbered variant, for same-name people</td></tr>
@@ -106,27 +106,27 @@
       </table>
     </div>
 
-    <p><strong>Type tokens</strong> are interchangeable between emoji, full word and single letter — <code>👤</code>, <code>person</code> and <code>p</code> are the same thing. The complete list lives in the <strong>Notation reference</strong> panel, generated from the parser, so it can never drift from what the code accepts.</p>
+    <p><strong>Type tokens</strong> are interchangeable between emoji, full word and single letter. <code>👤</code>, <code>person</code> and <code>p</code> mean the same thing. The complete list lives in the <strong>Notation reference</strong> panel, built from the parser itself. It cannot drift from what the code accepts.</p>
 
     <h3>Three properties worth knowing</h3>
     <ul>
-      <li><strong>First declaration wins.</strong> A second <code>&lt;james&gt;</code> is an error that changes nothing, rather than silently overwriting the first. Duplicate <em>records</em> are ordinary and expected; duplicate uids are not.</li>
-      <li><strong>Ghosts are a feature.</strong> An alias referenced but never declared is not a mistake — it is often the most interesting object in the pile, and it is listed as such rather than dropped.</li>
+      <li><strong>First declaration wins.</strong> A second <code>&lt;james&gt;</code> raises an error and changes nothing. It never overwrites the first. Duplicate <em>records</em> are ordinary and expected; duplicate uids are not.</li>
+      <li><strong>Ghosts are a feature.</strong> An alias you referenced but never declared is often the most interesting object in the pile. The page lists it instead of dropping it.</li>
       <li><strong>Ghost-ness is never recomputed for a filtered view.</strong> Whether an alias was ever declared is a fact about the whole pile. Filtering to one family must not manufacture ghosts.</li>
     </ul>
   </section>
 
   <section id="board">
     <h2>The board</h2>
-    <p class="lede">Panels are tiles on a real coordinate grid — cells and tiles both explicitly placed, so neither pushes the other around.</p>
+    <p class="lede">Panels are tiles on a real coordinate grid. You place cells and tiles explicitly. Neither pushes the other around.</p>
 
     <ul>
-      <li><strong>🧰 flyout</strong> — every panel <em>not currently on the board</em>, grouped and searchable. Drag a card onto the board, or press <strong>+</strong> to drop it in the first free slot. The list empties as you add and refills as you remove.</li>
-      <li><strong>Four panels start off the board</strong> — Promenade, Theme, Map Style and Map Editor. The default board is the working set for entering records; those four are for once you have some. A first-time reader will not find them without opening the flyout, so the <a href="quick-guide.html#adding">quick guide</a> says so explicitly.</li>
+      <li><strong>🧰 flyout</strong> holds every panel <em>not currently on the board</em>, grouped and searchable. Drag a card onto the board, or press <strong>+</strong> to drop it in the first free slot. The list empties as you add and refills as you remove.</li>
+      <li><strong>Seven panels start off the board.</strong> Promenade, Sprite Editor, Photo Ruler, Pixel Party City, Theme, Map Style and Map Editor. The default board is the working set for entering records. Those seven become useful once you have some. Nobody finds them without opening the flyout, which is why the <a href="quick-guide.html#adding">quick guide</a> says so.</li>
       <li><strong>Footprints</strong> are per panel, editable in the flyout, and remembered.</li>
-      <li><strong>Grow or shrink</strong> a tile by a column or row. Only the legal buttons appear, so a <strong>+</strong> never points at an occupied neighbor or past the edge.</li>
+      <li><strong>Grow or shrink</strong> a tile by a column or row. Only the legal buttons appear. A <strong>+</strong> never points at an occupied neighbor or past the edge.</li>
       <li><strong>Swap</strong> two tiles of the same footprint by dragging one onto the other.</li>
-      <li><strong>Removing</strong> a tile parks its panel in the store, so its scroll position and typed text survive a trip off the board.</li>
+      <li><strong>Removing</strong> a tile parks its panel in the store. Its scroll position and typed text survive a trip off the board.</li>
       <li><strong>Columns and row height</strong> are controls. Changing columns repacks with a skyline scan rather than pretending old positions still fit.</li>
     </ul>
 
@@ -135,7 +135,7 @@
     <div class="table-wrap">
       <table>
         <tbody>
-          <tr><td class="k"><span class="badge w">W</span></td><td>write</td><td>changes the pile — your text or the gazetteer</td></tr>
+          <tr><td class="k"><span class="badge w">W</span></td><td>write</td><td>changes the pile: your text or the gazetteer</td></tr>
           <tr><td class="k"><span class="badge f">F</span></td><td>filter</td><td>changes what is in view, never the pile itself</td></tr>
           <tr><td class="k"><span class="badge r">R</span></td><td>read only</td><td></td></tr>
         </tbody>
@@ -146,13 +146,13 @@
 
   <section id="saving">
     <h2>Saving</h2>
-    <p class="lede">The header carries the whole of it: <strong>auto</strong>, <strong>Save to browser</strong>, <strong>Export</strong>, <strong>Clear all</strong>.</p>
+    <p class="lede">Four controls in the header cover it: <strong>auto</strong>, <strong>Save to browser</strong>, <strong>Export</strong>, <strong>Clear all</strong>.</p>
 
     <div class="table-wrap">
       <table>
         <thead><tr><th scope="col">Control</th><th scope="col">What it does</th></tr></thead>
         <tbody>
-          <tr><td class="k">auto</td><td>Autosave on or off. Off means off — nothing is written until you press Save, and the status line turns red saying <strong>unsaved changes</strong>.</td></tr>
+          <tr><td class="k">auto</td><td>Autosave on or off. Off means off. Nothing is written until you press Save, and the status line turns red saying <strong>unsaved changes</strong>.</td></tr>
           <tr><td class="k">Save to browser</td><td>Writes to browser storage. This browser, this machine. A clear-site-data takes it.</td></tr>
           <tr><td class="k">Export</td><td>A real <code>.txt</code> file you own. The only durable one.</td></tr>
           <tr><td class="k">Clear all</td><td>Back to a blank project.</td></tr>
@@ -164,9 +164,10 @@
 
     <h3>Clear all</h3>
     <p>It sits immediately right of Export, which is deliberate: the safe way out is next to the destructive one, already under the cursor. It confirms first, listing what will go with live counts, and warns in the dialog when the pile has never been exported.</p>
-    <p>It removes the pile, the gazetteer, Promenade placements and column colors, the board layout and panel sizes, and the map's project file, style and source. It <strong>keeps</strong> your themes and your tile key — losing those is a separate annoyance you never asked for, and neither says anything about the research. Both lists are named in the dialog, so nothing goes unannounced.</p>
+    <p>It removes the pile, the gazetteer, Promenade placements and column colors, any drawings Pixel Party City is holding, the board layout and panel sizes, and the map's project file, style and source. The dialog names the drawings loudly and separately. A placement takes a minute to redo. A drawing you never downloaded cannot be redone at all.</p>
+    <p>It <strong>keeps</strong> your themes and your tile key. Neither says anything about the research, and losing them would be an annoyance you never asked for. It also currently leaves behind signpost heights, column notes, the day or night setting, and the Sprite Editor's parts tray and unsaved draft. Those carry into the next project.</p>
     <div class="note caution">
-      <p>There is no undo, by design. An undo would mean holding a full copy of everything just deleted, which is the last thing a page storing your only copy should quietly retain. <strong>Export is the undo</strong> — hence the placement.</p>
+      <p>There is no undo, by design. An undo would mean holding a full copy of everything just deleted, which is the last thing a page storing your only copy should quietly retain. <strong>Export is the undo.</strong> Hence the placement.</p>
     </div>
   </section>
 
@@ -176,12 +177,12 @@
     <div class="panel-h" id="pallet"><h3>The Pallet</h3><span class="badge w">W</span></div>
     <p>Your bricks. One record per line, and the only source of truth on this page. Behind the <strong>☰</strong> menu: Import, Export, Merge, and <strong>Folder…</strong>.</p>
     <p><strong>Folder</strong> reads every <code>.txt</code> in a folder, subfolders included, merged in filename order. Three routes because support differs: <code>showDirectoryPicker()</code> on Chromium keeps a handle so Rescan re-reads with no second prompt; <code>&lt;input webkitdirectory&gt;</code> everywhere else; and dropping a folder onto the panel.</p>
-    <p class="why">A page cannot watch a folder — there is no filesystem access without a gesture — so this is <strong>open-and-rescan, never live sync</strong>. Rescan is idempotent: merging skips bricks already present, so reading the same folder twice brings in exactly the bricks added since last time.</p>
-    <p><strong>Merge</strong> folds several small piles into one, marking each file's bricks with a provenance comment and skipping any brick already present verbatim — so one person recorded in two piles does not become two entities. Comments are never deduplicated, since the same <code># PEOPLE</code> heading legitimately appears in every file.</p>
+    <p class="why">A page cannot watch a folder, because the browser gives no filesystem access without a gesture. So this is <strong>open-and-rescan, never live sync</strong>. Rescan is idempotent. Merging skips bricks already present. Read the same folder twice and you get exactly the bricks added since last time.</p>
+    <p><strong>Merge</strong> folds several small piles into one, It marks each file's bricks with a provenance comment and skips any brick already present verbatim. One person recorded in two piles does not become two entities. Comments are never deduplicated, since the same <code># PEOPLE</code> heading legitimately appears in every file.</p>
 
     <div class="panel-h" id="builder"><h3>Brick Builder</h3><span class="badge w">W</span></div>
     <p>Compose a line without typing a pipe or hunting for an emoji. Status toggle, type buttons, labeled fields that change with the type, and uid autocomplete drawn from what you have already declared.</p>
-    <p class="why">It always shows the exact line it will write, and that line is <strong>parsed with the real parser before it is offered</strong> — so the builder can never emit something the parser would reject.</p>
+    <p class="why">It always shows the exact line it will write, The real parser checks that line <strong>before the builder offers it</strong>. The builder cannot emit something the parser would reject.</p>
     <p>Clicking a line in Classification loads it back for editing, and round-trips exactly, including your own arithmetic.</p>
 
     <div class="panel-h" id="classification"><h3>Classification</h3><span class="badge r">R</span></div>
@@ -189,33 +190,33 @@
 
     <div class="panel-h" id="bricks"><h3>Bricks</h3><span class="badge f">F</span><span class="badge r">R</span></div>
     <p>Every uid in the pile. Dotted means a ghost: referenced but never declared.</p>
-    <p>Click a name to <strong>focus</strong> it — every record that names them, which is their family as the records describe it rather than as a tree asserts it.</p>
-    <p>Its own filter row narrows only what this panel shows, leaving the board-wide filter alone. The kind toggles are built from the kinds actually present, so a pile with no documents is never offered a document filter.</p>
+    <p>Click a name to <strong>focus</strong> it. You get every record that names them, which is their family as the records describe it. Not as a tree asserts it.</p>
+    <p>Its own filter row narrows only what this panel shows, leaving the board-wide filter alone. The kind toggles are built from the kinds actually present. A pile with no documents is never offered a document filter.</p>
 
     <div class="panel-h" id="filter"><h3>Filter</h3><span class="badge f">F</span></div>
     <p>Narrows what every panel shows. <strong>Every control is read back out of your text</strong>: your <code>#</code> headings are the groupings, the type tokens are the kinds, <code>+/−</code> is the confidence. No taxonomy you did not type.</p>
-    <p>The time slider has three modes — a decade, a min–max span, or a single year ±n. <strong>Undated records are exempt</strong>: filtering by date must not silently hide everything that has no date on it.</p>
+    <p>The time slider has three modes: a decade, a min to max span, or a single year ±n. <strong>Undated records are exempt</strong>: filtering by date must not silently hide everything that has no date on it.</p>
 
     <div class="panel-h" id="document"><h3>Document</h3><span class="badge f">F</span><span class="badge r">R</span></div>
     <p>One document at a time, large: the scan, the raw brick, its metadata, and a button for every person it names.</p>
-    <p>The scan is a <strong>canvas, not an <code>&lt;img&gt;</code></strong> — wheel to zoom, drag to pan, Fit and 1:1, double-click to fit. The buffer is sized in device pixels, so a census page at 1:1 shows the ink rather than a resample.</p>
+    <p>The scan draws to a <strong>canvas</strong>. Wheel to zoom, drag to pan, double-click to fit. The buffer takes its size in device pixels. A census page at 1:1 shows the ink, not a resample.</p>
     <p class="why">Selection is by <strong>line number, never an index into a filtered list</strong>. The list changes shape as you filter, and an index would silently point at a different record.</p>
 
     <div class="panel-h" id="gazetteer"><h3>Gazetteer</h3><span class="badge w">W</span><span class="badge f">F</span></div>
     <p>Coordinates by uid, so <code>lat,lng</code> need not live inside every place brick. A place brick declares identity; the gazetteer supplies geometry.</p>
     <ul>
       <li>Every declared place is a row, named, with lat/lng editable in place.</li>
-      <li>A brick's <strong>own</strong> inline coordinates lock that row — edit the brick, not the panel — so the two can never disagree silently.</li>
+      <li>A brick's <strong>own</strong> inline coordinates lock that row. Edit the brick rather than the panel, and the two can never disagree silently.</li>
       <li>An entry matching no declared place lists separately as unclaimed.</li>
       <li>The <strong>Add</strong> row declares a new place and sets its coordinates in one action. Adding the same name again updates rather than duplicating.</li>
-      <li><strong>Paste a Google Maps string</strong> — <code>56.4629, -2.9715</code> — into either coordinate field and it splits across both.</li>
-      <li>Per place: a <strong>marker icon</strong> (any emoji) and a <strong>label placement</strong> — nine choices, <code>auto</code> by default.</li>
+      <li><strong>Paste a Google Maps string</strong> such as <code>56.4629, -2.9715</code> into either coordinate field and it splits across both.</li>
+      <li>Per place: a <strong>marker icon</strong> (any emoji) and a <strong>label placement</strong>, nine choices, <code>auto</code> by default.</li>
     </ul>
     <p>CSV is import and export only, never the source of truth for what you see.</p>
 
     <div class="panel-h" id="timeline"><h3>Timeline</h3><span class="badge f">F</span><span class="badge r">R</span></div>
     <p>Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn <strong>hollow</strong> to mark them as inferred.</p>
-    <p class="why">Ages are computed where a birth is known, and <code>~</code> prefixes any age derived from a rounded census age — so it can never be mistaken for one from a real date.</p>
+    <p class="why">Ages are computed where a birth is known, and <code>~</code> prefixes any age derived from a rounded census age. Nobody mistakes it for one from a real date.</p>
 
     <div class="panel-h" id="tally"><h3>Tally</h3><span class="badge r">R</span></div>
     <p>Live count of the pile: bricks, verified, draft, unparsed, entities, ghosts, links.</p>
@@ -242,7 +243,7 @@
 
     <div class="panel-h" id="promenade"><h3>Promenade</h3><span class="badge r">R</span></div>
     <p>Your people, walking the ground their records put them on. A side-on scene where the horizontal axis is longitude and each place is a column. Drag people into columns to group them.</p>
-    <p>Art is found by filename, never configured. A place is <code>images/places/&lt;uid&gt;.png</code>, falling back to <code>images/places/default.png</code>. A person is one sheet — <code>images/wear/&lt;who&gt;.png</code>, where <em>who</em> is a uid, a trade, or <code>default</code> — four frames across and four rows down: <strong>body, bottom, top, hat</strong>. Rows resolve independently down that chain, so a sheet with only a hat drawn on it changes only the hat.</p>
+    <p>Art is found by filename, never configured. A place is <code>images/places/&lt;uid&gt;.png</code>, falling back to <code>images/places/default.png</code>. A person is one sheet, <code>images/wear/&lt;who&gt;.png</code>, where <em>who</em> is a uid, a trade, or <code>default</code>. Four frames across and four rows down: <strong>body, bottom, top, hat</strong>. Rows resolve independently down that chain. A sheet with only a hat drawn on it changes only the hat.</p>
     <p><a href="promenade.html"><strong>Full documentation, including the sprite-sheet spec →</strong></a></p>
   </section>
 
@@ -251,18 +252,18 @@
 
     <div class="panel-h" id="map-viewer"><h3>Map Viewer</h3><span class="badge f">F</span><span class="badge r">R</span></div>
     <p>Every place brick that carries coordinates. Click a marker to focus that place.</p>
-    <p><strong>Source dropdown</strong>, top left: <strong>My tiles</strong> or <strong>MapLibre</strong>, remembered between sessions. If your tiles do not answer it falls back and says so — a map with markers floating on nothing is worse than a borrowed basemap.</p>
-    <p><strong>Coordinate readout</strong>, bottom left — zoom, then west, south, east, north, the same order <code>view.bbox</code> takes. Click it to copy <code>"center"</code>, <code>"zoom"</code> and <code>"bbox"</code> for a project file.</p>
+    <p><strong>Source dropdown</strong>, top left: <strong>My tiles</strong> or <strong>MapLibre</strong>, remembered between sessions. If your tiles do not answer, the map falls back and says so. Markers floating on nothing read worse than a borrowed basemap.</p>
+    <p><strong>Coordinate readout</strong>, bottom left: zoom, then west, south, east, north, the same order <code>view.bbox</code> takes. Click it to copy <code>"center"</code>, <code>"zoom"</code> and <code>"bbox"</code> for a project file.</p>
     <p><strong>Marker kinds</strong> are colored by what they are: places, births, deaths, marriages. Status moved to opacity.</p>
     <p class="why">A mark cannot say two things with one fill, and <strong>what is this</strong> is the question you ask before <strong>how sure are we</strong>. An event becomes a mark only when it names a place with coordinates, and borrows that place's position rather than inventing one.</p>
-    <p><strong>Labels place themselves.</strong> A label set to <code>auto</code> tries eight positions in Imhof's order — upper right first, then the other corners, then the sides, then directly above and below — and takes the first that does not collide. Choosing a side opts out: it is honoured or the label is dropped, never quietly moved.</p>
+    <p><strong>Labels place themselves.</strong> A label set to <code>auto</code> tries eight positions in Imhof's order, upper right first, then the other corners, then the sides, then directly above and below. It takes the first that does not collide. Choosing a side opts out: the page honours it or drops the label, never moving it quietly.</p>
     <p><strong>Connector lines</strong> join two places when one record names both (orange, a stated fact) or when the same person is named at both (gray, inferred, so it wears the draft color). Undirected, because the records give an association and never a direction of travel.</p>
 
     <div class="panel-h" id="map-style"><h3>Map Style</h3><span class="badge r">R</span></div>
     <p>Per-layer control of your basemap: show/hide, color, line width and opacity for every layer, plus the hillshade raster. Below a divider: <strong>Hide overlaps</strong>, <strong>Label offset</strong> and <strong>Marker size</strong>.</p>
     <p>Behind <strong>Style file…</strong>: a hosted style URL, a tile-service key, and the raw MapLibre style JSON.</p>
     <div class="note">
-      <p>Write <code>{key}</code> in a style URL and the key is substituted at the moment the style is handed to the map — so the key stays in your browser and out of anything you share.</p>
+      <p>Write <code>{key}</code> in a style URL and the page substitutes the key at the moment it hands the style to the map. Your key stays in this browser, out of anything you share.</p>
     </div>
     <p>Behind <strong>Project…</strong>: an Atlas project file, pasted or chosen from the <code>.json</code> files in your research folder. Nothing auto-applies; which map you are looking at is your call.</p>
 
@@ -273,19 +274,19 @@
   "annotations": { "data": [ { "type": "text-area", "position": […], "text": "…" } ] } }</code></pre>
     <p><strong>Supported:</strong> <code>view</code> center, zoom, lock, basemap, hide, hideFeatures, insertBelow; <code>polys</code> with inline geometry or a <code>source</code> URL and per-entry <code>insertBelow</code>; <code>points</code> with <code>dir</code> and full style; <code>annotations</code> as straight-arrow, curved-arrow and text-area.</p>
     <div class="note caution">
-      <p><strong>Ignored rather than treated as an error:</strong> <code>refUid</code> — it addresses features in <em>your</em> tiles by uid, and this basemap has different source layers. <code>pattern</code> fills need a sprite this page does not carry. <code>hillshade</code> and <code>inset</code> are not implemented. Annotations are always above the marks, being DOM rather than style layers.</p>
+      <p><strong>Ignored rather than treated as an error:</strong> <code>refUid</code>, because it addresses features in <em>your</em> tiles by uid and this basemap carries different source layers. <code>pattern</code> fills need a sprite this page does not carry. <code>hillshade</code> and <code>inset</code> are not implemented. Annotations are always above the marks, being DOM rather than style layers.</p>
     </div>
     <p>Context is pure reference: it never enters the model, and the timeline never touches it.</p>
 
     <div class="panel-h" id="map-editor"><h3>Map Editor</h3><span class="badge r">R</span></div>
-    <p>A blank map to trace on, kept deliberately separate from the Viewer: no bricks, no markers, no place labels, so nothing you did not put there can be clicked or read by mistake.</p>
+    <p>A blank map to trace on, kept deliberately separate from the Viewer: no bricks, no markers, no place labels. Nothing you did not put there can be clicked or read by mistake.</p>
     <p>Paste a <strong>basemap style URL</strong> to trace against. Tools: point, line, shape, arrow, curved arrow, note. Select an item to restyle it; drag its handles to reshape it. <strong>Capture view</strong> writes the current center and zoom into the file; <strong>Download</strong> saves it.</p>
-    <p class="why">It writes the same format the Viewer reads, so the preview is the real renderer drawing the real file — nothing can look right here and wrong when loaded.</p>
+    <p class="why">It writes the same format the Viewer reads, The preview is the real renderer drawing the real file. Nothing can look right here and wrong when loaded.</p>
   </section>
 
   <section id="extending">
     <h2>Extending it</h2>
-    <p class="lede">A visualization is not a tab or a mode. It is a panel like any other, so several can sit side by side reading the same model at once.</p>
+    <p class="lede">A visualization is a panel like any other. Several sit side by side reading the same model at once.</p>
 
 <pre><code>Brick.viz.register("network", {
   emoji: "🕸️", label: "Network", w: 2, h: 2,
@@ -293,10 +294,10 @@
   render(model, el) { /* draw into el */ },
 });</code></pre>
 
-    <p>Registering creates a panel with a footprint; it appears as a card in the flyout and you place it on the board. A slot gets the model and an empty element — no access to the raw text, the editor, or its neighbors — so a broken renderer can only break its own tile.</p>
+    <p>Registering creates a panel with a footprint; it appears as a card in the flyout and you place it on the board. A slot gets the model and an empty element. It cannot reach the raw text or its neighbours. A broken renderer only breaks its own tile.</p>
     <p><code>Brick.model</code> is the current model. <code>Brick.place("network")</code> drops one onto the board from the console. A slot with no <code>render</code> reports the shape of the data it <em>would</em> receive, which is the fastest way to see a new record type flowing through.</p>
     <div class="note">
-      <p><strong>A renderer owns its element.</strong> It is called again on every model change, so it must update what is there rather than assume an empty element — a map or a canvas cannot be rebuilt sixty times while you type.</p>
+      <p><strong>A renderer owns its element.</strong> It is called again on every model change, It must update what is there rather than assume an empty element. Nobody can rebuild a map sixty times while you type.</p>
     </div>
   </section>
 
@@ -328,7 +329,7 @@
   </section>
 
   <footer>
-    Brick by Brick — one pile of bricks, many readings of it.
+    Brick by Brick. One pile of bricks, many readings of it.
   </footer>
 </div>
 </body>

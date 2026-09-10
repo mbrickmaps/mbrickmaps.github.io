@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="How to manage the Promenade panel in Brick by Brick, and how to draw its place scenes and garments.">
-<title>The Promenade — Brick by Brick</title>
+<title>The Promenade, Brick by Brick</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 
 <link rel="stylesheet" href="doc.css">
@@ -16,7 +16,7 @@
   <div class="head-inner">
     <p class="eyebrow">Brick by Brick · visualization</p>
     <h1>The Promenade</h1>
-    <p>Your people, walking the ground their records put them on — and how to dress them.</p>
+    <p>Your people, walking the ground their records put them on. And how to dress them.</p>
   </div>
   <div class="horizon"></div>
   <div class="figures" aria-hidden="true">
@@ -32,7 +32,7 @@
 <div class="wrap">
 
   <div class="note caution" role="note">
-    <p><strong>Note on this document.</strong> Written by an AI assistant during development, and not yet reviewed line by line. It describes the code as it stood when written, so some of it will have drifted. Treat it as a working draft — to be rewritten properly later.</p>
+    <p><strong>Note on this document.</strong> An AI assistant wrote this during development, and nobody has reviewed it line by line. It describes the code as it stood when written, so parts of it have drifted. Treat it as a working draft.</p>
   </div>
 
 
@@ -44,7 +44,6 @@
     <a href="#saving">Saving</a>
     <a href="#assets">Assets</a>
     <a href="#sheet">Sprite sheets</a>
-    <a href="#eras">Era bands</a>
     <a href="#controls">Control reference</a>
   </nav>
 
@@ -52,12 +51,13 @@
     <h2>What it shows</h2>
     <p class="lede">A side-on scene you walk along. Every declared person is one figure; every place with coordinates is a column with a signpost over it.</p>
 
-    <p>The horizontal axis is <strong>longitude</strong> — west on the left, the same order you would meet these parishes crossing Perthshire. A person stands among the places their records actually name, so someone recorded at both Perth and Scone stands between the two.</p>
+    <p>The horizontal axis is <strong>longitude</strong>, west on the left, the same order you would meet these parishes crossing Perthshire. A person stands among the places their records actually name. Someone recorded at both Perth and Scone stands between the two.</p>
 
-    <p>A record that names a person <em>and</em> a place puts that person there. That is the same rule the map's connector lines and the event markers use, so the two can never disagree about who was where.</p>
+    <p>A record that names a person <em>and</em> a place puts that person there. That is the same rule the map's connector lines and the event markers use. The two can never disagree about who was where.</p>
 
     <div class="note">
-      <p><strong>Nothing here is invented.</strong> A person no record places does not get parked somewhere plausible — they wait in the pen, and stay there until you say otherwise. "We don't know where he was" is a finding, not a gap to fill.</p>
+      <p><strong>The page invents nothing. You may invent as much as you like.</strong> If no record says where somebody was, the page does not guess a parish for them. They stand in <strong>The Promenade</strong>, the column at the end that holds whatever the named places leave over. Not knowing where a man lived is itself a result, and the street shows it as one.</p>
+      <p>What you invent is yours and stays marked as yours. Make a column for a suspected family, or for everyone in one lawsuit, and drag people into it. Put a place in the gazetteer at <code>0, 0</code> for a household or a theory that sits nowhere on the ground. The page attaches no meaning to either and never infers one. Both live in <code>brick.json</code> beside your placements, never in the pile, because which column somebody stands in records your thinking, and no document attests it.</p>
     </div>
   </section>
 
@@ -70,25 +70,26 @@
       </div>
       <div>
         <h3 style="margin-top:0">Grid</h3>
-        <p>An isotype board — one figure per person, ranked and counted. Distance means nothing, so it can be sorted however you like. This is the view for <em class="term">how many, and when</em>.</p>
+        <p>An isotype board, one figure per person, ranked and counted. Distance means nothing. You can sort it however you like. This is the view for <em class="term">how many, and when</em>.</p>
       </div>
     </div>
-    <p>Switching between them is a walk, not a cut: everyone keeps their position and travels to the new one, so you can follow a particular person across and see where they landed.</p>
-    <p>Sorting only appears in the grid. On the street the order <em>is</em> the geography — offering to re-sort it would be offering to move Perth.</p>
+    <p>Switching between them walks everyone across. Each figure keeps its position and travels to the new one. You can follow a particular person across and see where they landed.</p>
+    <p>Sorting only appears in the grid. On the street the order <em>is</em> the geography. Offering to re-sort it would be offering to move Perth.</p>
   </section>
 
   <section id="placing">
     <h2>Placing people</h2>
     <p class="lede">Each place is a column. Drop somebody anywhere inside one and they belong to that column.</p>
 
-    <p><strong>Pick a figure up</strong> and they lift out of the line. Dotted frames appear over every column, full height, and the one you are over brightens — nobody should have to guess which frame is about to catch them.</p>
+    <p><strong>Pick a figure up</strong> and they lift out of the line. Dotted frames appear over every column, full height, and the one you are over brightens. Nobody should have to guess which frame is about to catch them.</p>
 
     <p><strong>Let go</strong> and they fall to the ground, sliding sideways into the middle of their column on the way down. You are not placing a figure at a coordinate; you are putting a person in a group. The x you released at only decides which.</p>
 
     <p><strong>Columns grow.</strong> A place holding ten people is wider than one holding two, and everything east of it shifts along. Roughly 110px for one or two, 160 for five, 270 for ten.</p>
 
     <h3>The pen</h3>
-    <p>People with no recorded place wait in a dotted box centered over the street. It doesn't scroll — it stays put while the street slides past behind it, so it is the same distance from every column you might want to drop someone into.</p>
+    <p>The pen is a dotted box centered over the street. <strong>Nobody starts in it.</strong> Drag somebody there to say you have decided you cannot place them.</p>
+    <p>It does not scroll. It stays put while the street slides past behind it, the same distance from every column you might want to drop someone into. When it is empty it shuts to a small dotted tab captioned "no place recorded", and it opens again while you are carrying somebody.</p>
     <p>They stand about in a loose huddle rather than a grid, because a grid would say these people have an order and nothing is known about them yet. Drag someone <strong>back into the pen</strong> to say you no longer know where they were.</p>
 
     <div class="note caution">
@@ -98,38 +99,22 @@
 
   <section id="finding">
     <h2>Finding</h2>
-    <p class="lede">Two boxes, stacked under the pen, doing deliberately different jobs.</p>
+    <p class="lede">One box under the pen, placeholder <em>find a brickling or a place</em>. It searches people and places at once.</p>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th scope="col">Box</th><th scope="col">Searches</th><th scope="col">Does</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="k">find someone unplaced</td>
-            <td>Only people in the pen, by name or uid</td>
-            <td>Lights matches and names them; dims the rest. Removes nobody, so you can still see how many you are choosing from.</td>
-          </tr>
-          <tr>
-            <td class="k">filter to a place</td>
-            <td>Place names and uids</td>
-            <td>Narrows the street. <code>dun</code> leaves Dunblane, Dunkeld, Dunning, Little Dunkeld and Dunbarney — five columns instead of fifty-nine.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <p>The two used to be separate fields, and choosing between them meant knowing which kind of answer you wanted before you knew what was there. Now one word does both. Matching people light up and the rest of the scene dims. Matching places stay as columns and the others go, so <code>dun</code> leaves Dunblane, Dunkeld, Dunning, Little Dunkeld and Dunbarney. Five columns instead of fifty-nine.</p>
 
-    <p>Someone already standing in a column can be found by looking at the column, which is why the first box ignores them. Placements survive the second: anyone pinned to a filtered-out column waits in the pen and returns when you clear the box.</p>
+    <p>It searches <strong>everyone on the panel</strong>, not only the unplaced, by name and by uid. Nobody is removed. Placements survive it: filter a column out of view and the people pinned there fall back to The Promenade rather than vanishing.</p>
 
-    <p><strong>Click a figure</strong> to single them out — the rest of the scene dims and their parishes stay lit. <strong>Click a signpost</strong> for the reverse: that place, and everyone recorded there. Click bare ground to clear.</p>
+    <p>The box only appears when somebody is in the pen. Since nobody starts there, you will normally not see it.</p>
+
+    <p><strong>Click a figure</strong> to single them out. The rest of the scene dims and their parishes stay lit. <strong>Click a signpost</strong> for the reverse: that place, and everyone recorded there. Click bare ground to clear.</p>
   </section>
 
   <section id="saving">
     <h2>Saving</h2>
     <p class="lede">Placements and column colors persist in the browser, and travel as a file.</p>
 
-    <p>Every drop is written to browser storage immediately, so an arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong> — it does not follow you elsewhere, and clearing site data takes it. So does <strong>Clear all</strong> in the page header, which names placements and column colors among the things it removes.</p>
+    <p>Every drop is written to browser storage immediately. An arrangement survives closing the tab. That storage is <strong>this browser on this machine</strong>. It does not follow you elsewhere, and clearing site data takes it. So does <strong>Clear all</strong> in the page header, which names placements and column colors among the things it removes.</p>
 
     <p>For anything more durable, <strong>save</strong> hands you a <code>brick.json</code>:</p>
 
@@ -142,12 +127,13 @@
                                        "alpha": 0.6 }], …] }
 }</code></pre>
 
-    <p>Drop it in your research folder beside <code>bricks/</code> and it is read automatically whenever you open that folder — the merge log reports how many placements and colors it found. <strong>load</strong> takes one from anywhere.</p>
+    <p>Drop it in your research folder beside <code>bricks/</code> and it is read automatically whenever you open that folder. The merge log reports how many placements and colors it found. <strong>load</strong> takes one from anywhere.</p>
 
     <p>It is deliberately not your bricks. A brick is what a document says; this is how you have chosen to look at them. Delete it and you lose an arrangement, never a record.</p>
 
     <h3>Coloring a column</h3>
-    <p>Click a signpost and a bar appears naming that place, with two gradient stops, an opacity slider and a <code>×</code>. The gradient fills that column's <strong>sky</strong> and stops at the horizon — the ground is one continuous plane that everybody stands on, and cutting it into colored stretches would make neighbors look like they were standing on different surfaces.</p>
+    <p>Click a signpost and a bar appears naming that place. It carries two gradient stops, an opacity slider, a ribbon color for group columns, two lines of your own text, then <code>↺</code> and <code>×</code>. <strong><code>↺</code> clears the color. <code>×</code> only closes the bar.</strong></p>
+    <p>The gradient fills that column's <strong>sky</strong> and stops at the horizon. The ground is one continuous plane that everybody stands on. Cutting it into colored stretches would make neighbours look like they stood on different surfaces.</p>
   </section>
 
   <section id="assets">
@@ -155,33 +141,33 @@
     <p class="lede">Two files. Copy one, rename it, draw on it.</p>
 
 <pre><code>images/
-├── places/default.png   the scene behind a place    102 × 64
-└── wear/default.png     a person                     96 × 96</code></pre>
+├── places/default.png   the scene behind a place     52 × 56
+└── wear/default.&lt;row&gt;.png  one row of a person       96 × 28</code></pre>
 
     <div class="table-wrap">
       <table>
         <thead><tr><th scope="col">To draw</th><th scope="col">Copy</th><th scope="col">Save it as</th></tr></thead>
         <tbody>
           <tr><td>a place</td><td class="k">places/default.png</td><td class="k">places/&lt;place-uid&gt;.png</td></tr>
-          <tr><td>a trade</td><td class="k">wear/default.png</td><td class="k">wear/&lt;trade&gt;.png</td></tr>
-          <tr><td>one person</td><td class="k">wear/default.png</td><td class="k">wear/&lt;their-uid&gt;.png</td></tr>
+          <tr><td>a trade</td><td class="k">wear/default.&lt;row&gt;.png</td><td class="k">wear/&lt;trade&gt;.png</td></tr>
+          <tr><td>one person</td><td class="k">wear/default.&lt;row&gt;.png</td><td class="k">wear/&lt;their-uid&gt;.png</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p>That is the whole system. The file's name is what decides who gets it, so there is nothing to configure and no list to keep in step. Edit <code>default.png</code> itself and you change everyone, or everywhere, at once.</p>
+    <p>That is the whole system. The file's name is what decides who gets it. There is nothing to configure and no list to keep in step. Edit <code>default.png</code> itself and you change everyone, or everywhere, at once.</p>
 
     <p>Two folders rather than one because the names would collide otherwise: a parish called Mason and a mason are different pictures.</p>
 
     <h3>Place scenes</h3>
-    <p>Named for the place's <strong>uid</strong>, not its display name — <code>places/little-dunkeld.png</code>. Drawn centered in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels, so it grows with the column as people are added.</p>
-    <p>A place with no picture of its own falls back to <code>images/places/default.png</code> — a low wall and a tree, muted so the people in front of it still read. It is deliberately generic: it says "somewhere" without claiming to be anywhere.</p>
-    <p>Delete that file and places without art show <strong>nothing at all</strong>: no frame, no placeholder, no gap. That is a perfectly good way to run it — a bare street reads as "no scenery yet" rather than as fifty identical cottages, and you may prefer it.</p>
+    <p>Named for the place's <strong>uid</strong>, not its display name. Use <code>places/little-dunkeld.png</code>. Drawn centered in its column, standing on the ground line, behind the people. Scaled down to fit the column and never blown up past its own pixels. It grows with the column as people are added.</p>
+    <p>A place with no picture of its own falls back to <code>images/places/default.png</code>, a two-storey red-brick house with a slate roof and four windows. Nothing tints or fades it. It says "a building" without claiming to be any particular one.</p>
+    <p>Delete that file and places without art show <strong>nothing at all</strong>: no frame, no placeholder, no gap. That is a perfectly good way to run it. A bare street reads as "no scenery yet" rather than as fifty identical cottages, and you may prefer it.</p>
 
     <div class="note">
-      <p><strong>Draw it 102 px wide.</strong> A column is 110 px until a third person joins it, and art is fitted to the column less 8 and never enlarged past its own pixels — so 102 is the widest that still draws 1:1. Wider is allowed and simply scales down in a quiet column, which softens the pixels.</p>
-      <p>Height is free: the scene is anchored at the bottom, so it grows upward.
-        Copy <code>places/default.png</code> — it is already the right size, and the wall and tree give you the scale of a person before you start.</p>
+      <p><strong>Draw it 102 px wide.</strong> A column is 110 px until a third person joins it, The page fits art to the column less 8 and never enlarges it past its own pixels, so 102 is the widest that still draws 1:1. Wider is allowed and simply scales down in a quiet column, which softens the pixels.</p>
+      <p>Height is free: the scene is anchored at the bottom. It grows upward.
+        Copy <code>places/default.png</code> for the scale of a person, then enlarge the canvas. At 52 px it draws well short of the 102 px a column allows.</p>
     </div>
 
     <h3>Who wears what</h3>
@@ -198,23 +184,24 @@ row 4     hat       ·         ·         ·</code></pre>
 <pre><code>images/wear/&lt;who&gt;.png     who = a uid, a trade, or "default"
 
 mill-worker.png           every mill worker
-mill-worker-96x96.png     the same thing — a trailing -WxH is
+mill-worker-96x96.png     the same thing. A trailing -WxH is
                           dimensions, not part of the name
 george-isles.png          him and nobody else
-default.png               everyone else</code></pre>
+default.&lt;row&gt;.png       everyone else</code></pre>
 
-    <p>Labeling a sheet with its own size is worth doing and costs nothing: the first thing you need when you reopen one is what to set the canvas to. The page strips a trailing <code>-WxH</code> before matching, so it never changes who the file is for.</p>
+    <p>Labeling a sheet with its own size is worth doing and costs nothing: the first thing you need when you reopen one is what to set the canvas to. The page strips a trailing <code>-WxH</code> before matching, but only for art in an opened research folder. A file committed to <code>images/</code> is requested by its exact slug, so <code>mill-worker-96x96.png</code> sitting in the repository is never found. It never changes who the file is for.</p>
 
     <div class="note">
-      <p><strong>Rows are independent.</strong> Leave a row transparent and it falls through to the next sheet in the chain — the person's, then their trade's, then <code>default</code>, then the built-in. A sheet with only a hat drawn on it changes <em>only</em> the hat, and the wearer keeps their trade's coat.</p>
-      <p>Redraw the <strong>body</strong> row and that person is a different figure entirely — no flag, no setting, no table. Whatever distinction you want to draw for, draw it.</p>
+      <p><strong>Rows are independent.</strong> Leave a row transparent and it falls through to the next sheet in the chain: the person's, then their trade's, then <code>default</code>, then the four rows drawn in code.</p>
+      <p>Two things sit ahead of all of that. Drawings the Sprite Editor has pushed into browser storage are checked first, then an opened research folder, then <code>images/</code>. And within one wearer, a loose <code>&lt;who&gt;.&lt;row&gt;.png</code> beats that same wearer's combined sheet, being the more specific statement of the two. A sheet with only a hat drawn on it changes <em>only</em> the hat, and the wearer keeps their trade's coat.</p>
+      <p>Redraw the <strong>body</strong> row and that person becomes a different figure entirely. No flag, no setting, no table. Whatever distinction you want to draw for, draw it.</p>
     </div>
 
-    <p>Layers share an origin, so a garment may use any part of the cell — a brim wider than the head, a coat past the knee, a tool out in the prop margin. Nothing is clipped to a row; a row is a position in the stack, not a box you draw inside.</p>
+    <p>Layers share an origin. A garment may use any part of the cell: a brim wider than the head, or a tool out in the prop margin. Nothing is clipped to a row. A row gives a position in the stack. You do not draw inside a box.</p>
 
     <div class="note">
-      <p><strong>The grid comes from the image, and bigger means bigger.</strong> Four frames across and four rows down, always — so a 96 × 96 sheet is 24 × 24 cells and a 160 × 128 sheet is 40 × 32. A larger cell is <em>not</em> scaled back down: the scene's cell grows to the largest thing worn and the garment overhangs, which is what makes a greatcoat look like a greatcoat rather than a coat at higher resolution.</p>
-      <p>Everything registers the only two ways that survive a change of size: <strong>centered horizontally</strong>, and <strong>standing on the ground line</strong>. People in oversized clothes and people in ordinary ones share a street quite happily — the cell is worked out per person.</p>
+      <p><strong>The grid comes from the image, and bigger means bigger.</strong> Four frames across and four rows down, always. A 96 × 96 sheet is 24 × 24 cells and a 160 × 128 sheet is 40 × 32. A larger cell is <em>not</em> scaled back down: the scene's cell grows to the largest thing worn and the garment overhangs, which is what makes a greatcoat look like a greatcoat rather than a coat at higher resolution.</p>
+      <p>Everything registers the only two ways that survive a change of size: <strong>centered horizontally</strong>, and <strong>standing on the ground line</strong>. People in oversized clothes and people in ordinary ones share a street quite happily, because the page works the cell out per person.</p>
     </div>
 
     <h3>How a trade is recognized</h3>
@@ -232,7 +219,7 @@ default.png               everyone else</code></pre>
       </table>
     </div>
 
-    <p>It stops at the first comma, semicolon, full stop or bracket, and gives up past 28 characters rather than inventing a filename out of a sentence. No file means the ordinary figure — so you can draw one uniform, or none, and nothing breaks either way.</p>
+    <p>It stops at the first comma, semicolon, full stop or bracket, and gives up past 28 characters rather than inventing a filename out of a sentence. No file means the ordinary figure. You can draw one uniform or none and nothing breaks either way.</p>
   </section>
 
   <section id="sheet">
@@ -241,73 +228,21 @@ default.png               everyone else</code></pre>
 
     <div class="sheet">
       <div class="sheet-grid">
-        <div class="cell"><span class="frame-no">1 · pass</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="background:#00ffff"></i><i class="leg r" style="background:#00ffff"></i></span></div>
-        <div class="cell"><span class="frame-no">2 · stride</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="left:4px;background:#00ffff"></i><i class="leg r" style="left:10px;background:#00ffff"></i></span></div>
-        <div class="cell"><span class="frame-no">3 · pass</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="background:#00ffff"></i><i class="leg r" style="background:#00ffff"></i></span></div>
-        <div class="cell"><span class="frame-no">4 · stride</span><span class="fig"><i class="hat" style="background:#ffff00"></i><i class="head-px"></i><i class="coat" style="background:#ff00ff"></i><i class="leg l" style="left:6px;background:#00ffff"></i><i class="leg r" style="left:8px;background:#00ffff"></i></span></div>
+        <div class="cell"><span class="frame-no">1 · pass</span><span class="fig"><i class="hat" style="background:#16181c"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="background:#4a5568"></i><i class="leg r" style="background:#4a5568"></i></span></div>
+        <div class="cell"><span class="frame-no">2 · stride</span><span class="fig"><i class="hat" style="background:#16181c"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="left:4px;background:#4a5568"></i><i class="leg r" style="left:10px;background:#4a5568"></i></span></div>
+        <div class="cell"><span class="frame-no">3 · pass</span><span class="fig"><i class="hat" style="background:#16181c"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="background:#4a5568"></i><i class="leg r" style="background:#4a5568"></i></span></div>
+        <div class="cell"><span class="frame-no">4 · stride</span><span class="fig"><i class="hat" style="background:#16181c"></i><i class="head-px"></i><i class="coat" style="background:#2f3542"></i><i class="leg l" style="left:6px;background:#4a5568"></i><i class="leg r" style="left:8px;background:#4a5568"></i></span></div>
       </div>
-      <p class="baseline">▲ Feet sit on the bottom edge of each 24 × 24 cell — that edge is the ground line.</p>
+      <p class="baseline">▲ Feet sit on the bottom edge of each 24 × 24 cell. That edge is the ground line.</p>
       <div class="sheet-foot">
         <span>96 × 24 px</span><span>transparent background</span><span>4 frames across</span><span>no padding, no gutters</span>
       </div>
     </div>
 
-    <h3>Key colors</h3>
-    <p>Not colors so much as <strong>slots</strong>. When a garment is loaded, every pixel is checked once: an <em>exact</em> match on one of these three is repainted in that wearer's color, and everything else passes through as you drew it — an apron, a hod, a bonnet, a pair of boots.</p>
-
-    <p>This is what lets <em>one</em> garment serve every century. Paint the parts that should age in key colors; paint the parts that identify the trade in real colors, and they survive every recoloring.</p>
-
-    <div class="keys">
-      <div class="key-row"><span class="chip" style="background:#ff00ff"></span><span class="hex">#ff00ff</span><span class="what">Coat — takes the era color</span></div>
-      <div class="key-row"><span class="chip" style="background:#00ffff"></span><span class="hex">#00ffff</span><span class="what">Legs and arms — takes the era trim</span></div>
-      <div class="key-row"><span class="chip" style="background:#ffff00"></span><span class="hex">#ffff00</span><span class="what">Hat — removed altogether after 1970</span></div>
-    </div>
-
-    <p>Keep the keys in a garment and it still ages: it goes through the same recoloring as the ordinary figure, taking its wearer's era palette <em>and</em> a small nudge seeded from their uid. Twenty millworkers read as millworkers without being twenty identical sprites.</p>
-
-    <p>Paint a part in a fixed color instead and it stays that color for everyone — which is exactly what you want for the thing that identifies the trade.</p>
-
-    <div class="note">
-      <p><strong>Start from the default itself.</strong>
-        <a href="../images/wear/default.png" download>images/wear/default.png</a> is not a copy of the default figure kept beside the docs — it <em>is</em> the default, the file the page actually loads. Body, bottom, top and hat, key colors already in place. Copy it to <code>images/wear/&lt;who&gt;.png</code> and edit; clearing a row hands that row back to whatever is behind it.</p>
-      <p>They are ordinary PNGs in the repository. Open one, draw, save. Nothing regenerates them and nothing overwrites them.</p>
-      <p>Delete them and nothing breaks: the same four rows are drawn in code as a last resort, so a copy with no art still has everybody dressed. There is no "install the art" step.</p>
-      <p>Delete it and nothing breaks: the same four rows are generated in code as a last resort, so a page opened from <code>file://</code> or a copy with no art still has everybody dressed. There is no "install the art" step.</p>
-    </div>
-
-    <div class="note caution">
-      <p><strong>Exact means exact.</strong> The match is on the three byte values with no tolerance, so a soft edge, a feathered brush, a partial opacity or a JPEG round-trip leaves pixels that are <em>nearly</em> magenta — and those never swap. Draw the key areas with a hard pencil at 100% opacity, and save as PNG.</p>
-      <p>A hat layer you want kept after 1970 simply has no yellow in it. Yellow means "this is the hat, take it off in the modern band".</p>
-    </div>
-
-    <div class="note">
-      <p>The default body and all three default garments are generated in code against this same geometry, so you can replace one slot, all of them, or none. There is no "install the art" step.</p>
-    </div>
-  </section>
-
-  <section id="eras">
-    <h2>Era bands</h2>
-    <p class="lede">Which palette a person wears, taken from the middle of their life.</p>
-
-    <p>Someone born in 1840 who died in 1901 is dressed for the 1870s, because that is where they spent their adulthood — not for the decade they were born in.</p>
-
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th scope="col">Band</th><th scope="col">Midpoint before</th><th scope="col">Hat</th></tr></thead>
-        <tbody>
-          <tr><td class="k">georgian</td><td class="num">1845</td><td>tall</td></tr>
-          <tr><td class="k">victorian</td><td class="num">1890</td><td>tall</td></tr>
-          <tr><td class="k">edwardian</td><td class="num">1925</td><td>bowler</td></tr>
-          <tr><td class="k">interwar</td><td class="num">1970</td><td>cap</td></tr>
-          <tr><td class="k">modern</td><td class="num">—</td><td>none</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <p>These are loose on purpose. Nobody changed coat on the stroke of 1890, and a parish register rarely gives you a date worth hanging a decade on. The years exist so the same person always dresses the same way, not as a claim about costume history.</p>
-
-    <p>Someone with no dates at all gets <strong>victorian</strong>, not modern — a parish corpus is overwhelmingly nineteenth century, and putting an undated man in a windcheater is the louder claim.</p>
-  </section>
+    <h3>Colors are yours</h3>
+      <p>A pixel is the color you painted it. The page recolors nothing by era or by marker, and there is no reserved palette to avoid.</p>
+      <p>Each wearer's sheet does get a small deterministic nudge, seeded from their uid, so twenty millworkers in the same coat do not read as twenty copies. Hue shifts by up to 14&deg; and lightness by up to 0.05. A color you chose to identify a trade therefore varies a little between the people wearing it.</p>
+      </section>
 
   <section id="controls">
     <h2>Control reference</h2>
@@ -316,11 +251,14 @@ default.png               everyone else</code></pre>
       <table>
         <thead><tr><th scope="col">Control</th><th scope="col">Where</th><th scope="col">Does</th></tr></thead>
         <tbody>
-          <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world, not the camera — spacing, figures and lettering grow together. Holds the center of your view across a step.</td></tr>
+          <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world rather than the camera. Spacing and lettering grow together. Holds the center of your view across a step.</td></tr>
           <tr><td class="k">street / grid</td><td>Top right</td><td>Switch arrangement. Placements carry across.</td></tr>
-          <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. Starts on its own after 30 seconds untouched; any interaction stops it and restarts the wait.</td></tr>
+          <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. <strong>It starts moving on its own, so the button is a pause.</strong> Any interaction stops it, and it restarts after 30 seconds untouched.</td></tr>
           <tr><td class="k">sort</td><td>Top right, grid only</td><td>west→east, earliest first, or A→Z. Reorders <em>within</em> groups.</td></tr>
-          <tr><td class="k">color bar</td><td>Top left, when a place is selected</td><td>Two gradient stops, opacity, and clear.</td></tr>
+          <tr><td class="k">color bar</td><td>Top left, when a column is selected</td><td>Two gradient stops, opacity, ribbon color, two lines of text. <code>↺</code> clears, <code>×</code> closes.</td></tr>
+          <tr><td class="k">☀ ☾</td><td>Bottom, beside the scene colors</td><td>Day or night. Clicking the sun or moon in the sky does the same. Drag it to move it, right-click to reset.</td></tr>
+          <tr><td class="k">drag</td><td>A signpost or ribbon</td><td>Sets how high it hangs. A post shortens instead of sinking. Right-click resets it.</td></tr>
+          <tr><td class="k">drag</td><td>A column's text</td><td>Moves it up or down. Right-click resets it.</td></tr>
           <tr><td class="k">save / load</td><td>Bottom right</td><td><code>brick.json</code> out and in.</td></tr>
           <tr><td class="k">drag</td><td>The ground</td><td>Pan the street. Wheel works too.</td></tr>
           <tr><td class="k">drag</td><td>A figure</td><td>Pick up, drop into a column, or return to the pen.</td></tr>
@@ -329,11 +267,11 @@ default.png               everyone else</code></pre>
       </table>
     </div>
 
-    <p>Reduced-motion is honoured throughout: no drift, no pacing, no travel between arrangements — a still tableau instead.</p>
+    <p>Reduced-motion stops figures travelling between arrangements, and stops the idle timer restarting the drift. It does not stop the walk cycle, the pacing, or a drift you started yourself.</p>
   </section>
 
   <footer>
-    Brick by Brick — one pile of bricks, many readings of it.
+    Brick by Brick. One pile of bricks, many readings of it.
   </footer>
 </div>
 
