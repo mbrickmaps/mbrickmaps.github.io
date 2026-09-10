@@ -10206,6 +10206,8 @@ function renderSpriteEditor(model, host) {
       against it, so a stroke invalidates the cache and a repaint that changed
       nothing does not. */
   let wipSeq = 0;
+  //  Set by anything that needs to explain itself; consumed by the next paint.
+  let hintOnce = "";
 
   function setPixelRGBA(x, y, r, g2, b, a) {
     wipSeq++;
@@ -10243,16 +10245,21 @@ function renderSpriteEditor(model, host) {
       pixel that appears from nowhere the moment somebody paints there. */
   function flagPixel(x, y, want) {
     const w = cellW(), h = cellH();
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
     const cv = layers[slot], g = cv.getContext("2d", { willReadFrequently: true });
     const at = linked ? [...Array(nFrames()).keys()] : [frame];
+    let did = false;
     for (const f of at) {
       const sx = f * w + x;
       const d = g.getImageData(sx, y, 1, 1);
       if (!d.data[3]) continue;
       d.data[3] = want;
       g.putImageData(d, sx, y);
+      did = true;
     }
+    //  Says whether it flagged anything, because a flag lives in a pixel's
+    //  alpha and empty space has no pixel to carry one.
+    return did;
   }
 
   function setPixel(x, y, erase) {
@@ -10585,6 +10592,26 @@ function renderSpriteEditor(model, host) {
         anchor was there first — pressing again moves it, and right-click takes
         it away entirely, which is the erase of an anchor. */
     if (tool === "anchor") {
+      /*  MOVE IT ONLY IF THERE IS SOMEWHERE TO MOVE IT TO.
+
+          The anchor is a flag in a pixel's alpha, so it needs a drawn pixel to
+          live in. Clearing first and placing second meant a press on empty
+          canvas threw the old anchor away and put nothing down, without
+          saying so: you lost a signpost by clicking the sky.
+
+          Now the old one only goes once the new one has somewhere to land. */
+      const empty = !layers[slot].getContext("2d", { willReadFrequently: true })
+        .getImageData(frame * cellW() + x, y, 1, 1).data[3];
+      if (!drawing && empty) {
+        /*  Left for the release to consume. This press is followed by its own
+            pointerup, which repaints; painting here as well would spend the
+            message on the first of the two and the second would write the
+            standing hint over it. */
+        hintOnce = "nothing drawn there to anchor to \u2014 put the flag on "
+                 + "something you have drawn";
+        try { grid.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+        return;
+      }
       clearAnchor();
       if (!drawing) flagPixel(x, y, ANCHOR_A);
       touched[slot] = true;
@@ -11294,12 +11321,34 @@ function renderSpriteEditor(model, host) {
     const lumA = lumOf(hexInt(TOOL_NEON)), lumB = lumOf(hexInt(gridBg));
     const ratio = (Math.max(lumA, lumB) + 0.05) / (Math.min(lumA, lumB) + 0.05);
     const tw2 = g.measureText(tool).width;
+    /*  IT GETS OUT OF THE WAY.
+
+        The label sits in the bottom left corner, which is also somewhere you
+        draw. Working down there meant drawing under a word, and the word is
+        only a reminder of which tool you are holding.
+
+        So it moves to the opposite corner while the pointer is near it, and
+        comes back when the pointer leaves. Near is measured against the label
+        itself rather than a fixed corner, so it does not dodge a pointer that
+        was never going to reach it. */
+    const labW = tw2 + 8, labH = 15;
+    let labX = 2, labY = grid.height - 17;
+    const near = atCell || hover;
+    if (near) {
+      const px = (near.x + 0.5) * z, py = (near.y + 0.5) * z;
+      const room = 26;
+      const over = px > labX - room && px < labX + labW + room
+                && py > labY - room && py < labY + labH + room;
+      //  To the right, along the same edge: the bottom of the canvas is where
+      //  this belongs, and the far corner is the furthest point on it.
+      if (over) labX = grid.width - labW - 2;
+    }
     if (ratio < 3) {
       g.fillStyle = "rgba(10,12,9,0.86)";
-      g.fillRect(2, grid.height - 17, tw2 + 8, 15);
+      g.fillRect(labX, labY, labW, labH);
     }
     g.fillStyle = TOOL_NEON;
-    g.fillText(tool, 6, grid.height - 6);
+    g.fillText(tool, labX + 4, labY + 11);
 
     /*  WHICH CELL THE POINTER IS ON.
 
@@ -11559,6 +11608,18 @@ function renderSpriteEditor(model, host) {
 
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
     if (host._wipQueue) host._wipQueue();
+    /*  A ONE-SHOT MESSAGE OUTLIVES THE REPAINT THAT FOLLOWS IT.
+
+        Anything that wants to say something to you says it and then returns,
+        and the pointer release repaints a moment later and writes the standing
+        hint straight over the top. So a refusal explaining why nothing
+        happened was never on screen long enough to read. Setting `hintOnce`
+        instead survives exactly one repaint. */
+    if (hintOnce) {
+      hint.textContent = hintOnce;
+      hintOnce = "";
+      return;
+    }
     hint.textContent = (tool === "copy"
                         ? (clip ? clip.w + " × " + clip.h
                                     + " on the clipboard · click to stamp it "
