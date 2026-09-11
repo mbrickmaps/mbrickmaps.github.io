@@ -477,9 +477,11 @@
       the rest without saying so. */
   /*  Not a swatch — these mark, they do not paint, so they do not carry a
       colour the way the stacks beside them do. */
+  /*  Coloured from the wash each one paints, so the button and the canvas say
+      the same thing. Dark ink, because all three grounds are light. */
   .sp-mark {
     width: 22px; font-size: 0.7rem; line-height: 1;
-    background: rgba(127,127,127,0.14);
+    color: rgba(0,0,0,0.8);
   }
   /*  Names the mode you are IN, like the cursor button — a switch labelled
       with the thing it would do next is one you have to test to read. */
@@ -536,6 +538,13 @@
   .sp-name { flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px; }
   /*  The filename, shown as you type it — the one thing that decides whether
       the page ever finds this drawing. */
+  /*  Beside the name it would open, and only there when it has something to
+      offer. Amber rather than green: it is the one control in this panel that
+      replaces your canvas. */
+  .sp-open {
+    font-size: 0.62rem; padding: 1px 6px;
+    border-color: #b8863a; color: #e8b45c;
+  }
   .sp-filename {
     flex: 1 1 100%; font-family: var(--mono, ui-monospace, monospace);
     font-size: 0.6rem; color: var(--accent2); opacity: 0.85; word-break: break-all;
@@ -1321,6 +1330,9 @@
   .pr-zoom-out { right: 34px; }
   .pr-zoom:disabled { opacity: 0.3; cursor: default; }
   .pr-night { font-size: 0.72rem; padding: 1px 5px; }
+  .pr-weather { width: 44px; accent-color: var(--accent2); }
+  .pr-smoke { display: flex; gap: 3px; align-items: center; }
+  .pr-smoke input[type="range"] { width: 44px; accent-color: var(--accent2); }
   .pr-mode { right: 66px; min-width: 46px; }
   .pr-drift { right: 120px; min-width: 26px; }
   .pr-drift.on { border-color: var(--accent2); color: var(--accent2); }
@@ -3270,14 +3282,144 @@ function sceneInk(bgInt, quiet) {
 const shadeHex = (hex, amt) =>
   "#" + shadeInt(hex, amt).toString(16).padStart(6, "0");
 
+/*  DUSK.
+
+    Where you hang the sun is what hour it is, and an hour is not a lamp. This
+    is not a light source: nothing here casts, falls off or shadows. It is the
+    ambient colour of the air, and everything painted in the scene reads it
+    from the same place, so a sun dropped near the ground warms the whole
+    street at once rather than lighting a patch of it.
+
+    SUN_LOW is the whole state: 0 with it overhead, 1 with it on the horizon.
+    Kept flat at 0 on the pictogram board, which has no horizon for anything to
+    be near.
+
+    THE MOON DOES IT TOO. A low sun is dusk; a low moon is the same hour from
+    the other side of it, so night reads the same ramp with its own palette and
+    a moon brought down to the rooftops gives you the band of light before dawn
+    instead of a red sunset.
+
+    Nothing below is stored. Your sky and your ground stay exactly the two
+    colours you chose in Theme; dusk is a shift applied over them, so putting
+    the sun back up gives your own scene back untouched. */
+let SUN_LOW = 0;
+const DUSK = {
+  //  Where the sky is dragged to, top to bottom, with the sun on the horizon.
+  day: {
+    high:   0x36436d,     // the last of the blue, going violet
+    mid:    0xb1332b,     // the red band
+    low:    0xff8a3d,     // orange sitting on the horizon
+    ground: 0x4a3327,     // the street catching the same light
+    //  And the disc itself: white-gold up high, deep red on the deck.
+    discHi: 0xffeec2, discMid: 0xffb347, discLo: 0xd8321c,
+    coroHi: 0xffd66b, coroLo: 0xff5a2b,
+    glow: 0.10,           // how much corona there is to begin with
+    glowRise: 0.14,       // and how much more it gathers on the way down
+    thin: 0.30,           // how far the disc washes out at the horizon
+  },
+  //  The same fall, an hour further round: no red, a cold violet band and one
+  //  dull ember along the horizon where the sun either went or is coming.
+  night: {
+    high:   0x05080f,
+    mid:    0x241d3c,
+    low:    0x6e3f4e,
+    ground: 0x17111d,
+    /*  THE MOON GOES WHITE, NOT AMBER.
+
+        It was drifting warm on the way down, borrowed from the sun's own
+        ramp. Wrong body: what a low sun does is go red, and what a low moon
+        does is go pale and vanish. By the time it is over the rooftops at
+        dawn there is enough light in the sky to compete with it, and you get
+        a thin white disc you can see the sky through rather than a hot
+        coloured one. So it cools slightly as it drops, and mostly it just
+        stops being there. */
+    discHi: 0xf2f0e2, discMid: 0xf6f6f4, discLo: 0xfcfdff,
+    coroHi: 0x9fb6d8, coroLo: 0xd7e6fb,
+    glow: 0.0,            // nothing around a high moon
+    glowRise: 0.05,       // and barely any as it falls: dawn washes, it does
+                          // not halo
+    thin: 0.93,           // all but gone by the time it reaches the ground
+  },
+};
+//  Which of the two, for the hour the switch says it is.
+const dusk = () => NIGHT ? DUSK.night : DUSK.day;
+/*  THE FACE OF THE MOON, as fractions of its own radius: x, y, size.
+
+    Roughly where the big maria sit on the near side, reading down from
+    Imbrium at the top left to Nubium underneath. Not a map, and not trying to
+    be: the point is that the markings sit where the eye expects them, because
+    a moon with its patches in the wrong places reads as a golf ball.
+
+    EACH SEA IS MORE THAN ONE CIRCLE. Six even discs came out looking like a
+    cookie — the eye reads a repeated perfect shape as a pattern somebody
+    stamped on, not as terrain. Overlapping lobes fill in one pass, so they
+    merge with no seam between them and what you get is an irregular patch.
+
+    Every lobe is kept inside the limb — distance from the middle plus its own
+    size stays under 1 — so nothing spills off the edge. */
+const MOON_MARIA = [
+  [[-0.30, -0.28, 0.17], [-0.14, -0.36, 0.11]],   // Imbrium
+  [[ 0.14, -0.30, 0.12]],                         // Serenitatis
+  [[ 0.28, -0.02, 0.14], [ 0.34,  0.12, 0.09]],   // Tranquillitatis
+  [[-0.44,  0.16, 0.13]],                         // Procellarum, toward the limb
+  [[-0.06,  0.36, 0.11]],                         // Nubium
+  [[ 0.52, -0.34, 0.08]],                         // Crisium, small and east
+];
+/*  Eased so the top half of the sky is the ordinary hour and the colour
+    gathers as the sun gets close to the ground, which is how it actually
+    behaves. A straight ramp made every position look like dusk. */
+const duskT = () => SUN_LOW * SUN_LOW;
+//  A three-stop ramp read at any point, so the disc and the sky share one rule.
+const duskMix = (lo, mid, hi, t) =>
+  t < 0.5 ? mixInt(hi, mid, t * 2) : mixInt(mid, lo, (t - 0.5) * 2);
+
 //  All four read through sceneColors(), so the hour reaches every one of them
 //  — including the ink that is picked to contrast with the sky.
-const sceneSky = () => hexInt(sceneColors().sky);
-const sceneGround = () => hexInt(sceneColors().ground);
+//  The sky they hand back is the middle of the band, which is what a label
+//  sitting out in the scene is most likely to be sitting on.
+const sceneSky = () => mixInt(hexInt(sceneColors().sky), dusk().mid, duskT() * 0.85);
+const sceneGround = () =>
+  mixInt(hexInt(sceneColors().ground), dusk().ground, duskT() * 0.7);
+//  The two bands the sky is drawn between, above and below that middle. Handed
+//  back as strings because gradientTexture, which already paints every ramp in
+//  this panel, takes the two ends as CSS colours.
+const intHex = int => "#" + (int >>> 0).toString(16).padStart(6, "0");
+const skyHigh = () => intHex(mixInt(hexInt(sceneColors().sky), dusk().high, duskT()));
+const skyLow = () => intHex(mixInt(hexInt(sceneColors().sky), dusk().low, duskT() * 0.95));
 // 0.08 rather than a rounder number because it lands on #2c312a for the
-// default ground, which is the #2b3327 this line was hand-picked as.
-const sceneEdge = () => shadeInt(sceneColors().ground, 0.08);   // the horizon line
+// default ground, which is the #2b3327 this line was hand-picked as. Taken off
+// the dusked ground rather than the stored one, so the horizon line stays a
+// lightening of whatever the street is currently painted.
+const sceneEdge = () => mixInt(sceneGround(), 0xffffff, 0.08);  // the horizon line
 const sceneGrid = () => shadeInt(sceneColors().sky, -0.38);     // the pictogram board
+
+//  Flattened to its own brightness, so a colour loses its hue without losing
+//  how light it was. Perceived, not averaged, for the reason lumOf exists.
+const grayInt = int => {
+  const l = Math.round(lumOf(int) * 255);
+  return (l << 16) | (l << 8) | l;
+};
+/*  SMOKE IS IN THE SAME AIR AS EVERYTHING ELSE.
+
+    You pick one colour per place and that is the colour it is in daylight. The
+    other two it needs are worked out rather than asked for, because they are
+    not separate decisions — they are the same smoke at a different hour.
+
+    Toward the horizon, it catches the light that is hitting it, which is why a
+    plume over a sunset goes pink whatever the coal was.
+
+    At night it goes grey and drops. You do not see the colour of smoke in the
+    dark; you see a shape moving against the sky, and a plume still rendering
+    in the blue you chose for it in daylight reads as a painted-on effect. It
+    keeps a quarter of its own hue so two chimneys set to different colours are
+    still telling you something after sundown. */
+function smokeTint(ink) {
+  const base = hexInt(ink), t = duskT();
+  if (!NIGHT) return mixInt(base, dusk().low, t * 0.55);
+  const night = mixInt(mixInt(base, grayInt(base), 0.75), 0x000000, 0.3);
+  //  And the same ember off the horizon as the moon gets, once it is low.
+  return mixInt(night, dusk().low, t * 0.35);
+}
 
 /*  THE RIBBONS.
 
@@ -3340,6 +3482,71 @@ function saveColNotes() {
     else localStorage.removeItem(NOTE_KEY);
   } catch (e) { /* unavailable */ }
 }
+
+/*  SMOKE.
+
+    Two settings per column and two for the whole street, which is the split
+    the panel already uses everywhere else: a decision about one place lives
+    with that place, and a decision about the weather lives with the sky.
+
+    Colour and thickness are per column, because a lime kiln and a cottage do
+    not smoke alike. Wind and dissipation are the scene's, because every
+    chimney on one street stands in the same air, and letting neighbours
+    disagree about which way the wind blows would look like a fault. */
+const SMOKE_KEY = "brick-by-brick:smoke:v1";
+const SMOKE = new Map();                 // slug -> { ink, thick }
+const SMOKE_DEFAULT = { ink: "#b9c6d4", thick: 0.55, fade: 0.5 };
+const smokeOf = slug => SMOKE.get(slug) || SMOKE_DEFAULT;
+function loadSmoke() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(SMOKE_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  for (const [slug, v] of raw) {
+    if (typeof slug !== "string" || !v) continue;
+    const ink = /^#[0-9a-f]{6}$/i.test(v.ink) ? v.ink : SMOKE_DEFAULT.ink;
+    const thick = (+v.thick >= 0 && +v.thick <= 1) ? +v.thick : SMOKE_DEFAULT.thick;
+    const fade = (+v.fade >= 0 && +v.fade <= 1) ? +v.fade : SMOKE_DEFAULT.fade;
+    SMOKE.set(slug, { ink, thick, fade });
+  }
+}
+function saveSmoke() {
+  try {
+    if (SMOKE.size) localStorage.setItem(SMOKE_KEY, JSON.stringify([...SMOKE.entries()]));
+    else localStorage.removeItem(SMOKE_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+/*  THE WIND, AND EVERYTHING IN THE SKY OBEYS IT.
+
+    One number for the whole street, negative for a westerly. It leans the
+    smoke, and it helps or hinders anything else crossing: a skein of birds
+    flying with it makes better time than one beating into it, and so does the
+    balloon. That is the point of having it at scene level rather than per
+    place. It is weather, and weather is the same for everybody standing in it.
+
+    How a particular chimney smokes belongs to that chimney, so colour,
+    thickness and how fast a puff gives up all live with the column. */
+const WEATHER_KEY = "brick-by-brick:weather:v1";
+const WEATHER_DEFAULT = { wind: 0.25 };
+let WEATHER = { ...WEATHER_DEFAULT };
+function loadWeather() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(WEATHER_KEY) || "null"); } catch (e) { return; }
+  if (!raw) return;
+  const w = +raw.wind;
+  if (w >= -1 && w <= 1) WEATHER.wind = w;
+}
+function saveWeather() {
+  try {
+    if (WEATHER.wind === WEATHER_DEFAULT.wind) localStorage.removeItem(WEATHER_KEY);
+    else localStorage.setItem(WEATHER_KEY, JSON.stringify(WEATHER));
+  } catch (e) { /* unavailable */ }
+}
+
+/*  How much a thing crossing the sky is helped or hindered. Dead with the wind
+    is a third again; dead against it is a third slower. Nothing stops, because
+    a bird pinned motionless in the air reads as a bug. */
+const windHelp = dir => 1 + WEATHER.wind * dir * 0.34;
 
 const RIBBON = new Map();
 const RIBBON_DEFAULT = "#4a3b28";
@@ -3750,6 +3957,59 @@ function loadImg(src) {
     pixel is a note to the renderer and never a mark on the picture. */
 const SIGN_MARK = { r: 255, g: 0, b: 255 };
 
+/*  THE OLD ANCHOR, READ AS THE NEW ONE.
+
+    Anchors used to be a painted magenta pixel. They are an alpha flag now, and
+    when the reader moved onto the effects table it stopped looking for magenta
+    at all — so every drawing made the old way kept its anchor as a bright pink
+    dot on the building, and the sign stopped going where it pointed.
+
+    Both are fixed by honouring the old mark wherever art is read. Each opaque
+    magenta pixel is handed back as an anchor position, and the pixel itself is
+    given the colour of whatever is beside it, so where the note was there is
+    building rather than a hole or a pink speck.
+
+    `keep` is the alpha the pixel is left with: 255 for the street, which reads
+    the anchor and throws the flag away, and ANCHOR_A for the editor, where the
+    old mark becomes a real ⚑ you can see in effects mode and move like any
+    other. A mark with nothing opaque beside it has nothing to borrow and no
+    pixel to carry a flag on, so it goes transparent; the street still uses
+    its position. */
+/*  Two colours count. Magenta is the anchor as it was meant to be painted. The
+    pink is the anchor's own ink in the editor, #ff78eb, and it only exists in
+    a picture because an earlier marker wrote its ink into the pixel instead of
+    only flagging it — so a drawing from that week has a pink dot where its
+    anchor is, sometimes flagged and sometimes not. Neither is a colour anybody
+    paints with on purpose, which is the whole reason either was chosen. */
+const OLD_ANCHOR_RGB = [[255, 0, 255], [255, 120, 235]];
+function adoptOldAnchors(px, w, h, keep) {
+  const isMark = i => {
+    const a = px[i + 3];
+    //  Opaque paint, or a flagged anchor whose colour was also overwritten.
+    if (a !== 255 && a !== ANCHOR_A) return false;
+    for (const [r, g, b] of OLD_ANCHOR_RGB) {
+      if (px[i] === r && px[i + 1] === g && px[i + 2] === b) return true;
+    }
+    return false;
+  };
+  const hits = [];
+  for (let i = 0; i < px.length; i += 4) if (isMark(i)) hits.push(i / 4);
+  for (const p of hits) {
+    const x = p % w, y = (p / w) | 0, i = p * 4;
+    let from = -1;
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const j = (ny * w + nx) * 4;
+      if (px[j + 3] && !isMark(j)) { from = j; break; }
+    }
+    if (from < 0) { px[i + 3] = 0; continue; }
+    px[i] = px[from]; px[i + 1] = px[from + 1]; px[i + 2] = px[from + 2];
+    px[i + 3] = keep;
+  }
+  return hits.map(p => [p % w, (p / w) | 0]);
+}
+
 /*  MARKED GLASS, AND A MARKED DOOR.
 
     Two more reserved colours, on the same principle as the anchor pixel above
@@ -3783,12 +4043,44 @@ const SIGN_MARK = { r: 255, g: 0, b: 255 };
     dark astragals over pale glass stays a window with dark astragals: the
     glass lights and the astragals stay dark, because they were darker to begin
     with and a tint keeps that. */
-const GLASS_A = 254;
-const DOOR_A  = 253;
-/*  The anchor is a flag like the other two now. It used to be a magenta pixel,
-    which meant the one mode whose promise is "this cannot change your drawing"
-    began by painting on it. */
-const ANCHOR_A = 252;
+/*  THE EFFECTS TABLE.
+
+    One row per effect, the way `TOKENS` is one row per notation symbol. The
+    buttons, their colours, which drawing tool each hands you, the wash the
+    editor paints over marked pixels, and the reader that pulls them back out
+    of a PNG are all derived from this. Adding an effect is a row.
+
+    What a row cannot carry is BEHAVIOUR. Glass runs a candle routine over
+    every pane it finds; a door records its pixels so the region can be clicked;
+    an anchor moves the signpost. Those stay hand-written, because they have
+    nothing in common but the flag that finds them. `collect` says what the
+    reader should gather, and the caller decides what to do with it.
+
+    `alpha` is the flag itself, and the reason there is room to grow: 255 is
+    opaque and anything down to about 240 is indistinguishable from it, so
+    there are roughly a dozen more effects available before a marked pixel
+    starts to look faded. */
+const EFFECTS = [
+  { id: "glass",  alpha: 254, ink: "#46d2ff", glyph: "\u25a3", tool: "fill",
+    tip: "glass. These panes light at night", collect: "mask" },
+  { id: "door",   alpha: 253, ink: "#ffbe32", glyph: "\u25af", tool: "fill",
+    tip: "a doorway. The way into this place", collect: "list" },
+  { id: "smoke",  alpha: 251, ink: "#b9c6d4", glyph: "\u2601", tool: "fill",
+    tip: "smoke. Each marked pixel is a chimney, and puffs rise from it",
+    collect: "list" },
+  { id: "anchor", alpha: 252, ink: "#ff78eb", glyph: "\u2691", tool: "anchor",
+    tip: "where this place's name stands. On the bottom row it plants the "
+       + "signpost there; anywhere else the name floats with no post. "
+       + "Right-click takes it off.", collect: "list", one: true },
+];
+const EFFECT_BY_ALPHA = new Map(EFFECTS.map(e => [e.alpha, e]));
+const EFFECT = Object.fromEntries(EFFECTS.map(e => [e.id, e]));
+
+//  Kept because a great deal of code reads better naming the effect than
+//  indexing the table for it.
+const GLASS_A = EFFECT.glass.alpha;
+const DOOR_A = EFFECT.door.alpha;
+const ANCHOR_A = EFFECT.anchor.alpha;
 /*  GLASS IS NOT ONE COLOUR.
 
     Filling every marked pixel with the same yellow gave a row of flat squares
@@ -3850,6 +4142,19 @@ function saveSunPos() {
     else localStorage.removeItem(SUNPOS_KEY);
   } catch (e) { /* unavailable */ }
 }
+/*  The one writer of SUN_LOW — see DUSK. Given where the sun is hanging and
+    where the ground is, both in the panel's own pixels. Squared on the way out
+    of duskT rather than here, so this stays the plain fraction and the shape
+    of the curve lives in one place. */
+function setSunLow(sunY, groundPx) {
+  const raw = !groundPx ? 0 : Math.max(0, Math.min(1, sunY / groundPx));
+  /*  Rounded to twenty-fourths. The sky is painted with the same cached ramp
+      texture as everything else here, keyed by its two ends, and a value read
+      straight off the pointer would mint a new canvas on every mouse move and
+      keep the lot. Twenty-four steps down the sky is finer than the eye
+      follows and leaves the cache a fixed size. */
+  SUN_LOW = Math.round(raw * 24) / 24;
+}
 let NIGHT = false;
 function loadNight() {
   try { NIGHT = localStorage.getItem(NIGHT_KEY) === "1"; } catch (e) { NIGHT = false; }
@@ -3875,9 +4180,8 @@ function readSignMark(img) {
   //  That is not a failure worth breaking the scene over: no mark, carry on.
   try { d = g.getImageData(0, 0, w, h); } catch (e) { return { img, at: null }; }
   const px = d.data;
-  /*  The bottom row first and on its own, because that row is the question
-      being asked — is this a post? — and a magenta pixel in the sky is a
-      different answer, not a better one. */
+  //  Drawings made before anchors were a flag. See adoptOldAnchors.
+  const oldAnchors = adoptOldAnchors(px, w, h, 255);
   /*  THE MARKED REGIONS, REPAINTED FOR THE HOUR.
 
       Glass is dull by day and lit at night; a door is a door either way but is
@@ -3885,46 +4189,51 @@ function readSignMark(img) {
       to know where it is. Done here, on the one pass that already reads every
       pixel of every scene image — a second sweep for this would be a second
       sweep for nothing. */
-  const glass = [], doors = [];
-  const isGlass = new Uint8Array(w * h);
+  /*  ONE PASS, EVERY EFFECT. The table says what to gather for each: a `list`
+      of coordinates, or a `mask` when something downstream needs to ask "is
+      this pixel one of mine" without searching a list. Every flag is read and
+      then set back to opaque, so nothing a marker did survives into the
+      picture. */
+  const found = {};
+  for (const e of EFFECTS) {
+    found[e.id] = e.collect === "mask"
+      ? { list: [], mask: new Uint8Array(w * h) }
+      : { list: [] };
+  }
   for (let i = 0; i < px.length; i += 4) {
+    const e = EFFECT_BY_ALPHA.get(px[i + 3]);
+    if (!e) continue;
     const p = i / 4;
-    if (px[i + 3] === GLASS_A) {
-      glass.push([p % w, Math.floor(p / w)]);
-      isGlass[p] = 1;
-      px[i + 3] = 255;                 // the flag has been read; it is opaque now
-    } else if (px[i + 3] === DOOR_A) {
-      doors.push([p % w, Math.floor(p / w)]);
-      px[i + 3] = 255;
-      //  A door keeps whatever you painted it. It is marked so that it can be
-      //  clicked, not so that it can be recoloured.
-    }
+    found[e.id].list.push([p % w, Math.floor(p / w)]);
+    if (found[e.id].mask) found[e.id].mask[p] = 1;
+    px[i + 3] = 255;
   }
-  if (glass.length) lightGlass(px, isGlass, w, h);
+  const glass = found.glass.list, doors = found.door.list;
+  if (glass.length) lightGlass(px, found.glass.mask, w, h);
 
+  /*  The bottom row first and on its own, because that row is the question
+      being asked. An anchor down there is a post; anywhere else it is a label
+      hanging in the air, which is a different answer rather than a worse one. */
   let at = null;
-  const isMark2 = i => px[i + 3] === ANCHOR_A;
-  for (let x = 0; x < w; x++) {
-    if (isMark2(((h - 1) * w + x) * 4)) { at = { x, y: h - 1, ground: true }; break; }
+  //  A flagged anchor wins over an old magenta one if a drawing somehow has
+  //  both: the flag is the one somebody placed with the current tool.
+  const anchors = found.anchor.list.concat(oldAnchors);
+  const onGround = anchors.find(([, y]) => y === h - 1);
+  if (onGround) at = { x: onGround[0], y: h - 1, ground: true };
+  else if (anchors.length) at = { x: anchors[0][0], y: anchors[0][1], ground: false };
+  //  The canvas comes back whenever ANYTHING was rewritten — any effect, or an
+  //  old anchor painted out — so a drawing with windows and no anchor, or with
+  //  nothing but a magenta pixel, is still returned repainted rather than as
+  //  the original image with the pink still on it.
+  if (!oldAnchors.length && !EFFECTS.some(e => found[e.id].list.length)) {
+    return { img, at: null };
   }
-  if (!at) {
-    for (let y = 0; y < h - 1 && !at; y++) {
-      for (let x = 0; x < w; x++) {
-        if (isMark2((y * w + x) * 4)) { at = { x, y, ground: false }; break; }
-      }
-    }
-  }
-  //  Every anchor flag, not only the one that was found: the flag is read and
-  //  then the pixel goes back to being an ordinary opaque pixel.
-  for (let i = 0; i < px.length; i += 4) if (isMark2(i)) px[i + 3] = 255;
-  /*  The canvas is returned whenever ANYTHING was rewritten, not only when an
-      anchor was found — a drawing with windows and no anchor still has to come
-      back repainted rather than as the original image. */
-  if (!at && !glass.length && !doors.length) return { img, at: null };
   g.putImageData(d, 0, 0);
   cv.__signAt = at;
   cv.__glass = glass;
   cv.__doors = doors;
+  //  Chimneys. Each marked pixel is one, in image coordinates.
+  cv.__smoke = found.smoke.list;
   return { img: cv, at };
 }
 
@@ -4247,6 +4556,10 @@ function outfitFor(slug, trade, host, onReady) {
     was wrong: the street paints an opaque sky over the whole panel, so index 0
     is not "behind everything", it is "invisible". */
 const SKY_Z = 5, PEN_Z = 10;
+/*  Every puff on the street, shared out among whichever chimneys are on
+    screen. A ceiling rather than a per-chimney allowance, so the cost does not
+    climb with the size of your pile. */
+const SMOKE_MAX = 120;
 
 /*  THE SCENERY: STILL THINGS BEHIND THE STREET.
 
@@ -5020,6 +5333,9 @@ function renderPromenadePixi(model, host) {
       '<input type="color" data-k="ground" title="the ground everybody stands on">' +
       '<button data-k="night" class="pr-night" title="day or night — at night ' +
         'the marked windows light up">\u2600</button>' +
+      /*  The day's air, which every chimney on the street shares. */
+      '<input type="range" data-k="wind" min="-1" max="1" step="0.05" ' +
+        'class="pr-weather" title="wind \u2014 which way the smoke leans">' +
       '<button data-k="reset" title="back to the street’s own colors">↺</button>';
     fileBar.insertBefore(bgBar, groupBtn.nextSibling);
     //  Shows the hour that is on screen, which is the one the pickers edit.
@@ -5050,6 +5366,19 @@ function renderPromenadePixi(model, host) {
 
         Every scene image has to be read again, because the marked windows are
         repainted on the way in — the cache is holding daylight. */
+    const windIn = bgBar.querySelector('[data-k="wind"]');
+    const syncWeather = () => {
+      if (document.activeElement !== windIn) windIn.value = String(WEATHER.wind);
+    };
+    const writeWeather = () => {
+      WEATHER = { wind: Number(windIn.value) };
+      saveWeather();
+      //  No rebuild. The ticker reads these every frame, so a drag of the
+      //  slider shows on the next one.
+    };
+    windIn.addEventListener("input", writeWeather);
+    syncWeather();
+
     const nightBtn = bgBar.querySelector('[data-k="night"]');
     const syncNight = () => {
       nightBtn.textContent = NIGHT ? "\u263e" : "\u2600";
@@ -5146,6 +5475,16 @@ function renderPromenadePixi(model, host) {
           'maxlength="400" placeholder="on the ground\u2026" ' +
           'title="shown below this column">' +
       '</span>' +
+      /*  A column's own smoke, beside its notes: both are decisions about this
+          place rather than about the street. */
+      '<span class="pr-smoke">' +
+        '<input type="color" data-k="smokeink" title="the colour of this ' +
+          'place\u2019s smoke">' +
+        '<input type="range" data-k="smokethick" min="0" max="1" step="0.05" ' +
+          'title="how thick the smoke is">' +
+        '<input type="range" data-k="smokefade" min="0" max="1" step="0.05" ' +
+          'title="how fast it gives up. Low is a plume, high is a wisp">' +
+      '</span>' +
       '<button data-k="close" title="done">×</button>';
     shell.appendChild(tintBar);
     host._tintBar = tintBar;
@@ -5174,6 +5513,22 @@ function renderPromenadePixi(model, host) {
         renderPromenadePixi(V(), host);
         return;
       }
+      /*  THREE CONTROLS ARE THE GRADIENT. THE REST ARE NOT.
+
+          This listener is on the whole bar, so it hears every control in it:
+          the smoke colour, both smoke sliders and both note boxes as well as
+          the two swatches and the alpha. Every one of those already has its
+          own writer a few lines down, and this was writing them a second time
+          into the gradient's record — a smoke slider left `smokethick` sitting
+          in a column tint.
+
+          Far worse than the stray key: `next` starts from readTint(), which
+          hands back a FULL-STRENGTH DARK GRADIENT when the column has none.
+          So nudging the smoke thickness, or typing a word in a note, silently
+          switched on a backdrop nobody asked for, and the street went dark
+          behind that column. Smoke and the sky it rises through were fighting
+          because one control was quietly setting the other. */
+      if (k !== "from" && k !== "to" && k !== "alpha") return;
       next[k] = k === "alpha" ? Number(e.target.value) : e.target.value;
       COLUMN_TINT.set(slug, next);
       saveColumnTints();
@@ -5195,6 +5550,26 @@ function renderPromenadePixi(model, host) {
         Written as you type, because the point of it is watching the line land
         on the scene and finding out it is too long, or in the wrong place. A
         save button would put a round trip between the words and the answer. */
+    const smokeInk = tintBar.querySelector('[data-k="smokeink"]');
+    const smokeThick = tintBar.querySelector('[data-k="smokethick"]');
+    const smokeFade = tintBar.querySelector('[data-k="smokefade"]');
+    const writeSmoke = () => {
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (slug === null) return;
+      const ink = smokeInk.value, thick = Number(smokeThick.value);
+      const fade = Number(smokeFade.value);
+      //  Back to the default rather than storing a copy of it.
+      if (ink === SMOKE_DEFAULT.ink && thick === SMOKE_DEFAULT.thick
+          && fade === SMOKE_DEFAULT.fade) SMOKE.delete(slug);
+      else SMOKE.set(slug, { ink, thick, fade });
+      saveSmoke();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    smokeInk.addEventListener("input", writeSmoke);
+    smokeThick.addEventListener("input", writeSmoke);
+    smokeFade.addEventListener("input", writeSmoke);
+
     const aboveIn = tintBar.querySelector('[data-k="above"]');
     const belowIn = tintBar.querySelector('[data-k="below"]');
     const writeNote = () => {
@@ -5250,6 +5625,10 @@ function renderPromenadePixi(model, host) {
       /*  Not while you are typing in it. This runs on every render, and a
           render happens on every keystroke — writing the value back mid-word
           fights the person holding the keyboard. */
+      const sm = smokeOf(slug);
+      if (document.activeElement !== smokeInk) smokeInk.value = sm.ink;
+      if (document.activeElement !== smokeThick) smokeThick.value = String(sm.thick);
+      if (document.activeElement !== smokeFade) smokeFade.value = String(sm.fade);
       const n = noteOf(slug);
       for (const at of ["above", "below"]) {
         const box = tintBar.querySelector('[data-k="' + at + '"]');
@@ -5574,7 +5953,173 @@ function renderPromenadePixi(model, host) {
         if (host._birds) { host._birds.node.destroy({ children: true }); host._birds = null; }
       }
 
-      /*  Now and again, a balloon.
+        /*  SMOKE.
+
+          One texture, a fixed pool and a global budget, because this is the
+          one thing on the panel whose cost grows with the size of your pile.
+          Fifty-nine columns with four chimneys each, at sixty frames a second,
+          is where a naive version stops being free.
+
+          So: every puff is a Sprite sharing one soft round texture, which lets
+          Pixi batch the lot into a single draw call. The pool is allocated
+          once and recycled, because object churn at 60fps is what actually
+          stutters, not the arithmetic. And a chimney off the side of the
+          screen emits nothing, which turns a cost per corpus into a cost per
+          screen. */
+      if (SKY && host._smokeAt && host._smokeAt.length) {
+        if (!host._smokePool) {
+          //  The puff itself, drawn once, round. A radial gradient in a canvas
+          //  rather than a Graphics circle, so the edge is soft at any scale.
+          const S = 32, cvs = document.createElement("canvas");
+          cvs.width = cvs.height = S;
+          const cg = cvs.getContext("2d");
+          const grad = cg.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+          grad.addColorStop(0, "rgba(255,255,255,1)");
+          grad.addColorStop(0.5, "rgba(255,255,255,0.55)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          cg.fillStyle = grad;
+          cg.fillRect(0, 0, S, S);
+          host._smokeTex = P.Texture.from(cvs);
+          host._smokeS = S;
+          /*  THE CHIMNEY IS A CEILING TO LOOK UP THROUGH, NOT A SHAPE.
+
+              Smoke must never appear below the pot it came out of, and a puff
+              is round, so at the moment it is born half of it hangs under the
+              marked pixel and reads as leaking through the roof. The cut
+              belongs to the chimney's own horizontal line, so a puff loses
+              only the part that has not cleared it yet, and stops being cut
+              at all once it has risen clear.
+
+              Done by cropping the texture rather than masking the sprite: a
+              mask per puff is a separate draw call per puff, and this panel
+              can hold a hundred and twenty of them. Every crop is a window
+              onto the SAME base texture, so the whole plume still batches
+              into one call. Thirty-three of them, one per row of the circle,
+              built once — a puff picks the nearest rather than allocating a
+              Texture sixty times a second. */
+          host._smokeCrop = [host._smokeTex];        // row 0 is never drawn
+          for (let k = 1; k <= S; k++) {
+            host._smokeCrop[k] = new P.Texture(host._smokeTex.baseTexture,
+                                               new P.Rectangle(0, 0, S, k));
+          }
+          /*  BEHIND THE ROOFS, NOT IN FRONT OF THEM.
+
+              Smoke leaves a chimney at the back of a building, so a puff that
+              draws over the front of the roof reads as fog on the street
+              rather than as something coming out of the pot. The layer lives
+              inside the world, one slot under the scene art, which also means
+              it pans and hides with the street instead of being nailed to the
+              stage. The render parks it there on every rebuild; this is only
+              the first time, before any render has seen it. */
+          host._smokeLayer = new P.Container();
+          host._world.addChildAt(host._smokeLayer,
+            Math.min(host._artFloor || 0, host._world.children.length));
+          host._smokePool = [];
+          for (let i = 0; i < SMOKE_MAX; i++) {
+            const sp = new P.Sprite(host._smokeTex);
+            //  Held by its bottom edge, because that edge is the thing the
+            //  chimney line decides. Cropping a texture only ever takes rows
+            //  off the bottom, so anything anchored by its middle would
+            //  shuffle upward as it was cut.
+            sp.anchor.set(0.5, 1);
+            sp.visible = false;
+            sp.eventMode = "none";
+            host._smokeLayer.addChild(sp);
+            /*  `life` must be a number from the start. Left undefined, the
+                "is this puff free" test compares a number against undefined,
+                which is false for everything: nothing is ever free to spawn,
+                and every sprite meanwhile reports itself alive with a NaN
+                position. The pool looked full and the sky stayed empty. */
+            host._smokePool.push({ sp, age: 1, life: 0, fade: 1,
+                                   x: 0, y: 0, drift: 0, src: null });
+          }
+          host._smokeClock = 0;
+        }
+        const dt = app.ticker.deltaMS / 1000;
+        host._smokeClock += dt;
+        const pool = host._smokePool;
+        const wind = WEATHER.wind;
+        /*  What each ink looks like at this hour, worked out once a frame
+            rather than once a puff. A street usually runs on one or two
+            colours, and a plume already in the air has to follow the sun down
+            with everything else — a puff keeping the tint it was born with
+            would leave a trail of the last five seconds of daylight hanging
+            over the roof. */
+        const inkNow = new Map();
+        const smokeNow = ink => {
+          let v = inkNow.get(ink);
+          if (v === undefined) inkNow.set(ink, v = smokeTint(ink));
+          return v;
+        };
+
+        /*  Only the chimneys you can see. The street pans, so most of them are
+            off the side at any moment, and asking each one whether it is on
+            screen is far cheaper than drawing for it. */
+        const left = -host._world.x - 40, right = left + app.screen.width + 80;
+        for (const src of host._smokeAt) {
+          if (src.wx < left || src.wx > right) continue;
+          src.next -= dt;
+          if (src.next > 0) continue;
+          src.next = 0.7 + Math.random() * 0.7;
+          const free = pool.find(q => q.age > q.life);
+          if (!free) break;                       // budget spent; the rest wait
+          free.age = 0;
+          free.life = 2.6 + Math.random() * 2.2;
+          free.x = src.wx + (Math.random() - 0.5) * 2;
+          free.y = src.wy;
+          free.drift = (Math.random() - 0.5) * 0.4;
+          free.src = src;
+          free.fade = 0.35 + (src.fade === undefined ? 0.5 : src.fade) * 1.9;
+          free.sp.tint = smokeNow(src.ink);
+        }
+
+        for (const q of pool) {
+          if (q.age > q.life) { if (q.sp.visible) q.sp.visible = false; continue; }
+          q.age += dt;
+          const t = q.age / q.life;
+          if (t >= 1) { q.sp.visible = false; continue; }
+          //  Rises, leans with the wind, spreads and gives up. `fade` is the
+          //  whole character of it: low is a wisp, high is a working chimney.
+          const rise = 26 * t;
+          //  World coordinates, because the layer is in the world now — the
+          //  container carries the pan, so adding it here would count it twice.
+          q.sp.x = q.x + (wind * 18 + q.drift * 10) * t;
+          const sc = (0.18 + t * 0.55) * (host._zoom || 1);
+          /*  Cut at the chimney's own line. `q.y` is the marked pixel; the
+              puff's middle is `rise` above it and its radius is half the
+              texture, so the rows that have cleared the line are the rows
+              worth drawing. All of them, once the puff has risen its own
+              radius clear, which is most of its life. */
+          const S = host._smokeS, R = S * 0.5 * sc;
+          let rows = Math.round(((rise + R) / (2 * R)) * S);
+          if (rows <= 0) { q.sp.visible = false; continue; }
+          if (rows > S) rows = S;
+          if (q.sp.texture !== host._smokeCrop[rows]) q.sp.texture = host._smokeCrop[rows];
+          //  Anchored at the bottom, so the sprite hangs from wherever the cut
+          //  landed: the chimney line while it is still being cut, its own
+          //  underside once it is clear.
+          q.sp.y = Math.min(q.y, q.y - rise + R);
+          //  Re-read every frame, so dragging the sun takes the plume with it.
+          const ink = smokeNow(q.src ? q.src.ink : SMOKE_DEFAULT.ink);
+          if (q.sp.tint !== ink) q.sp.tint = ink;
+          q.sp.scale.set(sc);
+          q.sp.alpha = Math.max(0, (q.src ? q.src.thick : 0.55) * Math.pow(1 - t, q.fade));
+          q.sp.visible = true;
+        }
+      } else if (host._smokeLayer) {
+        for (const q of host._smokePool) q.sp.visible = false;
+      }
+
+      /*  The sun sits in the world so it can be drawn on the sky, under the
+          roofs. It must not travel with the world, though, so the pan comes
+          straight back off it here — every frame, because the street can be
+          moved by a drag, a wheel, a zoom or the drift, and this is the one
+          place all four of them have already landed. */
+      if (host._sun && !host._sun.destroyed && host._sun.__sx !== undefined) {
+        host._sun.x = host._sun.__sx - host._world.x;
+      }
+
+    /*  Now and again, a balloon.
 
           Drawn rather than fetched, and never announced. It drifts across the
           sky on its own schedule, bobs a little, and is gone — the sort of
@@ -5763,7 +6308,8 @@ function renderPromenadePixi(model, host) {
         if (!b2.held) {
           // Heavier when it is carrying somebody: slower across, riding lower.
           const load = b2.riders.length;
-          b2.node.x += balloonDrift(load) * b2.dir;
+          //  A balloon has no engine, so the wind is most of what moves it.
+          b2.node.x += balloonDrift(load) * b2.dir * windHelp(b2.dir);
           b2.node.y = b2.from + load * 3 + Math.sin(b2.t * 0.7) * 6;
 
           /*  Zoom can change between frames. Compared before assigning so a
@@ -5836,7 +6382,8 @@ function renderPromenadePixi(model, host) {
       if (host._birds) {
         const f = host._birds;
         f.t += app.ticker.deltaMS / 1000;
-        f.node.x += 0.9 * f.dir;
+        //  With the wind they make time; against it they labour.
+        f.node.x += 0.9 * f.dir * windHelp(f.dir);
         f.node.y += Math.sin(f.t * 0.5) * 0.12;
         for (const m of f.marks) {
           // Two strokes of a wing, redrawn as the beat opens and closes.
@@ -5923,24 +6470,55 @@ function renderPromenadePixi(model, host) {
       order to sit below it rather than through it. */
   const SIGN_BOARD_Y = -38;
 
-  // Ground and sky, redrawn with the scene so a resized panel keeps its horizon.
-  const bg = new P.Graphics();
-  if (GRID) {
-    // A board, not a landscape: no horizon, because nothing here is standing
-    // anywhere. Faint rules instead, so the ranks read as ranks.
-    bg.beginFill(sceneGrid()).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
-  } else {
+  /*  What hour it is, before anything is painted in it.
+
+      The sun is built further down, but where it hangs is already known, and
+      every colour from here on reads DUSK — so this has to be settled first or
+      the sky would be a frame behind the sun that decides it. */
+  setSunLow(GRID ? 0
+                 : (SUN_POS ? SUN_POS.fy * app.screen.height : 30 * Z),
+            H() * GROUND);
+
+  /*  Sky and ground, redrawn with the scene so a resized panel keeps its
+      horizon — and drawn as two separate things with the sun in between them,
+      because the ground has to be IN FRONT of the sun. One rectangle behind it
+      meant a sun taken down to the horizon sat on the field like a coin on a
+      table. Sky, sun, then ground over the top of both is what lets it set. */
+  const bg = new P.Graphics();          // the grid board, or nothing
+  const groundG = new P.Graphics();     // the street, over the top of the sun
+  //  The sky is a ramp rather than a fill, so the hour can gather toward the
+  //  horizon. With the sun up, both ends are the sky you chose and it paints
+  //  exactly as the flat rectangle it replaced.
+  const skyBand = GRID ? null : new P.Sprite(gradientTexture(P, skyHigh(), skyLow()));
+  const paintBg = () => {
+    bg.clear();
+    groundG.clear();
+    if (GRID) {
+      // A board, not a landscape: no horizon, because nothing here is standing
+      // anywhere. Faint rules instead, so the ranks read as ranks.
+      bg.beginFill(sceneGrid()).drawRect(0, 0, Math.max(worldW, app.screen.width), H()).endFill();
+      return;
+    }
     /*  Floored to the panel, exactly as the grid already was. The world is
         sized to the places in it, so an empty pile — or one where nothing is
         geocoded yet — collapsed the street to a 140px sliver at the far left
         and left the rest of the panel blank. There should always be somewhere
         to stand, even before anybody does. */
     const bgW = Math.max(worldW, app.screen.width);
-    bg.beginFill(sceneSky()).drawRect(0, 0, bgW, H() * GROUND).endFill();
-    bg.beginFill(sceneGround()).drawRect(0, H() * GROUND, bgW, H()).endFill();
-    bg.beginFill(sceneEdge()).drawRect(0, H() * GROUND, bgW, 2).endFill();
-  }
+    groundG.beginFill(sceneGround()).drawRect(0, H() * GROUND, bgW, H()).endFill();
+    groundG.beginFill(sceneEdge()).drawRect(0, H() * GROUND, bgW, 2).endFill();
+    skyBand.texture = gradientTexture(P, skyHigh(), skyLow());
+    skyBand.x = 0;
+    skyBand.y = 0;
+    skyBand.width = bgW;
+    skyBand.height = H() * GROUND;
+  };
+  paintBg();
   world.addChild(bg);
+  if (skyBand) {
+    skyBand.eventMode = "none";
+    world.addChild(skyBand);
+  }
 
   /*  THE SUN, OR THE MOON.
 
@@ -5948,9 +6526,9 @@ function renderPromenadePixi(model, host) {
       statement of what hour it is — plainer than a sky colour, which somebody
       may have set to anything.
 
-      On the STAGE rather than in the world, so it does not slide past as you
-      walk the street. The sun over Longforgan is the same sun over Dundee; a
-      second copy scrolling by would be a lie about a very old fact.
+      It does not slide past as you walk the street. The sun over Longforgan is
+      the same sun over Dundee; a second copy scrolling by would be a lie about
+      a very old fact. See where it is added for how that is arranged.
 
       Drawn rather than fetched, like everything else in this sky. */
   if (!GRID) {
@@ -5965,28 +6543,123 @@ function renderPromenadePixi(model, host) {
         Drawn at the origin and moved by the container's own x and y, so
         dragging it is one assignment rather than a redraw. */
     const cx = 0, cy = 0;
-    sun.x = SUN_POS ? SUN_POS.fx * app.screen.width
-                    : Math.max(46 * Z, app.screen.width * 0.17);
-    sun.y = SUN_POS ? SUN_POS.fy * app.screen.height : 30 * Z;
-    if (NIGHT) {
-      /*  A crescent, cut rather than drawn: a filled disc with a second disc
-          taken out of it by a hole, which is the only way to get a true
-          crescent's cusps. A drawn arc gives you a banana with blunt ends. */
-      sun.beginFill(0xf2f0e2, 0.92);
-      sun.drawCircle(cx, cy, R);
-      sun.beginHole();
-      sun.drawCircle(cx + R * 0.62, cy - R * 0.28, R * 0.92);
-      sun.endHole();
-      sun.endFill();
-    } else {
-      //  A disc with a soft corona, which is two more discs underneath it.
-      sun.beginFill(0xffd66b, 0.10); sun.drawCircle(cx, cy, R * 2.1); sun.endFill();
-      sun.beginFill(0xffd66b, 0.16); sun.drawCircle(cx, cy, R * 1.5); sun.endFill();
-      sun.beginFill(0xffe9a8, 0.95); sun.drawCircle(cx, cy, R); sun.endFill();
-    }
-    /*  Below the balloon and the birds, which cross in FRONT of it — a bird
-        passing behind the moon would be a bird in space. */
-    sun.zIndex = SKY_Z - 1;
+    /*  Held in SCREEN coordinates, not world ones. It lives in the world so it
+        can be drawn just above the sky, but it is still the same sun over
+        every place on the street, so the ticker cancels the pan back out of it
+        and it stays put while the street walks past underneath. */
+    sun.__place = (sx, sy) => {
+      sun.__sx = sx; sun.__sy = sy;
+      sun.x = sx - (host._world ? host._world.x : 0);
+      sun.y = sy;
+      if (host._relight) host._relight();
+    };
+    /*  Whatever the last render left here is a closure over a sun and a sky
+        that have both just been thrown away. Cleared before the first
+        __place, and set again once there is something to repaint. */
+    host._relight = null;
+    sun.__place(SUN_POS ? SUN_POS.fx * app.screen.width
+                        : Math.max(46 * Z, app.screen.width * 0.17),
+                SUN_POS ? SUN_POS.fy * app.screen.height : 30 * Z);
+    /*  Redrawn rather than built once, because the disc is one of the things
+        the hour colours: white-gold up high, orange partway down, deep red on
+        the deck. Same DUSK ramp the sky reads, so the two can never disagree
+        about how late it is. */
+    sun.__draw = () => {
+      sun.clear();
+      const D = dusk(), t = duskT();
+      const disc = duskMix(D.discLo, D.discMid, D.discHi, t);
+      const coro = mixInt(D.coroHi, D.coroLo, t);
+      /*  The corona widens and thickens as it drops. Low means a long way
+          through the air, and the glow swelling is the part of that you can
+          actually see at this size. A high moon has none of it at all, which
+          is why the base amount comes off the palette rather than being a
+          number written here. */
+      const spread = 1 + t * 0.5;
+      sun.beginFill(coro, D.glow + t * D.glowRise);
+      sun.drawCircle(cx, cy, R * 2.1 * spread); sun.endFill();
+      sun.beginFill(coro, D.glow * 1.6 + t * D.glowRise * 1.45);
+      sun.drawCircle(cx, cy, R * 1.5 * spread); sun.endFill();
+      if (NIGHT) {
+        /*  A FULL MOON WITH ITS SEAS ON, NOT A CRESCENT.
+
+            This used to be a disc with a second disc cut out of it. At nine
+            pixels across, that reads as a circle somebody has taken a bite out
+            of rather than as a phase — there is no room for the cusps that
+            make a crescent legible, and the notch just looks like a drawing
+            error. A round moon has a shape everyone knows on sight.
+
+            What makes it read as the moon rather than as a pale dot is the
+            markings. Six of them, in the arrangement of the near side, so the
+            face is the face you actually look up at. */
+        /*  AND IT FADES AS IT GOES DOWN.
+
+            A moon on the horizon is being looked at through the whole depth of
+            the air, and it goes thin and washy long before it touches the
+            ground. Holding full strength all the way down made it look like a
+            lamp being lowered on a wire. The halo above is deliberately left
+            out of this: haze is what takes the disc away, and the same haze is
+            what the glow around it is made of, so as one goes the other
+            comes.
+
+            READ OFF SUN_LOW ITSELF, NOT THE EASED duskT. Everything else on
+            this street holds its ordinary colour through the top half of the
+            sky and only turns near the ground, because that is how the light
+            behaves. A moon does not: it is being outshone rather than
+            reddened, and it starts losing that argument from the moment the
+            sky begins to lift. On the squared curve it stayed solid until it
+            was almost down and then went all at once. Straight off the height,
+            it is already going by halfway. */
+        const wash = SUN_LOW;
+        const lit = 1 - wash * D.thin;
+        /*  One flat disc, and that is the whole of the body.
+
+            The first go had a darker disc under a smaller brighter one, for an
+            edge that fell off toward the limb. At this size that rim was half
+            the moon: what came out was a circle with a dark bite in it, which
+            is the exact thing this was meant to stop being. Shading needs room
+            the drawing does not have. */
+        //  Whitening on the same straight ramp, so the colour and the fading
+        //  are one movement instead of two that start at different heights.
+        const pale = duskMix(D.discLo, D.discMid, D.discHi, wash);
+        sun.beginFill(pale, 0.95 * lit);
+        sun.drawCircle(cx, cy, R);
+        sun.endFill();
+        /*  The maria. Grey-blue rather than black, because they are basalt
+            plains catching the same light as the highlands around them, and
+            small: at nine pixels across, a patch of any size reads as damage
+            to the circle rather than as a marking on it. They fade faster than
+            the disc does, so a low moon is a plain pale coin and the face only
+            comes back as it rises. Cubed rather than squared: the markings are
+            the first thing washing takes off a moon, well before the disc
+            itself gives up. */
+        sun.beginFill(mixInt(pale, 0x39415e, 0.26), 0.6 * lit * lit * lit);
+        for (const sea of MOON_MARIA) {
+          for (const [mx, my, mr] of sea) {
+            sun.drawCircle(cx + mx * R, cy + my * R, mr * R);
+          }
+        }
+        sun.endFill();
+        return;
+      }
+      sun.beginFill(disc, 0.95); sun.drawCircle(cx, cy, R); sun.endFill();
+    };
+    sun.__draw();
+    /*  THE HOUR, WHILE YOU ARE STILL HOLDING IT.
+
+        Only the two things the eye is on during a drag: the sky and the disc.
+        Everything else that reads DUSK — the lettering, the scenery, a
+        column's own backdrop — waits for the drop and a full render, because
+        rebuilding the cast sixty times a second to watch a sunset would be
+        the one expensive thing on this panel. */
+    host._relight = () => {
+      setSunLow(sun.__sy, H() * GROUND);
+      paintBg();
+      sun.__draw();
+    };
+    host._relight();
+    /*  The balloon and the birds cross in FRONT of it — a bird passing behind
+        the moon would be a bird in space. They hang off the stage, and the
+        stage draws over the world, so that comes free. */
     /*  PRESS THE SKY TO CHANGE THE HOUR.
 
         The switch in the bar is a button among nine other buttons and reads as
@@ -6010,7 +6683,7 @@ function renderPromenadePixi(model, host) {
     let sdx = null, sdy = null, sfx = 0, sfy = 0, smoved = false;
     sun.on("pointerdown", ev => {
       sdx = ev.global.x; sdy = ev.global.y;
-      sfx = sun.x; sfy = sun.y;
+      sfx = sun.__sx; sfy = sun.__sy;      // screen, like the pointer deltas
       smoved = false;
       host._dragging = true;               // the street does not pan underneath
       sun.cursor = "grabbing";
@@ -6020,9 +6693,12 @@ function renderPromenadePixi(model, host) {
       const mx = ev.global.x - sdx, my = ev.global.y - sdy;
       if (!smoved && Math.abs(mx) + Math.abs(my) < 4) return;
       smoved = true;
-      //  Kept on the panel and out of the ground, which is not sky.
-      sun.x = Math.max(R, Math.min(app.screen.width - R, sfx + mx));
-      sun.y = Math.max(R, Math.min(H() * GROUND - R, sfy + my));
+      /*  Kept on the panel, and allowed to go down BEHIND the horizon now that
+          the ground draws over it. Not all the way behind: it stops with about
+          half of it still showing, because a sun you have pushed out of sight
+          is a sun you can never take hold of again. */
+      sun.__place(Math.max(R, Math.min(app.screen.width - R, sfx + mx)),
+                  Math.max(R, Math.min(H() * GROUND + R * 0.55, sfy + my)));
     });
     const sunDrop = () => {
       if (sdx === null) return;
@@ -6030,8 +6706,12 @@ function renderPromenadePixi(model, host) {
       sun.cursor = "grab";
       host._dragging = false;
       if (!smoved) { if (host._toggleNight) host._toggleNight(); return; }
-      SUN_POS = { fx: sun.x / app.screen.width, fy: sun.y / app.screen.height };
+      SUN_POS = { fx: sun.__sx / app.screen.width,
+                  fy: sun.__sy / app.screen.height };
       saveSunPos();
+      //  Now the rest of the scene catches up with the hour the drag settled on.
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
     };
     sun.on("pointerup", sunDrop);
     sun.on("pointerupoutside", sunDrop);
@@ -6041,15 +6721,34 @@ function renderPromenadePixi(model, host) {
       if (ev && ev.preventDefault) ev.preventDefault();
       SUN_POS = null;
       saveSunPos();
-      sun.x = Math.max(46 * Z, app.screen.width * 0.17);
-      sun.y = 30 * Z;
+      sun.__place(Math.max(46 * Z, app.screen.width * 0.17), 30 * Z);
     });
-    app.stage.addChild(sun);
+    /*  JUST ABOVE THE SKY, AND NOTHING ELSE.
+
+        It used to hang off the stage, over the top of the whole street, so a
+        moon dropped low sat in FRONT of the roofs — a moon in the room. Added
+        here, with only the ground and the sky band in the world so far, it
+        lands on the sky and under everything standing on the ground, which is
+        where a moon is. The pan is cancelled back out in the ticker, so it
+        still does not walk with the street. */
+    world.addChild(sun);            // straight onto the sky band, and no higher
     host._sun = sun;
-  } else if (host._sun && !host._sun.destroyed) {
-    //  No horizon on the grid, so nothing for it to be above.
-    host._sun.destroy();
+  } else {
+    //  No horizon on the grid, so nothing for it to be above, and no hour for
+    //  anything to be repainted in.
+    host._relight = null;
+    if (host._sun && !host._sun.destroyed) host._sun.destroy();
     host._sun = null;
+  }
+
+  /*  THE GROUND, OVER THE TOP OF IT.
+
+      Added after the sun and before everything that stands on the street, so
+      the sun can go down behind the horizon rather than resting on it. This is
+      the only reason the ground is drawn apart from the sky. */
+  if (!GRID) {
+    groundG.eventMode = "none";
+    world.addChild(groundG);
   }
 
   /*  The scenery. One Graphics for the lot, in behind everything else the
@@ -6067,6 +6766,7 @@ function renderPromenadePixi(model, host) {
         rnd: sceneryRnd(piece.id, streetW),
       });
     }
+    skin.eventMode = "none";          // weather, and the moon is behind it
     world.addChild(skin);
   }
 
@@ -6091,6 +6791,7 @@ function renderPromenadePixi(model, host) {
       // Opacity on the whole ramp, so a backdrop can sit under the sky rather
       // than replacing it.
       spr.alpha = tint.alpha === undefined ? 1 : tint.alpha;
+      spr.eventMode = "none";         // backdrop, and the moon is behind it
       world.addChild(spr);
     }
   }
@@ -6103,7 +6804,13 @@ function renderPromenadePixi(model, host) {
       tinted, index 1 was underneath the gradients, so a colored column washed
       its own building out. A gradient is sky; a building stands in front of
       the sky. */
+  /*  Smoke goes in one slot lower still, so every chimney's plume is behind
+      its own roof. The layer survives a rebuild — world.removeChildren() takes
+      it out but never destroys it — so it is re-parked here rather than made
+      again, and the pool of puffs keeps flying through the change. */
+  if (host._smokeLayer && !host._smokeLayer.destroyed) world.addChild(host._smokeLayer);
   const ART_FLOOR = world.children.length;
+  host._artFloor = ART_FLOOR;
 
   const label = (text, size, color) => new P.Text(text, {
     fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: color,
@@ -6219,6 +6926,8 @@ function renderPromenadePixi(model, host) {
         world could never work: it is the same container every time, only
         emptied between renders. */
     const myRender = host._renderId;
+    //  Rebuilt with the scene, because a resize or a sort moves every column.
+    host._smokeAt = [];
     const place = (c, img) => {
       if (!img || host._renderId !== myRender) return;
       // Fit the column, never blown up past its own pixels.
@@ -6247,9 +6956,39 @@ function renderPromenadePixi(model, host) {
       spr.x = c.x;
       spr.y = groundY();
       spr.scale.set(fit < 1 ? Z : fit * Z);
+      /*  A BUILDING IS SCENERY, NOT A TARGET.
+
+          It has no listeners, but Pixi hit tests it anyway and hands it the
+          press — which is fine while nothing behind it wants one, and was not
+          once the moon moved in behind the roofs: dropping the moon on a
+          building meant you could never pick it up again. Columns are chosen
+          by arithmetic on the pointer's x, never by hitting a sprite, so
+          nothing here loses anything by standing aside. */
+      spr.eventMode = "none";
       // Above the ground and the column's gradient, below everyone. Clamped
       // because this can land long after the render that asked for it.
       world.addChildAt(spr, Math.min(ART_FLOOR, world.children.length));
+
+      /*  THE CHIMNEYS OF THIS COLUMN, in world coordinates.
+
+          Worked out here because this is the only place that knows what scale
+          the picture ended up at. Marked in image pixels, drawn at `fit * Z`,
+          anchored centre and standing on the ground: the same arithmetic the
+          signpost anchor uses, so the two can never disagree about where a
+          point on a building is. */
+      const chimneys = (img.__smoke || []);
+      if (chimneys.length) {
+        const sc = fit * Z;
+        const look = smokeOf(c.slug);
+        for (const [ix, iy] of chimneys) {
+          host._smokeAt.push({
+            wx: c.x + (ix + 0.5 - img.width / 2) * sc,
+            wy: groundY() + (iy + 0.5 - img.height) * sc,
+            ink: look.ink, thick: look.thick, fade: look.fade,
+            next: Math.random() * 0.9,
+          });
+        }
+      }
     };
     for (const c of columns) {
       if (!c.slug) continue;
@@ -8425,6 +9164,9 @@ function renderSpriteEditor(model, host) {
       are drawing, not a request to throw it away. */
   const touched = {};
   let loadToken = 0;
+  //  Which name the canvas was last filled from, so the panel can tell when the
+  //  name in the box has moved on from what you are looking at.
+  let loadedAs = "";
   //  What each kind of drawing measured when it came off disk. See `defaultCell`.
   const bornCell = { wear: null, place: null };
 
@@ -8434,6 +9176,18 @@ function renderSpriteEditor(model, host) {
     g.imageSmoothingEnabled = false;
     g.clearRect(0, 0, cv.width, cv.height);
     g.drawImage(img, 0, 0);
+    /*  A place drawn when anchors were magenta comes in with its anchor turned
+        into a flag, so the pink pixel is gone from the canvas the moment it
+        opens and the next download writes it the current way. Places only:
+        an anchor is a thing a building has, and nothing else here should have
+        a colour quietly changed on the way in. */
+    if (cv === layers.place && cv.width && cv.height) {
+      let d;
+      try { d = g.getImageData(0, 0, cv.width, cv.height); } catch (e) { return; }
+      if (adoptOldAnchors(d.data, cv.width, cv.height, ANCHOR_A).length) {
+        g.putImageData(d, 0, 0);
+      }
+    }
   };
 
   /*  The four rows as one file, laid out the way the compositor reads them:
@@ -8518,6 +9272,7 @@ function renderSpriteEditor(model, host) {
           blitInto(layers.place, img);
           layers.place.__frames = 1;
           bornCell.place = { w: layers.place.width, h: layers.place.height };
+          loadedAs = slugify(nameIn.value.trim());
           syncSize(); paint();
           return;
         }
@@ -8528,6 +9283,7 @@ function renderSpriteEditor(model, host) {
       await fillFromDisk(my);
       if (my === loadToken && host.isConnected) {
         bornCell.wear = { w: cellW(), h: cellH() };
+        loadedAs = slugify(nameIn.value.trim());
         syncSize(); paint();
       }
     })();
@@ -8905,28 +9661,34 @@ function renderSpriteEditor(model, host) {
   el("span", "sp-break", penBar);
   const fxBtn = el("button", "sp-fx", penBar);
   fxBtn.type = "button"; fxBtn.textContent = "paint";
-  const markBtns = [
-    ["glass", "\u25a3", "glass \u2014 these panes light at night"],
-    ["door", "\u25af", "a doorway \u2014 the way into this place"],
-  ].map(([id, glyph, tip]) => {
+  /*  ONE BUTTON PER ROW OF `EFFECTS`, and nothing here names an effect.
+
+      Each wears the colour its wash paints on the canvas, so the row and the
+      drawing agree without anybody having to remember which is which, and each
+      hands you the drawing tool that suits it. */
+  const markBtns = EFFECTS.map(e => {
     const b = el("button", "sp-pen sp-mark", penBar);
     b.type = "button";
-    b.textContent = glyph;
-    b.title = tip;
-    b.dataset.kind = id;
-    b.onclick = () => { fxKind = id === "glass" ? GLASS_A : DOOR_A; paint(); };
+    b.textContent = e.glyph;
+    b.title = e.tip;
+    b.style.background = e.ink;
+    b.dataset.kind = e.id;
+    b.onclick = () => {
+      /*  An effect that places a single pixel is a TOOL of its own; the rest
+          are marks you paint with whatever the row says suits them. */
+      if (e.one) { tool = e.tool; }
+      else { fxKind = e.alpha; tool = e.tool; }
+      paint();
+    };
     return b;
   });
-  const anchorBtn = el("button", "sp-pen sp-mark", penBar);
-  anchorBtn.type = "button"; anchorBtn.textContent = "\u2691";
-  anchorBtn.title = "where this place's name stands. On the bottom row it plants "
-    + "the signpost there; anywhere else the name floats with no post. "
-    + "Right-click takes it off.";
-  anchorBtn.onclick = () => { tool = "anchor"; paint(); };
+
   fxBtn.onclick = () => {
     fxMode = !fxMode;
     //  Coming out of effects holding the anchor would leave a tool with no row.
-    if (!fxMode && tool === "anchor") tool = "pencil";
+    //  An effect-only tool has no button outside effects, so nobody should be
+    //  left holding one.
+    if (!fxMode && EFFECTS.some(e => e.one && e.tool === tool)) tool = "pencil";
     paint();
   };
 
@@ -9723,6 +10485,43 @@ function renderSpriteEditor(model, host) {
     nameWait = setTimeout(() => { openExisting(); paint(); }, 220);
     paint();                       // the filename under the box keeps up
   };
+  /*  A WAY INTO A DRAWING YOU ALREADY HAVE.
+
+      Typing a name opens whatever exists under it, but only while the canvas
+      is untouched: once you have made a mark, the name is a label for what you
+      are drawing rather than a request to throw it away. That is right, and it
+      left no way at all to go and edit a different place. You typed `manse`,
+      nothing happened, and the panel went on quietly writing to `default`.
+
+      So when the name points at art that is not what you are looking at, this
+      appears and says so. It is the only thing here that will discard your
+      canvas, so it never fires on its own. */
+  const openBtn = el("button", "sp-open", nameBar);
+  openBtn.type = "button"; openBtn.hidden = true;
+  openBtn.onclick = async () => {
+    const named = slugify(nameIn.value.trim());
+    if (!named) return;
+    const kind = isPlace() ? "places" : "wear";
+    const img = await loadImg(artSrc(kind, named));
+    if (!img) { hintOnce = "no drawing found for " + named; paint(); return; }
+    snapshot();                       // undo can bring your canvas back
+    if (isPlace()) {
+      blitInto(layers.place, img);
+      layers.place.__frames = 1;
+      bornCell.place = { w: layers.place.width, h: layers.place.height };
+    } else {
+      const rows = sheetRows(img) || [];
+      rows.forEach((cvv, i) => { if (cvv) { blitInto(layers[ROWS[i]], cvv);
+        layers[ROWS[i]].__frames = SPR_FRAMES; touched[ROWS[i]] = true; } });
+    }
+    touched[slot] = true;
+    loadedAs = named;
+    wipSeq++;
+    syncSize();
+    hintOnce = "opened " + named;
+    paint();
+  };
+
   const nameOut = el("span", "sp-filename", nameBar);
 
   const outBar = el("div", "sp-row", right);
@@ -10008,7 +10807,8 @@ function renderSpriteEditor(model, host) {
   const partList = el("div", "sp-part-list", partRow);
   const keepBtn = el("button", null, partRow);
   keepBtn.type = "button"; keepBtn.textContent = "keep";
-  keepBtn.title = "save what is on the clipboard as a part you can stamp again";
+  keepBtn.title = "put what you have just boxed with \u29c9 on the shelf, so you "
+                + "can stamp it again later";
 
   /*  A part is a PNG, not a list of points: it has to survive being written to
       localStorage, read back next week, and dropped in from a file — and a
@@ -10076,7 +10876,8 @@ function renderSpriteEditor(model, host) {
     keepBtn.disabled = !clip;
     if (!PARTS.size) {
       const none = el("span", "sp-part-none", partList);
-      none.textContent = "marquee something and press keep, or drop a png here";
+      none.textContent = "pick \u29c9, drag a box round something, press keep. "
+                      + "Or drop a png here";
       return;
     }
     for (const [name, url] of PARTS) {
@@ -11013,17 +11814,28 @@ function renderSpriteEditor(model, host) {
       ? "marking what the drawing MEANS \u2014 press to go back to painting"
       : "painting the drawing \u2014 press to mark lighting and entries on it";
     fxBtn.classList.toggle("on", fxMode);
+    /*  THE ROW IS ONE CHOICE, SO ONLY ONE LIGHTS.
+
+        They used to light from two different pieces of state: the painted
+        marks from which mark you would paint, the flag from which tool you
+        were holding. Both could be lit at once, and then nothing on screen
+        told you which one your next click would act on.
+
+        A single-pixel effect lights when you are holding its tool. A painted
+        one lights when it is the mark you would paint AND you are not holding
+        somebody else's tool. */
+    const oneTools = new Set(EFFECTS.filter(e => e.one).map(e => e.tool));
     for (const b of markBtns) {
+      const e = EFFECT[b.dataset.kind];
       b.hidden = !isPlace() || !fxMode;
-      b.classList.toggle("on",
-        fxKind === (b.dataset.kind === "glass" ? GLASS_A : DOOR_A));
+      b.classList.toggle("on", e.one
+        ? tool === e.tool
+        : fxKind === e.alpha && !oneTools.has(tool));
     }
-    anchorBtn.hidden = !isPlace() || !fxMode;
-    anchorBtn.classList.toggle("on", tool === "anchor");
     toolBtns.forEach((b, i) => b.classList.toggle("on", TOOLS[i][0] === tool));
     //  Switching to a wear layer with the anchor up would leave you holding a
     //  tool whose button is not there any more.
-    if (tool === "anchor" && !isPlace()) tool = "pencil";
+    if (!isPlace() && EFFECTS.some(e => e.one && e.tool === tool)) tool = "pencil";
     /*  Cells first, always — that is what you draw in and what every other
         number here counts. The world size follows on a place, because a
         building has a real one: both, not either, since "25.5 x 16 ft" tells
@@ -11418,22 +12230,27 @@ function renderSpriteEditor(model, host) {
     if (isPlace() && fxMode) {
       const lg = layers[slot].getContext("2d", { willReadFrequently: true });
       const md = lg.getImageData(frame * cw, 0, cw, ch).data;
+      //  Which effect a cell carries, as its index in the table plus one, so
+      //  zero still means "none". Adding a row needs nothing here.
       const kind = (x, y) => {
         if (x < 0 || y < 0 || x >= cw || y >= ch) return 0;
-        const a2 = md[(y * cw + x) * 4 + 3];
-        return a2 === GLASS_A ? 1 : a2 === DOOR_A ? 2 : a2 === ANCHOR_A ? 3 : 0;
+        const e = EFFECT_BY_ALPHA.get(md[(y * cw + x) * 4 + 3]);
+        return e ? EFFECTS.indexOf(e) + 1 : 0;
       };
       g.save();
       for (let y = 0; y < ch; y++) {
         for (let x = 0; x < cw; x++) {
           const k = kind(x, y);
           if (!k) continue;
-          g.fillStyle = k === 1 ? "rgba(70,210,255,0.34)"
-                      : k === 2 ? "rgba(255,190,50,0.34)" : "rgba(255,120,235,0.5)";
+          //  The effect's own colour, washed thin over the drawing and drawn
+          //  solid along the edges of its region.
+          const ink = EFFECTS[k - 1].ink;
+          g.globalAlpha = 0.34;
+          g.fillStyle = ink;
           g.fillRect(x * z, y * z, z, z);
+          g.globalAlpha = 1;
           //  The outline of the region, drawn only on sides that leave it.
-          g.fillStyle = k === 1 ? "rgba(120,235,255,0.95)"
-                      : k === 2 ? "rgba(255,215,90,0.95)" : "rgba(255,150,240,0.95)";
+          g.fillStyle = ink;
           const t = Math.max(1, Math.round(z / 8));
           if (kind(x, y - 1) !== k) g.fillRect(x * z, y * z, z, t);
           if (kind(x, y + 1) !== k) g.fillRect(x * z, (y + 1) * z - t, z, t);
@@ -11607,6 +12424,17 @@ function renderSpriteEditor(model, host) {
     }
 
     nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
+    /*  Offered only when the name has moved on from what is loaded. `loadedAs`
+        is whatever the canvas was last filled from, so returning to that name
+        puts the button away again. */
+    const named = slugify(nameIn.value.trim());
+    const stale = !!named && named !== loadedAs && touched[slot];
+    openBtn.hidden = !stale;
+    if (stale) {
+      openBtn.textContent = "open " + named;
+      openBtn.title = "replace what is on the canvas with the drawing saved "
+                    + "under this name. Undo brings yours back.";
+    }
     if (host._wipQueue) host._wipQueue();
     /*  A ONE-SHOT MESSAGE OUTLIVES THE REPAINT THAT FOLLOWS IT.
 
@@ -17230,6 +18058,8 @@ loadStyleUrl();
 loadColumnTints();
 loadRibbons();
 loadColNotes();
+loadSmoke();
+loadWeather();
 loadParts();
 loadNight();
 loadSunPos();
