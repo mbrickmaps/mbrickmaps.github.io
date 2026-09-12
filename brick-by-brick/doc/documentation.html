@@ -83,14 +83,15 @@
     <h2>The notation</h2>
     <p class="lede">One record per line, pipe-separated. The parser reads it by <strong>shape rather than position</strong>.</p>
 
-<pre><code>+|👤|&lt;george-isles&gt;|George Isles|Powerloom Tender|@dora-edmed
-│  │       │             │              │              │
-│  │       │             │              │              └── links to other uids
-│  │       │             │              └───────────────── detail / occupation
-│  │       │             └──────────────────────────────── name
-│  │       └────────────────────────────────────────────── uid, in angle brackets
-│  └────────────────────────────────────────────────────── type token
-└───────────────────────────────────────────────────────── status</code></pre>
+<pre><code>+|👤|&lt;george-isles&gt;|Powerloom Tender|@dora-edmed
+│  │       │              │              │
+│  │       │              │              └── links to other uids
+│  │       │              └───────────────── detail / occupation
+│  │       └──────────────────────────────── uid, in angle brackets
+│  └──────────────────────────────────────── type token
+└─────────────────────────────────────────── status</code></pre>
+
+    <p>A person has <strong>no name field</strong>. The name is made from the uid, so <code>&lt;george-isles&gt;</code> displays as George Isles, and the first free-text field is his description or occupation. A place is the other way round: its free text <em>is</em> its proper name, because <code>&lt;st-clement&gt;|St Clement's</code> is a thing the slug cannot reproduce.</p>
 
     <p class="why">A real corpus is inconsistent, and a notation whose premise is <strong>you define the symbols</strong> cannot then punish a stray column. Fields are recognized by what they look like, not where they sit.</p>
 
@@ -98,7 +99,7 @@
       <table>
         <tbody>
           <tr><td class="k">+</td><td>verified. A document says so.</td></tr>
-          <tr><td class="k">−</td><td>draft. Your inference, or not yet checked.</td></tr>
+          <tr><td class="k">-</td><td>draft. Your inference, or not yet checked.</td></tr>
           <tr><td class="k">&lt;uid&gt;</td><td>declares this record's identity. Optional.</td></tr>
           <tr><td class="k">@a,b</td><td>links to other uids</td></tr>
           <tr><td class="k">&lt;4&gt;&lt;george&gt;</td><td>a numbered variant, for same-name people</td></tr>
@@ -114,6 +115,17 @@
       <li><strong>Ghosts are a feature.</strong> An alias you referenced but never declared is often the most interesting object in the pile. The page lists it instead of dropping it.</li>
       <li><strong>Ghost-ness is never recomputed for a filtered view.</strong> Whether an alias was ever declared is a fact about the whole pile. Filtering to one family must not manufacture ghosts.</li>
     </ul>
+
+    <h3>Who an event is about</h3>
+    <p>A birth, a marriage or a death names people in its links, and the <strong>first person named is the subject</strong>. Anyone after them took part.</p>
+
+<pre><code>+|👶|1893-02-11|@alice-isles,george-isles,margaret-kinnear
+                 │            └──────────────┴── her parents
+                 └── the person born</code></pre>
+
+    <p>That one rule is the only place the pile records parentage, and it is what the <a href="#tree">Tree</a> reads. A marriage names partners and the order carries nothing.</p>
+    <p>A date lands on the subject alone. Only a census dates everybody it names, since everyone on a census was there that night.</p>
+    <p class="why">There is no family record in this notation and there will not be one. A family asserts a household, a marriage and a surname the evidence may not support. People and events say only what was recorded; a tree is drawn from them on demand.</p>
   </section>
 
   <section id="board">
@@ -165,7 +177,8 @@
     <h3>Clear all</h3>
     <p>It sits immediately right of Export, which is deliberate: the safe way out is next to the destructive one, already under the cursor. It confirms first, listing what will go with live counts, and warns in the dialog when the pile has never been exported.</p>
     <p>It removes the pile, the gazetteer, Promenade placements and column colors, any drawings Pixel Party City is holding, the board layout and panel sizes, and the map's project file, style and source. The dialog names the drawings loudly and separately. A placement takes a minute to redo. A drawing you never downloaded cannot be redone at all.</p>
-    <p>It <strong>keeps</strong> your themes and your tile key. Neither says anything about the research, and losing them would be an annoyance you never asked for. It also currently leaves behind signpost heights, column notes, the day or night setting, and the Sprite Editor's parts tray and unsaved draft. Those carry into the next project.</p>
+    <p>It <strong>keeps</strong> your themes and your tile key. Neither says anything about the research, and losing them would be an annoyance you never asked for.</p>
+    <p>It also currently leaves behind everything about how the Promenade is <em>lit and dressed</em>: signpost heights, column notes, day or night, where the sun sits, the weather, the clouds, the smoke. The Sprite Editor's parts tray, palette and unsaved draft stay too. Those carry into the next project, which is usually what you want and is worth knowing when it is not.</p>
     <div class="note caution">
       <p>There is no undo, by design. An undo would mean holding a full copy of everything just deleted, which is the last thing a page storing your only copy should quietly retain. <strong>Export is the undo.</strong> Hence the placement.</p>
     </div>
@@ -194,7 +207,7 @@
     <p>Its own filter row narrows only what this panel shows, leaving the board-wide filter alone. The kind toggles are built from the kinds actually present. A pile with no documents is never offered a document filter.</p>
 
     <div class="panel-h" id="filter"><h3>Filter</h3><span class="badge f">F</span></div>
-    <p>Narrows what every panel shows. <strong>Every control is read back out of your text</strong>: your <code>#</code> headings are the groupings, the type tokens are the kinds, <code>+/−</code> is the confidence. No taxonomy you did not type.</p>
+    <p>Narrows what every panel shows. <strong>Every control is read back out of your text</strong>: your <code>#</code> headings are the groupings, the type tokens are the kinds, <code>+/-</code> is the confidence. No taxonomy you did not type.</p>
     <p>The time slider has three modes: a decade, a min to max span, or a single year ±n. <strong>Undated records are exempt</strong>: filtering by date must not silently hide everything that has no date on it.</p>
 
     <div class="panel-h" id="document"><h3>Document</h3><span class="badge f">F</span><span class="badge r">R</span></div>
@@ -218,6 +231,13 @@
     <p>Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn <strong>hollow</strong> to mark them as inferred.</p>
     <p class="why">Ages are computed where a birth is known, and <code>~</code> prefixes any age derived from a rounded census age. Nobody mistakes it for one from a real date.</p>
 
+    <div class="panel-h" id="tree"><h3>Tree</h3><span class="badge r">R</span></div>
+    <p>A drawn tree. Whoever it is rooted on is the <strong>trunk</strong>. Boughs fork upward into parents and grandparents, five generations back, each limb shorter and thinner than the one it grew off. Children and grandchildren spread below the ground line as <strong>roots</strong>. A partner is a second stem off the trunk, married in rather than descended from.</p>
+    <p><strong>Leaf tufts</strong> mark a branch with no more parents on it. The green is where your research stops.</p>
+    <p>A solid limb is a verified record and a dashed one a draft, so a parentage you have not proved grows dashed wood. A dashed name box is a ghost: someone who exists only as another person's parent, which is the commonest ghost there is.</p>
+    <p>Click any name and the tree regrows rooted on them. That rooting belongs to the panel and is not the board filter, which would leave only the records naming that person and collapse the drawing to the name you just clicked.</p>
+    <p class="why">Nothing stores a tree. It is read off the births and marriages every time it draws, so it cannot disagree with the pile. See <a href="#notation">who an event is about</a> for the one line that makes a generation.</p>
+
     <div class="panel-h" id="tally"><h3>Tally</h3><span class="badge r">R</span></div>
     <p>Live count of the pile: bricks, verified, draft, unparsed, entities, ghosts, links.</p>
 
@@ -235,7 +255,7 @@
           <tr><td class="k">Board</td><td>behind the panels</td><td class="k">Borders</td><td>panel outlines, dividing lines</td></tr>
           <tr><td class="k">Panels</td><td>inside each panel</td><td class="k">Verified</td><td><code>+</code> bricks, confirmed markers</td></tr>
           <tr><td class="k">Inputs</td><td>text boxes, lists, buttons</td><td class="k">Highlight</td><td>hover, focus, switched-on controls</td></tr>
-          <tr><td class="k">Text</td><td>every word on the page</td><td class="k">Draft</td><td><code>−</code> bricks, unconfirmed things</td></tr>
+          <tr><td class="k">Text</td><td>every word on the page</td><td class="k">Draft</td><td><code>-</code> bricks, unconfirmed things</td></tr>
         </tbody>
       </table>
     </div>
@@ -244,6 +264,7 @@
     <div class="panel-h" id="promenade"><h3>Promenade</h3><span class="badge r">R</span></div>
     <p>Your people, walking the ground their records put them on. A side-on scene where the horizontal axis is longitude and each place is a column. Drag people into columns to group them.</p>
     <p>Art is found by filename, never configured. A place is <code>images/places/&lt;uid&gt;.png</code>, falling back to <code>images/places/default.png</code>. A person is one sheet, <code>images/wear/&lt;who&gt;.png</code>, where <em>who</em> is a uid, a trade, or <code>default</code>. Four frames across and four rows down: <strong>body, bottom, top, hat</strong>. Rows resolve independently down that chain. A sheet with only a hat drawn on it changes only the hat.</p>
+    <p>A scene can also carry marks in the alpha of its own pixels: lit windows, a door you can knock on, chimneys that smoke, and where the signpost stands. The sky is dressed separately, with a draggable sun that colours everything below it.</p>
     <p><a href="promenade.html"><strong>Full documentation, including the sprite-sheet spec →</strong></a></p>
   </section>
 
@@ -321,7 +342,17 @@
           <tr><td class="k">mapsource:v1 · mapstyle:v1 · mapstyle-raw:v1</td><td>basemap choice, layer settings, hand-edited style</td></tr>
           <tr><td class="k">mapproject:v1 · styleurl:v1 · tilekey:v1</td><td>project file, hosted style, tile key</td></tr>
           <tr><td class="k">meurl:v1 · mesource:v1</td><td>the Map Editor's tracing basemap</td></tr>
-          <tr><td class="k">promenade-pins:v1 · columntint:v1</td><td>placements and column colors</td></tr>
+          <tr><td class="k">promenade-pins:v1 · promenade-groups:v1 · columntint:v1 · colnote:v1</td><td>placements, the columns you invented, column colors and their notes</td></tr>
+          <tr><td class="k">night:v1 · sunpos:v1</td><td>day or night, and where you hung the sun</td></tr>
+          <tr><td class="k">weather:v1 · scenery:v1 · smoke:v1</td><td>the weather, the clouds, the smoke</td></tr>
+          <tr><td class="k">promenade-bg:v1</td><td>the scene's backdrop colors</td></tr>
+          <tr><td class="k">signy:v3</td><td>how high each signpost hangs. The store records the board height it was written against, so changing that height in code shifts old offsets to match instead of moving every sign you placed.</td></tr>
+          <tr><td class="k">art:v1</td><td>drawings the Sprite Editor is holding in this browser</td></tr>
+          <tr><td class="k">parts:v1 · wip:v1</td><td>the parts tray, and the drawing you have not finished</td></tr>
+          <tr><td class="k">swatches:v1 · guides:v1</td><td>your palette and your guide lines</td></tr>
+          <tr><td class="k">spritebg:v2 · gridbg:v1 · gridstep:v1 · spcursor:v1 · placescale:v1</td><td>how the editor's canvas is set up: backdrop, grid, cursor, scale</td></tr>
+          <tr><td class="k">ribbons:v1</td><td>what color each group ribbon is</td></tr>
+          <tr><td class="k">ignored:v1</td><td>site files you told not to come back</td></tr>
         </tbody>
       </table>
     </div>

@@ -93,6 +93,19 @@ Three properties matter:
   ever declared is a fact about the whole pile. Filtering to one family must not
   manufacture ghosts.
 
+**Who an event is about.** A birth, a marriage or a death names people in its
+links, and the *first person named is the subject*. Anyone after them took part.
+
+```
++|👶|1893-02-11|@alice-isles,george-isles,margaret-kinnear
+                 the person born, then her parents
+```
+
+That one rule is the only place the pile records parentage, and it is what the
+**Tree** reads. A marriage names partners and the order carries nothing. A date
+lands on the subject alone; only a census dates everybody it names, since
+everyone on a census was there that night.
+
 ---
 
 ## The board
@@ -103,8 +116,8 @@ cells and tiles explicitly. Neither pushes the other around.
 - **🧰 flyout** holds every panel *not currently on the board*, grouped and
   searchable. Drag a card onto the board, or press **+** to drop it in the first
   free slot. The list empties as you add and refills as you remove.
-- **Seven panels start off the board.** Promenade, Sprite Editor, Photo Ruler,
-  Pixel Party City, Theme, Map Style and Map Editor. The default board is the
+- **Eight panels start off the board.** Promenade, Tree, Sprite Editor, Photo
+  Ruler, Pixel Party City, Theme, Map Style and Map Editor. The default board is the
   working set for entering records. Those seven become useful once you have
   some. Nobody finds them without opening the flyout, which is why the quick
   guide says so.
@@ -152,6 +165,11 @@ board layout and panel sizes, and the map's project file, style and source. It
 **keeps** your themes and your tile key. Losing those would be a separate annoyance
 you never asked for, and neither says anything about the research. The dialog names both lists.
 Nothing goes unannounced.
+
+It currently leaves behind everything about how the Promenade is lit and dressed:
+signpost heights, column notes, day or night, where the sun sits, the weather, the
+clouds, the smoke. The Sprite Editor's parts tray, palette and unsaved draft stay
+too. Those carry into the next project, which is usually what you want.
 
 There is no undo, by design. An undo would mean holding a full copy of what you
 just deleted. A page storing your only copy should not quietly retain that.
@@ -266,6 +284,32 @@ for the detail.
 
 The page computes ages where a birth is known. `~` prefixes any age derived from
 a rounded census age. Nobody mistakes it for one from a real date.
+
+## Tree · **R**
+
+A drawn tree. Whoever it is rooted on is the trunk. Boughs fork upward into
+parents and grandparents, five generations back, each limb shorter and thinner
+than the one it grew off. Children and grandchildren spread below the ground
+line as roots. A partner is a second stem off the trunk.
+
+Leaf tufts mark a branch with no more parents on it: the green is where the
+research stops. A solid limb is a verified record, a dashed one a draft, and a
+dashed name box is a ghost who exists only as somebody's parent.
+
+Click any name to regrow the tree rooted on them. That rooting is the panel's
+own rather than the board filter, which would leave only the records naming
+that person and collapse the drawing to the name you just clicked.
+
+Nothing stores a tree. It is read off the births and marriages every time it
+draws, from one rule: **a birth names the person born first and their parents
+after.**
+
+```
++|👶|1893-02-11|@alice-isles,george-isles,margaret-kinnear
+```
+
+There is no family record in this notation and there will not be one. A family
+asserts a household, a marriage and a surname the evidence may not support.
 
 ## Tally · **R**
 
@@ -433,6 +477,44 @@ ground, set on the bar that appears when you select a column. They wrap, they
 drag vertically, and they travel in `brick.json`. They are the part of a scene
 no file can regenerate, because nothing in the records says the mill burned in
 1874.
+
+**A drawing can carry marks in its own alpha channel**, invisible to the eye and
+exact to the reader: `254` glass, `253` a door, `252` the signpost anchor, `251`
+a chimney. An anchor with no pixel under it is written `3` instead, so it can sit
+in open sky. Nothing else gets that, because glass and doors and chimneys are
+properties of pixels somebody drew. Details: **[doc/promenade.html#marks](doc/promenade.html#marks)**.
+
+The anchor is the **post's foot**. The post runs from the underside of the board
+down to the marked pixel and stops, so marking a roof bolts the sign to the roof.
+
+**Smoke** rises behind the building from each marked chimney, each puff clipped
+at the line of its own pot, tinted by the smoke bar and by the hour.
+
+**Doors answer.** Click a marked door and it knocks, louder with each rap and
+loudest between the first and the second, since two presses is the gesture people
+make. Two presses open the place: who is there and what puts them there, or the
+same place as everything that happened in it, in order. A door is a view and
+never an edit.
+
+**The sun is the light.** Drag it and the scene answers: yellow-white overhead,
+through orange, to deep red on the horizon, with the ground, the buildings, the
+figures and the smoke all taking that colour. The ground draws in front of it, so
+it sets behind the street. The moon sits behind the buildings, holds still while
+the street pans, fades near the horizon and goes white and thin toward dawn.
+
+**Clouds** are single baked silhouettes with no visible joins, with dials for
+number, size and distance. Distance down means they travel with the buildings;
+in the middle they hold still while the street goes past; past that they cross
+the other way. They wrap in screen space, so panning never runs off the end of
+the band into empty sky.
+
+**The line under the street is the status bar.** Counts, then what you have
+selected and how to clear it, then whether the board filter is narrowing what
+this panel can see, then the frame rate. Selection and filter are worded apart
+because dimming the street changes nothing about the pile.
+
+**Typing is not idling.** The drift restarts after 30 seconds untouched, but not
+while a text field has focus anywhere on the board.
 
 ---
 

@@ -953,6 +953,18 @@
   .tl-dot:hover { box-shadow: 0 0 0 2px var(--accent2); z-index: 2; }
   .tl-empty { font-size: 0.7rem; opacity: 0.45; }
 
+  /* ---------- tree ---------- */
+  .tr-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .tr-head { font-size: 0.68rem; opacity: 0.55; margin-bottom: 4px; flex-shrink: 0; }
+  .tr-head b { color: var(--accent2); font-weight: 600; }
+  /* The tree is drawn, not laid out — boughs curve and taper, which no box
+     model does. The wrap is only here to give the canvas a size to fill. */
+  .tr-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 2px; }
+  .tr-wrap canvas { display: block; }
+  .tr-empty { font-size: 0.7rem; opacity: 0.45; }
+  .tr-hint { font-size: 0.62rem; opacity: 0.5; margin-top: 10px; line-height: 1.5; }
+  .tr-hint code { font-size: 0.62rem; opacity: 0.85; }
+
   /* ---------- gazetteer ---------- */
   .gaz-list { display: flex; flex-direction: column; gap: 3px; max-height: 100%; overflow: auto; }
   .gaz-row {
@@ -1350,6 +1362,82 @@
     border-radius: 4px; padding: 3px 6px;
   }
   .pr-tint[hidden] { display: none; }
+  /*  The scenery strip. Same corner and same dress as the tint bar, because
+      it is the same kind of thing: dials for whatever you just asked about. */
+  /*  THROUGH THE DOOR. Anchored to the panel rather than to the building,
+      because a building near the right edge would push its own list off the
+      screen. Capped and scrollable: a busy parish can name thirty people and
+      the panel is not always tall. */
+  .pr-door {
+    position: absolute; right: 8px; top: 8px; bottom: 8px; width: min(290px, 62%);
+    z-index: 4; display: flex; flex-direction: column;
+    background: rgba(0,0,0,0.82); border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden;
+  }
+  .pr-door[hidden] { display: none; }
+  .pr-door-head {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 5px 6px; border-bottom: 1px solid var(--border); flex: 0 0 auto;
+  }
+  .pr-door-name { font-size: 0.74rem; font-weight: 600; flex: 1 1 auto;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-door-tabs { display: flex; gap: 2px; flex: 0 0 auto; }
+  .pr-door-tabs button {
+    font-size: 0.58rem; padding: 1px 6px; border-radius: 3px;
+    border: 1px solid var(--border); background: none; color: inherit;
+    cursor: pointer; opacity: 0.6;
+  }
+  .pr-door-tabs button.on { opacity: 1; border-color: var(--accent2); }
+  .pr-door-x { flex: 0 0 auto; }
+  .pr-door-count { font-size: 0.58rem; opacity: 0.55; padding: 3px 7px 0; flex: 0 0 auto; }
+  .pr-door-body { overflow-y: auto; padding: 4px 6px 8px; flex: 1 1 auto; }
+  /*  The chronology has no person heading to indent under, so its list sits
+      flush and each entry names who it caught. */
+  .pr-door-flat { padding-left: 0; }
+  .pr-door-named {
+    display: block; border: 0; padding: 0 0 4px 12px;
+    font-size: 0.57rem; opacity: 0.6;
+  }
+  .pr-door-empty { font-size: 0.62rem; opacity: 0.65; margin: 6px 2px; }
+  .pr-door-row { margin: 0 0 7px; }
+  .pr-door-who {
+    background: none; border: 0; padding: 1px 0; cursor: pointer;
+    font: inherit; font-size: 0.66rem; color: var(--accent2); text-align: left;
+  }
+  .pr-door-who:hover { text-decoration: underline; }
+  .pr-door-recs { list-style: none; margin: 1px 0 0; padding: 0 0 0 7px; }
+  .pr-door-recs li {
+    display: flex; gap: 5px; align-items: baseline;
+    font-size: 0.6rem; line-height: 1.45;
+    /*  The same distinction the whole page runs on, carried by the border's
+        STYLE as well as its colour so it survives greyscale: a solid edge is
+        a document saying so, a dashed one is somebody's inference. */
+    border-left: 2px solid var(--border); padding-left: 5px;
+  }
+  .pr-door-recs li.is-sure { border-left-style: solid; opacity: 0.95; }
+  .pr-door-recs li.is-draft { border-left-style: dashed; opacity: 0.7; }
+  /*  A visit is neither a document nor an inference: it is a thing you did.
+      Dotted, which the page already uses for somebody named but not set
+      down, and in the accent so it reads as yours rather than as weaker. */
+  .pr-door-recs li.is-visit {
+    border-left-style: dotted; border-left-color: var(--accent2); opacity: 0.85;
+  }
+  .pr-door-when { font-variant-numeric: tabular-nums; opacity: 0.75; flex: 0 0 auto; }
+  .pr-door-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-sky-piece { display: flex; align-items: center; gap: 5px; }
+  .pr-sky-on { display: flex; align-items: center; gap: 3px;
+               font-size: 0.62rem; opacity: 0.85; cursor: pointer; }
+  .pr-sky-on input { margin: 0; cursor: pointer; }
+  .pr-scenery-btn { font-size: 0.72rem; }
+  /*  Label above the slider, so three dials in a row read as three dials. */
+  .pr-sky-dial { display: flex; flex-direction: column; gap: 1px; cursor: pointer; }
+  .pr-sky-dial span { font-size: 0.52rem; opacity: 0.65; letter-spacing: 0.04em; }
+  /*  Wider than the tint bar's, because these carry a much longer range and
+      the same 54px would make every step a jump.
+
+      Both classes, because `.pr-tint input[type="range"]` further down has the
+      same specificity and would otherwise win on source order alone. */
+  .pr-tint.pr-sky-bar input[type="range"] { width: 78px; }
   .pr-tint-name { font-size: 0.62rem; opacity: 0.8; max-width: 110px;
                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-tint input[type="color"] {
@@ -1394,7 +1482,34 @@
     position: absolute; z-index: 3; font-size: 0.6rem; padding: 2px 5px;
   }
   .pr-find[hidden] { display: none; }
-  .pr-tint input[type="range"] { width: 54px; accent-color: var(--accent2); }
+  /*  THE HANDLE HAS TO REACH BOTH ENDS.
+
+      A native thumb is about sixteen pixels wide and it may not hang off the
+      track, so its centre only travels from 8px to width-8px. On a 54px
+      slider that is three quarters of the bar: you drag to the far right and
+      the handle stops short of it, which reads as the control refusing rather
+      than as the value being at its maximum. Drawn small, the same slider
+      travels almost the whole way and max looks like max. */
+  .pr-tint input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 54px; height: 10px; margin: 0; background: transparent;
+    cursor: pointer;
+  }
+  .pr-tint input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px; border-radius: 2px; background: var(--border);
+  }
+  .pr-tint input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 8px; height: 8px; border-radius: 50%; border: 0;
+    background: var(--accent2); margin-top: -2.5px;
+  }
+  .pr-tint input[type="range"]::-moz-range-track {
+    height: 3px; border-radius: 2px; background: var(--border);
+  }
+  .pr-tint input[type="range"]::-moz-range-thumb {
+    width: 8px; height: 8px; border-radius: 50%; border: 0;
+    background: var(--accent2);
+  }
   /*  Stacked in the order they appear on the street: the box for the line
       over the roof sits over the box for the line on the ground. */
   .pr-notes { display: flex; flex-direction: column; gap: 2px; }
@@ -2096,12 +2211,20 @@ function buildModel(bricks) {
     if (b.alias && entities.has(b.alias.slug)) targets.push(entities.get(b.alias.slug));
     for (const l of b.links) if (entities.has(l)) targets.push(entities.get(l));
 
-    for (const e of targets) {
-      if (e.kind !== "person") continue;
-      if (b.type === "birth" && y !== null) { e.birthYear = y; e.birthExact = true; }
-      else if (b.type === "death" && y !== null) { e.deathYear = y; e.deathExact = true; }
-      else if (b.kind === "census" && b.estimate !== null && b.estimate !== undefined) {
-        // Only fills a gap; never overrides a recorded birth.
+    const people = targets.filter(e => e.kind === "person");
+    if (!people.length) continue;
+
+    /*  A birth or a death has ONE subject, and it is the first person named.
+        Anyone after them is a parent or a witness: dating every name on the
+        line handed a mother her own daughter's birth year. A census is the
+        other way round — every person on it was there that night. */
+    if ((b.type === "birth" || b.type === "death") && y !== null) {
+      const subject = people[0];
+      if (b.type === "birth") { subject.birthYear = y; subject.birthExact = true; }
+      else { subject.deathYear = y; subject.deathExact = true; }
+    } else if (b.kind === "census" && b.estimate !== null && b.estimate !== undefined) {
+      // Only fills a gap; never overrides a recorded birth.
+      for (const e of people) {
         if (e.birthYear === undefined) { e.birthYear = b.estimate; e.birthExact = false; }
       }
     }
@@ -2240,6 +2363,90 @@ function timelineLanes(model) {
   return out;
 }
 
+/*  KINSHIP — derived, never stored.
+    --------------------------------------------------------------------------
+    There is no family record in this notation and there should not be one. A
+    family is a filing convenience: it asserts a household, a marriage and a
+    surname that the evidence may not support. People and events say only what
+    was recorded, so parenthood is read back off the events themselves.
+
+      +|👶|1893-02-11|@alice,@george-isles,@margaret-kinnear
+                       child    parent        parent
+
+    The person born is named FIRST and their parents follow. That is the whole
+    convention, and it is the only place the pile ever says whose child anyone
+    is. A marriage names partners in no particular order.
+
+    Ghosts are kin too. A woman who appears once as a mother and never again is
+    exactly the person a tree exists to show, so an undeclared uid is drawn
+    dashed rather than dropped. The cost is that an undeclared PLACE on a birth
+    line is indistinguishable from an undeclared person; declaring your places
+    is the cure. */
+function kinGraph(model) {
+  const ent = new Map(model.entities.map(e => [e.slug, e]));
+  const isPerson = s => {
+    const e = ent.get(s);
+    return !!e && (e.kind === "person" || (!e.declared && e.kind === "unknown"));
+  };
+
+  const parents = new Map(), children = new Map(), partners = new Map();
+  /*  The same pair can be named by two records of different confidence — a
+      draft census and a verified certificate. Verified wins, so a line is only
+      drawn dashed while nothing solid says the same thing. */
+  const add = (m, a, b, status) => {
+    if (!m.has(a)) m.set(a, new Map());
+    if (m.get(a).get(b) !== "verified") m.get(a).set(b, status);
+  };
+
+  for (const b of model.records) {
+    if (!b.valid) continue;
+    const who = b.links.filter(isPerson);
+    if (b.type === "birth" && who.length > 1) {
+      const child = who[0];
+      for (const p of who.slice(1)) {
+        if (p === child) continue;
+        add(parents, child, p, b.status);
+        add(children, p, child, b.status);
+      }
+    } else if (b.type === "marriage") {
+      for (const a of who) for (const c of who) if (a !== c) add(partners, a, c, b.status);
+    }
+  }
+
+  const has = s => parents.has(s) || children.has(s) || partners.has(s);
+  const degree = s => (parents.get(s) || EMPTY_KIN).size +
+                      (children.get(s) || EMPTY_KIN).size +
+                      (partners.get(s) || EMPTY_KIN).size;
+  const people = [...new Set([...parents.keys(), ...children.keys(), ...partners.keys()])];
+  return { ent, parents, children, partners, has, degree, people };
+}
+const EMPTY_KIN = new Map();
+
+/*  Generation and reading order in one walk. Depth is relative to whoever the
+    drawing is rooted on: a parent is one above, a child one below, a partner
+    level with you. The first depth reached wins, so a cousin marriage cannot
+    drag a whole branch up a row later on.
+
+    Partners are visited before children so a couple ends up side by side. */
+function treeWalk(g, root) {
+  const gen = new Map([[root, 0]]), order = [], seen = new Set();
+  (function visit(s) {
+    if (seen.has(s)) return;
+    seen.add(s); order.push(s);
+    const at = gen.get(s);
+    const step = (m, d) => {
+      for (const t of (m.get(s) || EMPTY_KIN).keys()) {
+        if (!gen.has(t)) gen.set(t, at + d);
+        visit(t);
+      }
+    };
+    step(g.partners, 0);
+    step(g.children, 1);
+    step(g.parents, -1);
+  })(root);
+  return { gen, order };
+}
+
 function brickPasses(b, f) {
   if (f.sections.size && !f.sections.has(b.section || "")) return false;
   if (b.comment) return true;                       // headings give the list its shape
@@ -2343,16 +2550,62 @@ const SCENEBG_KEY = "brick-by-brick:promenade-bg:v1";     // the street's own sk
     So a sign can be dragged up and down and it stays where you put it. Kept by
     slug, in world units rather than screen pixels, so it means the same thing
     at any zoom and at any panel size. */
-const SIGNY_KEY = "brick-by-brick:signy:v1";
+/*  WHERE A PLACE'S NAME OPENS, in world units from the ground line, down
+    positive. Just under the street, and far enough under it to clear a
+    walker's own caption: a brickling's name hangs 4 below its feet and stands
+    about ten tall, so anything above 16 writes the place over the person.
+
+    It was -38 once, a board up on a post at roof height. That works for a bare
+    column and fights every building taller than one storey. */
+const SIGN_BOARD_Y = 16;
+
+/*  AN OFFSET IS MEASURED FROM SOMEWHERE, AND THE SOMEWHERE KEEPS MOVING.
+
+    These are offsets from where a sign opens, so they only mean anything
+    alongside the opening position they were written against. That position has
+    now moved twice, and each time every stored number silently came to mean a
+    different place while looking untouched. A saved position is a decision
+    somebody made with the scene in front of them; moving the origin under it
+    undoes the decision while appearing to honour it.
+
+    So the file records the base it was written against and the loader shifts
+    by the difference. Move SIGN_BOARD_Y again and every dragged sign stays
+    exactly where its owner put it, with no new key and nothing to remember.
+    The older files had no such record, so their bases are listed here. */
+const SIGNY_KEY = "brick-by-brick:signy:v3";
+const SIGNY_OLD = [
+  ["brick-by-brick:signy:v2", 4],
+  ["brick-by-brick:signy:v1", -38],
+];
 let SIGN_Y = {};
 function loadSignY() {
-  try { SIGN_Y = JSON.parse(localStorage.getItem(SIGNY_KEY) || "{}") || {}; }
-  catch (e) { SIGN_Y = {}; }
+  SIGN_Y = {};
+  let raw = null, base = SIGN_BOARD_Y;
+  try { raw = JSON.parse(localStorage.getItem(SIGNY_KEY) || "null"); } catch (e) { raw = null; }
+  if (raw && typeof raw === "object") {
+    if (typeof raw.__base === "number" && isFinite(raw.__base)) base = raw.__base;
+  } else {
+    raw = null;
+    for (const [key, b] of SIGNY_OLD) {
+      let old = null;
+      try { old = JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { old = null; }
+      if (old && typeof old === "object") { raw = old; base = b; break; }
+    }
+  }
+  if (!raw) return;
+  //  An offset written against `base` names the spot base + off. Keep the spot.
+  const shift = base - SIGN_BOARD_Y;
+  for (const [slug, v] of Object.entries(raw)) {
+    if (slug === "__base") continue;
+    if (typeof v === "number" && isFinite(v)) SIGN_Y[slug] = v + shift;
+  }
 }
 function saveSignY() {
   try {
-    if (Object.keys(SIGN_Y).length) localStorage.setItem(SIGNY_KEY, JSON.stringify(SIGN_Y));
-    else localStorage.removeItem(SIGNY_KEY);
+    if (Object.keys(SIGN_Y).length) {
+      localStorage.setItem(SIGNY_KEY,
+        JSON.stringify({ __base: SIGN_BOARD_Y, ...SIGN_Y }));
+    } else localStorage.removeItem(SIGNY_KEY);
   } catch (e) { /* full, or unavailable */ }
 }
 loadSignY();
@@ -2492,6 +2745,7 @@ const DOCS = {
   gazetteer: "#gazetteer", timeline: "#timeline", count: "#tally",
   notes: "#red-flags", reference: "#notation-reference", theme: "#theme",
   "viz-map": "#map-viewer", mapstyle: "#map-style", mapeditor: "#map-editor",
+  "viz-tree": "#tree",
   "viz-promenade": "doc/promenade.html",
 };
 function docHref(id) {
@@ -2708,6 +2962,15 @@ Brick.viz.register("map", {
     "A line joins two places when one record names both (orange), or when the same person " +
     "is named at both (gray — inferred, so it is drawn in the draft color).",
   render: (model, el) => renderMap(model, el),
+});
+
+Brick.viz.register("tree", {
+  emoji: "🌳", label: "Tree", w: 3, h: 2,
+  description: "Parents, children and partners, read off the births and " +
+    "marriages rather than stored. A birth that names the child first and the " +
+    "parents after is what makes a generation; a marriage makes a couple. " +
+    "Click any name to re-root the drawing on them.",
+  render: (model, el) => renderTree(model, el),
 });
 
 /* ==========================================================================
@@ -3089,6 +3352,40 @@ function applyFocus(host) {
     s.node.alpha = lit ? 1 : FOCUS_DIM;
   }
   if (host._syncTint) host._syncTint();
+  syncPromNote(host);
+}
+
+/*  The line under the street, which is this panel's whole status bar.
+
+    Three things can be true at once: how many bricklings there are, that one
+    of them is selected, and that the board filter is hiding part of the pile
+    from this panel exactly as it hides it from every other. The panels made of
+    HTML say that last one with noteFiltered() and a badge; the street has no
+    markup to hang a badge on, so it says all three in the sentence it already
+    owns.
+
+    Selection is separate from the board filter on purpose — dimming the street
+    changes nothing about the pile — so the line has to distinguish them or
+    they read as one state. */
+function syncPromNote(host) {
+  const el = host.querySelector(".pr-note");
+  if (!el) return;
+  const bits = [];
+  if (host._noteBase) bits.push(host._noteBase);
+
+  if (host._focus) {
+    const name = (host._titleOf && host._titleOf.get(host._focus)) || titleCase(host._focus);
+    bits.push((host._focusKind === "person" ? "showing " : "showing everyone at ") +
+              name + ", click again to clear");
+  }
+
+  const view = V();
+  if (view && view.active && state.model) {
+    bits.push("filtered to " + view.stats.bricks + " of " + state.model.stats.bricks + " bricks");
+  }
+
+  host._noteText = bits.join(" · ");
+  el.textContent = host._noteText;
 }
 
 /*  A gradient behind one column.
@@ -3272,9 +3569,42 @@ const lumOf = int => (0.299 * ((int >> 16) & 255) + 0.587 * ((int >> 8) & 255) +
     part of the way back toward the field, so "known" and "unknown" stay a
     difference in strength rather than two unrelated hues that only happened
     to work against navy. */
-function sceneInk(bgInt, quiet) {
+/*  THE INK THAT ACTUALLY WINS, rather than the one a threshold nominates.
+
+    sceneInk picks a side by perceived brightness: over half lit, go dark;
+    under, go light. That is fine for a label on a sky, which is always clearly
+    one or the other. It falls apart on the ground. The default street green
+    lands at 0.47, a hair under the line, so it is handed near-white at a
+    contrast of 3.7 — and had it been a hair over, near-black at 4.0. Neither
+    is good and the choice between them is a coin toss.
+
+    So measure both properly and keep the winner. Real relative luminance, not
+    the quick perceived brightness lumOf uses: that one exists to pick a side
+    and this one has to produce a number you can compare. Taken nearer the
+    extremes as well, since every point of contrast is bought on a caption
+    seven pixels tall. */
+function relLum(int) {
+  const f = c => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f((int >> 16) & 255) + 0.7152 * f((int >> 8) & 255)
+       + 0.0722 * f(int & 255);
+}
+const contrastOf = (a, b) => {
+  const l1 = relLum(a), l2 = relLum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+};
+const INK_DARK = 0x080b0e, INK_LIGHT = 0xf6fafd;
+const bestInk = bg =>
+  contrastOf(bg, INK_DARK) >= contrastOf(bg, INK_LIGHT) ? INK_DARK : INK_LIGHT;
+
+function sceneInk(bgInt, quiet, amount) {
   const ink = lumOf(bgInt) > 0.5 ? 0x14181c : 0xe4ebf0;
-  return quiet ? mixInt(ink, bgInt, 0.45) : ink;
+  //  How far the quiet variant is taken back toward its field. Caller's
+  //  choice, because "quieter" on a caption somebody is reading is not the
+  //  same amount as "quieter" on a label they are scanning past.
+  return quiet ? mixInt(ink, bgInt, amount === undefined ? 0.45 : amount) : ink;
 }
 
 /*  The same shift as shadeInt, handed back as a hex string — which is what a
@@ -3547,6 +3877,123 @@ function saveWeather() {
     is a third again; dead against it is a third slower. Nothing stops, because
     a bird pinned motionless in the air reads as a bug. */
 const windHelp = dir => 1 + WEATHER.wind * dir * 0.34;
+
+/*  THE KNOCK, MADE RATHER THAN FETCHED.
+
+    A sample would be a second file, and this page is one file on purpose: a
+    .wav beside it is the thing that goes missing when somebody saves the page,
+    mails it, or opens it off a stick. So the sound is built from arithmetic at
+    the moment it is needed and weighs nothing.
+
+    A knuckle on wood is a very short burst of noise with all the high end
+    taken out of it and a fast decay. Noise through a narrow bandpass low down,
+    over in seventy milliseconds, twice, at the same spacing as the two flashes
+    on the doorway. Anything longer stops being a knock and starts being a
+    drum.
+
+    The context is built on the first knock and never before. Browsers refuse
+    to start audio outside a gesture, and building it at load would leave a
+    suspended context sitting there for everybody who never touches a door. */
+let knockCtx = null, knockNoise = null, knockTone = 1;
+//  How many raps in the current run, and when the last one was. See knockSound.
+let knockRun = 0, knockAt = 0;
+function knockSound() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!knockCtx) knockCtx = new AC();
+    if (knockCtx.state === "suspended") knockCtx.resume();
+    if (!knockNoise) {
+      //  One burst of noise, cut once and reused. It is eighty milliseconds of
+      //  random numbers; making a fresh one per rap would be work for nothing.
+      const n = Math.floor(knockCtx.sampleRate * 0.08);
+      knockNoise = knockCtx.createBuffer(1, n, knockCtx.sampleRate);
+      const d = knockNoise.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    }
+    /*  THREE LAYERS, BECAUSE A KNOCK IS THREE THINGS AT ONCE.
+
+          the knuckle   bright, almost no body, gone in 12ms
+          the panel     the woody middle, a resonant 500-ish, 55ms
+          the door      a low thud you feel more than hear, 85ms
+
+        Each is the same burst of noise through a different filter, which is
+        why one buffer serves all three voices.
+
+        A version after this one replaced the body with four tuned sine
+        partials, on the theory that a struck board rings at discrete modes
+        rather than making noise. That is true of a marimba bar and it is the
+        textbook way to synthesise wood, and it sounded worse: too pitched, too
+        clean, more xylophone than door. Filtered noise keeps the grain. The
+        theory was right about the physics and wrong about the door. */
+    const layer = (t, peak, type, freq, q, decay) => {
+      const src = knockCtx.createBufferSource();
+      src.buffer = knockNoise;
+      const f = knockCtx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const g = knockCtx.createGain();
+      /*  Ramps rather than steps, because a gain that jumps is a click of its
+          own and you hear it as a fault rather than as part of the sound. The
+          attack is four milliseconds for the body and one for the knuckle:
+          any slower and the strike turns into a swell. */
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + Math.min(0.004, decay / 8));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      src.connect(f).connect(g).connect(knockCtx.destination);
+      src.start(t);
+      src.stop(t + decay + 0.02);
+    };
+    /*  ONE RAP PER PRESS.
+
+        It used to fire both raps on a single click, which meant one click
+        sounded like a whole knock and the double-click that actually opens
+        the door sounded like four. Now the gesture makes the rhythm: press
+        once and you have rapped once, press twice and you have knocked.
+
+        The tone shifts a few percent each time so two raps in a row are not
+        the same sample played twice, which is what makes a repeated sound
+        read as a recording rather than as a hand. */
+    /*  EACH RAP HARDER THAN THE LAST.
+
+        Nobody knocks twice at the same weight. You try, you wait, and if
+        nothing happens you hit it again a bit harder — so a run of raps
+        climbs, and the second one landing heavier is most of what makes two
+        presses read as one knock rather than as two identical beeps.
+
+        It resets after a second of quiet, which makes this one person going at
+        one door rather than a level that creeps up over the life of the page.
+        Capped, because insistent is the idea and distortion is not.
+
+        STEPPED IN DECIBELS, NOT IN MULTIPLES. Loudness is logarithmic: adding
+        a fixed amount to the gain each time sounds like a big jump and then
+        progressively smaller ones, because the ear reads ratios. Three
+        decibels a rap is an even climb and six is a doubling.
+
+        NOT AN EVEN LADDER, THOUGH. The gesture that matters is two presses,
+        so the step from the first rap to the second is the one anybody
+        actually hears; every rap after that is somebody leaning on the door
+        and needs far less to say so. Nine decibels between the first two is
+        nearly three times the level — a proper second knock — and the rest
+        taper to the ceiling.
+
+        The ceiling is 14 rather than 16 because a render at +16 put one
+        sample over full scale. */
+    const now = performance.now();
+    knockRun = (now - knockAt > 900) ? 0 : knockRun + 1;
+    knockAt = now;
+    const KNOCK_DB = [0, 9, 12, 14];
+    const push = Math.pow(10,
+      KNOCK_DB[Math.min(knockRun, KNOCK_DB.length - 1)] / 20);
+
+    const t = knockCtx.currentTime;
+    knockTone = knockTone === 1 ? 0.94 : 1;
+    layer(t, 0.16 * push, "highpass", 1500 * knockTone, 0.7, 0.012);  // the knuckle
+    layer(t, 0.20 * push, "bandpass", 520 * knockTone, 1.6, 0.055);   // the panel
+    layer(t, 0.17 * push, "lowpass", 230 * knockTone, 5.5, 0.085);    // the door
+  } catch (e) { /*  No audio here. The door still opens.  */ }
+}
 
 const RIBBON = new Map();
 const RIBBON_DEFAULT = "#4a3b28";
@@ -3975,20 +4422,33 @@ const SIGN_MARK = { r: 255, g: 0, b: 255 };
     other. A mark with nothing opaque beside it has nothing to borrow and no
     pixel to carry a flag on, so it goes transparent; the street still uses
     its position. */
-/*  Two colours count. Magenta is the anchor as it was meant to be painted. The
-    pink is the anchor's own ink in the editor, #ff78eb, and it only exists in
-    a picture because an earlier marker wrote its ink into the pixel instead of
-    only flagging it — so a drawing from that week has a pink dot where its
-    anchor is, sometimes flagged and sometimes not. Neither is a colour anybody
-    paints with on purpose, which is the whole reason either was chosen. */
-const OLD_ANCHOR_RGB = [[255, 0, 255], [255, 120, 235]];
+/*  TWO COLOURS, AND ONLY ONE OF THEM IS A CONVENTION.
+
+    Magenta #ff00ff is STORAGE. It was the anchor itself, painted into the PNG,
+    and it was picked because nobody paints with it. Reserving it was the deal,
+    so any opaque magenta pixel is an anchor and always was.
+
+    Pink #ff78eb is DISPLAY. It is the anchor's ink in the editor, the colour
+    of the wash that shows you what you have marked while a marker tool is up.
+    It was never meant to reach a pixel. It only did because an earlier marker
+    wrote its ink into the picture instead of only flagging the alpha.
+
+    So the pink is only ever read as an anchor when the pixel is ALSO flagged,
+    which is the signature of that bug and nothing else. Plain opaque pink is
+    somebody painting: a flower, a sunset window, a painted sign. Treating a
+    display colour as a reserved one would quietly make it unpaintable, and no
+    one agreed to give up pink. */
+const OLD_ANCHOR_RGB = [
+  { rgb: [255, 0, 255], flaggedOnly: false },     // reserved, always an anchor
+  { rgb: [255, 120, 235], flaggedOnly: true },    // ink spilled onto a flag
+];
 function adoptOldAnchors(px, w, h, keep) {
   const isMark = i => {
     const a = px[i + 3];
-    //  Opaque paint, or a flagged anchor whose colour was also overwritten.
     if (a !== 255 && a !== ANCHOR_A) return false;
-    for (const [r, g, b] of OLD_ANCHOR_RGB) {
-      if (px[i] === r && px[i + 1] === g && px[i + 2] === b) return true;
+    for (const m of OLD_ANCHOR_RGB) {
+      if (m.flaggedOnly && a !== ANCHOR_A) continue;
+      if (px[i] === m.rgb[0] && px[i + 1] === m.rgb[1] && px[i + 2] === m.rgb[2]) return true;
     }
     return false;
   };
@@ -4069,9 +4529,10 @@ const EFFECTS = [
     tip: "smoke. Each marked pixel is a chimney, and puffs rise from it",
     collect: "list" },
   { id: "anchor", alpha: 252, ink: "#ff78eb", glyph: "\u2691", tool: "anchor",
-    tip: "where this place's name stands. On the bottom row it plants the "
-       + "signpost there; anywhere else the name floats with no post. "
-       + "Right-click takes it off.", collect: "list", one: true },
+    tip: "where this place's name stands. The post runs from the board down "
+       + "to the marked pixel and stops there, so mark a roof and the sign is "
+       + "bolted to the roof. Right-click takes it off.",
+    collect: "list", one: true },
 ];
 const EFFECT_BY_ALPHA = new Map(EFFECTS.map(e => [e.alpha, e]));
 const EFFECT = Object.fromEntries(EFFECTS.map(e => [e.id, e]));
@@ -4081,6 +4542,25 @@ const EFFECT = Object.fromEntries(EFFECTS.map(e => [e.id, e]));
 const GLASS_A = EFFECT.glass.alpha;
 const DOOR_A = EFFECT.door.alpha;
 const ANCHOR_A = EFFECT.anchor.alpha;
+/*  AN ANCHOR IN OPEN SKY.
+
+    Every other flag rides in the alpha of a pixel somebody drew, which is what
+    makes it invisible: 251 against 255 is nothing the eye can find. That rules
+    out empty space, because there is no pixel there to carry anything, and
+    empty space is exactly where this one marker needs to go. The whole use of
+    it is to say how high the post reaches, and the interesting heights are
+    over the roof.
+
+    So an anchor in the air is written the other way up: alpha 3 instead of
+    252. Nearly transparent rather than nearly opaque, so it is as invisible on
+    nothing as the others are on something, and it survives a PNG for the same
+    reason they do. The reader takes it back to 0 rather than to 255, because
+    it was never part of the picture.
+
+    Only the anchor gets this. Glass, a door and a chimney are properties OF
+    drawn pixels and mean nothing hanging in the air. */
+const ANCHOR_AIR = 3;
+EFFECT_BY_ALPHA.set(ANCHOR_AIR, EFFECT.anchor);
 /*  GLASS IS NOT ONE COLOUR.
 
     Filling every marked pixel with the same yellow gave a row of flat squares
@@ -4201,12 +4681,16 @@ function readSignMark(img) {
       : { list: [] };
   }
   for (let i = 0; i < px.length; i += 4) {
-    const e = EFFECT_BY_ALPHA.get(px[i + 3]);
+    const a = px[i + 3];
+    const e = EFFECT_BY_ALPHA.get(a);
     if (!e) continue;
     const p = i / 4;
     found[e.id].list.push([p % w, Math.floor(p / w)]);
     if (found[e.id].mask) found[e.id].mask[p] = 1;
-    px[i + 3] = 255;
+    /*  Back to where it came from. A flag on a drawn pixel becomes that pixel,
+        opaque. An anchor in the air was never part of the picture and becomes
+        nothing at all — take it to 255 and the sky grows a dot. */
+    px[i + 3] = a === ANCHOR_AIR ? 0 : 255;
   }
   const glass = found.glass.list, doors = found.door.list;
   if (glass.length) lightGlass(px, found.glass.mask, w, h);
@@ -4586,33 +5070,223 @@ const SMOKE_MAX = 120;
         s.rnd     () → 0…1, seeded per piece and per street width, so a piece
                   sits still between renders instead of reshuffling every time
                   you drop somebody. Never call Math.random here.
+        s.get     (key) → whatever the person has set that dial to, or the
+                  default the piece declared. See `settings` below.
+
+    A piece may declare `settings`, and the scenery bar builds itself from
+    them. One entry is one slider:
+
+        { k: "count", label: "how many", min: 0, max: 2.5, step: 0.05, def: 1 }
+
+    `on` in the table is the default, not the state — somebody may have turned
+    the piece off, so ask sceneryOn() rather than reading it.
 
     Moving things do not belong in this list — the balloon and the birds are
     stateful and live on the stage above the street. This is the quiet layer. */
+/*  WHAT YOU HAVE SET THE SCENERY TO.
+
+    Kept out here rather than on the pieces themselves, so a piece's entry in
+    the table stays a description of how to draw it and never becomes a place
+    where state accumulates. Keyed piece id, then setting key.
+
+    Only what differs from the declared default is written down. A store that
+    is all defaults is removed, so a scene you have not touched costs nothing
+    and a later change to a default reaches you instead of being shadowed by a
+    saved copy of the old one. */
+const SCENERY_KEY = "brick-by-brick:scenery:v1";
+const SCENE_SET = new Map();            // "clouds:count" -> number
+const sceneryDefs = piece => piece.settings || [];
+function sceneryGet(piece, key) {
+  const v = SCENE_SET.get(piece.id + ":" + key);
+  if (v !== undefined) return v;
+  const def = sceneryDefs(piece).find(d => d.k === key);
+  return def ? def.def : 1;
+}
+function sceneryOn(piece) {
+  const v = SCENE_SET.get(piece.id + ":on");
+  return v === undefined ? !!piece.on : !!v;
+}
+function loadScenery() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(SCENERY_KEY) || "null"); } catch (e) { return; }
+  if (!raw) return;
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "number" && isFinite(v)) SCENE_SET.set(k, v);
+  }
+}
+function saveScenery() {
+  try {
+    //  Prune anything back at its default before writing, so the file is the
+    //  list of your decisions and not a snapshot of every dial.
+    for (const piece of SCENERY) {
+      if (sceneryOn(piece) === !!piece.on) SCENE_SET.delete(piece.id + ":on");
+      for (const d of sceneryDefs(piece)) {
+        if (sceneryGet(piece, d.k) === d.def) SCENE_SET.delete(piece.id + ":" + d.k);
+      }
+    }
+    if (!SCENE_SET.size) localStorage.removeItem(SCENERY_KEY);
+    else localStorage.setItem(SCENERY_KEY,
+      JSON.stringify(Object.fromEntries(SCENE_SET)));
+  } catch (e) { /* unavailable */ }
+}
+
+/*  A CLOUD IS ONE SHAPE, AND HAS TO BE FILLED AS ONE.
+
+    It was a row of overlapping lobes drawn between a single beginFill and
+    endFill, which reads like one translucent shape and is not. Pixi keeps each
+    drawEllipse as its own shape in the geometry and draws them in turn, so
+    where two lobes crossed, 0.55 composited over 0.55 and came out at 0.80.
+    Every lobe boundary showed as a darker lens and the cloud looked like a
+    diagram of the circles it was made from.
+
+    Baking it into a canvas fixes it at the root. Every lobe is a subpath of
+    ONE path and a single fill() unions them, so there is no inside edge to
+    see. The sprite then carries the transparency for the whole silhouette at
+    once, which is what "a translucent cloud" meant in the first place.
+
+    The flat bottom comes free: the lobes are centred on the canvas's bottom
+    edge, so the edge itself does the cutting. Clouds do have flat bottoms, all
+    at the same height, because that is where rising air reaches its dew point.
+
+    Baked white and tinted per sprite, so the sky can change colour through the
+    day without rebuilding a texture. */
+const CLOUD_SHAPES = 4;
+const cloudCache = new Map();
+function cloudTexture(P, variant) {
+  if (cloudCache.has(variant)) return cloudCache.get(variant);
+  const W = 240, H = 52;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  let seed = (variant + 1) * 9301 + 49297;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const lobes = 4 + Math.round(rnd() * 2);
+  g.fillStyle = "#ffffff";
+  g.beginPath();
+  for (let k = 0; k < lobes; k++) {
+    const t = (k + 0.5) / lobes;
+    const lx = W * (0.10 + t * 0.80);
+    const lr = H * (0.34 + rnd() * 0.58);
+    g.moveTo(lx + lr, H);
+    g.arc(lx, H, lr, 0, Math.PI * 2);
+  }
+  //  Along the base, so the gaps between lobes are cloud rather than sky.
+  g.rect(W * 0.08, H * 0.72, W * 0.84, H * 0.28);
+  g.fill();                       // one fill, one silhouette, no inside edges
+  const tex = P.Texture.from(c);
+  cloudCache.set(variant, tex);
+  return tex;
+}
+
 const SCENERY = [
   {
     id: "clouds",
+    label: "clouds",
     on: true,
+    /*  A piece declares its own dials and the bar builds itself from them, the
+        same way the effect buttons come off EFFECTS. Adding a slider here is
+        the whole of adding a slider. */
+    settings: [
+      /*  Wide on purpose. 1 is the sky as drawn, and the ends are meant to be
+          useful rather than safe: nothing at 0, an overcast at 6, a haze of
+          specks at 0.2 and weather the size of the street at 5. A dial whose
+          extremes both look sensible is a dial that was not worth adding. */
+      { k: "count", tag: "number", tip: "how many clouds there are",
+        min: 0, max: 6, step: 0.1, def: 1 },
+      { k: "size", tag: "size", tip: "how big they are",
+        min: 0.2, max: 5, step: 0.05, def: 1 },
+      /*  FAR HAS TO MEAN FAR.
+
+          This started as a multiplier on how much of the street's movement a
+          cloud keeps, so turning it up made the clouds move MORE, which the
+          eye reads as closer. The dial said far and did near.
+
+          Now it subtracts. All the way down, the clouds keep pace with the
+          roofs and might as well be painted on them. In the middle is the sky
+          as drawn. At 2 they hold still while the whole town walks past, which
+          is what the sun does.
+
+          PAST 2 THEY COME BACK THE OTHER WAY. The share goes negative and the
+          sky slides against the street instead of behind it. Nothing in the
+          air does that, and it does not have to: it reads as weather crossing
+          while you walk, it makes the movement plain on a street too short to
+          pan, and the dial had a dead stop at exactly the point where the
+          interesting half begins. */
+      { k: "depth", tag: "distance", tip: "how far off the clouds sit. Down, they " +
+        "travel with the buildings. At the middle of the dial they hold still " +
+        "while the street goes past, the way the sun does. Past that they " +
+        "cross the other way",
+        min: 0, max: 3, step: 0.05, def: 1 },
+    ],
+    /*  DEPTH, FROM ONE NUMBER.
+
+        Every cloud draws a `near` between 0 and 1 and everything else follows
+        from it: how fast it answers the pan, how big it is, and how much of
+        the sky shows through it. Speed on its own reads as a bug, like the
+        layer is lagging. Speed with size and haze reads as distance, because
+        those three are what actually tell you a thing is far away.
+
+        `par` is the fraction of the street's movement the cloud takes. The sun
+        is the limit case at 0, standing still while the whole town goes past,
+        which is why the sky needs nothing nearer than about 0.4 to sit between
+        the two.
+
+        A SKY IS MADE ONCE AND RECYCLED, NOT LAID OUT ALONG THE STREET.
+
+        The first version spread clouds across the length of the town and gave
+        each one a share of it to cover. That cannot work: a cloud moving at a
+        third of the pan only travels a third as far, so however many you make,
+        walking far enough leaves the sky behind and the far end of a long town
+        has clear weather over it for ever.
+
+        So the count is per SCREEN, and the ticker wraps each cloud around the
+        window it is seen through. Walk as far as you like and the sky is
+        always full, because a cloud going off the left is the cloud arriving on
+        the right. Fifty places cost exactly as much sky as one. */
     draw(g, s) {
       const puff = s.tint(0.1);
-      g.beginFill(puff, 0.55);
-      const n = Math.max(2, Math.round(s.width / 260));
+      const many = s.get("count"), big = s.get("size"), far = s.get("depth");
+      const n = Math.round(Math.max(0, s.screenW / 200) * many);
       for (let i = 0; i < n; i++) {
-        const cx = ((i + s.rnd() * 0.7) / n) * s.width;
-        const cy = s.H * (0.06 + s.rnd() * 0.3);
-        const r = (9 + s.rnd() * 7) * s.Z;
-        /*  Three or four overlapping lobes on one baseline: a cloud is a row
-            of bumps with a flat bottom, and anything fussier than that is
-            invisible at this size. */
-        const lobes = 3 + Math.round(s.rnd());
-        for (let k = 0; k < lobes; k++) {
-          const lx = cx + (k - (lobes - 1) / 2) * r * 1.05;
-          const lr = r * (0.62 + s.rnd() * 0.48);
-          g.drawEllipse(lx, cy - lr * 0.25, lr, lr * 0.72);
-        }
-        g.drawRect(cx - r * lobes * 0.52, cy - r * 0.1, r * lobes * 1.04, r * 0.5);
+        const near = s.rnd();
+        /*  `far` takes movement away rather than adding it: 2 minus the dial,
+            so up means less of the street's motion and a cloud further off.
+            Past 2 the term goes negative and the cloud crosses against the
+            street, which is why the clamp is symmetrical now — it used to
+            floor at 0 and threw that whole half of the dial away.
+
+            Held under 1 either way, because at 1 a cloud moves exactly with
+            the buildings and stops being sky at all. */
+        const par = Math.max(-0.95, Math.min(0.95, (0.10 + near * 0.32) * (2 - far)));
+        const sp = new s.P.Sprite(cloudTexture(s.P, i % CLOUD_SHAPES));
+        //  Held by its flat underside, which is the line the eye reads.
+        sp.anchor.set(0.5, 1);
+        sp.tint = puff;
+        //  Far ones thinner. Distance is haze as much as it is size.
+        sp.alpha = 0.30 + near * 0.28;
+        sp.eventMode = "none";
+        const k = (0.11 + near * 0.22) * s.Z * big;
+        sp.scale.set(k, k);
+        //  Half of them turned over, so four baked shapes read as eight.
+        if (s.rnd() > 0.5) sp.scale.x = -k;
+        sp.__par = par;
+        /*  Half a cloud of margin at each edge, so one crosses the boundary
+            instead of blinking out of existence at it. The run is the window
+            plus both margins, and that is the whole world a cloud lives in. */
+        sp.__pad = 130 * k + 12;
+        sp.__run = s.screenW + sp.__pad * 2;
+        /*  Never quite still, even pinned. `par` is what a cloud does when YOU
+            move; this is what it does when nobody does. They are different
+            questions, and tying the second to the first meant a sky pushed all
+            the way to "far" froze solid. Air still moves. */
+        sp.__blow = 0.25 + near * 0.75;
+        sp.__x0 = ((i + s.rnd() * 0.8) / n) * sp.__run;
+        sp.x = sp.__x0 - sp.__pad;
+        //  Far ones ride lower, toward the horizon, the way distance stacks a
+        //  sky. Near ones are free to be overhead.
+        sp.y = s.H * (0.05 + (1 - near) * 0.16 + s.rnd() * 0.16);
+        s.layer.addChild(sp);
       }
-      g.endFill();
     },
   },
 ];
@@ -5336,8 +6010,322 @@ function renderPromenadePixi(model, host) {
       /*  The day's air, which every chimney on the street shares. */
       '<input type="range" data-k="wind" min="-1" max="1" step="0.05" ' +
         'class="pr-weather" title="wind \u2014 which way the smoke leans">' +
+      '<button data-k="scenery" class="pr-scenery-btn" title="the weather ' +
+        'behind the street">☁</button>' +
       '<button data-k="reset" title="back to the street’s own colors">↺</button>';
     fileBar.insertBefore(bgBar, groupBtn.nextSibling);
+
+    /*  THE SCENERY BAR.
+
+        Behind a button rather than in the bar, because the bar is already
+        nine controls wide and this is the least often touched thing on the
+        panel. Built from SCENERY itself, so a new piece with `settings`
+        appears here with no edit to this code.
+
+        Sits where the tint bar sits and looks the same, because it is the
+        same kind of thing: a strip of dials for the thing you just asked
+        about, dismissed with an ×. */
+    const skyBar = document.createElement("div");
+    skyBar.className = "pr-tint pr-sky-bar";
+    skyBar.hidden = true;
+    skyBar.innerHTML = SCENERY.map(piece =>
+      '<span class="pr-sky-piece" data-p="' + piece.id + '">' +
+        '<label class="pr-sky-on"><input type="checkbox" data-k="on">' +
+          (piece.label || piece.id) + '</label>' +
+        /*  Each dial says what it is. Three identical sliders in a row with
+            the answer only in a tooltip is a guessing game, and the tooltip
+            does not exist at all on a touch screen. */
+        sceneryDefs(piece).map(d =>
+          '<label class="pr-sky-dial" title="' + d.tip + '">' +
+            '<span>' + d.tag + '</span>' +
+            '<input type="range" data-k="' + d.k + '" min="' + d.min +
+            '" max="' + d.max + '" step="' + d.step + '">' +
+          '</label>').join("") +
+      '</span>').join("") +
+      '<button data-k="reset" title="back to the street’s own weather">↺</button>' +
+      '<button data-k="close" title="done">×</button>';
+    shell.appendChild(skyBar);
+
+    const syncSkyBar = () => {
+      for (const piece of SCENERY) {
+        const row = skyBar.querySelector('[data-p="' + piece.id + '"]');
+        if (!row) continue;
+        row.querySelector('[data-k="on"]').checked = sceneryOn(piece);
+        for (const d of sceneryDefs(piece)) {
+          const box = row.querySelector('[data-k="' + d.k + '"]');
+          //  Never while it is the thing under the pointer.
+          if (box && document.activeElement !== box) {
+            box.value = String(sceneryGet(piece, d.k));
+          }
+        }
+      }
+    };
+    skyBar.addEventListener("input", e => {
+      const row = e.target.closest("[data-p]");
+      const k = e.target.dataset.k;
+      if (!row || !k) return;
+      const id = row.dataset.p;
+      SCENE_SET.set(id + ":" + k,
+        e.target.type === "checkbox" ? (e.target.checked ? 1 : 0)
+                                     : Number(e.target.value));
+      saveScenery();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    });
+    skyBar.querySelector('[data-k="reset"]').onclick = () => {
+      SCENE_SET.clear();
+      saveScenery();
+      syncSkyBar();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    skyBar.querySelector('[data-k="close"]').onclick = () => { skyBar.hidden = true; };
+    /*  The two bars stand in the same place, so only one is ever up. Opening
+        this one lets the column go, which is what closes the other. */
+    host._skyBar = skyBar;
+    bgBar.querySelector('[data-k="scenery"]').onclick = () => {
+      skyBar.hidden = !skyBar.hidden;
+      if (skyBar.hidden) return;
+      host._focus = null;
+      host._focusKind = null;
+      applyFocus(host);
+      syncSkyBar();
+    };
+    /*  THROUGH THE DOOR.
+
+        A door marked in a place's drawing is clickable, and what it opens is
+        the one view the street cannot give you: who this place's records put
+        here, and WHICH record did it.
+
+        A figure standing in Comrie does not say whether it is there because of
+        a birth, a census or a guess somebody typed at midnight. Out here
+        everybody is a silhouette; through the door they are a list of claims
+        with evidence against each one.
+
+        BUILT FROM THE RECORDS, NOT FROM THE SCENE. Where a figure is standing
+        is an arrangement — you can drag people about — and the records are
+        what is actually known. When the two disagree the records are right.
+        It also means a place nobody is standing in still opens and still has
+        something to say, which is exactly the place you most want to look at.
+
+        An overlay rather than a panel of its own, because it belongs to the
+        building you clicked and goes away when you are done with it. */
+    /*  Built as nodes rather than as a string of HTML. Every value below comes
+        out of somebody's brick file, and a name with an angle bracket in it
+        would otherwise be markup. */
+    const el = (tag, cls, parent) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (parent) parent.appendChild(n);
+      return n;
+    };
+    const doorView = document.createElement("div");
+    doorView.className = "pr-door";
+    doorView.hidden = true;
+    shell.appendChild(doorView);
+    host._doorView = doorView;
+    const closeDoor = () => { doorView.hidden = true; };
+
+    host._openDoor = slug => {
+      const m = V() || {};
+      const byId = new Map((m.entities || []).map(e => [e.slug, e]));
+      const here = byId.get(slug);
+      /*  Every valid record naming this place, gathered per person it also
+          names. One record can name three people and lands under all three,
+          because it is evidence about each of them. */
+      const rows = new Map();
+      for (const b of m.records || []) {
+        if (!b.valid || b.comment) continue;
+        const named = [b.alias ? b.alias.slug : null, ...(b.links || [])].filter(Boolean);
+        if (!named.includes(slug)) continue;
+        for (const s of named) {
+          const e = byId.get(s);
+          if (!e || e.kind !== "person") continue;
+          let list = rows.get(s);
+          if (!list) rows.set(s, list = []);
+          list.push(b);
+        }
+      }
+      //  Undated last, because a record with no date cannot claim a position
+      //  in a sequence and pretending otherwise invents an order.
+      const when = b => b.date ? String(b.date) : "￿";
+      const people = [...rows.entries()].sort((a, b2) => {
+        const ka = a[1].map(when).sort()[0], kb = b2[1].map(when).sort()[0];
+        return ka < kb ? -1 : ka > kb ? 1 : 0;
+      });
+
+      //  Every record naming the place, once each, for the chronology.
+      const all = [];
+      const seen = new Set();
+      for (const b of m.records || []) {
+        if (!b.valid || b.comment) continue;
+        const named = [b.alias ? b.alias.slug : null, ...(b.links || [])].filter(Boolean);
+        if (!named.includes(slug) || seen.has(b.lineNumber)) continue;
+        seen.add(b.lineNumber);
+        all.push({ b, who: named.filter(s => {
+          const e = byId.get(s); return e && e.kind === "person";
+        }) });
+      }
+      all.sort((x, y) => when(x.b) < when(y.b) ? -1 : when(x.b) > when(y.b) ? 1 : 0);
+
+      /*  PUT HERE BY A RECORD, OR PUT HERE BY YOU.
+
+          Two different claims, and the whole page runs on keeping them apart.
+          A record naming somebody at this place is evidence. Dragging them
+          into the column is an arrangement: useful, often right, and not the
+          same thing at all.
+
+          Built only from the records, this view could not see the second kind
+          at all — drag somebody into a parish and the door said the room was
+          empty. So anyone pinned here is listed too, and said to be pinned.
+          Somebody can be both, and then the records do the talking. */
+      const pinnedHere = [];
+      if (host._pinned) {
+        for (const [uid, where] of host._pinned) {
+          if (where !== slug || rows.has(uid)) continue;
+          /*  NOT EVERYONE STANDING HERE IS IN THE PILE.
+
+              This asked the model whether the uid was a declared person, which
+              quietly dropped the one person who is never declared: the house
+              brickling, who exists so an empty street has somebody on it and
+              is deliberately in no records at all. Pinned somewhere, he
+              vanished from the room he was standing in.
+
+              Being pinned is itself the claim. Anything the model does know
+              about still has to be a person, because the pins are keyed by
+              uid and a place could in principle share one. */
+          const e = byId.get(uid);
+          if (!e || e.kind === "person") pinnedHere.push(uid);
+        }
+      }
+
+      /*  ONE ROOM, TWO WAYS OF STANDING IN IT.
+
+          By person answers "who was here, and what puts them here" — the
+          census question, one household at a time. Chronology answers "what
+          happened here, in order" — the parish register question, which is
+          the same records read down the page instead of across it.
+
+          Neither is a subset of the other and both are one sort away from the
+          same list, so they are a switch rather than two panels. */
+      const line = (parent, b, extra) => {
+        const li = el("li", b.status === "verified" ? "is-sure" : "is-draft", parent);
+        el("span", "pr-door-icon", li).textContent = b.icon || "•";
+        el("span", "pr-door-when", li).textContent = b.date || "—";
+        el("span", "pr-door-what", li).textContent =
+          extra || [b.name, b.detail].filter(Boolean).join(" · ") || b.type || "";
+        //  The line itself, for when the summary is not enough.
+        li.title = b.raw;
+        return li;
+      };
+      //  titleCase for anybody the model has never heard of, which is how the
+      //  rest of the page writes a bare uid rather than printing the slug raw.
+      const nameOf = s => { const e = byId.get(s); return (e && e.name) || titleCase(s); };
+
+      const draw = () => {
+        doorView.replaceChildren();
+        const head = el("div", "pr-door-head", doorView);
+        el("span", "pr-door-name", head).textContent =
+          (here && here.name) || groupNameOf(slug) || slug || "The Promenade";
+        const tabs = el("span", "pr-door-tabs", head);
+        for (const [mode, label, tip] of [
+          ["people", "who", "who was here, and what puts them here"],
+          ["time", "when", "everything that happened here, in order"],
+        ]) {
+          const tb = el("button", host._doorMode === mode ? "on" : "", tabs);
+          tb.textContent = label;
+          tb.title = tip;
+          tb.onclick = () => { host._doorMode = mode; draw(); };
+        }
+        const shut = el("button", "pr-door-x", head);
+        shut.textContent = "×";
+        shut.title = "close";
+        shut.onclick = closeDoor;
+
+        const count = el("div", "pr-door-count", doorView);
+        //  Counts the two kinds separately, because they are two claims.
+        count.textContent = host._doorMode === "time"
+          ? all.length + (all.length === 1 ? " record" : " records")
+          : [people.length ? people.length + " by their records" : "",
+             pinnedHere.length ? pinnedHere.length + " visiting" : "",
+            ].filter(Boolean).join(" · ") || "nobody yet";
+
+        const body = el("div", "pr-door-body", doorView);
+        if (!all.length && !pinnedHere.length) {
+          /*  Says which of the two it is. "Nothing here" reads as a failure;
+              the truth is usually that the place is declared and nothing has
+              been linked to it yet, which is a lead rather than a fault. */
+          el("p", "pr-door-empty", body).textContent =
+            "No record names this place yet.";
+          return;
+        }
+
+        if (host._doorMode === "time") {
+          const ul = el("ul", "pr-door-recs pr-door-flat", body);
+          for (const { b, who } of all) {
+            line(ul, b, [b.name, b.detail].filter(Boolean).join(" · ") || b.type || "");
+            if (who.length) {
+              const sub = el("li", "pr-door-named", ul);
+              sub.textContent = who.map(nameOf).join(", ");
+            }
+          }
+          return;
+        }
+
+        if (!people.length && !pinnedHere.length) {
+          el("p", "pr-door-empty", body).textContent =
+            "Records name this place, but none of them name a person.";
+          return;
+        }
+        //  One row builder for both kinds, since the difference is what goes
+        //  under the name rather than how the name is written.
+        const personRow = (who, bricks) => {
+          const row = el("div", "pr-door-row", body);
+          const nm = el("button", "pr-door-who", row);
+          nm.textContent = nameOf(who);
+          nm.title = "focus on " + nameOf(who);
+          //  The same focus a click on the street gives, so the two ways in
+          //  agree with each other.
+          nm.onclick = () => { closeDoor(); toggleFocus(host, "person", who); };
+          if (!bricks) {
+            /*  A VISITOR, NOT A PERSON WITH MISSING EVIDENCE.
+
+                Dragging somebody into a column is not a failed citation: they
+                are here, and they are not from here.
+
+                The line under the name carries WHERE THEY CAME FROM and
+                nothing else. It used to say "visiting" as well, under a count
+                that already said "1 visiting", so the one fact on screen was
+                printed twice; and where there was no origin to give, the row
+                said "visiting" under a heading that said "visiting". Somebody
+                the records place nowhere gets no second line at all, because
+                there is nothing more to say about them than their name. */
+            const rel = host._related && host._related.byPerson;
+            const homes = rel ? (rel.get(who) || new Set()) : new Set();
+            const from = [...homes].filter(s => s !== slug).map(nameOf);
+            if (!from.length) return;
+            const ul = el("ul", "pr-door-recs", row);
+            const li = el("li", "is-visit", ul);
+            el("span", "pr-door-what", li).textContent = "from " + from.join(", ");
+            li.title = "you placed them here. Their records put them in "
+                     + from.join(", ");
+            return;
+          }
+          const ul = el("ul", "pr-door-recs", row);
+          for (const b of bricks.slice().sort((x, y) => when(x) < when(y) ? -1 : 1)) {
+            line(ul, b);
+          }
+        };
+        for (const [who, bricks] of people) personRow(who, bricks);
+        /*  The hand-placed come after the evidenced, always. It is the same
+            order the page argues in everywhere else: what a document says
+            first, what somebody decided second. */
+        for (const who of pinnedHere) personRow(who, null);
+      };
+      if (!host._doorMode) host._doorMode = "people";
+      draw();
+      doorView.hidden = false;
+    };
     //  Shows the hour that is on screen, which is the one the pickers edit.
 
     const syncBgBar = () => {
@@ -5611,6 +6599,9 @@ function renderPromenadePixi(model, host) {
       // "" is the promenade, and a valid key — check the kind, not the slug.
       const slug = isCol ? host._focus : null;
       tintBar.hidden = !isCol || host._view === "grid";
+      //  Both bars stand in the same corner, so picking a column puts the
+      //  scenery one away rather than drawing one over the other.
+      if (!tintBar.hidden && host._skyBar) host._skyBar.hidden = true;
       if (!isCol) return;
       const grp = slug ? groupNameOf(slug) : "The Promenade";
       const e = grp ? null : ((model2 || V()).entities || []).find(k => k.slug === slug);
@@ -5824,6 +6815,36 @@ function renderPromenadePixi(model, host) {
 
         A press on that button is not "the user is busy elsewhere", it is an
         instruction about this exact thing, so it does not count as a poke. */
+    /*  TYPING IS NOT IDLING.
+
+        The timer measures "left alone for a while" and then starts the street
+        moving again. Someone writing bricks in the pallet is not idle, and a
+        scene that slides sideways beside the line you are typing is the worst
+        moment this panel could pick to move. So the timer still runs, but when
+        it comes due with a text field focused it looks again shortly rather
+        than starting the drift — and a short look rather than another thirty
+        seconds, so the street resumes soon after you leave the field instead
+        of waiting out a fresh count.
+
+        Sliders and color wells are left out: a range is focused while you drag
+        it, and you are plainly here. */
+    const inAField = () => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return false;
+      if (el.isContentEditable) return true;
+      if (el.tagName === "TEXTAREA") return true;
+      return el.tagName === "INPUT" &&
+        !/^(button|checkbox|radio|range|color|submit|reset|file|image)$/i.test(el.type || "text");
+    };
+    const RECHECK_MS = 2000;
+    const armIdle = () => {
+      clearTimeout(host._idleTimer);
+      host._idleTimer = setTimeout(function due() {
+        if (inAField()) { host._idleTimer = setTimeout(due, RECHECK_MS); return; }
+        host._setDrift(true);
+      }, host._idleMs);
+    };
+
     host._bumpIdle = e => {
       const t = e && e.target;
       if (t && t.closest && t.closest(".pr-drift")) return;
@@ -5831,7 +6852,7 @@ function renderPromenadePixi(model, host) {
       clearTimeout(host._idleTimer);
       // A stilled scene is what someone asked for; do not override that.
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      host._idleTimer = setTimeout(() => host._setDrift(true), host._idleMs);
+      armIdle();
     };
     for (const t of ["pointerdown", "pointermove", "wheel"]) {
       shell.addEventListener(t, host._bumpIdle, { passive: true });
@@ -6119,6 +7140,67 @@ function renderPromenadePixi(model, host) {
         host._sun.x = host._sun.__sx - host._world.x;
       }
 
+      /*  THE FRAME RATE, on the end of the line that is already there.
+
+          Four times a second rather than sixty. Pixi's own FPS is smoothed
+          already, so reading it every frame buys no accuracy and costs a DOM
+          write per frame on the one panel whose whole point is not to drop
+          frames. A number that changes four times a second is also the fastest
+          a person can actually read. */
+      host._fpsMs = (host._fpsMs || 0) + app.ticker.deltaMS;
+      if (host._fpsMs >= 250) {
+        host._fpsMs = 0;
+        const note = host.querySelector(".pr-note");
+        if (note) {
+          note.textContent = (host._noteText || "") +
+            " · " + Math.round(app.ticker.FPS) + " fps";
+        }
+      }
+
+      /*  PARALLAX, WHICH IS THE SAME SUM WITH THE DIAL TURNED DOWN.
+
+          The sun above takes the whole pan back off itself and so never
+          moves. A cloud takes back all but its own share: at `__par` of 0.3 it
+          keeps three tenths of the street's movement and gives back seven, so
+          it slides the right way and lags behind the roofs. Turn __par to 0
+          and you have the sun; turn it to 1 and the cloud is nailed to the
+          street like a building.
+
+          Here rather than in the render because the street moves without
+          rebuilding: a drag, a wheel, the idle drift. This is the one place
+          all of them have already landed. */
+      /*  AND THE SKY MOVES WHEN NOBODY IS LOOKING.
+
+          Parallax alone shows nothing on a street shorter than the panel: the
+          pan is clamped to zero, so there is no movement for the clouds to
+          take a share of, and every depth setting looks identical. Most piles
+          are that short. A sky on the wind reads its own depth without the
+          street having to be walked at all, and a scene left alone now has
+          weather in it rather than a painted backdrop.
+
+          Wrapped rather than allowed to march off, so a cloud leaving one edge
+          is the cloud arriving at the other and the sky never empties. */
+      /*  WRAPPED IN SCREEN SPACE, WHICH IS THE ONLY SPACE THAT WORKS.
+
+          The first wrap recycled clouds along world coordinates, so the band
+          they lived in travelled with the street and the window eventually
+          panned clean off the end of it. Wrapping around what you can SEE
+          instead, the sky is full at any pan and at any street length: work
+          out where the cloud wants to be on screen, bring it back inside the
+          window, and only then hand it to a container that is itself moving. */
+      if (host._sky && !host._sky.destroyed) {
+        host._skyT = (host._skyT || 0) + app.ticker.deltaMS / 1000;
+        const wx = host._world.x, blow = host._skyT * WEATHER.wind * 9;
+        for (const sp of host._sky.children) {
+          if (sp.__par === undefined) continue;
+          //  Where it belongs on screen: its own share of the pan, plus drift.
+          let sx = sp.__x0 + wx * sp.__par + blow * sp.__blow;
+          sx = ((sx % sp.__run) + sp.__run) % sp.__run;
+          //  Screen back to the world container, which carries the pan itself.
+          sp.x = sx - sp.__pad - wx;
+        }
+      }
+
     /*  Now and again, a balloon.
 
           Drawn rather than fetched, and never announced. It drifts across the
@@ -6375,7 +7457,14 @@ function renderPromenadePixi(model, host) {
             picking per flock gets both without knowing which sky it is. */
         flock.alpha = 0.75;
         host._birdTone = Math.random() < 0.5 ? 0x11151b : 0xe8ece6;
-        flock.zIndex = SKY_Z;               // same sky the balloon crosses
+        /*  Under the balloon, not level with it.
+
+            Both sat at SKY_Z, and equal keys fall back to the order the stage
+            happened to receive them in. The balloon and the flock each arrive
+            on their own schedule, so which one was in front changed from one
+            run to the next. A gull is a speck and a balloon is a vehicle;
+            there is a right answer here and it should not be a coin toss. */
+        flock.zIndex = SKY_Z - 1;
         app.stage.addChild(flock);
         host._birds = { node: flock, marks, dir, t: 0 };
       }
@@ -6465,10 +7554,9 @@ function renderPromenadePixi(model, host) {
 
   const H = () => app.screen.height || 150;
   const groundY = () => H() * GROUND;
-  /*  How high a signpost's board hangs, in world units off the ground. Shared,
-      because the notes under the street have to know where the board is in
-      order to sit below it rather than through it. */
-  const SIGN_BOARD_Y = -38;
+  /*  SIGN_BOARD_Y is declared up beside the store that measures against it.
+      A second copy here is how the two came to disagree, and a stored offset
+      is meaningless without the base it was written against. */
 
   /*  What hour it is, before anything is painted in it.
 
@@ -6490,6 +7578,18 @@ function renderPromenadePixi(model, host) {
   //  horizon. With the sun up, both ends are the sky you chose and it paints
   //  exactly as the flat rectangle it replaced.
   const skyBand = GRID ? null : new P.Sprite(gradientTexture(P, skyHigh(), skyLow()));
+  /*  And the ground is a ramp too, darkening toward the bottom of the panel.
+
+      A flat field is the one thing on this street with no depth cue in it at
+      all: the sky has its hour, the buildings have their own shading, and the
+      ground was a single colour running to the edge of the screen, which reads
+      as a wall rather than as a surface you are looking across. Falling away
+      into shadow at the near edge is what tells the eye it is a plane.
+
+      It also buys back the contrast the captions need. Names sit in the top of
+      this band, where it is still the colour you chose; what darkens is the
+      empty strip below them. */
+  const groundBand = GRID ? null : new P.Sprite(P.Texture.WHITE);
   const paintBg = () => {
     bg.clear();
     groundG.clear();
@@ -6505,7 +7605,13 @@ function renderPromenadePixi(model, host) {
         and left the rest of the panel blank. There should always be somewhere
         to stand, even before anybody does. */
     const bgW = Math.max(worldW, app.screen.width);
-    groundG.beginFill(sceneGround()).drawRect(0, H() * GROUND, bgW, H()).endFill();
+    //  The field itself as a ramp, and the horizon line drawn on top of it.
+    groundBand.texture = gradientTexture(P, intHex(sceneGround()),
+                                            intHex(mixInt(sceneGround(), 0x000000, 0.42)));
+    groundBand.x = 0;
+    groundBand.y = H() * GROUND;
+    groundBand.width = bgW;
+    groundBand.height = Math.max(1, H() - H() * GROUND);
     groundG.beginFill(sceneEdge()).drawRect(0, H() * GROUND, bgW, 2).endFill();
     skyBand.texture = gradientTexture(P, skyHigh(), skyLow());
     skyBand.x = 0;
@@ -6747,27 +7853,49 @@ function renderPromenadePixi(model, host) {
       the sun can go down behind the horizon rather than resting on it. This is
       the only reason the ground is drawn apart from the sky. */
   if (!GRID) {
+    //  The field, then the horizon line on top of it.
+    groundBand.eventMode = "none";
     groundG.eventMode = "none";
+    world.addChild(groundBand);
     world.addChild(groundG);
   }
 
   /*  The scenery. One Graphics for the lot, in behind everything else the
-      street draws — see SCENERY for what is in it and how to add to it. */
+      street draws — see SCENERY for what is in it and how to add to it.
+
+      A piece gets a container as well as that Graphics. Anything translucent
+      has to be a sprite rather than a shape: overlapping shapes in one
+      Graphics composite against each other and the overlaps go darker, which
+      is a seam where the drawing meant a single form. See cloudTexture. */
   if (!GRID) {
     const streetW = Math.max(worldW, app.screen.width);
     const skin = new P.Graphics();
+    const skyLayer = new P.Container();
     for (const piece of SCENERY) {
-      if (!piece.on) continue;
+      //  The store, not the table: `on` in the table is only the default.
+      if (!sceneryOn(piece)) continue;
       piece.draw(skin, {
+        get: k => sceneryGet(piece, k),
         P, Z, H: H(), width: streetW, ground: H() * GROUND,
-        sky: sceneSky(),
+        //  The street's length and the window onto it are two different
+        //  numbers, and anything that parallaxes needs both.
+        screenW: app.screen.width,
+        sky: sceneSky(), layer: skyLayer,
         tint: amount => mixInt(sceneSky(),
                                lumOf(sceneSky()) > 0.5 ? 0x000000 : 0xffffff, amount),
         rnd: sceneryRnd(piece.id, streetW),
       });
     }
     skin.eventMode = "none";          // weather, and the moon is behind it
+    skyLayer.eventMode = "none";
     world.addChild(skin);
+    world.addChild(skyLayer);
+    host._sky = skyLayer;             // the ticker moves what is in it
+  } else {
+    //  No weather on the pictogram board, and nothing for the ticker to push
+    //  around. Left pointing at the last render's container it would keep
+    //  moving sprites that are no longer in the world.
+    host._sky = null;
   }
 
   /*  Column gradients: the SKY above that column, not the ground.
@@ -6812,8 +7940,9 @@ function renderPromenadePixi(model, host) {
   const ART_FLOOR = world.children.length;
   host._artFloor = ART_FLOOR;
 
-  const label = (text, size, color) => new P.Text(text, {
+  const label = (text, size, color, extra) => new P.Text(text, {
     fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: color,
+    ...(extra || {}),
   });
 
   /*  How tall this column's picture stands above the ground line, or null when
@@ -6928,6 +8057,11 @@ function renderPromenadePixi(model, host) {
     const myRender = host._renderId;
     //  Rebuilt with the scene, because a resize or a sort moves every column.
     host._smokeAt = [];
+    /*  Made here and parented at the very end of the render, above the cast.
+        Scene art arrives whenever it arrives, so the doors it carries need
+        somewhere to go that is already the right depth. */
+    host._doorLayer = new P.Container();
+    host._doorLayer.eventMode = "static";
     const place = (c, img) => {
       if (!img || host._renderId !== myRender) return;
       // Fit the column, never blown up past its own pixels.
@@ -6988,6 +8122,108 @@ function renderPromenadePixi(model, host) {
             next: Math.random() * 0.9,
           });
         }
+      }
+
+      /*  THE DOOR, AND YOU KNOCK BEFORE YOU GO IN.
+
+          Marked pixels become one box you can press, because a door is a door
+          whether you drew it three pixels wide or twelve, and asking somebody
+          to hit an exact pixel on a building that scales with the zoom would
+          be a worse control than no control.
+
+          One click knocks: the doorway lights twice, in the rhythm of a rap,
+          and nothing else happens. Two opens it. A single click that walked
+          you straight into somebody's house was the wrong manners and the
+          wrong interaction — a stray press on a street full of buildings
+          should not put a panel over the scene, and there was no way to find
+          out a door was a door short of going through it.
+
+          So the knock is the discovery as well as the courtesy. Hovering
+          brings the doorway up faintly, knocking answers, and only then does
+          it open.
+
+          Its own node with nothing drawn in it until it lights: the building
+          itself stays `eventMode = "none"` so it cannot swallow presses meant
+          for the moon behind it, and this is the only interactive thing over
+          that stretch of wall. */
+      const doorPx = (img.__doors || []);
+      if (doorPx.length && host._openDoor) {
+        const sc = fit * Z;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [ix, iy] of doorPx) {
+          if (ix < x0) x0 = ix; if (ix > x1) x1 = ix;
+          if (iy < y0) y0 = iy; if (iy > y1) y1 = iy;
+        }
+        //  The doorway as drawn: what lights when you knock.
+        const wx = c.x + (x0 - img.width / 2) * sc;
+        const wy = groundY() + (y0 - img.height) * sc;
+        const ww = (x1 - x0 + 1) * sc, wh = (y1 - y0 + 1) * sc;
+        const hot = new P.Graphics();
+        //  Lamplight through the doorway, drawn once and shown by alpha.
+        hot.beginFill(0xffdda3).drawRect(wx, wy, ww, wh).endFill();
+        hot.alpha = 0;
+        hot.eventMode = "static";
+        hot.cursor = "pointer";
+        /*  WHAT YOU CAN HIT IS BIGGER THAN WHAT LIGHTS.
+
+            A door drawn six pixels wide on a building shrunk to fit its column
+            is a six pixel target, and asking for that with a mouse on a street
+            you can also pan is not a control. So the box is padded out to
+            something a hand can find, centred on the doorway so it still
+            belongs to the door it opens, while the light stays the shape you
+            actually drew. */
+        const hitW = Math.max(16 * Z, ww), hitH = Math.max(18 * Z, wh);
+        hot.hitArea = new P.Rectangle(wx + ww / 2 - hitW / 2,
+                                      wy + wh / 2 - hitH / 2, hitW, hitH);
+
+        let over = false, rapping = false;
+        //  Whatever it should look like when nothing is happening to it.
+        const rest = () => {
+          if (hot.destroyed) return;
+          hot.alpha = over && !rapping ? 0.14 : 0;
+        };
+        /*  ONE FLASH PER PRESS, to match the one rap it makes. Press twice and
+            the gesture produces the knock; the door does not perform one at
+            you for a single click.
+
+            Timed rather than tweened because it is two alpha writes over a
+            tenth of a second, and a ticker handler for that would outlive the
+            scene it belongs to. It checks the node is still alive, since a
+            rebuild can land mid-rap. */
+        const knock = () => {
+          rapping = true;
+          hot.alpha = 0.42;
+          setTimeout(() => {
+            if (hot.destroyed) return;
+            rapping = false;
+            rest();
+          }, 90);
+        };
+        hot.on("pointerover", () => { over = true; rest(); });
+        hot.on("pointerout", () => { over = false; rest(); });
+
+        /*  Pixi has no double-click, so it is two taps inside a window. 450ms
+            rather than the platform's own 500: this is a deliberate gesture on
+            a small target, not a text selection. */
+        let lastTap = 0;
+        //  Stopped here, or the same press also reaches the column underneath
+        //  and focuses it, which is a second thing happening for one gesture.
+        hot.on("pointertap", ev => {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          /*  Every press raps, including the one that opens. Two presses are
+              therefore two raps and a door that answers, which is the whole
+              gesture and needs no separate flourish. */
+          knock();
+          knockSound();
+          const now = performance.now();
+          if (now - lastTap < 450) {
+            lastTap = 0;
+            host._openDoor(c.slug);
+            return;
+          }
+          lastTap = now;
+        });
+        host._doorLayer.addChild(hot);
       }
     };
     for (const c of columns) {
@@ -7364,18 +8600,27 @@ function renderPromenadePixi(model, host) {
         if (!at.ground) floatY = (at.y + 0.5 - art.height) * artS;
       }
 
-      const POST_H = 28, BOARD_Y = SIGN_BOARD_Y;
+      const BOARD_Y = SIGN_BOARD_Y;
       const board = new P.Graphics();
       /*  A floating label hangs at the pixel; a planted one keeps the height
           it has always had, so a street of ordinary places still reads as one
           row of signs. */
-      const baseTop = floatY === null ? BOARD_Y * Z : floatY - (t.height + 4) / 2;
-      /*  NO POST WHEN IT IS NOT PLANTED.
+      /*  THE MARK IS THE POST'S FOOT.
 
-          A post running down from a name over a rooftop to the ground would be
-          drawing a claim the picture did not make. */
-      const post = floatY === null ? new P.Graphics() : null;
-      if (post) sign.addChild(post);
+          A marked pixel is where the post STANDS, not how high it climbs. It
+          is the roof the sign is bolted to, the wall it hangs off, the spot on
+          the ground the picture chose. So the post runs from the underside of
+          the board down to that pixel and stops, and it never reaches the
+          street unless the street is what was marked.
+
+          Which makes the board open a short drop above the mark rather than
+          centred on it: centred, the board's own bottom edge is already below
+          the pixel and there is no post to draw at all. */
+      const POST_DROP = 12;
+      const baseTop = floatY === null ? BOARD_Y * Z
+                                      : floatY - (t.height + 4) - POST_DROP * Z;
+      const post = new P.Graphics();
+      sign.addChild(post);
       sign.addChild(board, t);
 
       /*  A POST IS PLANTED. IT DOES NOT SLIDE.
@@ -7396,15 +8641,28 @@ function renderPromenadePixi(model, host) {
         board.beginFill(0x4a3b28)
           .drawRect(-t.width / 2 - 3, top, t.width + 6, t.height + 4).endFill();
         t.y = top + 2;
-        if (post) {
-          const h = Math.max(0, (POST_H - off) * Z);
-          post.clear();
-          if (h > 0) post.beginFill(0x3a2f20).drawRect(-Z, -h, 2 * Z, h).endFill();
-        }
+        /*  THE POST IS THE GAP BETWEEN THE BOARD AND ITS FOOT.
+
+            It hangs from the underside of the board and stops at the foot: the
+            marked pixel if the drawing named one, the ground if it did not.
+            Nothing else decides its length, so dragging the board up lengthens
+            it and dragging the board down to its foot leaves none of it.
+
+            `floatY` has no `off` in it on purpose. The mark is a fixed point in
+            the picture — a chimney, a gable, the top of a wall — and it does
+            not move because you moved the sign. It did once, so the foot rose
+            with the drag and the post could never shorten. */
+        const foot = floatY === null ? 0 : floatY;
+        const pTop = top + t.height + 4;        // the underside of the board
+        const h = Math.max(0, foot - pTop);
+        post.clear();
+        if (h > 0) post.beginFill(0x3a2f20).drawRect(-Z, pTop, 2 * Z, h).endFill();
         //  The target has to follow the board, or a sign you moved is a sign
         //  you cannot pick up again.
-        const hitTop = Math.min(top, post ? -Math.max(0, (POST_H - off) * Z) : top) - 2;
-        const hitBot = top + t.height + 6;
+        const hitTop = top - 2;
+        //  Down past the post as well, so a sign with a long drop can be
+        //  picked up by the post rather than only by the board.
+        const hitBot = Math.max(top + t.height + 6, pTop + h);
         sign.hitArea = new P.Rectangle(-t.width / 2 - 4, hitTop,
                                        t.width + 8, hitBot - hitTop);
       };
@@ -8023,13 +9281,37 @@ function renderPromenadePixi(model, host) {
         every drop, sort, zoom and resize — for labels that are hidden until
         you hover. Making them on demand is most of what a rebuild was doing. */
     const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "~") + p.birthYear : "");
-    // A name floats above a head, so it is sitting on the sky — or on the grid
-    // view's flat field, which is the sky with the lights off.
-    const nameColor = sceneInk(GRID ? sceneGrid() : sceneSky(), !known);
+    /*  PICKED AGAINST WHAT IT IS ACTUALLY SITTING ON.
+
+        This read the SKY, from back when a name floated over a head. The name
+        moved under the feet and this did not, so the ink was being chosen to
+        contrast with a colour it is nowhere near: on a pale sky it went dark,
+        then sat on dark ground and disappeared. At sunset the two part company
+        completely, the sky going red while the street goes brown.
+
+        A quieter variant for somebody whose place is a guess, but only a third
+        of the way back to the field rather than nearly half. Dimmer has to
+        stay readable; the difference between known and unknown is worth
+        saying, and not worth saying at the cost of the name itself. */
+    const nameField = GRID ? sceneGrid() : sceneGround();
+    /*  A guess is dimmer by a sixth, not by a third. Half-erasing the name is
+        not a way of saying the PLACE is uncertain, and the one thing on the
+        street that has to be readable is who somebody is. */
+    const nameColor = known ? bestInk(nameField)
+                            : mixInt(bestInk(nameField), nameField, 0.15);
     const ensureName = () => {
       const w = host._walkers.find(k => k.slug === p.slug);
       if (!w || w.nameNode) return w && w.nameNode;
-      const n = label(nameText, 8 * Z, nameColor);
+      /*  And outlined in the ground itself, which is what makes it hold up
+          wherever it lands. A caption under a figure crosses the street, the
+          horizon line, the figure's own boots and whatever is drawn behind it,
+          and no single flat colour is legible against all of those. The stroke
+          carries its own background with it. */
+      const n = label(nameText, 8 * Z, nameColor, {
+        stroke: nameField,
+        strokeThickness: Math.max(2, Math.round(2 * Z)),
+        lineJoin: "round",
+      });
       n.resolution = 2;
       /*  UNDER THE FEET, in both views.
 
@@ -8044,7 +9326,10 @@ function renderPromenadePixi(model, host) {
           about whom it belongs to: it touches them. The grid view had it there
           already and was the better of the two. */
       n.anchor.set(0.5, 0);
-      n.y = 4 * Z;
+      //  Tucked up to sit right under the boots. In world units like every
+      //  other measurement here, so it holds its place at all three zooms
+      //  rather than creeping closer as the street grows.
+      n.y = 2 * Z;
       n.scale.x = 1;   // counter-scaled so a walker turning does not write backwards
       node.addChild(n);
       w.nameNode = n;
@@ -8203,6 +9488,18 @@ function renderPromenadePixi(model, host) {
     }
   }
 
+  /*  DOORS LAST, SO A DOORWAY IS NOT BLOCKED BY WHOEVER IS STANDING IN IT.
+
+      The hit boxes went in beside the building art, which put them under the
+      cast: anybody standing in the doorway took the press, and the door of a
+      busy place was the one you could never knock on. They go on top instead,
+      added here because the walkers are all in by now.
+
+      The layer is made further up and filled as pictures arrive, so a drawing
+      that loads late still lands in it rather than wherever the world happened
+      to end at that moment. */
+  if (!GRID && host._doorLayer) world.addChild(host._doorLayer);
+
   applyFocus(host);
 
   host._noTween = false;
@@ -8217,11 +9514,32 @@ function renderPromenadePixi(model, host) {
   if (host._syncTint) host._syncTint(model);
 
   const known = people.length - lost;
-  host.querySelector(".pr-note").textContent = noneDeclared
-    ? "No bricklings yet — declare a person and one turns up."
+  /*  States the count and stops. The instruction that used to follow it told
+      you how to fix an emptiness you can already see.
+
+      Kept on the host as well as written out, because the ticker appends a
+      frame rate to it several times a second and has no other way of knowing
+      what the sentence in front of the number is supposed to say. */
+  host._noteBase = noneDeclared
+    ? "No bricklings yet."
     : people.length + (people.length === 1 ? " brickling · " : " bricklings · ") +
       known + " placed by their records · " +
       placed.length + (placed.length === 1 ? " signpost" : " signposts");
+
+  /*  Names for the status line, captured while the model is still in scope.
+      A selection is made long after this render and applyFocus has no model to
+      look anything up in. */
+  const entName = new Map((model.entities || []).map(e => [e.slug, e.name]));
+  host._titleOf = new Map();
+  for (const p of people) host._titleOf.set(p.slug, p.name || titleCase(p.slug));
+  for (const [slug] of placed) {
+    const grp = PROM_GROUPS.find(g => g.slug === slug);
+    host._titleOf.set(slug, (grp && grp.name) || entName.get(slug) || titleCase(slug));
+  }
+  // The promenade's own column is the empty uid and carries no sign, so
+  // titleCase leaves it blank and the line would read "showing everyone at ".
+  host._titleOf.set("", "the promenade");
+  syncPromNote(host);
 }
 
 function renderPromenade(model, host) {
@@ -11034,16 +12352,23 @@ function renderSpriteEditor(model, host) {
     const d = g.getImageData(0, 0, cv.width, cv.height);
     const px = d.data;
     let hit = false;
-    //  Unflags, rather than deleting: the pixel is somebody's drawing.
+    /*  Unflags, rather than deleting: the pixel is somebody's drawing. Unless
+        it was standing in open air, in which case there was no drawing under
+        it and it goes back to nothing. */
     for (let i = 0; i < px.length; i += 4) {
       if (px[i + 3] === ANCHOR_A) { px[i + 3] = 255; hit = true; }
+      else if (px[i + 3] === ANCHOR_AIR) { px[i + 3] = 0; hit = true; }
     }
     if (hit) g.putImageData(d, 0, 0);
   }
 
-  /*  One pixel's flag. The colour is not touched — that is the entire point —
-      and a transparent pixel is left alone, because a flag on nothing is a
-      pixel that appears from nowhere the moment somebody paints there. */
+  /*  One pixel's flag. The colour is never touched, which is the entire point.
+
+      A transparent pixel normally has nothing to carry a flag and is left
+      alone: a mark on nothing would appear from nowhere the moment somebody
+      painted there. The anchor is the exception, because the height you want
+      a post to reach is usually over the roof and there is no drawing up
+      there to hang it on. See ANCHOR_AIR. */
   function flagPixel(x, y, want) {
     const w = cellW(), h = cellH();
     if (x < 0 || y < 0 || x >= w || y >= h) return false;
@@ -11053,13 +12378,22 @@ function renderSpriteEditor(model, host) {
     for (const f of at) {
       const sx = f * w + x;
       const d = g.getImageData(sx, y, 1, 1);
-      if (!d.data[3]) continue;
-      d.data[3] = want;
+      const had = d.data[3];
+      if (!had) {
+        //  Nothing drawn here. Only an anchor may stand in open air.
+        if (want !== ANCHOR_A) continue;
+        d.data[3] = ANCHOR_AIR;
+      } else if (had === ANCHOR_AIR) {
+        /*  An anchor already standing in the air. Erasing it returns the
+            pixel to nothing; anything else would turn a marker into paint
+            somebody never laid down. */
+        d.data[3] = want === ANCHOR_A ? ANCHOR_AIR : 0;
+      } else {
+        d.data[3] = want;
+      }
       g.putImageData(d, sx, y);
       did = true;
     }
-    //  Says whether it flagged anything, because a flag lives in a pixel's
-    //  alpha and empty space has no pixel to carry one.
     return did;
   }
 
@@ -16249,6 +17583,277 @@ function renderTimeline(body) {
   }
 }
 
+/* ---------- tree ---------- */
+
+/*  The tree's own focus, deliberately NOT state.filter.focus. Focusing the
+    board on one person leaves only the records that name them, which would
+    collapse the drawing to the very person you clicked. Re-rooting has to be
+    a move inside the panel. */
+let TREE_ROOT = null;
+
+const TREE_HINT =
+  'A birth names the person born first and their parents after, and that is ' +
+  'the only place parentage is recorded:<br>' +
+  '<code>+|👶|1893-02-11|@alice,@george-isles,@margaret-kinnear</code>';
+
+/*  A tree that is actually a tree. The rooted person is the trunk; their
+    parents are the two boughs it forks into, and every generation back forks
+    again, thinner and shorter, until the pile runs out of ancestors and the
+    branch puts out leaves instead. Descendants go the other way, as roots
+    spreading under the ground line — which is also where they belong in every
+    pedigree chart ever drawn, only upside down.
+
+    Canvas rather than boxes: a bough tapers and bends, and no amount of CSS
+    makes a div do that. The cost is hit testing, so every name label records
+    its rectangle for the click handler. */
+const TREE_GEN_UP = 5;      // generations of ancestors before the branch stops
+const TREE_GEN_DOWN = 3;    // generations of descendants in the root system
+
+/*  Stable per-person wobble. A branch that jitters differently on every redraw
+    looks like a glitch; the same person should grow the same way every time,
+    so the angle offset is hashed from the uid rather than drawn from
+    Math.random. */
+function treeJitter(slug) {
+  let h = 2166136261;
+  for (let i = 0; i < slug.length; i++) { h ^= slug.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 2000) / 1000 - 1;      // -1 … 1
+}
+
+function renderTree(model, host) {
+  if (!host.dataset.built) {
+    host.dataset.built = "1";
+    host.innerHTML =
+      '<div class="tr-root">' +
+        '<div class="tr-head" data-el="head"></div>' +
+        '<div class="tr-wrap" data-el="wrap"><canvas data-el="canvas"></canvas></div>' +
+      "</div>";
+    const cv = host.querySelector('[data-el="canvas"]');
+    const pick = ev => {
+      const r = cv.getBoundingClientRect();
+      const x = ev.clientX - r.left, y = ev.clientY - r.top;
+      for (const b of host.__hits || []) {
+        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b.slug;
+      }
+      return null;
+    };
+    cv.addEventListener("click", ev => {
+      const slug = pick(ev);
+      if (slug && slug !== TREE_ROOT) { TREE_ROOT = slug; refreshPanel("viz-tree"); }
+    });
+    cv.addEventListener("mousemove", ev => { cv.style.cursor = pick(ev) ? "pointer" : "default"; });
+    /*  Every coordinate comes from the canvas size, so a tile that changes
+        shape has to grow the tree again from scratch. */
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => { if (host.__draw) host.__draw(); }).observe(host);
+    }
+  }
+
+  const head = host.querySelector('[data-el="head"]');
+  const wrap = host.querySelector('[data-el="wrap"]');
+  const cv   = host.querySelector('[data-el="canvas"]');
+  for (const old of [...wrap.querySelectorAll(".tr-empty, .tr-hint")]) old.remove();
+  host.__hits = [];
+  host.__draw = null;
+
+  const g = kinGraph(model);
+  if (!g.people.length) {
+    head.textContent = "";
+    cv.hidden = true;
+    const empty = document.createElement("div");
+    empty.className = "tr-empty";
+    empty.textContent = model.people.length
+      ? "Nobody in view is recorded as anyone's parent, child or partner."
+      : "No people in view.";
+    const hint = document.createElement("div");
+    hint.className = "tr-hint";
+    hint.innerHTML = TREE_HINT;
+    wrap.appendChild(empty);
+    wrap.appendChild(hint);
+    return;
+  }
+  cv.hidden = false;
+
+  /*  Whoever you last clicked, else whoever the board is focused on, else the
+      best-connected person — rooting on a leaf grows one twig and hides the
+      tree it came off. */
+  let root = TREE_ROOT && g.has(TREE_ROOT) ? TREE_ROOT : null;
+  if (!root && state.filter.focus && g.has(state.filter.focus)) root = state.filter.focus;
+  if (!root) {
+    root = g.people.slice().sort((a, b) => g.degree(b) - g.degree(a) || a.localeCompare(b))[0];
+  }
+
+  const nameOf = s => { const e = g.ent.get(s); return (e && e.name) || titleCase(s); };
+  const ghost = s => { const e = g.ent.get(s); return !e || !e.declared; };
+  const { order } = treeWalk(g, root);
+  const life = g.ent.get(root) ? lifeSummary(g.ent.get(root)) : "";
+  head.innerHTML = "Rooted on <b>" + esc(nameOf(root)) + "</b>" +
+    (life ? " · " + esc(life) : "") + " · " + order.length + " related · click a name to re-root" +
+    // Said on the head line rather than under the canvas: the canvas fills the
+    // tile, so anything appended below it is scrolled out of existence.
+    (g.parents.size ? "" : " · no birth names a parent yet, so nothing forks");
+
+  host.__draw = () => {
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    if (!W || !H) return;                       // the tile is collapsed or hidden
+    // Cleared HERE, not in the render above: a resize redraws without
+    // re-rendering, and the hit boxes would otherwise pile up a stale copy per
+    // redraw with the oldest winning the click.
+    host.__hits = [];
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    const ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const cs = getComputedStyle(host);
+    const col = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+    const WOOD = col("--accent", "#ff5500"), DRAFT = col("--draft", "#7a8a99");
+    const LEAF = col("--accent2", "#33ff33"), FG = col("--fg", "#eee");
+    const EDGE = col("--border", "#333"), BACK = col("--panel", "#1a1a1a");
+
+    const kids = [...(g.children.get(root) || EMPTY_KIN)];
+    // Ground sits low when nothing grows below it, and lifts to make room for
+    // a root system when it does.
+    const ground = kids.length ? H * 0.68 : H * 0.9;
+
+    const boughs = [], labels = [], tufts = [];
+    const push = (a, b, wide, status, curve) =>
+      boughs.push({ a, b, wide, status, curve });
+
+    /*  One recursion, run twice: once upward over parents and once downward
+        over children. `dir` is -1 for the sky and 1 for the soil, and the only
+        other difference is which map supplies the next generation. */
+    const grow = (slug, x, y, ang, len, wide, depth, dir, seen) => {
+      const ex = x + Math.sin(ang) * len, ey = y + dir * Math.cos(ang) * len;
+      const bend = treeJitter(slug) * len * 0.16;
+      push([x, y], [ex, ey], wide, "verified", [
+        x + Math.sin(ang) * len * 0.5 + bend, y + dir * Math.cos(ang) * len * 0.5,
+      ]);
+      labels.push({ slug, x: ex, y: ey });
+
+      const next = [...((dir < 0 ? g.parents : g.children).get(slug) || EMPTY_KIN)]
+        .filter(([s]) => !seen.has(s));
+      const max = dir < 0 ? TREE_GEN_UP : TREE_GEN_DOWN;
+      if (!next.length || depth >= max) {
+        if (dir < 0) tufts.push([ex, ey, len * 0.22]);
+        return;
+      }
+      const n = next.length;
+      next.forEach(([s, status], i) => {
+        // One parent known: carry on nearly straight rather than veering off at
+        // the angle a missing second parent would have balanced.
+        const off = n === 1 ? treeJitter(s) * 0.28
+                            : (i / (n - 1) - 0.5) * 2 * 0.58 + treeJitter(s) * 0.1;
+        const kept = new Set(seen); kept.add(s);
+        // The limb ITSELF carries the confidence of the record claiming the
+        // relationship, so a drafted parentage grows a dashed branch.
+        const before = boughs.length;
+        grow(s, ex, ey, ang + off, len * 0.76, Math.max(1, wide * 0.66),
+             depth + 1, dir, kept);
+        if (boughs[before]) boughs[before].status = status;
+      });
+    };
+
+    const trunkLen = Math.max(24, (ground - 12) * 0.3);
+    const seen = new Set([root]);
+    // The trunk is the root person: drawn first so everything else hangs off
+    // its top, and labelled last so the name sits over the bark.
+    const topX = W / 2, topY = ground - trunkLen;
+    push([W / 2, ground], [topX, topY], 7, "verified", [W / 2, ground - trunkLen * 0.5]);
+
+    const parents = [...(g.parents.get(root) || EMPTY_KIN)];
+    parents.forEach(([s, status], i) => {
+      const n = parents.length;
+      const off = n === 1 ? treeJitter(s) * 0.3 : (i / (n - 1) - 0.5) * 2 * 0.62;
+      const before = boughs.length;
+      grow(s, topX, topY, off, trunkLen * 0.82, 5, 1, -1, new Set([...seen, s]));
+      if (boughs[before]) boughs[before].status = status;
+    });
+    if (!parents.length) tufts.push([topX, topY, 14]);
+
+    kids.forEach(([s, status], i) => {
+      const n = kids.length;
+      const off = n === 1 ? treeJitter(s) * 0.4 : (i / (n - 1) - 0.5) * 2 * 0.85;
+      const before = boughs.length;
+      grow(s, W / 2, ground, off, (H - ground) * 0.55, 4, 1, 1, new Set([...seen, s]));
+      if (boughs[before]) boughs[before].status = status;
+    });
+
+    /*  A partner is nobody's ancestor and nobody's descendant, so the tree has
+        no place to put them — and leaving them out loses the mother of every
+        child in the soil below. They grow as a second stem off the trunk,
+        which is about right: married in, not descended from. Skipped when the
+        pile already puts them somewhere, as a cousin marriage does. */
+    for (const [s, status] of g.partners.get(root) || EMPTY_KIN) {
+      if (labels.some(l => l.slug === s)) continue;
+      const side = labels.filter(l => l.mate).length % 2 ? -1 : 1;
+      const ax = W / 2, ay = ground - trunkLen * 0.72, len = trunkLen * 0.8;
+      const ang = side * (1.12 + treeJitter(s) * 0.14);
+      const ex = ax + Math.sin(ang) * len, ey = ay - Math.cos(ang) * len;
+      push([ax, ay], [ex, ey], 3, status,
+           [ax + Math.sin(ang) * len * 0.5, ay - Math.cos(ang) * len * 0.5 - len * 0.14]);
+      labels.push({ slug: s, x: ex, y: ey, mate: true });
+    }
+
+    // ---- ground, then wood, then leaves, then names ----
+    ctx.strokeStyle = EDGE; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(W, ground + 0.5); ctx.stroke();
+
+    ctx.lineCap = "round";
+    for (const b of boughs) {
+      ctx.beginPath();
+      ctx.moveTo(b.a[0], b.a[1]);
+      ctx.quadraticCurveTo(b.curve[0], b.curve[1], b.b[0], b.b[1]);
+      ctx.lineWidth = b.wide;
+      ctx.strokeStyle = b.status === "verified" ? WOOD : DRAFT;
+      ctx.setLineDash(b.status === "verified" ? [] : [3, 4]);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    /*  A tuft marks where the research stops: the branch has no more parents
+        on it, so it puts out leaves. The end of a line of descent looks like
+        the end of a branch, which is the one metaphor this drawing gets for
+        free. */
+    ctx.fillStyle = LEAF; ctx.globalAlpha = 0.45;
+    for (const [x, y, r] of tufts) {
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + treeJitter(String(x + i)) * 0.6;
+        ctx.beginPath();
+        ctx.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.8,
+                    Math.max(2, r * 0.5), Math.max(1.5, r * 0.32), a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    labels.push({ slug: root, x: W / 2, y: ground - trunkLen * 0.45, root: true });
+    ctx.font = '10px ' + (cs.fontFamily || "system-ui, sans-serif");
+    ctx.textBaseline = "middle";
+    for (const l of labels) {
+      const text = nameOf(l.slug);
+      const w = Math.ceil(ctx.measureText(text).width) + 8, h = 14;
+      // Clamped into the canvas: a name grown off the edge is a name you can
+      // neither read nor click.
+      const x = Math.min(Math.max(2, l.x - w / 2), W - w - 2);
+      const y = Math.min(Math.max(2, l.y - h / 2), H - h - 2);
+      ctx.globalAlpha = 0.88; ctx.fillStyle = BACK;
+      ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+      ctx.strokeStyle = l.root ? LEAF : EDGE; ctx.lineWidth = 1;
+      ctx.setLineDash(ghost(l.slug) ? [2, 2] : []);
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.setLineDash([]);
+      ctx.fillStyle = l.root ? LEAF : FG;
+      ctx.globalAlpha = ghost(l.slug) ? 0.65 : 1;
+      ctx.fillText(text, x + 4, y + h / 2 + 0.5);
+      ctx.globalAlpha = 1;
+      host.__hits.push({ x, y, w, h, slug: l.slug });
+    }
+  };
+  host.__draw();
+}
+
 /* ---------- gazetteer panel ---------- */
 // Reads and writes the same GAZETTEER map every folder/hosted route uses.
 
@@ -18060,6 +19665,7 @@ loadRibbons();
 loadColNotes();
 loadSmoke();
 loadWeather();
+loadScenery();
 loadParts();
 loadNight();
 loadSunPos();

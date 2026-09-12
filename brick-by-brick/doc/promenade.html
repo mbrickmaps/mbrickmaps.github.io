@@ -43,6 +43,8 @@
     <a href="#finding">Finding</a>
     <a href="#saving">Saving</a>
     <a href="#assets">Assets</a>
+    <a href="#marks">Marking a drawing</a>
+    <a href="#sky">The sky</a>
     <a href="#sheet">Sprite sheets</a>
     <a href="#controls">Control reference</a>
   </nav>
@@ -56,8 +58,9 @@
     <p>A record that names a person <em>and</em> a place puts that person there. That is the same rule the map's connector lines and the event markers use. The two can never disagree about who was where.</p>
 
     <div class="note">
-      <p><strong>The page invents nothing. You may invent as much as you like.</strong> If no record says where somebody was, the page does not guess a parish for them. They stand in <strong>The Promenade</strong>, the column at the end that holds whatever the named places leave over. Not knowing where a man lived is itself a result, and the street shows it as one.</p>
-      <p>What you invent is yours and stays marked as yours. Make a column for a suspected family, or for everyone in one lawsuit, and drag people into it. Put a place in the gazetteer at <code>0, 0</code> for a household or a theory that sits nowhere on the ground. The page attaches no meaning to either and never infers one. Both live in <code>brick.json</code> beside your placements, never in the pile, because which column somebody stands in records your thinking, and no document attests it.</p>
+      <p><strong>The page never guesses where somebody lived.</strong> If no record places a man, he stands in <strong>The Promenade</strong>, the column at the end holding whoever the named places leave over. Not knowing is a result, and the street shows it as one.</p>
+      <p><strong>You can guess as much as you like.</strong> Make a column for a suspected family or for everyone in one lawsuit and drag people into it. Put a place in the gazetteer at <code>0, 0</code> for a household that sits nowhere on a map. The page attaches no meaning to either.</p>
+      <p>Your guesses are kept apart from the evidence. They live in <code>brick.json</code> with your placements and never touch the pile, because which column a man stands in is your thinking and no document says it.</p>
     </div>
   </section>
 
@@ -222,6 +225,68 @@ default.&lt;row&gt;.png       everyone else</code></pre>
     <p>It stops at the first comma, semicolon, full stop or bracket, and gives up past 28 characters rather than inventing a filename out of a sentence. No file means the ordinary figure. You can draw one uniform or none and nothing breaks either way.</p>
   </section>
 
+  <section id="marks">
+    <h2>Marking a drawing</h2>
+    <p class="lede">Mark pixels in the Sprite Editor and the drawing tells the page where its windows, door, chimneys and signpost are.</p>
+
+    <p>There are four marks. Use the flag tools, paint over the pixels you mean, and the picture looks exactly the same afterwards: the mark is stored in the <strong>alpha</strong> of pixels you already drew. 255 is opaque, 254 is a hair less opaque, and nothing can see the difference except the code that reads it back.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Mark</th><th scope="col">Alpha</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="k">▣ glass</td><td class="k">254</td><td>These panes light at night. The flame <em>tints</em> the pane rather than filling it, so dark astragals over pale glass stay dark.</td></tr>
+          <tr><td class="k">▯ door</td><td class="k">253</td><td>The way into this place. The region becomes a target you can knock on.</td></tr>
+          <tr><td class="k">☁ smoke</td><td class="k">251</td><td>Every marked pixel is a chimney and puffs rise from it.</td></tr>
+          <tr><td class="k">⚑ anchor</td><td class="k">252</td><td>Where this place's name stands. One per drawing.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="why">PNG is lossless and never touches the alpha you wrote, so the marks travel with the file. Copy it, mail it, commit it. There is nothing to keep in step and nothing to lose. Around a dozen more flags fit below 251 before a marked pixel would start to look faded.</p>
+
+    <h3>The anchor is the post's foot</h3>
+    <p>A marked pixel is where the signpost <strong>stands</strong>, not how high it climbs. The post runs from the underside of the board down to that pixel and stops. Mark a roof and the sign is bolted to the roof; mark the ground and it is planted in the street; mark nothing and it keeps the standard height every other sign has.</p>
+    <p>Dragging the board up lengthens the post. Dragging it down to its foot leaves none of it, which is what a sign lying against a wall looks like. The mark itself never moves with the drag: it is a fixed point in the picture.</p>
+
+    <div class="note">
+      <p><strong>An anchor can go in open sky.</strong> Every other flag needs a drawn pixel to ride in, and empty space has none. The anchor is written the other way up when it lands on nothing, <strong>alpha 3</strong> rather than 252: as invisible on nothing as the others are on something. Only the anchor gets this. Glass, a door and a chimney are properties of drawn pixels and mean nothing hanging in the air.</p>
+    </div>
+
+    <h3>Smoke</h3>
+    <p>Each marked pixel is one chimney with its own drift, and the puffs rise <em>behind</em> the building rather than over it. A puff is cut off horizontally at the line of its own chimney, so smoke never appears below the pot it came out of.</p>
+    <p>The smoke bar sets colour and amount. At night, and as the sun drops, it takes the light with everything else.</p>
+
+    <h3>Doors</h3>
+    <p>A marked door lights under the pointer. <strong>Click and it knocks</strong>: you hear it, and the door flexes. Every press raps, so two presses are two raps, and the second one opens the place.</p>
+    <p>Knock repeatedly and it gets louder. The step from the first rap to the second is the large one, since two presses are the gesture anyone actually makes; later raps taper toward a ceiling. A second of quiet resets it.</p>
+    <p>Inside is a reading of who that place holds, in two tabs. <strong>Who</strong> lists the people, what puts them there, and anyone visiting from elsewhere. <strong>When</strong> lays the same place out as everything that happened there, in order.</p>
+    <p class="why">A door is a view and never an edit. Nothing you do behind one reaches the pile.</p>
+  </section>
+
+  <section id="sky">
+    <h2>The sky</h2>
+    <p class="lede">Scenery, not data. Nothing above the roofline says anything about your research.</p>
+
+    <h3>The sun is the light</h3>
+    <p>Drag the sun and the whole scene answers. High up it is yellow-white over a pale sky; as it falls it runs through orange to a deep red at the horizon, and the ground, the buildings, the figures and the smoke all take that colour with it. It is an <em>environmental</em> light rather than a lamp: nothing is lit from a direction, everything is tinted by the hour.</p>
+    <p>The ground draws in front of the sun, so it sets behind the street rather than over it. Switching to night gives you the same arrangement after dark, which makes the two ends of the dial dawn and dusk.</p>
+    <p>The moon sits just above the background, behind the buildings, and holds still while the street pans. It fades as it nears the horizon, and turns whiter and more transparent toward dawn.</p>
+
+    <h3>Clouds</h3>
+    <p>Each cloud is one silhouette baked from several overlapping lobes, so nothing shows through the joins. Three dials on the scenery bar:</p>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td class="k">number</td><td>Nothing at all at one end, an overcast at the other.</td></tr>
+          <tr><td class="k">size</td><td>A haze of specks up to weather the size of the street.</td></tr>
+          <tr><td class="k">distance</td><td>Down, they travel with the buildings and might as well be painted on them. In the middle they hold still while the street goes past, the way the sun does. Past that they cross the other way, which reads as weather moving while you walk.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Clouds wrap in <strong>screen</strong> space rather than world space, so panning never runs you off the end of the band into an empty sky. They drift with the wind on top of whatever the street is doing.</p>
+  </section>
+
   <section id="sheet">
     <h2>Sprite sheets</h2>
     <p class="lede">One strip, 96 × 24, four frames of a single walk cycle. Same geometry for every layer.</p>
@@ -253,7 +318,7 @@ default.&lt;row&gt;.png       everyone else</code></pre>
         <tbody>
           <tr><td class="k">+ &nbsp;−</td><td>Top right</td><td>Zoom 1× to 4×. Scales the world rather than the camera. Spacing and lettering grow together. Holds the center of your view across a step.</td></tr>
           <tr><td class="k">street / grid</td><td>Top right</td><td>Switch arrangement. Placements carry across.</td></tr>
-          <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. <strong>It starts moving on its own, so the button is a pause.</strong> Any interaction stops it, and it restarts after 30 seconds untouched.</td></tr>
+          <tr><td class="k">▶ ❚❚</td><td>Top right</td><td>Auto-drift along the street. <strong>It starts moving on its own, so the button is a pause.</strong> Any interaction stops it, and it restarts after 30 seconds untouched. Typing does not count as being away: while a text field anywhere on the board has focus the drift waits, and picks up shortly after you leave it.</td></tr>
           <tr><td class="k">sort</td><td>Top right, grid only</td><td>west→east, earliest first, or A→Z. Reorders <em>within</em> groups.</td></tr>
           <tr><td class="k">color bar</td><td>Top left, when a column is selected</td><td>Two gradient stops, opacity, ribbon color, two lines of text. <code>↺</code> clears, <code>×</code> closes.</td></tr>
           <tr><td class="k">☀ ☾</td><td>Bottom, beside the scene colors</td><td>Day or night. Clicking the sun or moon in the sky does the same. Drag it to move it, right-click to reset.</td></tr>
@@ -263,9 +328,19 @@ default.&lt;row&gt;.png       everyone else</code></pre>
           <tr><td class="k">drag</td><td>The ground</td><td>Pan the street. Wheel works too.</td></tr>
           <tr><td class="k">drag</td><td>A figure</td><td>Pick up, drop into a column, or return to the pen.</td></tr>
           <tr><td class="k">hover</td><td>A figure</td><td>Show their name and year.</td></tr>
+          <tr><td class="k">click</td><td>A marked door</td><td>Knock. Twice in quick succession opens the place.</td></tr>
+          <tr><td class="k">drag</td><td>The sun or moon</td><td>Set the hour. Everything in the scene takes its colour from where it sits. Right-click resets it.</td></tr>
+          <tr><td class="k">scenery bar</td><td>Bottom</td><td>Clouds on or off, and their number, size and distance.</td></tr>
         </tbody>
       </table>
     </div>
+
+    <h3>The status line</h3>
+    <p>The line under the street is this panel's status bar, and says only what is true at the time:</p>
+<pre><code>14 bricklings · 9 placed by their records · 6 signposts ·
+showing everyone at Killin, click again to clear ·
+filtered to 12 of 59 bricks · 60 fps</code></pre>
+    <p>Selecting somebody dims everyone unrelated and is the panel's own state; it changes nothing about the pile. The board filter <em>does</em> change what the panel can see. The two are worded apart so one is never mistaken for the other.</p>
 
     <p>Reduced-motion stops figures travelling between arrangements, and stops the idle timer restarting the drift. It does not stop the walk cycle, the pacing, or a drift you started yourself.</p>
   </section>
