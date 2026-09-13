@@ -1004,6 +1004,8 @@
       pixels wide, and only shows itself under the pointer. */
   .dock-grip { position: absolute; z-index: 1; background: transparent; }
   .dock-grip:hover { background: var(--accent2); opacity: 0.5; }
+  /*  The one being carried, so an exchange reads as an exchange. */
+  .dock > .panel.dock-moving { opacity: 0.55; outline: 1px dashed var(--accent2); }
   .dock-left .dock-grip, .dock-right .dock-grip { top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
   .dock-top .dock-grip, .dock-bottom .dock-grip { left: 0; right: 0; height: 5px; cursor: ns-resize; }
   .dock-left .dock-grip { right: 0; }
@@ -17482,15 +17484,28 @@ function renderDocks() {
       grip.title = "drag to resize this edge";
       rail.appendChild(grip);
       wireDockGrip(grip, side);
+      wireDockReorder(rail, side);
       document.body.appendChild(rail);
     }
     const size = dockSizeOf(side);
     if (side === "left" || side === "right") rail.style.width = size + "px";
     else rail.style.height = size + "px";
 
+    /*  The rail is laid out in the order the tiles sit in, and appending only
+        when the parent is wrong was not enough: a panel already in the right
+        rail in the wrong place stayed put, so reordering did nothing. Compared
+        first, then re-appended in one pass, because appendChild MOVES a node
+        and doing that every render costs the Promenade a reflow it does not
+        need. */
+    const want = tiles.map(t => document.getElementById(t.id) || buildPanel(panels.get(t.id)));
+    const have = [...rail.querySelectorAll(":scope > .panel")];
+    if (have.length !== want.length || have.some((n, i) => n !== want[i])) {
+      for (const n of want) rail.appendChild(n);
+    }
+
     for (const t of tiles) {
-      const panel = document.getElementById(t.id) || buildPanel(panels.get(t.id));
-      if (panel.parentElement !== rail) rail.appendChild(panel);
+      const panel = document.getElementById(t.id);
+      if (!panel) continue;
       panel.classList.add("is-docked");
       //  A board restored with this panel already docked never went through
       //  renderBoardTiles, so it has no ✕ yet. Without this it arrives on the
@@ -17526,6 +17541,62 @@ function renderDocks() {
   s.paddingRight = dockSizeOf("right") + "px";
   s.paddingBottom = dockSizeOf("bottom") + "px";
   s.paddingLeft = dockSizeOf("left") + "px";
+}
+
+/*  REORDERING WITHIN A RAIL.
+
+    Drag a docked panel by its header and it changes places with its
+    neighbours. The board's own tile drag is wired to the board element, so a
+    docked header reached nothing and an edge was stuck in whatever order you
+    happened to dock things in.
+
+    The rail draws in `board.tiles` order, so reordering the rail is reordering
+    that array. No positions change: a docked tile's x and y are the cell it
+    goes back to, and where it sits on the edge is a separate question. */
+function wireDockReorder(rail, side) {
+  const across = side === "left" || side === "right";
+  rail.addEventListener("mousedown", ev => {
+    const panel = ev.target.closest(".panel");
+    if (!panel || !ev.target.closest(".panel-head") || ev.target.closest("button")) return;
+    ev.preventDefault();
+    panel.classList.add("dock-moving");
+
+    const onMove = e => {
+      const over = [...rail.querySelectorAll(":scope > .panel")].find(n => {
+        if (n === panel) return false;
+        const r = n.getBoundingClientRect();
+        return across ? (e.clientY >= r.top && e.clientY <= r.bottom)
+                      : (e.clientX >= r.left && e.clientX <= r.right);
+      });
+      if (!over) return;
+      const r = over.getBoundingClientRect();
+      //  Past the middle of a neighbour is what commits the exchange, so a
+      //  panel does not flicker back and forth on the boundary.
+      const before = across ? e.clientY < r.top + r.height / 2
+                            : e.clientX < r.left + r.width / 2;
+      if (reorderDock(panel.id, over.id, before)) renderDocks();
+    };
+    const onUp = () => {
+      panel.classList.remove("dock-moving");
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      saveBoard();
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+}
+
+//  Returns whether anything actually moved, so the caller can skip a redraw.
+function reorderDock(id, overId, before) {
+  const from = board.tiles.findIndex(t => t.id === id);
+  const to = board.tiles.findIndex(t => t.id === overId);
+  if (from < 0 || to < 0 || from === to) return false;
+  const want = before ? to : to + 1;
+  if (want === from || want === from + 1) return false;
+  const [moved] = board.tiles.splice(from, 1);
+  board.tiles.splice(want > from ? want - 1 : want, 0, moved);
+  return true;
 }
 
 /*  Dragging the inside edge of a rail. Written onto every tile on that edge,
