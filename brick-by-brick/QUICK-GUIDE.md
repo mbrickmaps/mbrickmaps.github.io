@@ -133,6 +133,24 @@ carries the same badges:
 the panel you closed. Take one off, put it back, and it returns exactly as you
 left it, still scrolled where you were. Rearranging cannot break anything.
 
+### Keeping one in sight
+
+Drag a panel by its header and a dashed **+** appears at each edge of the
+window. Drop it on one and the panel pins to that edge, where it stays while the
+board scrolls past. The Pallet along the bottom while you work three screens
+down is the usual reason.
+
+Every edge keeps its own **+**, so a second panel can join it and share the
+space. Drag the inside edge of the strip to make it thicker. On a pinned panel,
+**⊞** puts it back in the cell it came from and **✕** takes it off the board.
+
+### Finding your way back
+
+The little grid in the bottom right corner is your whole board at about a
+fiftieth scale, each panel at its own position and size. Click a block to scroll
+straight to that panel. Hover a block to light the panel it stands for, or hover
+a panel to light its block.
+
 Two more controls at the top of the 🧰 panel: **Columns** for how wide the board
 is, **Row px** for how tall a row sits.
 

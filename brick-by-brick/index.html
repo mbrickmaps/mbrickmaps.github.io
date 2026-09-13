@@ -103,12 +103,26 @@
     grid-auto-rows: var(--board-row, 220px);
     padding-bottom: 40px;
   }
+  /*  AN EMPTY CELL IS A HOLE, NOT A GAP.
+
+      It used to be transparent, so it took the board's own colour and read as
+      more board. Sunk instead: darker than whatever is behind it, with the
+      shadow falling from the top edge the way it does inside a recess. In the
+      Brick theme that makes the wall literal, a missing brick with the dark
+      of the cavity behind it, and it works the same in every other theme
+      because the colour is mixed from that theme's own board rather than
+      being a fixed grey. */
   .board-cell {
     border: 1px dashed var(--border-soft); border-radius: 6px; z-index: 0;
     display: flex; align-items: center; justify-content: center;
     color: var(--border-soft); font-size: 1.4rem; cursor: pointer; user-select: none;
+    background: color-mix(in srgb, #000 42%, var(--bg));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
   }
-  .board-cell:hover { border-color: var(--accent2); color: var(--accent2); }
+  .board-cell:hover {
+    border-color: var(--accent2); color: var(--accent2);
+    background: color-mix(in srgb, #000 28%, var(--bg));
+  }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
   /* Raise a tile while its label is the thing being read, so a neighboring
      tile's background cannot paint over the overhanging cartouche. */
@@ -118,15 +132,20 @@
       clipped away — an element cannot overflow a scroll container it lives
       inside. The body scrolls; the panel stays visible so the label can sit
       proud of the frame. */
-  .board-tile > .panel {
+  /*  A docked panel is the same panel in a different frame, so it gets the
+      same rules. Without them its body had no height to be bounded by and a
+      long table simply hung out of the bottom of the rail and off the window.
+      The dock rules further down re-assert the flex along the rail. */
+  .board-tile > .panel, .dock > .panel {
     flex: 1 1 auto; min-width: 0; overflow: visible;
     display: flex; flex-direction: column;
   }
-  .board-tile > .panel > .panel-body {
+  .board-tile > .panel > .panel-body, .dock > .panel > .panel-body {
     flex: 1 1 auto; min-height: 0; overflow: auto;
     scrollbar-width: none; -ms-overflow-style: none;
   }
-  .board-tile > .panel > .panel-body::-webkit-scrollbar { display: none; }
+  .board-tile > .panel > .panel-body::-webkit-scrollbar,
+  .dock > .panel > .panel-body::-webkit-scrollbar { display: none; }
   .board-tile.dragging { opacity: 0.4; }
   /* The footprint a drop would occupy. Never placed until mouseup. */
   #boardGhost {
@@ -953,6 +972,219 @@
   .tl-dot:hover { box-shadow: 0 0 0 2px var(--accent2); z-index: 2; }
   .tl-empty { font-size: 0.7rem; opacity: 0.45; }
 
+  /* ---------- docks ---------- */
+  /*  A rail is fixed to an edge of the window and the page is padded out of
+      its way, so the board never has to know it exists. Above the board and
+      below the flyout, which is the only thing that should cover a dock. */
+  /*  The title is a cartouche sitting 7px ABOVE its panel's top border, so a
+      rail has to leave room for it or every docked panel is decapitated. Same
+      reason the gap down a vertical rail is wider than the one across a
+      horizontal one: stacked panels each need that clearance, side by side
+      ones share the rail's own top padding. */
+  .dock {
+    position: fixed; z-index: 50; display: flex; gap: 8px; padding: 13px 8px 8px;
+    background: var(--bg); border: 0 solid var(--border);
+    overflow: auto; align-items: stretch;
+  }
+  .dock-left, .dock-right { top: 0; bottom: 0; flex-direction: column; gap: 16px; }
+  .dock-top, .dock-bottom { left: 0; right: 0; flex-direction: row; }
+  .dock-left { left: 0; border-right-width: 1px; }
+  .dock-right { right: 0; border-left-width: 1px; }
+  .dock-top { top: 0; border-bottom-width: 1px; }
+  .dock-bottom { bottom: 0; border-top-width: 1px; }
+  /*  Panels share the rail equally along it and fill it across it, which is
+      what a split pane does and what two docked panels should do. */
+  /*  overflow stays VISIBLE, like a tile's: the body is what scrolls, and a
+      panel that clips itself cuts the title off its own top border. */
+  .dock > .panel { flex: 1 1 0; min-width: 120px; min-height: 0; margin: 0; }
+  /*  A wide table in a shallow rail scrolls sideways inside its own box rather
+      than stretching the panel past the edge of the window. */
+  .dock > .panel .table-wrap, .dock > .panel table { max-width: 100%; }
+  /*  The grab edge. Sits inside the rail on the side facing the page, four
+      pixels wide, and only shows itself under the pointer. */
+  .dock-grip { position: absolute; z-index: 1; background: transparent; }
+  .dock-grip:hover { background: var(--accent2); opacity: 0.5; }
+  .dock-left .dock-grip, .dock-right .dock-grip { top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
+  .dock-top .dock-grip, .dock-bottom .dock-grip { left: 0; right: 0; height: 5px; cursor: ns-resize; }
+  .dock-left .dock-grip { right: 0; }
+  .dock-right .dock-grip { left: 0; }
+  .dock-top .dock-grip { bottom: 0; }
+  .dock-bottom .dock-grip { top: 0; }
+
+  /*  The drop targets. Out of the way until a panel is moving, then a plus at
+      each edge of the window. */
+  #dockTargets { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
+  .dock-target {
+    position: fixed; display: none; place-items: center;
+    width: 34px; height: 34px; font-size: 1.1rem; line-height: 1;
+    border: 1px dashed var(--accent2); border-radius: 6px;
+    background: color-mix(in srgb, var(--accent2) 14%, var(--panel));
+    color: var(--accent2); cursor: copy; pointer-events: auto;
+  }
+  #dockTargets.live .dock-target { display: grid; }
+  .dock-target.over { background: var(--accent2); color: var(--bg); border-style: solid; }
+  .dock-target-top, .dock-target-bottom { left: 50%; margin-left: -17px; }
+  .dock-target-left, .dock-target-right { top: 50%; margin-top: -17px; }
+  /*  The plus on the end of a rail, which is how an edge takes a second panel.
+      Thin along the rail, full width across it. */
+  /*  The same hole as an empty board cell, since it is the same thing: a place
+      on the wall with no brick in it yet. */
+  .dock-slot {
+    flex: 0 0 22px; border: 1px dashed var(--border); border-radius: 4px;
+    background: color-mix(in srgb, #000 42%, var(--bg));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
+    color: inherit; opacity: 0.5; cursor: copy;
+    font-size: 0.9rem; line-height: 1;
+  }
+  .dock-slot:hover, .dock-slot.over { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  body.panel-dragging .dock-slot { opacity: 0.8; border-color: var(--accent2); }
+
+  .dock-pop {
+    border: 1px solid transparent; background: none; color: inherit;
+    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
+    cursor: pointer; opacity: 0.5;
+  }
+  .dock-pop:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  /*  Two controls on a docked panel, each meaning one thing: ⊞ puts it back on
+      the board, ✕ takes it off the board altogether, exactly as ✕ does
+      everywhere else. Hiding the ✕ while docked made the Promenade look
+      unremovable without first undocking it. */
+  .panel:not(.is-docked) .dock-pop { display: none; }
+
+
+  /* ---------- the minimap ---------- */
+  /*  Bottom right, clear of the 🧰 tab, which sits centred on the right edge.
+      Quiet until you go near it: it is a way back, not a thing to look at. */
+  #miniMap {
+    position: fixed; right: 10px; bottom: 10px; z-index: 55;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    border: 1px solid var(--border); border-radius: 5px; padding: 5px;
+    width: 104px; opacity: 0.42; transition: opacity 0.15s;
+    backdrop-filter: blur(2px);
+  }
+  #miniMap:hover { opacity: 1; }
+  #miniMap[hidden] { display: none; }
+  .mm-grid { display: grid; gap: 2px; width: 100%; }
+  .mm-cell {
+    border: 1px solid var(--border); border-radius: 2px; background: var(--field);
+    padding: 0; min-width: 0; min-height: 0; cursor: pointer;
+  }
+  .mm-cell:hover { border-color: var(--accent2); background: var(--tint); }
+  /*  The part of the board the window is over. Filled rather than outlined,
+      because at nine pixels across an outline is the whole block. */
+  .mm-cell.here { background: color-mix(in srgb, var(--accent2) 32%, var(--field));
+                  border-color: color-mix(in srgb, var(--accent2) 55%, var(--border)); }
+  .mm-name {
+    font-size: 0.56rem; opacity: 0.75; height: 0.9rem; margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /*  Two seconds of "this one", for the end of a smooth scroll. */
+  .mm-ping { outline: 2px solid var(--accent2); outline-offset: -2px; }
+  /*  The pairing, both ways: the block under the pointer lights its panel, and
+      the panel under the pointer lights its block. Softer than the ping, which
+      has to be findable across a whole screen, and distinct from .here, which
+      is a fact about the scroll rather than about the pointer. */
+  .mm-cell.lit { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
+  .panel.mm-lit { outline: 1px solid var(--accent2); outline-offset: -1px; }
+  @media (prefers-reduced-motion: reduce) { #miniMap { transition: none; } }
+
+  /* ---------- story ---------- */
+  .st-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 4px; }
+  .st-bar { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; flex-wrap: wrap; }
+  .st-bar button, .st-load {
+    font-size: 0.62rem; padding: 2px 7px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--field); color: inherit;
+  }
+  .st-bar button:hover, .st-load:hover { border-color: var(--accent2); color: var(--accent2); }
+  .st-title {
+    flex: 1 1 90px; min-width: 70px; font-size: 0.68rem; padding: 2px 5px;
+    border: 1px solid var(--border); background: var(--field); color: inherit; border-radius: 3px;
+  }
+  .st-note { font-size: 0.62rem; opacity: 0.55; flex: 0 0 auto; }
+  .st-beats { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex;
+              flex-direction: column; gap: 4px; }
+  .st-beat {
+    border: 1px solid var(--border); border-left-width: 3px; border-radius: 3px;
+    padding: 3px 5px; display: flex; flex-direction: column; gap: 3px;
+  }
+  /* The beat on screen right now, so a playing story is followable from here. */
+  .st-beat.on { border-left-color: var(--accent2); background: var(--tint); }
+  .st-head { display: flex; align-items: center; gap: 3px; }
+  .st-n { font-size: 0.58rem; opacity: 0.5; width: 13px; flex: 0 0 auto;
+          font-variant-numeric: tabular-nums; }
+  .st-head button {
+    font-size: 0.6rem; line-height: 1; padding: 2px 5px; border-radius: 3px;
+    border: 1px solid var(--border); background: none; color: inherit; cursor: pointer;
+  }
+  .st-head button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .st-where { flex: 1 1 auto; min-width: 0; font-size: 0.6rem; background: var(--field);
+              color: inherit; border: 1px solid var(--border); border-radius: 3px; }
+  .st-hold { width: 44px; flex: 0 0 auto; font-size: 0.6rem; background: var(--field);
+             color: inherit; border: 1px solid var(--border); border-radius: 3px; }
+  .st-say {
+    font-size: 0.64rem; padding: 2px 5px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--field); color: inherit;
+  }
+  .st-foot { display: flex; align-items: center; gap: 6px; font-size: 0.56rem; opacity: 0.7;
+             flex-wrap: wrap; }
+  .st-keep { display: flex; align-items: center; gap: 3px; cursor: pointer; }
+  .st-keep input { margin: 0; cursor: pointer; }
+  .st-act {
+    font-size: 0.56rem; padding: 1px 5px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--border); background: none; color: inherit;
+  }
+  .st-act:hover { border-color: var(--accent2); color: var(--accent2); }
+  .st-name {
+    flex: 1 1 auto; min-width: 0; font-size: 0.64rem; font-weight: 600;
+    padding: 1px 4px; border: 1px solid transparent; border-radius: 3px;
+    background: none; color: inherit;
+  }
+  .st-name:hover, .st-name:focus { border-color: var(--border); background: var(--field); }
+  .st-who, .st-uses { opacity: 0.7; }
+  .st-uses { color: var(--accent2); }
+  .st-missing { font-size: 0.62rem; color: var(--bad); flex: 1 1 auto; }
+  .st-beat.gone { border-left-color: var(--bad); }
+  .st-lib, .st-add { flex: 0 0 auto; font-size: 0.58rem; opacity: 0.85; }
+  .st-lib > span, .st-add > span { opacity: 0.6; }
+  .st-lib > div, .st-add > div { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px;
+                                 max-height: 3.4rem; overflow-y: auto; }
+  /*  A kept scene: the name puts it in the show, the ✕ deletes it for good.
+      Two targets in one chip, so the destructive one is never the big one. */
+  .st-chip { display: inline-flex; align-items: stretch; border: 1px solid var(--border);
+             border-radius: 3px; overflow: hidden; }
+  .st-chip.in { border-color: color-mix(in srgb, var(--accent2) 45%, var(--border)); }
+  .st-chip button { font-size: 0.58rem; border: 0; background: none; color: inherit;
+                    cursor: pointer; padding: 1px 5px; }
+  .st-chip-add:hover { color: var(--accent2); }
+  .st-chip-x { opacity: 0.4; border-left: 1px solid var(--border) !important; }
+  .st-chip-x:hover { opacity: 1; color: var(--bad); }
+  .st-seed {
+    font-size: 0.58rem; padding: 1px 5px; border-radius: 3px; cursor: pointer;
+    border: 1px solid var(--border); background: none; color: inherit; white-space: nowrap;
+  }
+  .st-seed:hover { border-color: var(--accent2); color: var(--accent2); }
+  .st-empty { opacity: 0.5; }
+
+  /* ---------- the promenade, dressed for an audience ---------- */
+  /*  Everything on this panel except the picture is a tool for arranging the
+      scene, and a scene being watched is not being arranged. The canvas stays,
+      the caption stays, and the way out stays: losing the exit would leave the
+      only way back a page reload. */
+  /*  The switch stays: a toggle you press once and cannot press again is a
+      button, not a toggle. It fades back to almost nothing so the scene keeps
+      the corner, and comes up under the pointer. */
+  .pr-shell.pr-bare > :not(canvas):not(.pr-say):not(.pr-bare-btn) { display: none !important; }
+  .pr-shell.pr-bare .pr-bare-btn { top: 6px; right: 6px; opacity: 0.18; }
+  .pr-shell.pr-bare .pr-bare-btn:hover { opacity: 1; }
+  .pr-shell.pr-bare { cursor: default; }
+  .pr-say {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    z-index: 5; max-width: 78%; text-align: center;
+    font-size: 0.74rem; line-height: 1.45; padding: 5px 11px; border-radius: 3px;
+    background: rgba(0,0,0,0.62); color: #f4f7fb; pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
   /* ---------- tree ---------- */
   .tr-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .tr-head { font-size: 0.68rem; opacity: 0.55; margin-bottom: 4px; flex-shrink: 0; }
@@ -1348,6 +1580,10 @@
   .pr-mode { right: 66px; min-width: 46px; }
   .pr-drift { right: 120px; min-width: 26px; }
   .pr-drift.on { border-color: var(--accent2); color: var(--accent2); }
+  /*  Left of the drift button, and lit while it is on, so it reads as the
+      switch it is rather than as an action you fire. */
+  .pr-bare-btn { right: 152px; min-width: 26px; }
+  .pr-bare-btn.on { border-color: var(--accent2); color: var(--accent2); }
   .pr-sort {
     position: absolute; right: 152px; top: 28px; z-index: 2;
     font-size: 0.62rem; padding: 1px 4px;
@@ -2964,6 +3200,16 @@ Brick.viz.register("map", {
   render: (model, el) => renderMap(model, el),
 });
 
+Brick.viz.register("story", {
+  emoji: "🎬", label: "Story Maker", w: 2, h: 2,
+  description: "Save the street as a scene, then play your scenes in an order " +
+    "you choose. A scene is the whole arrangement: who stands where, the " +
+    "column colours and notes, the hour, the weather, the zoom and where you " +
+    "were standing. Give each one a caption and a length, and the Promenade " +
+    "plays through them with its controls hidden.",
+  render: (model, el) => renderStory(model, el),
+});
+
 Brick.viz.register("tree", {
   emoji: "🌳", label: "Tree", w: 3, h: 2,
   description: "Parents, children and partners, read off the births and " +
@@ -4067,8 +4313,12 @@ function gradientTexture(P, from, to) {
 
    Read automatically when you open a folder that contains one.
    ========================================================================== */
-function sidecarJSON(host) {
-  return JSON.stringify({
+/*  The sidecar as an object, because a scene is the same snapshot kept in
+    memory rather than written to disk. One serialisation, two users: what a
+    brick.json restores when you open a folder is exactly what a scene restores
+    when the story cuts to it. */
+function sidecarData(host) {
+  return {
     brickByBrick: 1,
     saved: new Date().toISOString(),
     promenade: {
@@ -4085,7 +4335,30 @@ function sidecarJSON(host) {
       //  Both hours. An older file carrying one pair still reads as the day.
       scene: { day: { ...SCENE_BG }, night: { ...SCENE_BG_NIGHT } },
     },
-  }, null, 2);
+    /*  HOW IT LOOKED, not only how it was arranged. The hour, the weather and
+        where you were standing are as much a part of a saved street as who is
+        in which column, and leaving them out meant a brick.json restored the
+        placements into whatever light the page happened to be in. */
+    view: {
+      night: NIGHT,
+      sun: SUN_POS ? { ...SUN_POS } : null,
+      zoom: host ? (host._zoom || 1) : 1,
+      //  Fractional, so the same scene lands in the same place in a tile of a
+      //  different width.
+      panFrac: host && host._world && host._worldW
+        ? -host._world.x / host._worldW : 0,
+      signY: { ...SIGN_Y },
+    },
+    sky: {
+      weather: { ...WEATHER },
+      scenery: [...SCENE_SET.entries()],
+      smoke: [...SMOKE.entries()],
+    },
+  };
+}
+
+function sidecarJSON(host) {
+  return JSON.stringify(sidecarData(host), null, 2);
 }
 
 /*  Returns what it managed to read, so the caller can say so rather than
@@ -4178,6 +4451,52 @@ function applySidecar(text, host) {
     }
     saveSceneBg();
     if (host && host._syncSceneBg) host._syncSceneBg();
+  }
+
+  /*  Absent in every file written before scenes existed, and absent is not the
+      same as "put it back to the default": an old brick.json says nothing
+      about the hour and must leave the hour alone. */
+  const view = data.view;
+  if (view && typeof view === "object") {
+    if (typeof view.night === "boolean") { NIGHT = view.night; saveNight(); }
+    if (view.sun && isFinite(view.sun.fx) && isFinite(view.sun.fy)) {
+      SUN_POS = { fx: Math.max(0, Math.min(1, view.sun.fx)),
+                  fy: Math.max(0, Math.min(1, view.sun.fy)) };
+      saveSunPos();
+    }
+    if (isFinite(view.zoom) && host) host._zoom = Math.max(1, Math.min(4, Math.round(view.zoom)));
+    if (view.signY && typeof view.signY === "object") {
+      SIGN_Y = {};
+      for (const [k, v] of Object.entries(view.signY)) if (isFinite(v)) SIGN_Y[k] = Number(v);
+      saveSignY();
+    }
+    /*  Held for the render to use, because the street it is a fraction OF does
+        not exist until the columns are laid out again. */
+    if (isFinite(view.panFrac) && host) host._panFracWanted = Number(view.panFrac);
+  }
+
+  const sky = data.sky;
+  if (sky && typeof sky === "object") {
+    if (sky.weather && isFinite(sky.weather.wind)) {
+      WEATHER = { ...WEATHER, wind: Math.max(0, Math.min(1, Number(sky.weather.wind))) };
+      saveWeather();
+    }
+    if (Array.isArray(sky.scenery)) {
+      SCENE_SET.clear();
+      for (const [k, v] of sky.scenery) {
+        if (typeof k === "string" && (typeof v === "number" || typeof v === "boolean")) {
+          SCENE_SET.set(k, v);
+        }
+      }
+      saveScenery();
+    }
+    if (Array.isArray(sky.smoke)) {
+      SMOKE.clear();
+      for (const [k, v] of sky.smoke) {
+        if (typeof k === "string" && v && typeof v === "object") SMOKE.set(k, v);
+      }
+      saveSmoke();
+    }
   }
   return out;
 }
@@ -4622,6 +4941,146 @@ function saveSunPos() {
     else localStorage.removeItem(SUNPOS_KEY);
   } catch (e) { /* unavailable */ }
 }
+/*  THE HOUR PASSES WITHOUT YOU.
+
+    A pixel a second. The sun climbs to the top of the panel, comes back down,
+    sets, and hands the sky to the moon, which does the same and gives it back
+    at dawn. Nothing else in the scene needs telling: the light is read off the
+    disc's height, so moving the disc IS the day going by.
+
+    A pixel a second because of what it drives rather than how it looks. SUN_LOW
+    quantises to twenty-fourths, so a three-hundred-pixel sky is twenty-four
+    changes of light over about five minutes: slow enough that you never catch
+    the scene restyling itself, fast enough that a panel you glance back at has
+    moved on. Faster and the sky visibly steps; much slower and it reads as
+    broken rather than as still. */
+const SUN_RATE = 1;                  // pixels per second
+
+/*  THE MOON IS NOT ON THE SUN'S CLOCK.
+
+    A solar day is 24 hours and a lunar day is 24h50m, because the moon has
+    moved along its own orbit while the earth turned under it. So it crosses
+    slightly slower, and the night comes out about three percent longer than
+    the day, which is the only honest way for one disc to be doing something
+    other than the other on the same track.
+
+    The 50 minutes also mean it comes up later each night, roughly a
+    twenty-eighth of a circuit, and that is where LUNAR_DRIFT comes from: shift
+    the rise point by that much per night and it walks the whole sky in a lunar
+    month. Without it the moon rises exactly where the sun went down, for ever,
+    and the two are visibly bolted together. */
+const MOON_RATE = SUN_RATE * 24 / 24.84;
+const LUNAR_DRIFT = 1 / 28;          // of the sky's width, per night
+
+/*  THE STORY.
+
+    A beat is a description of the scene, never a list of moves. It says where
+    the camera stands, what hour it is, who is lit and what the caption reads,
+    and the player tweens from whatever is on screen to that. So the beats can
+    be reordered, deleted and written by hand without anything having to be
+    recomputed: each one is true on its own.
+
+    Every field is optional, and an absent field means LEAVE IT. That is what
+    makes a beat like `{ sun: 0.9, say: "The shift ends." }` legal: it is the
+    same place and the same people, later in the day.
+
+    `at` and `focus` are uids out of the pile rather than copies of anything in
+    it, so a story cannot contradict the records. Rename a place and the story
+    follows; delete one and the beat is a dud you can see, exactly like any
+    other reference to a uid that is not there. */
+/*  A SCENE IS KEPT. AN ORDER IS ARRANGED.
+
+    These are two different things and holding them in one list was wrong. A
+    scene is an arrangement worth keeping — the mill at dusk, the churchyard in
+    snow — and it is written once. The order is which scenes you are showing
+    and in what sequence, and the same scene may appear in it three times.
+
+    So the file holds a library keyed by id and a list of ids. Editing a scene
+    changes it everywhere it plays, which is the whole reason for keeping them
+    apart: fix the caption once. Taking a scene out of the order does not throw
+    the scene away. */
+const STORY_KEY = "brick-by-brick:story:v2";
+const STORY_OLD = "brick-by-brick:story:v1";
+let STORY = { title: "", scenes: {}, order: [] };
+let SCENE_SEQ = 0;                   // only ever used to mint an unused id
+/*  The Story panel drives the Promenade, and the two are separate tiles that
+    may not both be on the board. Set by the Promenade's render, read by the
+    player, and checked for null every time rather than assumed. */
+let PROM_HOST = null;
+
+function newSceneId() {
+  do { SCENE_SEQ++; } while (STORY.scenes["s" + SCENE_SEQ]);
+  return "s" + SCENE_SEQ;
+}
+
+/*  Reads the current shape, and the flat list of beats that came before it.
+    An old file becomes one scene per beat in the order they were written,
+    which is exactly what it meant. */
+function adoptStory(raw) {
+  if (!raw) return null;
+  const out = { title: String(raw.title || ""), scenes: {}, order: [] };
+
+  if (raw.scenes && typeof raw.scenes === "object") {
+    for (const [id, s] of Object.entries(raw.scenes)) {
+      const key = String(id).slice(0, 40);
+      if (key) out.scenes[key] = cleanScene(s);
+    }
+    const order = Array.isArray(raw.order) ? raw.order : [];
+    out.order = order.map(String).filter(id => out.scenes[id]);
+    return out;
+  }
+
+  if (Array.isArray(raw.beats)) {
+    raw.beats.forEach((b, i) => {
+      const id = "s" + (i + 1);
+      out.scenes[id] = cleanScene(b);
+      out.order.push(id);
+    });
+    return out;
+  }
+  return null;
+}
+
+function loadStory() {
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(STORY_KEY) || "null"); } catch (e) { /* unreadable */ }
+  if (!raw) {
+    try { raw = JSON.parse(localStorage.getItem(STORY_OLD) || "null"); } catch (e) { /* unreadable */ }
+  }
+  const got = adoptStory(raw);
+  if (got) STORY = got;
+  //  So a fresh id never collides with one that came out of a file.
+  for (const id of Object.keys(STORY.scenes)) {
+    const n = Number(String(id).replace(/^s/, ""));
+    if (isFinite(n) && n > SCENE_SEQ) SCENE_SEQ = n;
+  }
+}
+function saveStory() {
+  try { localStorage.setItem(STORY_KEY, JSON.stringify(STORY)); } catch (e) { /* unavailable */ }
+}
+
+/*  A name is what makes a scene findable in a library, so one is always
+    supplied: the caption, then the place, then the position it was made in.
+    An unnamed scene is a row of identical chips. */
+function cleanScene(s) {
+  const b = cleanBeat(s || {});
+  const raw = s && typeof s.name === "string" ? s.name.trim() : "";
+  b.name = (raw || b.say || "scene").slice(0, 60);
+  return b;
+}
+/*  Anything arriving from a file is a stranger. The state blob is passed
+    through untouched because applySidecar already refuses everything it does
+    not recognise, field by field, and validating it twice in two places is how
+    the two drift apart. */
+function cleanBeat(b) {
+  const n = (v, lo, hi, d) => (isFinite(v) ? Math.max(lo, Math.min(hi, Number(v))) : d);
+  return {
+    say: typeof (b && b.say) === "string" ? b.say.slice(0, 400) : "",
+    hold: n(b && b.hold, 0.5, 600, 6),
+    state: b && b.state && typeof b.state === "object" ? b.state : null,
+  };
+}
+
 /*  The one writer of SUN_LOW — see DUSK. Given where the sun is hanging and
     where the ground is, both in the panel's own pixels. Squared on the way out
     of duskT rather than here, so this stays the plain fraction and the shape
@@ -5787,6 +6246,43 @@ function renderPromenadePixi(model, host) {
     note.className = "hint pr-note";
     shell.appendChild(note);
 
+    /*  THE CAPTION, AND THE WAY OUT OF PRETTY MODE.
+
+        Both live outside the bare-mode rule below, for opposite reasons: the
+        caption is the one piece of furniture a story needs, and the exit is
+        the one control you must not be able to lose. Everything else on this
+        panel is a tool for arranging the scene, and a scene being watched is
+        not being arranged. */
+    const say = document.createElement("div");
+    say.className = "pr-say";
+    say.hidden = true;
+    shell.appendChild(say);
+    host._say = text => {
+      say.textContent = text || "";
+      say.hidden = !text;
+    };
+
+    /*  One writer for the mode and its switch, the same bargain the drift
+        button struck: the flag and the lit state are one fact, so a story that
+        turns it on leaves the button showing on. */
+    host._setPretty = on => {
+      host._pretty = !!on;
+      shell.classList.toggle("pr-bare", host._pretty);
+      const b = shell.querySelector(".pr-bare-btn");
+      if (b) {
+        b.classList.toggle("on", host._pretty);
+        b.title = host._pretty ? "show the controls again (Esc)"
+                               : "hide the controls and just show the street";
+      }
+    };
+    /*  Esc is the way out of every full-screen thing anybody has used, and it
+        works without the pointer having to find a five-pixel button. The shell
+        takes focus for it, which it needs for nothing else. */
+    shell.tabIndex = -1;
+    shell.addEventListener("keydown", ev => {
+      if (ev.key === "Escape" && host._pretty) { host._setPretty(false); ev.stopPropagation(); }
+    });
+
     /*  Whole-number steps only. Re-rendering is the right move here rather
         than scaling the stage: at 3× the walkers need more room between the
         signposts, not the same street enlarged until everyone overlaps. */
@@ -5831,6 +6327,20 @@ function renderPromenadePixi(model, host) {
       // A re-sort reorders within the groups; it does not dissolve them.
       renderPromenadePixi(V(), host);
     };
+    /*  PRETTY MODE, BY HAND.
+
+        Playing a story turns it on, which was the only way in: there was no
+        way to simply look at the street without the tools for arranging it.
+        Same button in reverse as the ✕ that lives inside bare mode, so
+        whichever one you find gets you back. */
+    const bareBtn = document.createElement("button");
+    bareBtn.className = "pr-zoom pr-bare-btn";
+    bareBtn.type = "button";
+    bareBtn.textContent = "◱";
+    bareBtn.title = "hide the controls and just show the street (Esc brings them back)";
+    bareBtn.onclick = () => host._setPretty(!host._pretty);
+    shell.appendChild(bareBtn);
+
     const driftBtn = document.createElement("button");
     driftBtn.className = "pr-zoom pr-drift on";
     driftBtn.textContent = "❚❚";
@@ -5988,8 +6498,27 @@ function renderPromenadePixi(model, host) {
       ' title="how to manage the promenade, and how to make its art">help</a>';
     // README.md covers the whole project; this button is the Promenade's own page.
     shell.appendChild(fileBar);
-    fileBar.querySelector('[data-k="save"]').onclick = () =>
-      downloadText(sidecarJSON(host), "brick.json", "application/json");
+    /*  A SCENE IS A FILE, AND FILES NEED NAMES.
+
+        This button always saved the street; what it could not do was save it
+        twice. Everything landed as brick.json, so a second scene arrived as
+        "brick (1).json" and you had a folder of arrangements you could not
+        tell apart. Naming it writes <name>.scene.json instead, and the Story
+        Maker reads any number of those and puts them in an order.
+
+        Leaving the name empty still writes brick.json, because that is the
+        file a research folder picks up on its own and it must stay one press
+        away. */
+    fileBar.querySelector('[data-k="save"]').onclick = () => {
+      const name = (prompt(
+        "Name this scene.\n\nLeave it empty to write the folder's brick.json instead.",
+        "") || "").trim();
+      const data = sidecarData(host);
+      if (name) data.sceneName = name.slice(0, 60);
+      downloadText(JSON.stringify(data, null, 2),
+                   name ? slugify(name) + ".scene.json" : "brick.json",
+                   "application/json");
+    };
     fileBar.insertBefore(groupBtn, fileBar.firstChild);
     fileBar.insertBefore(groupIn, groupBtn.nextSibling);
 
@@ -7489,9 +8018,69 @@ function renderPromenadePixi(model, host) {
         }
       }
 
-      if (host._drift) {
-        host._world.x -= 0.25;
-        if (host._world.x < -(host._worldW - app.screen.width)) host._world.x = 0;
+      /*  NOTHING TO DRIFT ALONG IS NOT A REASON TO SHAKE.
+
+          The wrap used to be `x < -(worldW - screenW)` with no check that the
+          street is longer than the window. With four parishes it is not, that
+          span goes NEGATIVE, and the test reads `x < +200` — true on the very
+          first frame. So every frame moved the street a quarter pixel and then
+          snapped it back to 0, which is the juddering pan you see on a short
+          street. A street that already fits simply has nowhere to go. */
+      /*  THE CLOCK.
+
+          Climb to the top of the panel, turn, come back down, and set. The
+          light is read off the disc's own height, so moving it is the only
+          thing the hour needs: `_relight` repaints the sky and the disc, and
+          everything heavier waits for the handover at the horizon.
+
+          `_relight` is called only when the QUANTISED height changes, because
+          it mints a gradient texture. At a pixel a second that is about once
+          every twelve seconds rather than sixty times a second.
+
+          Hands off while you are holding it, and off entirely for anyone who
+          asked for less motion — a sky that restyles itself unbidden is
+          exactly what that setting means. */
+      const sn = host._sun;
+      if (sn && !sn.destroyed && host._relight && host._sunHorizon && !host._dragging &&
+          !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const rate = NIGHT ? MOON_RATE : SUN_RATE;
+        const step = rate * (app.ticker.deltaMS / 1000) * (host._sunDir || 1);
+        let y = sn.__sy + step;
+        if (y <= host._sunTop) { y = host._sunTop; host._sunDir = 1; }
+        //  Only on the way DOWN. A disc you dragged below the line is climbing
+        //  out of there, and passing the horizon upward is a sunrise.
+        if (y >= host._sunHorizon && host._sunDir === 1) {
+          if (host._sunSet) host._sunSet();
+        } else {
+          const was = SUN_LOW;
+          sn.__place(sn.__sx, y);
+          setSunLow(y, host._sunHorizon);
+          if (SUN_LOW !== was) host._relight();
+        }
+      }
+
+      /*  THE CAMERA MOVE A BEAT ASKS FOR.
+
+          Eased both ends, because a story cut is a move between two places
+          somebody chose and a linear slide reads as machinery. Cancels the
+          drift rather than fighting it: the two write the same number. */
+      if (host._panTo) {
+        const p = host._panTo;
+        p.t += app.ticker.deltaMS;
+        const k = Math.min(1, p.t / p.dur);
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        host._world.x = p.from + (p.to - p.from) * e;
+        if (k >= 1) host._panTo = null;
+      }
+
+      if (host._drift && !host._panTo) {
+        const span = host._worldW - app.screen.width;
+        if (span > 0) {
+          host._world.x -= 0.25;
+          if (host._world.x < -span) host._world.x = 0;
+        } else if (host._world.x !== 0) {
+          host._world.x = 0;
+        }
       }
     });
 
@@ -7763,6 +8352,42 @@ function renderPromenadePixi(model, host) {
       sun.__draw();
     };
     host._relight();
+
+    /*  What the clock in the ticker needs, in the panel's own pixels. Kept on
+        the host because the ticker is built once, long before this render, and
+        cannot see the height or the radius from in there. */
+    host._sunHorizon = H() * GROUND;
+    host._sunTop = R * 1.6;
+    if (host._sunDir === undefined) host._sunDir = -1;   // start by climbing
+
+    /*  SETTING IS WHAT ENDS THE DAY.
+
+        Put the sun below the ground line and the sky changes hands: the moon
+        comes up on the far side, low, where a body that has just set is not.
+        The moon goes down in its turn and it is morning. One move, repeated,
+        carries the whole cycle, whether the hand does it or the clock does.
+
+        It rises at a fixed low height rather than at the height it set from,
+        because setting means BELOW the horizon and starting the next body down
+        there would hide it behind the ground. */
+    host._sunSet = () => {
+      let fx = (app.screen.width - sun.__sx) / app.screen.width;
+      /*  NIGHT is still the hour that is ending, so false here means the sun
+          is going down and the moon is the one coming up. It gets its night's
+          worth of drift; the sun rises opposite whatever the moon did. */
+      if (!NIGHT) {
+        host._moonDrift = ((host._moonDrift || 0) + LUNAR_DRIFT) % 1;
+        fx += host._moonDrift;
+      }
+      fx = ((fx % 1) + 1) % 1;
+      SUN_POS = {
+        fx: Math.max(0.06, Math.min(0.94, fx)),
+        fy: Math.max(0, (host._sunHorizon - R * 1.6) / app.screen.height),
+      };
+      saveSunPos();
+      host._sunDir = -1;              // the new one comes up
+      if (host._toggleNight) host._toggleNight();   // redraws at the new hour
+    };
     /*  The balloon and the birds cross in FRONT of it — a bird passing behind
         the moon would be a bird in space. They hang off the stage, and the
         stage draws over the world, so that comes free. */
@@ -7812,9 +8437,18 @@ function renderPromenadePixi(model, host) {
       sun.cursor = "grab";
       host._dragging = false;
       if (!smoved) { if (host._toggleNight) host._toggleNight(); return; }
+
       SUN_POS = { fx: sun.__sx / app.screen.width,
                   fy: sun.__sy / app.screen.height };
       saveSunPos();
+      /*  A DRAG HANGS IT SOMEWHERE. IT DOES NOT END THE DAY.
+
+          Only the clock walking the disc down into the horizon changes the
+          hour. Put it wherever you like, below the ground line included, and
+          it climbs back out from there rather than taking your positioning as
+          an instruction about the time of day. The switch in the bar is still
+          how you say that deliberately. */
+      host._sunDir = -1;
       //  Now the rest of the scene catches up with the hour the drag settled on.
       host._noTween = true;
       renderPromenadePixi(V(), host);
@@ -7843,6 +8477,8 @@ function renderPromenadePixi(model, host) {
     //  No horizon on the grid, so nothing for it to be above, and no hour for
     //  anything to be repainted in.
     host._relight = null;
+    host._sunSet = null;
+    host._sunHorizon = 0;
     if (host._sun && !host._sun.destroyed) host._sun.destroy();
     host._sun = null;
   }
@@ -9540,6 +10176,46 @@ function renderPromenadePixi(model, host) {
   // titleCase leaves it blank and the line would read "showing everyone at ".
   host._titleOf.set("", "the promenade");
   syncPromNote(host);
+
+  /*  WHERE EACH COLUMN STANDS, for the camera. `_zones` has this too but is
+      built only when you first pick somebody up, and a story should not have
+      to fake a drag to find out where Longforgan is. */
+  host._colX = xOf;
+
+  /*  A restored view asked to stand somewhere, as a fraction of a street that
+      did not exist until this render finished laying it out. Applied here and
+      then forgotten, so it cannot fight the next drag. */
+  if (host._panFracWanted !== undefined && host._panFracWanted !== null) {
+    const span = Math.max(0, worldW - host._app.screen.width);
+    host._world.x = Math.min(0, Math.max(-span, -host._panFracWanted * worldW));
+    host._panFracWanted = null;
+    host._panTo = null;
+  }
+
+  /*  CUT TO A SCENE.
+
+      A scene is the whole street as it was saved: who stands where, the column
+      colours and their notes, the groups, the hour, the weather, the smoke,
+      the zoom and where you were standing. So playing one is restoring a
+      sidecar and drawing it, which is the same path a brick.json takes when
+      you open a folder. Nothing about a scene is a special case.
+
+      The caption is the one thing that is not part of the street, so it is
+      carried beside the state rather than inside it. */
+  host._cut = scene => {
+    if (!scene) return;
+    if (scene.state) applySidecar(JSON.stringify(scene.state), host);
+    if (host._say) host._say(scene.say || "");
+    host._setDrift(false);
+    host._noTween = true;             // a cut is a cut, not a walk across
+    renderPromenadePixi(V(), host);
+  };
+
+  /*  THE STREET AS IT STANDS. Arrange it by hand, press record, and the whole
+      arrangement is kept, rather than you describing it to a form. */
+  host._capture = () => sidecarData(host);
+
+  PROM_HOST = host;
 }
 
 function renderPromenade(model, host) {
@@ -15340,6 +16016,24 @@ const THEMES = [
   { id: "plum", name: "Plum", scheme: "dark", tokens: {
       bg: "#150f1a", panel: "#1f1727", field: "#100b14", fg: "#e6dcf0",
       border: "#332844", accent: "#ff6b9d", accent2: "#a78bfa", draft: "#8b7fa0" } },
+  /*  THE PAGE AS A WALL.
+
+      The panels are the bricks and the board behind them is the mortar, which
+      makes the edges the pointing: a panel outline is the joint between two
+      bricks, so `border` is the lightest thing in the theme rather than the
+      quietest. It is the one theme here where the token names describe a real
+      object.
+
+      Sooted London mortar rather than fresh lime, because a page of light grey
+      behind red panels is a page you cannot read a header on: `fg` is one
+      colour for every word, including the ones sitting on the board itself.
+      Dark mortar keeps both legible and keeps the set consistently dark.
+
+      Verified is a yellow stock brick and Active a weathered copper, neither
+      of which an orange wall can swallow. */
+  { id: "brick", name: "Brick", scheme: "dark", tokens: {
+      bg: "#33302c", panel: "#7d3a28", field: "#5a2a1d", fg: "#f7ece6",
+      border: "#a89c8c", accent: "#f0b429", accent2: "#57cfbe", draft: "#c9b6a8" } },
 ];
 
 /*  Themes you have saved. Kept apart from the built-in four: those are code
@@ -16642,6 +17336,10 @@ function renderBoardTiles() {
   for (const t of painted) {
     const panel = nodes.get(t.id);
     if (!panel) continue;
+    //  A docked panel is not in the grid. renderDocks() parents it instead,
+    //  and it keeps its x/y/w/h so undocking puts it back where it was.
+    if (t.dock) continue;
+    panel.classList.remove("is-docked");
     const wrap = document.createElement("div");
     wrap.className = "board-tile";
     wrap.dataset.id = t.id;
@@ -16651,14 +17349,7 @@ function renderBoardTiles() {
     // Reused across re-renders rather than recreated — the panel-head survives
     // (only the wrapper is torn down), so appending a fresh button every render
     // would pile up duplicates.
-    let rm = panel.querySelector(".panel-head > .tile-remove");
-    if (!rm) {
-      rm = document.createElement("button");
-      rm.type = "button"; rm.className = "tile-remove"; rm.title = "remove from board";
-      rm.textContent = "✕";
-      rm.addEventListener("click", e => { e.stopPropagation(); removeTile(t.id); });
-      panel.querySelector(".panel-head").appendChild(rm);
-    }
+    ensureRemoveButton(panel, t.id);
     wrap.appendChild(panel);
     appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
     appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
@@ -16701,9 +17392,293 @@ function resizeTile(id, dim, delta) {
   renderBoard(); saveBoard();
 }
 
+/*  DOCKS.
+
+    A panel pinned to an edge of the WINDOW rather than placed on the board. It
+    stays where it is while the board scrolls past it, which is the whole point:
+    the Pallet is the thing you are typing into and the panel you want to see
+    is three screens down.
+
+    A docked tile keeps its x, y, w and h untouched, so undocking drops it back
+    into the cell it came from. `dock` and `dockSize` are the only additions,
+    and a board saved without them reads exactly as it always did.
+
+    The board gets padding rather than a smaller width, so nothing about the
+    grid has to know a dock exists. */
+const DOCK_SIDES = ["top", "right", "bottom", "left"];
+const DOCK_MIN = 90, DOCK_MAX = 0.7;     // px, and a share of the window
+
+function dockedTiles(side) {
+  return board.tiles.filter(t => t.dock === side);
+}
+function dockSizeOf(side) {
+  const tiles = dockedTiles(side);
+  if (!tiles.length) return 0;
+  const across = side === "left" || side === "right";
+  const room = (across ? window.innerWidth : window.innerHeight) * DOCK_MAX;
+  //  One size per EDGE, taken from the first panel on it: two panels sharing an
+  //  edge share its thickness, the way a split pane does.
+  return Math.max(DOCK_MIN, Math.min(room, tiles[0].dockSize || (across ? 300 : 240)));
+}
+
+function setDock(id, side) {
+  const t = board.tiles.find(x => x.id === id);
+  if (!t) return;
+  if (side && !DOCK_SIDES.includes(side)) return;
+  if (side) t.dock = side; else delete t.dock;
+  saveBoard();
+  renderBoard();
+  //  Canvas panels measure themselves against their box, and that box has just
+  //  changed shape completely.
+  const pr = document.querySelector("#viz-promenade .panel-body");
+  if (pr && pr._reflowNow) requestAnimationFrame(pr._reflowNow);
+}
+
+/*  The way off an edge, beside the ordinary ✕ rather than instead of it. Two
+    glyphs, two meanings: ⊞ goes back to the board, ✕ leaves the board. An
+    earlier version hid the ✕ while docked to avoid two crosses in one header,
+    which read as a panel you were not allowed to remove.
+
+    Added once and kept, since the header survives a re-render. */
+/*  Reused across re-renders rather than recreated: the panel-head survives a
+    render, so appending a fresh button each time would pile up duplicates.
+    Wanted in two places now, a tile and a rail, which is why it left
+    renderBoardTiles. */
+function ensureRemoveButton(panel, id) {
+  if (panel.querySelector(".panel-head > .tile-remove")) return;
+  const rm = document.createElement("button");
+  rm.type = "button";
+  rm.className = "tile-remove";
+  rm.title = "remove from board";
+  rm.textContent = "✕";
+  rm.addEventListener("click", e => { e.stopPropagation(); removeTile(id); });
+  panel.querySelector(".panel-head").appendChild(rm);
+}
+
+function addDockPop(panel, id) {
+  if (panel.querySelector(".panel-head > .dock-pop")) return;
+  const x = document.createElement("button");
+  x.type = "button";
+  x.className = "dock-pop";
+  x.textContent = "⊞";
+  x.title = "take it off this edge and put it back on the board";
+  x.addEventListener("click", e => { e.stopPropagation(); setDock(id, ""); });
+  //  Before the ✕, which owns the corner, so the two never trade places.
+  const head = panel.querySelector(".panel-head");
+  head.insertBefore(x, head.querySelector(".tile-remove"));
+}
+
+function renderDocks() {
+  for (const side of DOCK_SIDES) {
+    const tiles = dockedTiles(side);
+    let rail = document.getElementById("dock-" + side);
+    if (!tiles.length) { if (rail) rail.remove(); continue; }
+    if (!rail) {
+      rail = document.createElement("div");
+      rail.id = "dock-" + side;
+      rail.className = "dock dock-" + side;
+      const grip = document.createElement("div");
+      grip.className = "dock-grip";
+      grip.title = "drag to resize this edge";
+      rail.appendChild(grip);
+      wireDockGrip(grip, side);
+      document.body.appendChild(rail);
+    }
+    const size = dockSizeOf(side);
+    if (side === "left" || side === "right") rail.style.width = size + "px";
+    else rail.style.height = size + "px";
+
+    for (const t of tiles) {
+      const panel = document.getElementById(t.id) || buildPanel(panels.get(t.id));
+      if (panel.parentElement !== rail) rail.appendChild(panel);
+      panel.classList.add("is-docked");
+      //  A board restored with this panel already docked never went through
+      //  renderBoardTiles, so it has no ✕ yet. Without this it arrives on the
+      //  rail with no way off the board at all.
+      ensureRemoveButton(panel, t.id);
+      addDockPop(panel, t.id);
+    }
+    //  Panels that left this rail since the last render.
+    for (const node of [...rail.querySelectorAll(":scope > .panel")]) {
+      if (!tiles.some(t => t.id === node.id)) node.remove();
+    }
+
+    /*  The rail's own plus, FIRST rather than last. On the end of a bottom
+        rail it lands in the bottom right corner, which is where the minimap
+        lives, and a drop target you cannot reach is not one. */
+    let slot = rail.querySelector(":scope > .dock-slot");
+    if (!slot) {
+      slot = document.createElement("button");
+      slot.type = "button";
+      slot.className = "dock-slot";
+      slot.textContent = "+";
+      slot.title = "drop a panel here to add it to this edge";
+      wireDockTarget(slot, side);
+    }
+    //  Kept at the head of the rail as panels come and go.
+    rail.insertBefore(slot, rail.querySelector(":scope > .panel") || null);
+  }
+
+  /*  The page keeps clear of every rail. Set on the documentElement rather
+      than the board, because the header and the minimap have to move too. */
+  const s = document.body.style;
+  s.paddingTop = dockSizeOf("top") + "px";
+  s.paddingRight = dockSizeOf("right") + "px";
+  s.paddingBottom = dockSizeOf("bottom") + "px";
+  s.paddingLeft = dockSizeOf("left") + "px";
+}
+
+/*  Dragging the inside edge of a rail. Written onto every tile on that edge,
+    so the size belongs to the edge rather than to whichever panel happens to
+    be first on it. */
+function wireDockGrip(grip, side) {
+  let from = 0, start = 0;
+  const across = side === "left" || side === "right";
+  const move = ev => {
+    const now = across ? ev.clientX : ev.clientY;
+    const away = (side === "left" || side === "top") ? now - from : from - now;
+    const room = (across ? window.innerWidth : window.innerHeight) * DOCK_MAX;
+    const size = Math.max(DOCK_MIN, Math.min(room, start + away));
+    for (const t of dockedTiles(side)) t.dockSize = size;
+    renderDocks();
+  };
+  const up = () => {
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    saveBoard();
+    renderMiniMap();
+    const pr = document.querySelector("#viz-promenade .panel-body");
+    if (pr && pr._reflowNow) pr._reflowNow();
+  };
+  grip.addEventListener("pointerdown", ev => {
+    ev.preventDefault();
+    from = across ? ev.clientX : ev.clientY;
+    start = dockSizeOf(side);
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  });
+}
+
+/*  THE MINIMAP.
+
+    A board of twenty panels is taller than any window, so "where is the
+    Gazetteer" becomes a scroll and a hunt. This is the board at about a
+    fiftieth scale in the corner: every tile at its own grid position and
+    footprint, which makes it a recognisable shape rather than a legend. You
+    already know the Pallet is the tall one second from the left.
+
+    Click a block to bring that panel into view. The lit outline is the part of
+    the board you are actually looking at, so the map says where you are as
+    well as what there is.
+
+    Built from `board.tiles` and nothing else. It cannot drift from the layout
+    because it IS the layout, read at draw time. */
+function renderMiniMap() {
+  let host = document.getElementById("miniMap");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "miniMap";
+    host.innerHTML = '<div class="mm-grid" data-el="grid"></div>' +
+                     '<div class="mm-name" data-el="name"></div>';
+    document.body.appendChild(host);
+    //  Follows the scroll it is describing, cheaply: the viewport box is the
+    //  only thing that moves, and it is one style write.
+    window.addEventListener("scroll", () => syncMiniView(), { passive: true });
+    window.addEventListener("resize", () => syncMiniView(), { passive: true });
+
+    /*  AND THE OTHER WAY ROUND.
+
+        Hovering a panel lights its block on the map, which is how you learn
+        the map: you find the Gazetteer the ordinary way once and see where it
+        lives in the little shape. After that you use the map.
+
+        One delegated listener rather than one per panel, and it does nothing
+        at all unless the panel under the pointer has changed, so sweeping
+        across the board is a string comparison per event. */
+    let lastOver = null;
+    document.addEventListener("pointerover", ev => {
+      const panel = ev.target.closest && ev.target.closest(".panel");
+      const id = panel ? panel.id : null;
+      if (id === lastOver) return;
+      lastOver = id;
+      for (const c of document.querySelectorAll(".mm-cell.lit")) c.classList.remove("lit");
+      if (!id) return;
+      const cell = document.querySelector('.mm-cell[data-id="' + CSS.escape(id) + '"]');
+      if (cell) cell.classList.add("lit");
+    }, { passive: true });
+  }
+  const grid = host.querySelector('[data-el="grid"]');
+  const name = host.querySelector('[data-el="name"]');
+  grid.innerHTML = "";
+  host.hidden = board.tiles.length < 2;
+  /*  Slid clear of a bottom or right rail. It is fixed to the corner and a
+      rail is fixed to the same corner, so without this the map sits under the
+      drawer and the one thing that is meant to be reachable is the one thing
+      covered. */
+  host.style.bottom = (10 + dockSizeOf("bottom")) + "px";
+  host.style.right = (10 + dockSizeOf("right")) + "px";
+  if (host.hidden) return;
+
+  const rows = board.tiles.reduce((n, t) => Math.max(n, t.y + t.h), 1);
+  grid.style.gridTemplateColumns = "repeat(" + board.cols + ", 1fr)";
+  grid.style.gridTemplateRows = "repeat(" + rows + ", 1fr)";
+  //  Taller boards get a taller map rather than squashed blocks, up to a cap.
+  grid.style.height = Math.min(120, Math.max(40, rows * 13)) + "px";
+
+  for (const t of board.tiles) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "mm-cell";
+    cell.style.gridColumn = (t.x + 1) + " / span " + t.w;
+    cell.style.gridRow = (t.y + 1) + " / span " + t.h;
+    const label = (FOOTPRINTS[t.id] && FOOTPRINTS[t.id].name) || t.id;
+    cell.title = label;
+    cell.dataset.id = t.id;
+    cell.onmouseenter = () => {
+      name.textContent = label;
+      const node = document.getElementById(t.id);
+      if (node) node.classList.add("mm-lit");
+    };
+    cell.onmouseleave = () => {
+      name.textContent = "";
+      const node = document.getElementById(t.id);
+      if (node) node.classList.remove("mm-lit");
+    };
+    cell.onclick = () => {
+      const node = document.getElementById(t.id);
+      if (!node) return;
+      node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      /*  A flash, because a smooth scroll ending on a wall of identical panels
+          leaves you asking which one you asked for. */
+      node.classList.add("mm-ping");
+      setTimeout(() => node.classList.remove("mm-ping"), 900);
+    };
+    grid.appendChild(cell);
+  }
+  syncMiniView();
+}
+
+/*  Which tiles are on screen, and where the window sits over the whole board.
+    Measured rather than computed from scroll maths, so a sticky header or a
+    board that has not finished laying out cannot put it out by a row. */
+function syncMiniView() {
+  const host = document.getElementById("miniMap");
+  if (!host || host.hidden) return;
+  const top = window.scrollY, bot = top + window.innerHeight;
+  for (const cell of host.querySelectorAll(".mm-cell")) {
+    const node = document.getElementById(cell.dataset.id);
+    if (!node) { cell.classList.remove("here"); continue; }
+    const r = node.getBoundingClientRect();
+    const y0 = r.top + window.scrollY, y1 = y0 + r.height;
+    cell.classList.toggle("here", y1 > top && y0 < bot);
+  }
+}
+
 function renderBoard() {
   renderBoardCells();
   renderBoardTiles();
+  renderDocks();
+  renderMiniMap();
   const b = boardEl();
   const empty = b.querySelector(".board-empty");
   if (!board.tiles.length) {
@@ -16828,6 +17803,11 @@ function removeTile(id) {
   if (panel) {
     const rm = panel.querySelector(".panel-head > .tile-remove");
     if (rm) rm.remove();
+    //  A panel removed straight off a rail takes its dock furniture with it,
+    //  or it comes back to the board still wearing the undock button.
+    const pop = panel.querySelector(".panel-head > .dock-pop");
+    if (pop) pop.remove();
+    panel.classList.remove("is-docked");
     el("panelStore").appendChild(panel);
   }
   renderBoard(); renderBoardCardList(); saveBoard();
@@ -16892,7 +17872,91 @@ function updateGhost(clientX, clientY) {
   boardDrag.swapWith = swap ? swap.id : null;
 }
 
+/*  DROP TARGETS FOR THE EDGES.
+
+    A plus sign at each edge of the window, and one on the end of every rail
+    that already has something in it. Drag a panel onto a plus and it docks
+    there; a rail's own plus is how a second panel joins it, so an edge can
+    hold as many as you like.
+
+    Only visible while you are dragging a panel. Four permanent crosses around
+    the window would be four things in the way of a page you are reading. */
+function dockTargets() {
+  let host = document.getElementById("dockTargets");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "dockTargets";
+    for (const side of DOCK_SIDES) {
+      const t = document.createElement("button");
+      t.type = "button";
+      t.className = "dock-target dock-target-" + side;
+      t.dataset.side = side;
+      t.textContent = "+";
+      t.title = "dock to the " + side;
+      wireDockTarget(t, side);
+      host.appendChild(t);
+    }
+    document.body.appendChild(host);
+  }
+  //  Clear of any rail already on that edge, so the plus for the bottom is
+  //  never hidden behind the bottom rail.
+  for (const t of host.children) {
+    const side = t.dataset.side;
+    const off = dockSizeOf(side) + 8;
+    if (side === "left" || side === "right") t.style[side] = off + "px";
+    else t.style[side] = off + "px";
+  }
+  return host;
+}
+
+/*  Both drags end here. The flyout uses HTML5 drag and drop and a tile already
+    on the board is moved with plain mouse events, so a target has to answer to
+    either one. */
+function wireDockTarget(node, side) {
+  const take = () => {
+    if (!boardDrag) return false;
+    const id = boardDrag.id;
+    const known = board.tiles.some(t => t.id === id);
+    //  Dragged in from the flyout: it has to be on the board before it can be
+    //  docked, and it keeps that cell for when it is undocked again.
+    if (!known) {
+      const fp = FOOTPRINTS[id] || { w: 1, h: 1 };
+      const slot = findFreeSlot(fp.w, fp.h);
+      addTile(id, slot.x, slot.y, fp.w, fp.h);
+    }
+    boardDrag = null;
+    setDock(id, side);
+    return true;
+  };
+  node.addEventListener("dragover", e => {
+    if (!boardDrag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    node.classList.add("over");
+  });
+  node.addEventListener("dragleave", () => node.classList.remove("over"));
+  node.addEventListener("drop", e => {
+    e.preventDefault();
+    node.classList.remove("over");
+    if (take()) endBoardDrag(false);
+  });
+  //  The mouse drag: the pointer is down the whole way, so a plain mouseup on
+  //  the target is the drop.
+  node.addEventListener("mouseenter", () => { if (boardDrag) node.classList.add("over"); });
+  node.addEventListener("mouseleave", () => node.classList.remove("over"));
+  node.addEventListener("mouseup", () => {
+    node.classList.remove("over");
+    if (take()) endBoardDrag(false);
+  });
+}
+
+function showDockTargets(on) {
+  dockTargets().classList.toggle("live", !!on);
+  document.body.classList.toggle("panel-dragging", !!on);
+}
+
 function endBoardDrag(commit) {
+  showDockTargets(false);
   if (boardDrag && commit && boardDrag.valid) {
     if (boardDrag.swapWith) swapTiles(boardDrag.id, boardDrag.swapWith);
     else if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
@@ -17580,6 +18644,323 @@ function renderTimeline(body) {
     }
     row.appendChild(track);
     host.appendChild(row);
+  }
+}
+
+/* ---------- story ---------- */
+
+/*  Playing is a chain of timers rather than one clock, because a beat's hold
+    is its own and the next one starts when it ends. Kept on the module so a
+    re-render of the panel cannot leave a second story running behind the
+    first. */
+let STORY_AT = -1, STORY_TIMER = null;
+//  Files the last open could make nothing of, reported on the panel rather
+//  than swallowed: silently ignoring four of six selected files is worse than
+//  loading none of them.
+let STORY_BAD = 0;
+
+function storyStop() {
+  clearTimeout(STORY_TIMER);
+  STORY_TIMER = null;
+  STORY_AT = -1;
+  if (PROM_HOST) {
+    if (PROM_HOST._say) PROM_HOST._say("");
+    if (PROM_HOST._setPretty) PROM_HOST._setPretty(false);
+  }
+  refreshPanel("viz-story");
+}
+
+function storyPlay(from) {
+  if (!PROM_HOST || !PROM_HOST._cut || !STORY.order.length) return false;
+  clearTimeout(STORY_TIMER);
+  PROM_HOST._setPretty(true);
+  const run = i => {
+    if (i >= STORY.order.length) { storyStop(); return; }
+    const sc = STORY.scenes[STORY.order[i]];
+    //  A dangling id is skipped rather than stopping the show. It can only
+    //  happen to a hand-edited file, and one bad line should not end the story.
+    if (!sc) { run(i + 1); return; }
+    STORY_AT = i;
+    PROM_HOST._cut(sc);
+    refreshPanel("viz-story");
+    STORY_TIMER = setTimeout(() => run(i + 1), Math.max(500, sc.hold * 1000));
+  };
+  run(Math.max(0, from || 0));
+  return true;
+}
+
+/*  SWAPPING THROUGH THEM BY HAND.
+
+    The other way to watch a story, and the one you use while you are building
+    it: step to the next scene and stay there. Stepping cancels a play in
+    progress rather than racing it, and leaves the controls alone, because you
+    are still working on the thing. */
+function storyStep(delta) {
+  if (!PROM_HOST || !PROM_HOST._cut || !STORY.order.length) return;
+  clearTimeout(STORY_TIMER);
+  STORY_TIMER = null;
+  let i = STORY_AT < 0 ? (delta > 0 ? 0 : STORY.order.length - 1) : STORY_AT + delta;
+  i = Math.max(0, Math.min(STORY.order.length - 1, i));
+  STORY_AT = i;
+  const sc = STORY.scenes[STORY.order[i]];
+  if (sc) PROM_HOST._cut(sc);
+  refreshPanel("viz-story");
+}
+
+/*  Both ways of making a scene end here: keep it in the library, and put it on
+    the end of the running order, because you almost always want the thing you
+    just made to be in the show. */
+function storyAdd(scene) {
+  const id = newSceneId();
+  STORY.scenes[id] = cleanScene(scene);
+  STORY.order.push(id);
+  saveStory();
+  refreshPanel("viz-story");
+  return id;
+}
+
+function renderStory(model, host) {
+  if (!host.dataset.built) {
+    host.dataset.built = "1";
+    host.innerHTML =
+      '<div class="st-root">' +
+        '<div class="st-bar">' +
+          '<input class="st-title" data-el="title" type="text" placeholder="untitled story">' +
+          '<button data-act="prev" type="button" title="the scene before">◀</button>' +
+          '<button data-act="play" type="button">▶ play</button>' +
+          '<button data-act="next" type="button" title="the scene after">▶|</button>' +
+          '<button data-act="stop" type="button">■</button>' +
+          '<button data-act="grab" type="button" title="take the street as it stands as a new scene, without saving a file">● record</button>' +
+          '<button data-act="save" type="button" title="write story.json">save</button>' +
+          '<label class="st-load" title="open scene files saved from the Promenade, ' +
+            'or a whole story.json">open scenes…' +
+            '<input type="file" accept=".json,application/json" multiple hidden></label>' +
+        "</div>" +
+        '<div class="st-note" data-el="note"></div>' +
+        '<div class="st-order" data-el="order"></div>' +
+        '<div class="st-lib"><span>scenes you have saved</span><div data-el="lib"></div></div>' +
+      "</div>";
+
+    const t = host.querySelector('[data-el="title"]');
+    t.addEventListener("input", () => { STORY.title = t.value; saveStory(); });
+
+    host.querySelector('[data-act="play"]').onclick = () => storyPlay(0);
+    host.querySelector('[data-act="stop"]').onclick = () => storyStop();
+    host.querySelector('[data-act="prev"]').onclick = () => storyStep(-1);
+    host.querySelector('[data-act="next"]').onclick = () => storyStep(1);
+    host.querySelector('[data-act="grab"]').onclick = () => {
+      if (!PROM_HOST || !PROM_HOST._capture) return;
+      storyAdd({ name: "", say: "", hold: 6, state: PROM_HOST._capture() });
+    };
+    host.querySelector('[data-act="save"]').onclick = () => {
+      const blob = new Blob([JSON.stringify(STORY, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (slugify(STORY.title) || "story") + ".json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    };
+    /*  TAKES BOTH KINDS OF FILE, AND ANY NUMBER OF THEM.
+
+        A story.json is the whole show and replaces what is here. A scene file
+        saved from the Promenade is one arrangement, so each one becomes a
+        scene on the end of the order: select six and you have a six-scene
+        story in the order you picked them. The two are told apart by shape,
+        since only a story carries `scenes` or `beats`.
+
+        The name comes from inside the file if it has one and from the filename
+        if it does not, which is why the Promenade writes the name in. */
+    host.querySelector(".st-load input").addEventListener("change", ev => {
+      const files = [...(ev.target.files || [])];
+      ev.target.value = "";
+      if (!files.length) return;
+      Promise.all(files.map(f => f.text().then(
+        txt => { try { return { f, raw: JSON.parse(txt) }; } catch (e) { return null; } }
+      ))).then(got => {
+        let added = 0, bad = 0;
+        for (const item of got) {
+          if (!item || !item.raw) { bad++; continue; }
+          const asStory = adoptStory(item.raw);
+          if (asStory) { STORY = asStory; added++; continue; }
+          if (item.raw.promenade || item.raw.columns) {
+            const name = String(item.raw.sceneName ||
+              item.f.name.replace(/\.(scene\.)?json$/i, "")).slice(0, 60);
+            const id = newSceneId();
+            STORY.scenes[id] = cleanScene({ name, say: "", hold: 6, state: item.raw });
+            STORY.order.push(id);
+            added++;
+            continue;
+          }
+          bad++;
+        }
+        STORY_BAD = bad;
+        if (added || bad) { saveStory(); refreshPanel("viz-story"); }
+      });
+    });
+  }
+
+  host.querySelector('[data-el="title"]').value = STORY.title;
+
+  const ids = Object.keys(STORY.scenes);
+  const held = STORY.order.reduce((n, id) => n + ((STORY.scenes[id] || {}).hold || 0), 0);
+  host.querySelector('[data-el="note"]').textContent = !PROM_HOST
+    ? "Put the Promenade on the board and the story has somewhere to play."
+    : STORY.order.length
+      ? STORY.order.length + (STORY.order.length === 1 ? " scene" : " scenes") +
+        " in the order · " + Math.round(held) + "s · " +
+        (STORY_AT >= 0 ? "showing " + (STORY_AT + 1) : ids.length + " saved") +
+        (STORY_BAD ? (STORY_BAD === 1 ? " · one file was not a scene"
+                                      : " · " + STORY_BAD + " files were not scenes") : "")
+      : ids.length
+        ? "Nothing in the order yet. Click a saved scene to put it in the show."
+        : "Save scenes from the Promenade, then open them here. Or press record " +
+          "to take the street as it stands.";
+
+  /*  THE RUNNING ORDER. A row is a position in the show rather than a scene:
+      taking one out leaves the scene saved, and the same scene appearing twice
+      is two rows over one entry. */
+  const order = host.querySelector('[data-el="order"]');
+  order.innerHTML = "";
+  STORY.order.forEach((id, i) => {
+    const sc = STORY.scenes[id];
+    const row = document.createElement("div");
+    row.className = "st-beat" + (i === STORY_AT ? " on" : "") + (sc ? "" : " gone");
+
+    const head = document.createElement("div");
+    head.className = "st-head";
+    head.innerHTML = '<span class="st-n">' + (i + 1) + "</span>";
+    row.appendChild(head);
+
+    if (!sc) {
+      const missing = document.createElement("span");
+      missing.className = "st-missing";
+      missing.textContent = "a scene that is no longer here";
+      head.appendChild(missing);
+      const drop = document.createElement("button");
+      drop.type = "button"; drop.textContent = "✕";
+      drop.onclick = () => { STORY.order.splice(i, 1); saveStory(); refreshPanel("viz-story"); };
+      head.appendChild(drop);
+      order.appendChild(row);
+      return;
+    }
+
+    const name = document.createElement("input");
+    name.type = "text"; name.className = "st-name"; name.value = sc.name;
+    name.title = "what this scene is called";
+    name.oninput = () => { sc.name = name.value.slice(0, 60); saveStory(); };
+    head.appendChild(name);
+
+    const mk = (label, title, fn) => {
+      const x = document.createElement("button");
+      x.type = "button"; x.textContent = label; x.title = title; x.onclick = fn;
+      head.appendChild(x);
+    };
+    mk("↑", "earlier", () => {
+      if (i === 0) return;
+      STORY.order.splice(i - 1, 0, STORY.order.splice(i, 1)[0]);
+      saveStory(); refreshPanel("viz-story");
+    });
+    mk("↓", "later", () => {
+      if (i === STORY.order.length - 1) return;
+      STORY.order.splice(i + 1, 0, STORY.order.splice(i, 1)[0]);
+      saveStory(); refreshPanel("viz-story");
+    });
+    mk("▸", "play from here", () => storyPlay(i));
+    mk("✕", "take out of the order, keep the scene", () => {
+      STORY.order.splice(i, 1); saveStory(); refreshPanel("viz-story");
+    });
+
+    const say = document.createElement("input");
+    say.type = "text"; say.className = "st-say"; say.value = sc.say;
+    say.placeholder = "caption, or nothing";
+    say.oninput = () => { sc.say = say.value.slice(0, 400); saveStory(); };
+    row.appendChild(say);
+
+    const foot = document.createElement("div");
+    foot.className = "st-foot";
+
+    const hold = document.createElement("input");
+    hold.type = "number"; hold.className = "st-hold";
+    hold.min = "0.5"; hold.max = "600"; hold.step = "0.5"; hold.value = sc.hold;
+    hold.title = "seconds to hold";
+    hold.onchange = () => {
+      sc.hold = cleanBeat({ hold: hold.value }).hold; hold.value = sc.hold; saveStory();
+    };
+    foot.appendChild(hold);
+    foot.appendChild(document.createTextNode("s"));
+
+    /*  Two things you can do to a saved street: go and look at it, or replace
+        it with what you are looking at now. Between them they are the whole of
+        editing a scene, because a scene is not a form. */
+    const act = (label, title, fn) => {
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "st-act";
+      x.textContent = label; x.title = title; x.onclick = fn;
+      foot.appendChild(x);
+    };
+    act("go", "put this scene on the street", () => {
+      if (PROM_HOST && PROM_HOST._cut) { storyStop(); PROM_HOST._cut(sc); }
+    });
+    act("re-record", "replace this scene with the street as it stands now", () => {
+      if (!PROM_HOST || !PROM_HOST._capture) return;
+      sc.state = PROM_HOST._capture();
+      saveStory(); refreshPanel("viz-story");
+    });
+
+    const what = sc.state && sc.state.promenade ? sc.state : null;
+    if (what) {
+      const sum = document.createElement("span");
+      sum.className = "st-who";
+      const pins = (what.promenade.pins || []).length;
+      const v = what.view || {};
+      sum.textContent = pins + " placed · " + (v.night ? "night" : "day") +
+                        (v.zoom > 1 ? " · " + v.zoom + "×" : "");
+      foot.appendChild(sum);
+    }
+
+    const uses = STORY.order.filter(x => x === id).length;
+    if (uses > 1) {
+      const many = document.createElement("span");
+      many.className = "st-uses";
+      many.textContent = "used " + uses + "×";
+      many.title = "editing this changes every place it plays";
+      foot.appendChild(many);
+    }
+    row.appendChild(foot);
+    order.appendChild(row);
+  });
+
+  /*  THE LIBRARY. Click one to put it in the show; a scene can be in the order
+      as many times as you like. The ✕ is the only destructive control here, so
+      it says how many places it is about to empty. */
+  const lib = host.querySelector('[data-el="lib"]');
+  lib.innerHTML = "";
+  if (!ids.length) lib.innerHTML = '<span class="st-empty">Nothing saved yet.</span>';
+  for (const id of ids) {
+    const sc = STORY.scenes[id];
+    const chip = document.createElement("span");
+    chip.className = "st-chip" + (STORY.order.includes(id) ? " in" : "");
+
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "st-chip-add";
+    add.textContent = sc.name;
+    add.title = "put this scene in the order";
+    add.onclick = () => { STORY.order.push(id); saveStory(); refreshPanel("viz-story"); };
+    chip.appendChild(add);
+
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "st-chip-x";
+    del.textContent = "✕";
+    const uses = STORY.order.filter(x => x === id).length;
+    del.title = uses ? "delete the scene, and the " + uses + " place" +
+                       (uses === 1 ? "" : "s") + " it plays" : "delete the scene";
+    del.onclick = () => {
+      delete STORY.scenes[id];
+      STORY.order = STORY.order.filter(x => x !== id);
+      saveStory(); refreshPanel("viz-story");
+    };
+    chip.appendChild(del);
+    lib.appendChild(chip);
   }
 }
 
@@ -19422,7 +20803,12 @@ function showMergeLog(msg) {
 function refreshPanel(id) {
   const def = panels.get(id);
   const node = document.getElementById(id);
-  if (!def || !node || !def.render || !node.closest(".board-tile")) return;
+  /*  Mounted anywhere the page actually shows it. This used to insist on a
+      .board-tile, which was true of every panel until panels could be docked
+      to an edge — and then a docked Tally sat there permanently blank, because
+      nothing ever called its render. */
+  if (!def || !node || !def.render) return;
+  if (!node.closest(".board-tile") && !node.closest(".dock")) return;
   const body = node.querySelector(".panel-body");
   if (body) def.render(body);
 }
@@ -19431,7 +20817,7 @@ function refreshPanel(id) {
     added without a save — and when they did, that panel simply never received
     updates again. Reading the DOM cannot drift from the DOM. */
 function refreshAll() {
-  for (const node of document.querySelectorAll(".board-tile > .panel")) {
+  for (const node of document.querySelectorAll(".board-tile > .panel, .dock > .panel")) {
     refreshPanel(node.id);
   }
 }
@@ -19666,6 +21052,7 @@ loadColNotes();
 loadSmoke();
 loadWeather();
 loadScenery();
+loadStory();
 loadParts();
 loadNight();
 loadSunPos();
@@ -19849,6 +21236,7 @@ el("boardCardList").addEventListener("dragstart", e => {
   if (!fp) return;
   card.classList.add("dragging");
   boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
+  showDockTargets(true);
   e.dataTransfer.effectAllowed = "copy";
   // Firefox needs data set to fire subsequent drag events at all.
   e.dataTransfer.setData("text/plain", card.dataset.id);
@@ -19876,6 +21264,7 @@ boardEl().addEventListener("mousedown", e => {
   if (!t) return;
   tile.classList.add("dragging");
   boardDrag = { id: t.id, w: t.w, h: t.h, fromTile: t, valid: false };
+  showDockTargets(true);
   const onMove = ev => updateGhost(ev.clientX, ev.clientY);
   const onUp = ev => {
     updateGhost(ev.clientX, ev.clientY);

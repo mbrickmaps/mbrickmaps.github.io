@@ -134,7 +134,7 @@
 
     <ul>
       <li><strong>🧰 flyout</strong> holds every panel <em>not currently on the board</em>, grouped and searchable. Drag a card onto the board, or press <strong>+</strong> to drop it in the first free slot. The list empties as you add and refills as you remove.</li>
-      <li><strong>Seven panels start off the board.</strong> Promenade, Sprite Editor, Photo Ruler, Pixel Party City, Theme, Map Style and Map Editor. The default board is the working set for entering records. Those seven become useful once you have some. Nobody finds them without opening the flyout, which is why the <a href="quick-guide.html#adding">quick guide</a> says so.</li>
+      <li><strong>Eight panels start off the board.</strong> Promenade, Tree, Sprite Editor, Photo Ruler, Pixel Party City, Theme, Map Style and Map Editor. The default board is the working set for entering records. Those eight become useful once you have some. Nobody finds them without opening the flyout, which is why the <a href="quick-guide.html#adding">quick guide</a> says so.</li>
       <li><strong>Footprints</strong> are per panel, editable in the flyout, and remembered.</li>
       <li><strong>Grow or shrink</strong> a tile by a column or row. Only the legal buttons appear. A <strong>+</strong> never points at an occupied neighbor or past the edge.</li>
       <li><strong>Swap</strong> two tiles of the same footprint by dragging one onto the other.</li>
@@ -154,6 +154,25 @@
       </table>
     </div>
     <p>A panel can hold more than one. The legend sits at the top of the panel list.</p>
+
+    <h3>Docking a panel to an edge</h3>
+    <p>A panel can leave the grid and pin to an edge of the <em>window</em>, where it stays while the board scrolls past. That is what it is for: the Pallet at the bottom while you work three screens down, or Red Flags down the side while you fix what it lists.</p>
+    <ul>
+      <li><strong>Drag a panel by its header</strong>, or drag a card out of the 🧰 list, and a dashed <strong>+</strong> appears at each edge of the window. Drop on one and it docks there. The targets show up only while something is moving.</li>
+      <li><strong>Each rail keeps its own +</strong> at the head of it. Drop a second panel there and the edge holds both, splitting the rail between them. As many per edge as you like.</li>
+      <li><strong>A docked panel carries two controls.</strong> <strong>⊞</strong> puts it back on the board in the cell it came from; <strong>✕</strong> takes it off the board altogether, exactly as ✕ does everywhere else.</li>
+      <li><strong>Drag the inside edge of a rail</strong> to change its thickness. The size belongs to the edge rather than to a panel, so two panels sharing an edge share it.</li>
+    </ul>
+    <p class="why">A docked tile keeps its <code>x</code>, <code>y</code>, <code>w</code> and <code>h</code> untouched, which is why undocking is exact rather than approximate. The page is padded out of the way of a rail rather than resized, so nothing in the grid has to know a dock exists.</p>
+
+    <h3>The minimap</h3>
+    <p>Bottom right, and quiet until you go near it: the whole board at about a fiftieth scale, every tile at its own position and footprint. It comes out as the shape of your actual layout, which is what makes it navigable at a hundred pixels wide.</p>
+    <ul>
+      <li><strong>Click a block</strong> to scroll that panel into view. It flashes an outline on arrival, because a smooth scroll landing on a wall of similar panels leaves you unsure which one you asked for.</li>
+      <li><strong>Filled blocks are on screen now</strong>, measured from the real elements on every scroll rather than computed from scroll arithmetic.</li>
+      <li><strong>Hovering works both ways.</strong> A block lights its panel, and a panel lights its block. That is how the map becomes readable: find something the ordinary way once, see where it sits in the little shape, and use the map after that.</li>
+      <li>It slides clear of a bottom or right rail, and hides itself when fewer than two panels are on the board.</li>
+    </ul>
   </section>
 
   <section id="saving">
@@ -248,7 +267,7 @@
     <p>The symbols the parser understands, generated from the parser itself.</p>
 
     <div class="panel-h" id="theme"><h3>Theme</h3><span class="badge r">R</span></div>
-    <p>Six dark themes, or your own. Eight colors drive the whole page.</p>
+    <p>Seven dark themes, or your own. Eight colors drive the whole page.</p>
     <div class="table-wrap">
       <table>
         <tbody>

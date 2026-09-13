@@ -59,15 +59,20 @@ position**. Real corpora are inconsistent. A notation that promises you define
 the symbols cannot then punish a stray column.
 
 ```
-+|👤|<george-isles>|George Isles|Powerloom Tender|@dora-edmed
-│  │       │             │              │              │
-│  │       │             │              │              └── links to other uids
-│  │       │             │              └───────────────── detail / occupation
-│  │       │             └──────────────────────────────── name
-│  │       └────────────────────────────────────────────── uid, in angle brackets
-│  └────────────────────────────────────────────────────── type token
-└───────────────────────────────────────────────────────── status
++|👤|<george-isles>|Powerloom Tender|@dora-edmed
+│  │       │              │              │
+│  │       │              │              └── links to other uids
+│  │       │              └───────────────── detail / occupation
+│  │       └──────────────────────────────── uid, in angle brackets
+│  └──────────────────────────────────────── type token
+└─────────────────────────────────────────── status
 ```
+
+A person has **no name field**. The name is made from the uid, so
+`<george-isles>` displays as George Isles, and the first free-text field is his
+description or occupation. A place is the other way round: its free text *is*
+its proper name, because `<st-clement>|St Clement's` is a thing the slug cannot
+reproduce.
 
 | | |
 |---|---|
@@ -118,7 +123,7 @@ cells and tiles explicitly. Neither pushes the other around.
   free slot. The list empties as you add and refills as you remove.
 - **Eight panels start off the board.** Promenade, Tree, Sprite Editor, Photo
   Ruler, Pixel Party City, Theme, Map Style and Map Editor. The default board is the
-  working set for entering records. Those seven become useful once you have
+  working set for entering records. Those eight become useful once you have
   some. Nobody finds them without opening the flyout, which is why the quick
   guide says so.
 - **Footprints** are per panel, editable in the flyout, and remembered.
@@ -129,6 +134,45 @@ cells and tiles explicitly. Neither pushes the other around.
   typed text survive a trip off the board.
 - **Columns and row height** are controls. Changing columns repacks with a
   skyline scan. It never pretends old positions still fit.
+
+### Docking
+
+A panel can leave the grid and pin to an edge of the *window*, where it stays
+while the board scrolls past. The Pallet along the bottom while you work three
+screens down, or Red Flags down the side while you fix what it lists.
+
+- **Drag a panel by its header**, or a card out of the 🧰 list, and a dashed
+  **+** appears at each edge. Drop on one to dock there. The targets exist only
+  while something is moving.
+- **Each rail keeps its own +** at the head of it, so a second panel can join
+  that edge and split the rail with the first. As many per edge as you like.
+- **A docked panel carries two controls.** **⊞** puts it back on the board in
+  the cell it came from; **✕** takes it off the board altogether, exactly as ✕
+  does everywhere else.
+- **Drag the inside edge of a rail** to change its thickness. The size belongs
+  to the edge, so panels sharing an edge share it.
+
+A docked tile keeps its `x`, `y`, `w` and `h` untouched, which is why undocking
+is exact. It gains only `dock` and `dockSize`, and a board saved without them
+loads as it always did. The page is padded out of a rail's way rather than
+resized, so nothing in the grid has to know a dock exists.
+
+### The minimap
+
+Bottom right, quiet until you go near it: the whole board at about a fiftieth
+scale, every tile at its own position and footprint, so it reads as the shape of
+your actual layout rather than as a legend.
+
+- **Click a block** to scroll that panel into view. It flashes an outline on
+  arrival, because a smooth scroll landing on a wall of similar panels leaves
+  you unsure which one you asked for.
+- **Filled blocks are on screen now**, measured from the real elements on every
+  scroll rather than computed from scroll arithmetic, so a sticky header cannot
+  put it out by a row.
+- **Hovering works both ways.** A block lights its panel and a panel lights its
+  block, which is how you learn the map.
+- It slides clear of a bottom or right rail, and hides when fewer than two
+  panels are on the board.
 
 ### Panel roles
 
@@ -421,7 +465,7 @@ drawing the real file. Nothing can look right here and wrong when loaded.
 
 ## Theme · **R**
 
-Six dark themes, or your own. Eight colors drive the whole page.
+Seven dark themes, or your own. Eight colors drive the whole page.
 
 | | |
 |---|---|
