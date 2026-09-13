@@ -1006,6 +1006,12 @@
   .dock-grip:hover { background: var(--accent2); opacity: 0.5; }
   /*  The one being carried, so an exchange reads as an exchange. */
   .dock > .panel.dock-moving { opacity: 0.55; outline: 1px dashed var(--accent2); }
+  /*  Between two panels: divides the rail rather than resizing it. Invisible
+      until wanted, like the rail's own grip. */
+  .dock-split { flex: 0 0 7px; align-self: stretch; background: transparent; }
+  .dock-split:hover, .dock-split.live { background: var(--accent2); opacity: 0.45; }
+  .dock-top .dock-split, .dock-bottom .dock-split { cursor: col-resize; }
+  .dock-left .dock-split, .dock-right .dock-split { cursor: row-resize; }
   .dock-left .dock-grip, .dock-right .dock-grip { top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
   .dock-top .dock-grip, .dock-bottom .dock-grip { left: 0; right: 0; height: 5px; cursor: ns-resize; }
   .dock-left .dock-grip { right: 0; }
@@ -7168,6 +7174,34 @@ function renderPromenadePixi(model, host) {
     app.view.className = "pr-canvas";
     host._app = app;
     host._shell = shell;
+
+    /*  A STREET NOBODY IS LOOKING AT IS A STREET THAT NEED NOT MOVE.
+
+        This ticker walks the cast, drifts the clouds, marches the sun and
+        repaints the scene sixty times a second, and it did so whether the
+        panel was on screen or three screens down. On a tall board that is a
+        constant tax on everything else: the Map Viewer's own panning has to
+        share a main thread with a promenade nobody can see.
+
+        Stopped when it scrolls out of view and when the tab goes to the
+        background, started again on the way back. Nothing about the scene is
+        computed from wall-clock time, so it picks up where it left off rather
+        than jumping forward to catch up. */
+    const wake = on => {
+      if (on && !app.ticker.started) app.ticker.start();
+      else if (!on && app.ticker.started) app.ticker.stop();
+    };
+    if (window.IntersectionObserver) {
+      host._seen = new IntersectionObserver(
+        entries => wake(entries.some(e => e.isIntersecting) && !document.hidden),
+        { rootMargin: "120px" });
+      host._seen.observe(shell);
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) wake(false);
+      else if (shell.getBoundingClientRect().bottom > -120 &&
+               shell.getBoundingClientRect().top < window.innerHeight + 120) wake(true);
+    });
     // The drawing itself. Every walker gets a recolored copy of this.
     host._wear = { body: makeBodySheet(), bottom: makeBottomSheet(),
                    top: makeTopSheet(), hat: makeHatSheet() };
@@ -15591,26 +15625,51 @@ function renderMap(model, host) {
           !(r.right + LABEL_PAD < p.left || r.left - LABEL_PAD > p.right ||
             r.bottom + LABEL_PAD < p.top || r.top - LABEL_PAD > p.bottom));
 
-        for (const it of items) {
+        /*  ONE ROUND PER POSITION, NOT ONE PER LABEL.
+
+            Still measured rather than computed, for the reason the old note
+            gave: reading the rect back after the class is on cannot disagree
+            with the CSS. What changed is the ORDER of the reads and writes.
+
+            Trying each label's eight sides in turn wrote a class and then read
+            a rectangle, over and over, and every one of those reads forces the
+            browser to flush the style change that came before it. Fifty-nine
+            markers at eight tries each is up to 472 synchronous layouts on
+            every zoom and every pan, which is what made the map feel like it
+            was dragging something heavy behind it.
+
+            Now the positions are the outer loop: every label still waiting is
+            moved to the next side, THEN all of them are measured. Eight writes
+            and eight reads, so the browser lays out eight times instead of
+            hundreds. The priority sort still decides who claims a spot when
+            two want the same one; what changes is that a label takes the best
+            side left rather than the best side it can reach before its
+            neighbours have had a turn. */
+        let waiting = items.slice();
+        for (let step = 0; step < AUTO_ORDER.length && waiting.length; step++) {
           /*  A placement you chose is honoured or nothing — trying seven other
               sides for you would quietly overrule the choice. Only a label on
-              auto gets to move. */
-          const tries = it.fixed ? [it.fixed] : AUTO_ORDER;
-          let done = false;
-          for (const pos of tries) {
-            setPos(it.dot, pos);
-            // Measured rather than computed: reading the rect back after the
-            // class is on cannot disagree with the CSS, and a duplicated copy
-            // of those offsets in JS eventually would.
-            const r = it.label.getBoundingClientRect();
-            if (clear(r)) { placed.push(r); done = true; break; }
+              auto gets to move, so a fixed one is considered once, on the
+              first pass, at the side it asked for. */
+          const round = waiting.filter(it => !it.fixed || step === 0);
+          if (!round.length) break;
+          for (const it of round) setPos(it.dot, it.fixed || AUTO_ORDER[step]);
+          //  Every write is in. One flush covers the lot.
+          for (const it of round) it.r = it.label.getBoundingClientRect();
+
+          const left = [];
+          for (const it of round) {
+            if (clear(it.r)) placed.push(it.r);
+            else left.push(it);
           }
-          if (!done) {
-            // Nowhere to put it. Put it back where it started so the hidden
-            // label is at least consistent, then drop it.
-            setPos(it.dot, it.fixed || AUTO_ORDER[0]);
-            it.label.classList.add("suppressed");
-          }
+          waiting = waiting.filter(it => (it.fixed ? step !== 0 : true) && left.includes(it));
+        }
+
+        for (const it of waiting) {
+          // Nowhere to put it. Put it back where it started so the hidden
+          // label is at least consistent, then drop it.
+          setPos(it.dot, it.fixed || AUTO_ORDER[0]);
+          it.label.classList.add("suppressed");
         }
       };
       host._declutter = declutter;
@@ -17497,10 +17556,24 @@ function renderDocks() {
         first, then re-appended in one pass, because appendChild MOVES a node
         and doing that every render costs the Promenade a reflow it does not
         need. */
-    const want = tiles.map(t => document.getElementById(t.id) || buildPanel(panels.get(t.id)));
-    const have = [...rail.querySelectorAll(":scope > .panel")];
+    /*  Panels with a splitter between each pair, so the share of the rail is
+        yours as well as its thickness. The pair is the handle's identity, so a
+        reorder retires the old handles and mints the ones the new neighbours
+        need. */
+    const want = [];
+    tiles.forEach((t, i) => {
+      if (i) want.push(dockSplit(rail, side, tiles[i - 1].id, t.id));
+      want.push(document.getElementById(t.id) || buildPanel(panels.get(t.id)));
+    });
+    const have = [...rail.querySelectorAll(":scope > .panel, :scope > .dock-split")];
     if (have.length !== want.length || have.some((n, i) => n !== want[i])) {
       for (const n of want) rail.appendChild(n);
+    }
+    for (const n of have) if (!want.includes(n) && n.classList.contains("dock-split")) n.remove();
+    //  Each panel's share, which the splitter writes and this reads back.
+    for (const t of tiles) {
+      const p = document.getElementById(t.id);
+      if (p) p.style.flexGrow = t.dockGrow || 1;
     }
 
     for (const t of tiles) {
@@ -17543,6 +17616,67 @@ function renderDocks() {
   s.paddingLeft = dockSizeOf("left") + "px";
 }
 
+/*  THE SPLITTER BETWEEN TWO DOCKED PANELS.
+
+    The grip on the rail's inner edge sets how thick the edge is; this sets how
+    the panels on it divide that thickness between them. Two different
+    questions, two handles, and the second one was missing.
+
+    Sizes are kept as flex-grow rather than pixels, so a rail that changes
+    thickness, or a window that changes width, keeps the proportions you set
+    instead of leaving one panel at a stale 340px. */
+const DOCK_SHARE_MIN = 80;   // px, the narrowest a panel may be squeezed to
+
+function dockSplit(rail, side, aId, bId) {
+  const key = aId + "|" + bId;
+  let node = rail.querySelector(':scope > .dock-split[data-pair="' + CSS.escape(key) + '"]');
+  if (node) return node;
+  node = document.createElement("div");
+  node.className = "dock-split";
+  node.dataset.pair = key;
+  node.title = "drag to divide the space between these two";
+
+  const across = side === "left" || side === "right";
+  node.addEventListener("mousedown", ev => {
+    ev.preventDefault();
+    ev.stopPropagation();              // not a reorder, and not a rail resize
+    const a = board.tiles.find(t => t.id === aId);
+    const b = board.tiles.find(t => t.id === bId);
+    const pa = document.getElementById(aId), pb = document.getElementById(bId);
+    if (!a || !b || !pa || !pb) return;
+
+    const ra = pa.getBoundingClientRect(), rb = pb.getBoundingClientRect();
+    const sizeA = across ? ra.height : ra.width;
+    const totalPx = sizeA + (across ? rb.height : rb.width);
+    const totalGrow = (a.dockGrow || 1) + (b.dockGrow || 1);
+    const from = across ? ev.clientY : ev.clientX;
+    node.classList.add("live");
+
+    const onMove = e => {
+      const delta = (across ? e.clientY : e.clientX) - from;
+      const newA = Math.max(DOCK_SHARE_MIN,
+                            Math.min(totalPx - DOCK_SHARE_MIN, sizeA + delta));
+      a.dockGrow = totalGrow * (newA / totalPx);
+      b.dockGrow = totalGrow - a.dockGrow;
+      //  Written straight onto the elements: a full render per mousemove would
+      //  rebuild every panel body sixty times a second.
+      pa.style.flexGrow = a.dockGrow;
+      pb.style.flexGrow = b.dockGrow;
+    };
+    const onUp = () => {
+      node.classList.remove("live");
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      saveBoard();
+      const pr = document.querySelector("#viz-promenade .panel-body");
+      if (pr && pr._reflowNow) pr._reflowNow();
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+  return node;
+}
+
 /*  REORDERING WITHIN A RAIL.
 
     Drag a docked panel by its header and it changes places with its
@@ -17561,25 +17695,60 @@ function wireDockReorder(rail, side) {
     ev.preventDefault();
     panel.classList.add("dock-moving");
 
+    const tile = board.tiles.find(t => t.id === panel.id);
+
     const onMove = e => {
+      /*  OFF THE EDGE IS ONTO THE FLOOR.
+
+          Carry it out of the rail and the drag stops being a reorder and
+          becomes the ordinary board drag: the ghost appears over the grid and
+          the dock targets light up, so the same gesture can put it in a cell
+          or on a different edge. Coming back inside the rail hands it back to
+          the reorder. */
+      const r = rail.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right &&
+                     e.clientY >= r.top && e.clientY <= r.bottom;
+
+      if (!inside && tile) {
+        if (!boardDrag) {
+          boardDrag = { id: panel.id, w: tile.w, h: tile.h, fromTile: tile, valid: false };
+          showDockTargets(true);
+        }
+        updateGhost(e.clientX, e.clientY);
+        return;
+      }
+      if (inside && boardDrag) { endBoardDrag(false); ghostEl().hidden = true; }
+
       const over = [...rail.querySelectorAll(":scope > .panel")].find(n => {
         if (n === panel) return false;
-        const r = n.getBoundingClientRect();
-        return across ? (e.clientY >= r.top && e.clientY <= r.bottom)
-                      : (e.clientX >= r.left && e.clientX <= r.right);
+        const b = n.getBoundingClientRect();
+        return across ? (e.clientY >= b.top && e.clientY <= b.bottom)
+                      : (e.clientX >= b.left && e.clientX <= b.right);
       });
       if (!over) return;
-      const r = over.getBoundingClientRect();
+      const b = over.getBoundingClientRect();
       //  Past the middle of a neighbour is what commits the exchange, so a
       //  panel does not flicker back and forth on the boundary.
-      const before = across ? e.clientY < r.top + r.height / 2
-                            : e.clientX < r.left + r.width / 2;
+      const before = across ? e.clientY < b.top + b.height / 2
+                            : e.clientX < b.left + b.width / 2;
       if (reorderDock(panel.id, over.id, before)) renderDocks();
     };
-    const onUp = () => {
+    const onUp = e => {
       panel.classList.remove("dock-moving");
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      if (boardDrag) {
+        //  A dock target may already have caught this press and undocked it,
+        //  in which case boardDrag is gone and there is nothing to commit.
+        const landed = boardDrag.valid;
+        if (landed) {
+          updateGhost(e.clientX, e.clientY);
+          //  Off the edge FIRST, so the tile is back on the grid before it is
+          //  asked to move within it.
+          setDock(panel.id, "");
+        }
+        endBoardDrag(landed);
+      }
       saveBoard();
     };
     window.addEventListener("mousemove", onMove);
