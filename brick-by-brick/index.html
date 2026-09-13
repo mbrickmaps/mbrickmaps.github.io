@@ -97,11 +97,15 @@
   /* ---------- THE BOARD ----------
      A coordinate space, not a queue. Cells and tiles are BOTH explicitly
      placed, so neither can push the other around via auto-flow. */
+  /*  A margin down both sides, the width of the flyout's tab, so the board is
+      not flush against the window. Panels have a cartouche that sits proud of
+      their top left corner and a close button on their top right, and at the
+      window edge both had nowhere to be. */
   #board {
     display: grid; gap: var(--panel-gap); position: relative;
     grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr));
     grid-auto-rows: var(--board-row, 220px);
-    padding-bottom: 40px;
+    padding: 0 26px 40px;
   }
   /*  AN EMPTY CELL IS A HOLE, NOT A GAP.
 
@@ -191,9 +195,14 @@
     width: var(--close-size); height: var(--close-size); padding: 0;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
-    font-size: 0.7rem; line-height: 1; opacity: 0.5;
+    font-size: 0.7rem; line-height: 1;
+    /*  Quiet by dimming the GLYPH, never the button. Fading the whole element
+        faded its fill with it, so the panel's corner and whatever sat under it
+        showed through the circle that is supposed to be masking them. The disc
+        is solid panel colour; only the cross is faint. */
+    color: color-mix(in srgb, var(--fg) 52%, transparent);
   }
-  .tile-remove:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
+  .tile-remove:hover { border-color: var(--bad); color: var(--bad); }
   /* Keeps any header control from sliding under the overlaid circle. */
   .panel-head { padding-right: calc(var(--close-size) / 2 + 4px); }
 
@@ -677,7 +686,11 @@
   }
   #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
   #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
-  #boardFlyout input[type=number] { width: 54px; }
+  /*  As wide as the number that goes in them. Columns is one or two digits and
+      Row px three, so 54px was reserving room for a value neither can hold and
+      pushing the close button off the end of the row. */
+  #boardFlyout input[type=number] { width: 3.4em; }
+  #boardFlyout #boardCols { width: 2.6em; }
   #boardSearch { width: 100%; margin-bottom: 8px; }
   #boardFlyoutTab {
     position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
@@ -972,6 +985,23 @@
   .tl-dot:hover { box-shadow: 0 0 0 2px var(--accent2); z-index: 2; }
   .tl-empty { font-size: 0.7rem; opacity: 0.45; }
 
+  /* ---------- focus: one panel lit, the rest turned down ---------- */
+  /*  A LIGHTNESS SHIFT, NOT A TRANSPARENCY.
+
+      Fading a panel would let the board show through it, so a dimmed panel
+      would take the colour of whatever it is sitting on and stop looking like
+      a panel at all. `brightness` turns the whole thing down instead, the
+      picture, the inputs and the text with it, exactly as though that panel
+      were further from the lamp. In the Brick theme the unlit ones read as
+      bricks in shadow rather than as ghosts.
+
+      One filter on the panel rather than a rule per token, so a panel nobody
+      has themed still dims, and nothing has to be kept in step with the eight
+      colours. */
+  body.spotlight .panel { filter: brightness(0.46); transition: filter 0.18s ease; }
+  body.spotlight .panel.is-active { filter: none; }
+  @media (prefers-reduced-motion: reduce) { body.spotlight .panel { transition: none; } }
+
   /* ---------- docks ---------- */
   /*  A rail is fixed to an edge of the window and the page is padded out of
       its way, so the board never has to know it exists. Above the board and
@@ -1192,6 +1222,21 @@
     background: rgba(0,0,0,0.62); color: #f4f7fb; pointer-events: none;
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
+  /*  The panel saying it fell over, in the panel. */
+  .pr-crash {
+    position: absolute; left: 8px; right: 8px; bottom: 26px; z-index: 7;
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+    padding: 5px 8px; border-radius: 4px;
+    background: rgba(0,0,0,0.82); border: 1px solid var(--bad);
+    color: #f7e9e6; font-size: 0.64rem;
+  }
+  .pr-crash[hidden] { display: none; }
+  .pr-crash code { font-size: 0.58rem; opacity: 0.7; }
+  .pr-crash button {
+    margin-left: auto; font-size: 0.6rem; padding: 1px 7px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--field); color: inherit; cursor: pointer;
+  }
+  .pr-crash button:hover { border-color: var(--accent2); color: var(--accent2); }
 
   /* ---------- tree ---------- */
   .tr-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -1682,6 +1727,54 @@
       Both classes, because `.pr-tint input[type="range"]` further down has the
       same specificity and would otherwise win on source order alone. */
   .pr-tint.pr-sky-bar input[type="range"] { width: 78px; }
+  /*  HOW THE STREET IS LETTERED, in the panel that holds how the page is
+      coloured. A row of its own under the swatches, captioned, because it is a
+      different kind of thing from a colour and should not read as a ninth
+      one. */
+  /*  A ROW PER KIND: name, face, size.
+
+      A grid rather than three flex rows, so the three faces line up under one
+      another and the three numbers do too — read down a column and you are
+      comparing the same thing three times, which is the question these are
+      here to answer. The middle column takes whatever is left. */
+  .th-sign { display: grid; gap: 4px; }
+  .th-sign-cap {
+    font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .th-sign-rows { display: grid; gap: 4px; }
+  .th-sign-row {
+    display: grid; grid-template-columns: 4.2em minmax(0, 1fr) 3.6em;
+    align-items: center; gap: 6px;
+  }
+  .th-sign-row > span { font-size: 0.66rem; opacity: 0.62; }
+  .th-sign-row select, .th-sign-row input[type="number"] {
+    min-width: 0; width: 100%;
+    font-size: 0.7rem; padding: 2px 4px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--field); color: inherit;
+  }
+  .th-sign-row select:focus, .th-sign-row input[type="number"]:focus {
+    border-color: var(--accent2); outline: none;
+  }
+  .tile-reload {  .tile-reload {
+    border: 1px solid transparent; background: none; color: inherit;
+    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
+    cursor: pointer; opacity: 0.45;
+  }
+  .tile-reload:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  /*  Worth signposting. Hollow when it is not, filled and in the verified
+      colour when it is, and unpressable when a star on the brick already says
+      so — the pile outranks a click, and saying that with a disabled control
+      is kinder than letting you press something that changes nothing. */
+  .pr-star {
+    font-size: 0.78rem; line-height: 1; padding: 0 3px; border-radius: 3px;
+    border: 1px solid transparent; background: none; color: inherit;
+    cursor: pointer; opacity: 0.55;
+  }
+  .pr-star:hover { opacity: 1; border-color: var(--accent2); }
+  .pr-star.on { opacity: 1; color: var(--accent); }
+  .pr-star:disabled { cursor: default; border-color: transparent; }
+  .pr-star[hidden] { display: none; }
   .pr-tint-name { font-size: 0.62rem; opacity: 0.8; max-width: 110px;
                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-tint input[type="color"] {
@@ -1842,6 +1935,7 @@
   <!-- Same filter state as the Filter panel's search, reachable without it. -->
   <!-- The autosave has no button, so it needs a line saying it happened. -->
   <span class="save-state" id="saveState" hidden></span>
+  <label class="top-auto" title="darken every panel except the one you are working in"><input type="checkbox" id="spotlight">focus</label>
   <label class="top-auto"><input type="checkbox" id="autoSave" checked>auto</label>
   <button type="button" id="quickSave" class="top-btn">Save to browser</button>
   <button type="button" id="quickDownload" class="top-btn">Export</button>
@@ -2031,6 +2125,18 @@
 <template id="tpl-theme">
   <div class="th-presets" data-el="presets"></div>
   <div class="ms-rows th-rows" data-el="rows"></div>
+  <!-- The lettering painted into the Promenade. It lived in that panel's own
+       bar on the argument that it only affects one panel — but so does nothing
+       else here: the eight swatches are how the PAGE looks and these two are
+       how the STREET looks, and both are the same question. They also keep the
+       same company: neither is in your pile, and both survive Clear all. -->
+  <div class="th-sign">
+    <span class="th-sign-cap">sign lettering</span>
+    <!-- A row per kind — face and size together, because they are one
+         decision about one kind of lettering. Built by renderTheme from
+         SIGN_KINDS so the list and the controls cannot drift apart. -->
+    <div class="th-sign-rows" data-el="signrows"></div>
+  </div>
   <div class="row ms-bar">
     <input type="text" data-el="name" placeholder="save as…" spellcheck="false">
     <button data-act="save" title="keep these colors under a name">Save</button>
@@ -2243,6 +2349,7 @@ function parseLine(raw, lineNumber, section) {
     lineNumber, raw, section, status: null, type: null, kind: null, icon: "",
     alias: null, name: "", detail: "", src: "", url: "", coords: null, text: [], date: null, estimate: null,
     age: null, links: [], valid: false, notes: [], empty: false, comment: false,
+    star: false,
   };
 
   if (!trimmed) { brick.empty = true; return brick; }
@@ -2317,6 +2424,17 @@ function parseLine(raw, lineNumber, section) {
   for (let i = start; i < rest.length; i++) {
     const f = rest[i];
     if (!f) continue;
+    /*  A STAR IS A PLACE WORTH SIGNPOSTING.
+
+        `+|📍|<longforgan>|Longforgan|*` says put this one on the fingerposts.
+        A field of its own rather than a character inside the name, so it can
+        be added to and taken off a record without retyping anything, and so it
+        never ends up printed on the board it is asking for.
+
+        Read here with the other shapes, because that is what it is: a field
+        recognised by what it looks like. Anything else containing a star is
+        text, so a place called "The Star" is unaffected. */
+    if (f === "*" || f === "★") { brick.star = true; continue; }
     if (f.indexOf("@") !== -1) { brick.links.push(...readLinks(f)); continue; }
     if (!brick.coords) { const c = readCoords(f); if (c) { brick.coords = c; continue; } }
     // Checked before the date, since a filename can contain a year.
@@ -2415,6 +2533,7 @@ function buildModel(bricks) {
         const e = touch(b.alias.slug, {
           kind: b.kind, declared: true, declaredAt: b.lineNumber, status: b.status,
           num: b.alias.num, name: b.name || displayFor(b.alias),
+          star: !!b.star,
           coords: b.coords || (b.kind === "place" ? GAZETTEER.get(b.alias.slug) || null : null),
           coordsFrom: b.coords ? "brick" : (GAZETTEER.has(b.alias.slug) ? "gazetteer" : null),
         });
@@ -3672,7 +3791,10 @@ function loadGroups() {
   for (const g of raw) {
     const name = typeof g === "string" ? g : (g && g.name);
     if (name && !PROM_GROUPS.some(x => x.name === name)) {
-      PROM_GROUPS.push({ slug: "grp-" + slugify(name), name });
+      //  `after` is absent in every file written before a group could stand
+      //  between two places, and absent means the end of the street.
+      const after = g && typeof g.after === "string" ? g.after : null;
+      PROM_GROUPS.push({ slug: "grp-" + slugify(name), name, after });
     }
   }
 }
@@ -3692,9 +3814,25 @@ function saveGroups() {
     That is a real limit, and it is the honest one — a column you invented has
     no coordinates, so there is no honest way to interleave it with columns
     that do. */
+/*  Dropped anywhere in the street, not only among the other groups.
+
+    It used to count how many GROUPS were left of where you let go and insert
+    it at that index, so a group could only ever be shuffled among its own
+    kind: drag one into the middle of Perthshire and it walked straight back to
+    the end. Now it records the column it came to rest after, whatever kind of
+    column that is, and the street is assembled around those anchors. */
 function moveGroupTo(slug, x, xOf) {
   const i = PROM_GROUPS.findIndex(g => g.slug === slug);
   if (i < 0) return;
+  let after = null, bestX = -Infinity;
+  for (const [other, ox] of xOf) {
+    if (other === slug || other === "") continue;     // not itself, not the promenade
+    if (ox < x && ox > bestX) { bestX = ox; after = other; }
+  }
+  PROM_GROUPS[i].after = after;                        // null means the west end
+  /*  The array order still decides how two groups anchored to the SAME column
+      stack up, so the one you dropped goes in beside the others in the order
+      you dropped it. */
   const [moved] = PROM_GROUPS.splice(i, 1);
   let at = 0;
   for (const other of PROM_GROUPS) {
@@ -4331,7 +4469,12 @@ function sidecarData(host) {
     saved: new Date().toISOString(),
     promenade: {
       pins: host && host._pinned ? [...host._pinned.entries()] : [],
-      groups: PROM_GROUPS.map(g => g.name),
+      /*  Objects rather than names, so a column you placed between two
+          parishes comes back between them. Written as names once, which meant
+          opening any saved scene quietly shuffled every group to the end of
+          the street. An older file full of plain strings still reads. */
+      groups: PROM_GROUPS.map(g => ({ name: g.name, after: g.after || null })),
+      starred: [...PROM_STAR],
     },
     columns: {
       tints: [...COLUMN_TINT.entries()],
@@ -4392,13 +4535,23 @@ function applySidecar(text, host) {
   const groups = data.promenade && data.promenade.groups;
   if (Array.isArray(groups)) {
     PROM_GROUPS.length = 0;
-    for (const name of groups) {
-      if (typeof name === "string" && name.trim()) {
-        PROM_GROUPS.push({ slug: "grp-" + slugify(name), name });
-        out.groups++;
-      }
+    for (const g of groups) {
+      //  A name on its own is how this was written before a group could stand
+      //  anywhere but the end.
+      const name = typeof g === "string" ? g : (g && g.name);
+      if (typeof name !== "string" || !name.trim()) continue;
+      const after = g && typeof g.after === "string" ? g.after : null;
+      PROM_GROUPS.push({ slug: "grp-" + slugify(name), name, after });
+      out.groups++;
     }
     saveGroups();
+  }
+
+  const stars = data.promenade && data.promenade.starred;
+  if (Array.isArray(stars)) {
+    PROM_STAR.clear();
+    for (const s2 of stars) if (typeof s2 === "string") PROM_STAR.add(s2);
+    saveStarred();
   }
 
   const tints = data.columns && data.columns.tints;
@@ -4855,6 +5008,22 @@ const EFFECTS = [
   { id: "smoke",  alpha: 251, ink: "#b9c6d4", glyph: "\u2601", tool: "fill",
     tip: "smoke. Each marked pixel is a chimney, and puffs rise from it",
     collect: "list" },
+  /*  THE PART THAT STRETCHES.
+
+      A signboard is as long as the name written on it, so a drawing of one
+      cannot be a picture: it has to say which part of itself repeats. Paint a
+      column of pixels with this and that column is the middle. Everything left
+      of the leftmost marked column is the left cap, everything right of the
+      rightmost is the right cap, and the marked run tiles to fill whatever is
+      between them.
+
+      Marking the MIDDLE rather than the two caps is the same decision stated
+      once instead of twice, and it cannot contradict itself: there is always
+      exactly one run, and the caps are whatever it is not. */
+  { id: "stretch", alpha: 250, ink: "#8de0c0", glyph: "\u2194", tool: "fill",
+    tip: "the part that stretches. What is left of it and right of it are the "
+       + "ends; this repeats to fill the middle",
+    collect: "mask" },
   { id: "anchor", alpha: 252, ink: "#ff78eb", glyph: "\u2691", tool: "anchor",
     tip: "where this place's name stands. The post runs from the board down "
        + "to the marked pixel and stops there, so mark a roof and the sign is "
@@ -5185,6 +5354,18 @@ function readSignMark(img) {
   cv.__doors = doors;
   //  Chimneys. Each marked pixel is one, in image coordinates.
   cv.__smoke = found.smoke.list;
+  /*  THE STRETCH, AS TWO NUMBERS.
+
+      Every marked pixel is a column that repeats, so the only thing anything
+      downstream needs is the leftmost and the rightmost of them. Everything
+      before `from` is the left cap, everything after `to` is the right cap,
+      and the band between is what tiles. Said once here so no caller has to
+      walk a list of coordinates to work out the same two numbers. */
+  if (found.stretch.list.length) {
+    let from = Infinity, to = -Infinity;
+    for (const [x] of found.stretch.list) { if (x < from) from = x; if (x > to) to = x; }
+    cv.__stretch = { from, to };
+  }
   return { img: cv, at };
 }
 
@@ -5850,6 +6031,29 @@ const PEN_SLUG = "\u2205";
     moves the drawing and the seating together. */
 const BAL = { rx: 14, ry: 17, rim: 34, floor: 48, deep: 16, half: 9 };
 
+/*  AN EMPTY BALLOON IS A SMALL BALLOON.
+
+    It crosses the sky above somebody's research and is meant to be noticed
+    once and then ignored, so with nobody in it it sits at about two thirds and
+    reads as far off. Put a figure in the basket and it comes up to full size,
+    which is the whole of the announcement: something is happening up there.
+
+    Growth is on the square root of the load, so the FIRST passenger buys most
+    of it. One seat today, and the same curve still behaves if there are ever
+    four: the difference between empty and occupied has to be plain, the
+    difference between three aboard and four need not be. */
+const BAL_EMPTY = 0.64;                 // share of full size, basket empty
+
+function balloonScale(host, b) {
+  const z = host._zoom || 1;
+  const seats = Math.max(1, BALLOON_SEATS);
+  const load = b && b.riders ? Math.min(b.riders.length, seats) : 0;
+  //  How far off this particular balloon is, set when it appeared. A far one
+  //  still swells for a passenger; it swells from further away.
+  const depth = (b && b.node && b.node.__depth) || 1;
+  return z * depth * (BAL_EMPTY + (1 - BAL_EMPTY) * Math.sqrt(load / seats));
+}
+
 /*  Heavier is slower, but never slower than stopped and never NEGATIVE.
 
     It was `0.35 - load * 0.03`, written when the balloon only ever went one
@@ -6044,7 +6248,16 @@ function dropOffBalloon(host) {
     so a plain re-render puts each one back in the column they were taken
     from. Which is why the nodes can simply be destroyed with the balloon —
     the render makes new ones. */
-function landBalloon(host) {
+/*  `quiet` is for a caller that is ALREADY rebuilding the scene.
+
+    Landing a balloon with somebody in it asks for a render, because that is
+    what stands the passenger back in their column. Called from inside a render
+    that has not finished, it re-enters the whole thing: the inner pass tears
+    down and rebuilds a world the outer pass is still holding references into,
+    and the outer pass then works on nodes that have been thrown away. That is
+    the null transform. A caller that is rendering anyway says so, and places
+    everyone itself. */
+function landBalloon(host, quiet) {
   const b = host._balloon;
   if (!b) return;
   const had = (b.riders || []).length;
@@ -6086,7 +6299,7 @@ function landBalloon(host) {
   /*  The rebuild is what actually returns them: their pins were never touched,
       so a plain re-render stands each one back in the column they were taken
       from, with a brand new node. */
-  if (had) { host._noTween = true; renderPromenadePixi(V(), host); }
+  if (had && !quiet) { host._noTween = true; renderPromenadePixi(V(), host); }
   for (const n of orphans) if (!n.destroyed) n.destroy({ children: true });
 }
 
@@ -6178,10 +6391,34 @@ function renderPromenadePixi(model, host) {
   /*  Your own columns, after the places. They have no coordinates by
       definition, so they cannot be ordered by geography — they keep the order
       you made them in, which is at least an order you chose. */
-  for (const g of PROM_GROUPS) {
-    if (!placeQ || g.name.toLowerCase().includes(placeQ) || g.slug.includes(placeQ)) {
-      placed.push([g.slug, null]);
+  /*  A GROUP SITS WHEREVER YOU PUT IT.
+
+      The places are in longitude order and that order is the information. A
+      group has no coordinates, so it has no natural place in that order — and
+      being made of whatever you decided belongs together, it often wants to
+      stand beside a particular parish rather than at the end of the street
+      with the other inventions.
+
+      `after` is the uid it follows, so a group inserted between two places
+      stays there when the street is rebuilt. No `after`, or one naming a place
+      that has since gone, and it falls to the end exactly as it always did. */
+    const groupsHere = PROM_GROUPS.filter(g =>
+      !placeQ || g.name.toLowerCase().includes(placeQ) || g.slug.includes(placeQ));
+  const anchored = new Map();
+  for (const g of groupsHere) {
+    if (!g.after) continue;
+    if (!anchored.has(g.after)) anchored.set(g.after, []);
+    anchored.get(g.after).push(g);
+  }
+  if (anchored.size) {
+    for (let i = placed.length - 1; i >= 0; i--) {
+      const list = anchored.get(placed[i][0]);
+      if (list) placed.splice(i + 1, 0, ...list.map(g => [g.slug, null]));
     }
+  }
+  for (const g of groupsHere) {
+    const stray = !g.after || !placed.some(([s]) => s === g.after);
+    if (stray) placed.push([g.slug, null]);
   }
 
   /*  THE PROMENADE ITSELF — always a column, never a place.
@@ -6195,6 +6432,16 @@ function renderPromenadePixi(model, host) {
   const PROMENADE = "";
   placed.push([PROMENADE, null]);
   const STEP = (GRID ? 74 : 110) * Z, PAD = 70 * Z, GROUND = 0.72;
+  /*  THE LETTERING ON A FINGERPOST ARM, at whatever size you set for posts.
+
+      The distance is drawn at the same size as the name. It was 7 against 8.5,
+      small enough that a mileage — the one thing on an arm you cannot work out
+      for yourself — was the hardest part of it to read.
+
+      Note what does NOT read this: the layout. POST_ROOM below measures at the
+      default size deliberately, so changing this makes the lettering bigger
+      and leaves the street where it was. */
+  const ARM_NAME = signSize("post"), ARM_DIST = signSize("post");
 
   /*  Columns widen to hold their crowd.
 
@@ -6235,12 +6482,94 @@ function renderPromenadePixi(model, host) {
   const view = (host.clientWidth || 600);
   const promW = Math.max(widthOf(PROMENADE), view - PAD * 2 - takenByPlaces);
 
+  /*  ROOM FOR A FINGERPOST IS ROOM IN THE STREET.
+
+      The arms reach out to either side, so a post dropped into the gap between
+      two columns has its lettering across somebody's roof. The space has to be
+      reserved while the street is being measured rather than found afterwards:
+      a whole column's worth is opened at each end and every few columns along,
+      and nothing else is allowed to stand in it.
+
+      Recorded as it goes, so the sign section places posts at positions the
+      layout already agreed to rather than guessing at midpoints. */
+  //  Half of this is what an arm has to itself, so it is the one number that
+  //  decides whether a fingerpost can reach over a roof.
+  /*  ROOM ENOUGH FOR THE LONGEST NAME THAT WILL HANG THERE.
+
+      STEP * 2 was a guess and it was short. It gave an arm 105 pixels, of
+      which about 55 go on the padding, the point and the distance — leaving
+      50 for the name. "Longforgan" just fits; "Port Of Menteith" does not, and
+      was clipped to "Port Of Mente…" on a street with whole columns of empty
+      space in it. Clipping a name to save room that was never short is the
+      wrong trade.
+
+      So the room is measured off the longest name actually on the street, and
+      the layout reserves that much. Capped at five columns a post, because
+      past that the street is mostly gaps and the one name that needed it can
+      afford to lose a letter.
+
+      Measured with a 2D context rather than a Pixi Text: this runs once per
+      render over every place, and a Text is an object with a texture behind
+      it. The two disagree by a pixel or so at the edges, which is what the
+      margin is for. */
+  const POST_ROOM = (() => {
+    if (GRID || named.length < 2) return STEP * 2;
+    const ruler = (renderPromenadePixi.__ruler ||
+      (renderPromenadePixi.__ruler = document.createElement("canvas").getContext("2d")));
+    /*  MEASURED AT THE DEFAULT SIZE, NOT AT YOURS.
+
+        This used to read the live post size, which meant changing a font size
+        re-laid the whole street: every column moved, the pan jumped, and the
+        one thing you were trying to look at — the lettering — was the hardest
+        part of it to see. A type size is not a layout instruction.
+
+        So the street reserves the same room whatever you set, and an arm that
+        outgrows it wraps, which it can already do. Big lettering makes deeper
+        planks; it does not make the parishes shuffle. */
+    ruler.font = "600 " + (SIGN_SIZE_DEFAULT.post * Z) + "px " + signFont("post");
+    const title = new Map((model.entities || []).map(e => [e.slug, e.name]));
+    let longest = 0;
+    for (const [slug] of named) {
+      /*  The longest LINE, not the longest name. A `\n` in a name is a break
+          you asked for, so a name carrying one needs room for its widest half
+          rather than for the whole thing laid end to end. */
+      for (const line of String(title.get(slug) || titleCase(slug)).split(/\\n/)) {
+        const w = ruler.measureText(line).width;
+        if (w > longest) longest = w;
+      }
+    }
+    //  Everything on the plank that is not the name: padding both ends, the
+    //  point, the gap, and the widest distance this street can print.
+    const furniture = (4 * 2 + 7 + 5 + 38 + 10) * Z;
+    return Math.max(STEP * 2, Math.min(STEP * 5, (longest + furniture) * 2));
+  })();
+  const postX = [];
+  const namedCount = named.length;
+  const postEvery = namedCount > 3 ? Math.max(3, Math.round(namedCount / 5)) : 0;
+
   let cursor = PAD;
+  if (!GRID && namedCount > 1) { postX.push(cursor + POST_ROOM / 2); cursor += POST_ROOM; }
+  let seen = 0;
   for (const [slug] of placed) {
+    /*  The east post goes BEFORE the promenade's own column, not after the
+        whole street. The promenade is whatever width the places leave over, so
+        a post beyond it stood in the middle of a wide empty stretch with its
+        arms across the one column that swallows everything: unreachable, and
+        pointing at nothing you could see. */
+    if (!GRID && slug === PROMENADE && namedCount > 1) {
+      postX.push(cursor + POST_ROOM / 2);
+      cursor += POST_ROOM;
+    }
     const w = slug === PROMENADE ? promW : widthOf(slug);
     wOf.set(slug, w);
     xOf.set(slug, cursor + w / 2);      // the column's center
     cursor += w;
+    if (slug !== PROMENADE) seen++;
+    //  Never after the last named column: that end already has its own post.
+    if (!GRID && postEvery && slug !== PROMENADE && seen % postEvery === 0 && seen < namedCount) {
+      postX.push(cursor + POST_ROOM / 2);
+      cursor += POST_ROOM;
+    }
   }
   const unknownX = cursor;
   const worldW = cursor + PAD;
@@ -6253,6 +6582,41 @@ function renderPromenadePixi(model, host) {
     const note = document.createElement("p");
     note.className = "hint pr-note";
     shell.appendChild(note);
+
+    /*  WHEN IT FALLS OVER, SAY SO.
+
+        A thrown error inside the ticker stops the ticker and nothing else: the
+        street freezes, every control still works, and the only trace is a line
+        in a console nobody has open. That is indistinguishable from the panel
+        having decided to stand still, which is why "it crashed" has been so
+        hard to pin down.
+
+        So the panel reports its own death, in the panel, with the message and
+        the line that threw and the way to rebuild it. */
+    const crash = document.createElement("div");
+    crash.className = "pr-crash";
+    crash.hidden = true;
+    shell.appendChild(crash);
+    host._crash = (err, swept) => {
+      const where = String((err && err.stack) || "").split("\n")[1] || "";
+      crash.innerHTML = "";
+      const msg = document.createElement("span");
+      msg.textContent = ((err && err.message) || String(err)) +
+        (swept && swept.length
+          ? " — swept " + swept.length + " dead " +
+            (swept.length === 1 ? "node" : "nodes") + ": " + swept.join(", ")
+          : "");
+      const at = document.createElement("code");
+      at.textContent = where.trim().replace(/^at\s+/, "").slice(0, 90);
+      const again = document.createElement("button");
+      again.type = "button";
+      again.textContent = "rebuild";
+      again.onclick = () => { crash.hidden = true; reloadPanel("viz-promenade"); };
+      crash.appendChild(msg);
+      if (where) crash.appendChild(at);
+      crash.appendChild(again);
+      crash.hidden = false;
+    };
 
     /*  THE CAPTION, AND THE WAY OUT OF PRETTY MODE.
 
@@ -6458,6 +6822,11 @@ function renderPromenadePixi(model, host) {
       saveGroups();
       closeGroupIn();
       renderPromenadePixi(V(), host);
+      /*  A new column lands at the far end of a street sixty parishes long, so
+          on any real pile it appears somewhere you are not looking and reads
+          as nothing having happened. Travel to it and light it, which is what
+          you would have done next anyway. */
+      if (at === -1) panToColumn(host, slug, 700, true);
     };
     host._groupBtn = groupBtn;
     host._groupIn = groupIn;
@@ -6500,6 +6869,14 @@ function renderPromenadePixi(model, host) {
       'beside your bricks">save scene</button>' +
       '<button data-k="load" title="read a brick.json back in, replacing the ' +
       'scene you are looking at">open\u2026</button>' +
+      //  Beside the signpost controls in spirit: it is the unit every
+      //  fingerpost on the street is written in.
+      '<button data-k="unit" title="miles or kilometres on the fingerposts">mi</button>' +
+      /*  The face and the size used to sit here. They are in the Theme panel
+          now, beside the eight colours: the swatches are how the page looks
+          and the lettering is how the street looks, which is one question
+          asked about two surfaces. Neither is in your pile and both survive
+          Clear all, which is the company they keep. */
       // Beside the file controls, since the questions it answers are mostly
       // "what file do I make, and what goes in it".
       '<a class="pr-doc" href="doc/promenade.html" target="_blank" rel="noopener"' +
@@ -6526,6 +6903,15 @@ function renderPromenadePixi(model, host) {
       downloadText(JSON.stringify(data, null, 2),
                    name ? slugify(name) + ".scene.json" : "brick.json",
                    "application/json");
+    };
+    const unitBtn = fileBar.querySelector('[data-k="unit"]');
+    unitBtn.textContent = DIST_UNIT;
+    unitBtn.onclick = () => {
+      DIST_UNIT = DIST_UNIT === "mi" ? "km" : "mi";
+      saveDistUnit();
+      unitBtn.textContent = DIST_UNIT;
+      host._noTween = true;
+      renderPromenadePixi(V(), host);       // every arm is written in it
     };
     fileBar.insertBefore(groupBtn, fileBar.firstChild);
     fileBar.insertBefore(groupIn, groupBtn.nextSibling);
@@ -6967,6 +7353,17 @@ function renderPromenadePixi(model, host) {
     tintBar.hidden = true;
     tintBar.innerHTML =
       '<span class="pr-tint-name"></span>' +
+      /*  Worth signposting, or not. The notation says the same thing with a
+          `*` field on the place's brick; this is the same decision made by
+          pointing at the column instead of typing.
+
+          It writes to the sidecar rather than to the pile, because this panel
+          reads the pile and does not write it — a promenade that edited your
+          records because you clicked a star would be a promenade you could not
+          trust. Either source counts, so a starred brick and a starred column
+          mean the same thing to the fingerposts. */
+      '<button data-k="star" class="pr-star" title="put this place on the ' +
+        'fingerposts">☆</button>' +
       '<input type="color" data-k="from" value="#1d2c38">' +
       '<input type="color" data-k="to" value="#1a1f18">' +
       '<input type="range" data-k="alpha" min="0" max="1" step="0.05" value="1" ' +
@@ -7021,6 +7418,19 @@ function renderPromenadePixi(model, host) {
       if (slug === null) return null;
       return COLUMN_TINT.get(slug) || { from: "#1d2c38", to: "#1a1f18", alpha: 1 };
     };
+    tintBar.addEventListener("click", e => {
+      const star = e.target.closest && e.target.closest('[data-k="star"]');
+      if (!star || star.disabled) return;
+      //  The same source the rest of this bar reads: whichever column is
+      //  selected is the one every control in it is about.
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (!slug) return;
+      if (PROM_STAR.has(slug)) PROM_STAR.delete(slug); else PROM_STAR.add(slug);
+      saveStarred();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    });
+
     tintBar.addEventListener("input", e => {
       const slug = host._focusKind === "column" ? host._focus : null;
       if (slug === null || !e.target.dataset.k) return;
@@ -7150,6 +7560,19 @@ function renderPromenadePixi(model, host) {
       const rb = tintBar.querySelector('[data-k="ribbon"]');
       rb.hidden = !grp;               // only the columns that hang one
       rb.value = ribbonOf(slug);
+      /*  Only a real place can be signposted: a group you invented has no
+          coordinates, so no arm could say how far off it is. */
+      const st = tintBar.querySelector('[data-k="star"]');
+      const inPile = !!(e && e.star);
+      st.hidden = !!grp || !slug;
+      const on = inPile || PROM_STAR.has(slug);
+      st.textContent = on ? "★" : "☆";
+      st.classList.toggle("on", on);
+      st.disabled = inPile;
+      st.title = inPile
+        ? "starred by a * on its brick, so it stays starred"
+        : on ? "on the fingerposts — press to take it off"
+             : "put this place on the fingerposts";
       /*  Not while you are typing in it. This runs on every render, and a
           render happens on every keystroke — writing the value back mid-word
           fights the person holding the keyboard. */
@@ -7190,6 +7613,23 @@ function renderPromenadePixi(model, host) {
     const wake = on => {
       if (on && !app.ticker.started) app.ticker.start();
       else if (!on && app.ticker.started) app.ticker.stop();
+    };
+
+    /*  THE OBSERVER IS AN OPTIMISATION, NOT THE ONLY SWITCH.
+
+        Moving a tile re-parents this panel, which detaches it for a frame. An
+        IntersectionObserver reports a CHANGE, so it can deliver "gone" on that
+        detach and then nothing at all on the re-attach, because from where it
+        was sampling the element never actually went away. The ticker was then
+        stopped for good and the street stood still until something else
+        happened to move it.
+
+        So anything that redraws the panel asks this instead, which measures
+        rather than remembers. */
+    host._wake = () => {
+      const r = shell.getBoundingClientRect();
+      wake(!document.hidden && r.width > 0 &&
+           r.bottom > -120 && r.top < window.innerHeight + 120);
     };
     if (window.IntersectionObserver) {
       host._seen = new IntersectionObserver(
@@ -7350,6 +7790,7 @@ function renderPromenadePixi(model, host) {
     host._limbo.zIndex = PEN_Z;
     app.stage.addChild(host._limbo);
 
+
     /*  Drift as an attract mode.
 
         Still off while you are working — a scene that slides about under the
@@ -7438,6 +7879,13 @@ function renderPromenadePixi(model, host) {
       w.sprite.texture = w.frames[i];
     };
     app.ticker.add(() => {
+      /*  ONE GUARD AROUND THE WHOLE FRAME.
+
+          A throw in here kills the ticker and leaves a frozen street with no
+          word of what happened. Caught, named in the panel, and the loop
+          stopped deliberately rather than by accident, so the thing you see
+          matches the thing that occurred. */
+      try {
       const t = app.ticker.lastTime / 1000;
       for (const w of host._walkers || []) {
         /*  A held figure belongs to the hand, not to the ticker.
@@ -7862,7 +8310,7 @@ function renderPromenadePixi(model, host) {
             an inch across while the people under it doubled. The whole
             container is scaled instead, and kept in step by the ticker below,
             because the zoom can change without a balloon ever being rebuilt. */
-        bal.scale.set(host._zoom || 1);
+        bal.scale.set(balloonScale(host, null));
         bal.zIndex = SKY_Z;
         /*  Clickable, but only ever to let people off. A Container is not hit
             tested through its children, so it needs its own area — generous,
@@ -7919,6 +8367,10 @@ function renderPromenadePixi(model, host) {
           const dx = ev.global.x - downX, dy = ev.global.y - downY;
           if (!shifted && Math.abs(dx) + Math.abs(dy) < 4) return;
           shifted = true;
+          //  Through the screen position, since that is what the ticker reads
+          //  back. Writing bal.x alone was undone on the next frame the moment
+          //  the balloon started living in the world.
+          bal.__sx = fromX + dx + host._world.x;
           bal.x = fromX + dx;
           bal.y = fromY + dy;
         });
@@ -7942,9 +8394,36 @@ function renderPromenadePixi(model, host) {
         };
         g.on("pointerup", release);
         g.on("pointerupoutside", release);
-        app.stage.addChild(bal);
+        /*  OVER THE ROOFS AND UNDER THE SIGNPOSTS.
+
+            It used to hang off the stage, on top of everything, which put it
+            in front of the signage — and a signpost is nearer to you than the
+            sky by definition. Putting it BEHIND the whole world was worse: the
+            sky band is opaque, so it went behind the weather as well.
+
+            Its place is inside the world, immediately under the sign layer.
+            The roofs, the smoke and the scenery are below it; every signpost
+            and ribbon is above it.
+
+            The cost of living in the world is that the world pans, and a
+            balloon does not walk with the street. So it keeps its own screen
+            position in `__sx` and the pan is cancelled back out of it every
+            frame, exactly as the sun does two hundred lines above.
+
+            Distance is a size and a speed rather than an order: one at 0.55
+            reads as a mile off, one at 1 as over the next street. */
+        bal.__depth = 0.55 + Math.random() * 0.45;
+        bal.__sx = bal.x;
+        bal.x = bal.__sx - world.x;
+        const signAt = host._signLayer && host._signLayer.parent === world
+          ? world.getChildIndex(host._signLayer) : world.children.length;
+        world.addChildAt(bal, signAt);
         host._balloon = { node: bal, envelope: g, basket, t: 0, from: bal.y,
                           riders: [], held: false, dir: 1, release };
+        //  Now that it has a depth, at the size that depth calls for. The
+        //  ticker would fix this on its next pass, one frame late and at full
+        //  size, which is a flash of a near balloon that is not there.
+        bal.scale.set(balloonScale(host, host._balloon));
       }
       if (host._balloon) {
         const b2 = host._balloon;
@@ -7956,12 +8435,17 @@ function renderPromenadePixi(model, host) {
           // Heavier when it is carrying somebody: slower across, riding lower.
           const load = b2.riders.length;
           //  A balloon has no engine, so the wind is most of what moves it.
-          b2.node.x += balloonDrift(load) * b2.dir * windHelp(b2.dir);
+          //  A far one crosses slower, which is the other half of distance:
+          //  size alone reads as a small balloon rather than a distant one.
+          b2.node.__sx = (b2.node.__sx === undefined ? b2.node.x : b2.node.__sx) +
+                         balloonDrift(load) * b2.dir * windHelp(b2.dir) *
+                         (b2.node.__depth || 1);
           b2.node.y = b2.from + load * 3 + Math.sin(b2.t * 0.7) * 6;
 
-          /*  Zoom can change between frames. Compared before assigning so a
-              still scene is not rewriting a transform sixty times a second. */
-          const bz = host._zoom || 1;
+          /*  Zoom can change between frames, and so can the load: a passenger
+              climbing in swells it. Compared before assigning so a still scene
+              is not rewriting a transform sixty times a second. */
+          const bz = balloonScale(host, b2);
           if (b2.node.scale.x !== bz) {
             b2.node.scale.set(bz);
             for (const r of b2.riders) if (r.node && !r.node.destroyed) {
@@ -7982,17 +8466,38 @@ function renderPromenadePixi(model, host) {
 
                 Now it simply cannot reach the edge while loaded. It works the
                 room until you let them out. */
+            //  Against the SCREEN, not the world: the edges it turns at are
+            //  the edges of the panel, and the world slides underneath both.
             const edge = (BAL.rx + 6) * bz;
             const far = app.screen.width - edge;
-            if (b2.node.x < edge)      { b2.node.x = edge; b2.dir = 1; }
-            else if (b2.node.x > far)  { b2.node.x = far;  b2.dir = -1; }
+            if (b2.node.__sx < edge)      { b2.node.__sx = edge; b2.dir = 1; }
+            else if (b2.node.__sx > far)  { b2.node.__sx = far;  b2.dir = -1; }
             // The passenger faces the way they are going, like everyone else.
             for (const r of b2.riders) {
               if (r.node && !r.node.destroyed) r.node.scale.x = Math.abs(r.node.scale.x) * b2.dir;
             }
           }
           // Empty, and past the far side: gone, as it always was.
-          else if (b2.node.x > app.screen.width + 30) landBalloon(host);
+          else if (b2.node.__sx > app.screen.width + 30) landBalloon(host);
+        }
+        /*  ONLY IF IT IS STILL THERE.
+
+            THIS WAS THE CRASH. `landBalloon` three lines up destroys the node
+            and clears `host._balloon`, and the very next statement wrote to
+            that node's x — which on a destroyed Pixi node is a write through a
+            transform that is already null. Every empty balloon that reached
+            the right-hand edge took the panel down with it, and because a
+            balloon arrives about once a minute and then takes most of another
+            to cross, it read as random.
+
+            `host._balloon === b2` is the honest test rather than
+            `!b2.node.destroyed`: it also covers a landing that replaced the
+            balloon rather than removing it, and it says what is actually being
+            asked — is this still the balloon the street has. */
+        if (host._balloon === b2 && !b2.node.destroyed) {
+          //  The pan, cancelled back out. Done after everything above so a
+          //  drag, a turn at the edge and a drift all land in the same place.
+          b2.node.x = (b2.node.__sx === undefined ? b2.node.x : b2.node.__sx) - host._world.x;
         }
       }
 
@@ -8073,11 +8578,22 @@ function renderPromenadePixi(model, host) {
           it mints a gradient texture. At a pixel a second that is about once
           every twelve seconds rather than sixty times a second.
 
-          Hands off while you are holding it, and off entirely for anyone who
-          asked for less motion — a sky that restyles itself unbidden is
-          exactly what that setting means. */
+          IT RUNS ONLY WHILE THE STREET DRIFTS, which is this panel's existing
+          word for "nobody is using it". Touch anything and the drift stops for
+          thirty seconds, so the clock stops with it.
+
+          That was a real bug rather than tidiness. Sunset hands the sky to the
+          moon, and a handover rebuilds the scene. Land one in the middle of
+          somebody nudging a ribbon and the hour flips under their hand and the
+          ribbon they were holding is rebuilt from its last saved height, which
+          reads as the panel throwing away the move they just made. The clock
+          now cannot fire within thirty seconds of a touch.
+
+          Off entirely for anyone who asked for less motion, too: a sky that
+          restyles itself unbidden is exactly what that setting means. */
       const sn = host._sun;
-      if (sn && !sn.destroyed && host._relight && host._sunHorizon && !host._dragging &&
+      if (sn && !sn.destroyed && host._relight && host._sunHorizon &&
+          host._drift && !host._dragging &&
           !matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const rate = NIGHT ? MOON_RATE : SUN_RATE;
         const step = rate * (app.ticker.deltaMS / 1000) * (host._sunDir || 1);
@@ -8106,7 +8622,16 @@ function renderPromenadePixi(model, host) {
         const k = Math.min(1, p.t / p.dur);
         const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
         host._world.x = p.from + (p.to - p.from) * e;
-        if (k >= 1) host._panTo = null;
+        if (k >= 1) {
+          host._panTo = null;
+          //  Arrived: light the place you were sent to, the same selection a
+          //  click on its own signpost makes.
+          if (p.land) {
+            host._focus = p.land;
+            host._focusKind = "column";
+            applyFocus(host);
+          }
+        }
       }
 
       if (host._drift && !host._panTo) {
@@ -8117,6 +8642,33 @@ function renderPromenadePixi(model, host) {
         } else if (host._world.x !== 0) {
           host._world.x = 0;
         }
+      }
+      } catch (err) {
+        /*  "Cannot read properties of null (reading 'position')" is Pixi
+            walking a node that has been destroyed and left in the tree: a
+            destroyed display object has no transform, and the renderer reads
+            one from every child it visits. Which node it is decides nothing
+            about how to recover, but it decides everything about the fix, so
+            the tree is searched and the answer put on screen.
+
+            Then the dead branch is cut out and the loop carries on. A panel
+            that repairs itself and tells you what it repaired is worth more
+            than one that stops and tells you nothing, and the message stays up
+            until you dismiss it. */
+        const dead = [];
+        const sweep = node => {
+          for (const kid of (node.children || []).slice()) {
+            if (!kid.transform || kid.destroyed) {
+              dead.push(kid.constructor && kid.constructor.name);
+              node.removeChild(kid);
+              continue;
+            }
+            sweep(kid);
+          }
+        };
+        try { sweep(app.stage); } catch (e) { /* nothing more to be done */ }
+        if (host._crash) host._crash(err, dead);
+        if (!dead.length) app.ticker.stop();   // not this: stop rather than spin
       }
     });
 
@@ -8161,6 +8713,14 @@ function renderPromenadePixi(model, host) {
     if (host._lifted.parent) host._lifted.parent.removeChild(host._lifted);
     host._lifted = null;
   }
+
+  /*  The balloon lives in the world now, so a rebuild takes it down with
+      everything else — and the ticker would go on steering a node whose
+      transform has already been destroyed, which is the crash. It is landed
+      first, which is the one piece of tidying that also puts any passenger
+      safely back on the street. */
+  if (host._balloon) landBalloon(host, true);
+
   world.removeChildren();
   host._walkers = [];
   host._ensureNameFor = new Map();
@@ -8613,7 +9173,10 @@ function renderPromenadePixi(model, host) {
   host._artFloor = ART_FLOOR;
 
   const label = (text, size, color, extra) => new P.Text(text, {
-    fontFamily: "ui-monospace, Menlo, monospace", fontSize: size, fill: color,
+    //  The board's face unless the caller names another. Most of what goes
+    //  through here IS a board — the name over a column, a ribbon, a caption —
+    //  and the two that are not say so in `extra`.
+    fontFamily: signFont("board"), fontSize: size, fill: color,
     ...(extra || {}),
   });
 
@@ -8623,12 +9186,32 @@ function renderPromenadePixi(model, host) {
       Exactly the arithmetic the scene art itself uses to size and place the
       sprite, and deliberately not a second copy of it: if the two ever
       disagreed, the ribbon would hang somewhere the roof is not. */
+  /*  REMEMBERED, BECAUSE A ROOF DOES NOT MOVE.
+
+      This answers null while a picture is still on its way, and a ribbon with
+      no roof to sit on is hung at head height instead. That was fine on a
+      first render and wrong on every later one: switching the hour clears the
+      scene cache, so every picture is briefly "not here yet" and the whole
+      street's signage drops to head height and then climbs back as the art
+      returns. That is the pop.
+
+      A picture's height is the same picture's height whatever the light, so
+      the last answer is kept and used while the new copy is being tinted.
+      Cleared only when the zoom or the column widths change, which are the two
+      things that genuinely change it. */
+  const artTopKey = slug => slug + "|" + Z + "|" + Math.round(wOf.get(slug) || 0);
   const sceneArtTop = slug => {
     if (!slug) return null;
+    const key = artTopKey(slug);
     const got = sceneImage(slug);
-    if (!got || got instanceof Promise) return null;
+    if (!got || got instanceof Promise) {
+      const kept = ART_TOP.get(slug);
+      return kept && kept.key === key ? kept.top : null;
+    }
     const sc = Math.min(1, ((wOf.get(slug) || STEP) - 8 * Z) / (got.width || 1)) * Z;
-    return (got.height || 0) * sc;
+    const top = (got.height || 0) * sc;
+    ART_TOP.set(slug, { key, top });
+    return top;
   };
 
   /*  Each signpost is one container, so a highlight can dim it with a single
@@ -8966,11 +9549,18 @@ function renderPromenadePixi(model, host) {
     for (const at of ["above", "below"]) {
       const text = note[at];
       if (!text) continue;
+      /*  The size you set, like every other word painted into the scene. It
+          was 7 against the signboards 8.5, which is the same mistake the
+          fingerpost distances were making: a size chosen in the code for text
+          somebody else has to read.
+
+          The line height follows it rather than being set beside it, or a
+          note set large would overlap its own second line. */
       const n = new P.Text(text, {
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 7 * Z, fill: 0xbfae92,
+        fontFamily: signFont("note"),
+        fontSize: signSize("note") * Z, fill: 0xbfae92,
         align: "center", wordWrap: true, wordWrapWidth: room,
-        lineHeight: 9 * Z,
+        lineHeight: Math.round(signSize("note") * 1.3) * Z,
       });
       n.resolution = 2;
       /*  Both grow AWAY from the street. The one above is anchored at its
@@ -9081,7 +9671,9 @@ function renderPromenadePixi(model, host) {
     const e = grp ? null : (model.entities || []).find(x => x.slug === slug);
     const x = xOf.get(slug);
     const sign = new P.Container();
-    const t = label(grp || (e ? e.name : slug), 9 * Z, grp ? 0xc9a877 : 0xe8dcc4);
+    //  The size you set, not one I picked. The column signboard and the
+    //  fingerpost arms are the same lettering on the same street.
+    const t = label(grp || (e ? e.name : slug), signSize("board") * Z, grp ? 0xc9a877 : 0xe8dcc4);
     t.resolution = 2;
     t.anchor.set(0.5, 0);
 
@@ -9230,7 +9822,11 @@ function renderPromenadePixi(model, host) {
       chars.forEach((ch, i) => {
         if (ch === " ") return;                 // still advances, draws nothing
         const cx = -t.width / 2 + adv * (i + 0.5);
-        const g2 = label(ch, 9 * Z, ink);
+        /*  The same size the ribbon measured itself at. `adv` above is `t`s
+            width divided by the letter count, and `t` is set at the size you
+            chose — so a glyph drawn at any other size steps along a ribbon
+            measured for a different one. */
+        const g2 = label(ch, signSize("board") * Z, ink);
         g2.resolution = 2;
         g2.anchor.set(0.5, 0.5);
         g2.x = cx;
@@ -9261,8 +9857,22 @@ function renderPromenadePixi(model, host) {
           Held in the art's own pixels and converted here, because the scale
           the picture is drawn at is not known until it is placed in a
           column. */
+      /*  WHERE THE SIGN IS NAILED, REMEMBERED.
+
+          The anchor is a flagged pixel inside the place's picture, so it is
+          unknown for as long as that picture is away being redrawn — and
+          switching the hour clears the scene cache, which sends every picture
+          away at once. The signs fell back to the default height, then climbed
+          to their pixels as the art came home: a street-wide flinch on every
+          switch.
+
+          The pixel is a fact about the drawing, not about the light, so the
+          last answer is kept and used while the new copy is on its way. Keyed
+          by zoom and column width, which are the two things that would make it
+          land somewhere else. */
       const art = sceneCache.get(slug);
       const at = art && !(art instanceof Promise) ? art.__signAt : null;
+      const anchorKey = slug + "|" + Z + "|" + Math.round(wOf.get(slug) || 0);
       let offX = 0, floatY = null;
       if (at && art) {
         const artS = Math.min(1, ((wOf.get(slug) || STEP) - 8 * Z) / (art.width || 1)) * Z;
@@ -9270,6 +9880,10 @@ function renderPromenadePixi(model, host) {
         //  offset is measured from the middle of the picture and from its foot.
         offX = (at.x + 0.5 - art.width / 2) * artS;
         if (!at.ground) floatY = (at.y + 0.5 - art.height) * artS;
+        SIGN_AT.set(slug, { key: anchorKey, offX, floatY });
+      } else {
+        const kept = SIGN_AT.get(slug);
+        if (kept && kept.key === anchorKey) { offX = kept.offX; floatY = kept.floatY; }
       }
 
       const BOARD_Y = SIGN_BOARD_Y;
@@ -9292,7 +9906,18 @@ function renderPromenadePixi(model, host) {
       const baseTop = floatY === null ? BOARD_Y * Z
                                       : floatY - (t.height + 4) - POST_DROP * Z;
       const post = new P.Graphics();
+      /*  Drawn furniture, when the folders have any. Asked for by the place's
+          own uid first, so one parish can have a board of its own, and the
+          callbacks are wrapped because `costumeArrived` is declared further
+          down this same function. */
+      const sheet = signArt(slug, () => costumeArrived());
+      const boardArt = sheet && signBoard(sheet);
+      const postArt = sheet && signPole(sheet);
+      const polePic = postArt ? new P.Sprite() : null;
+      const boardPic = boardArt ? new P.Sprite() : null;
+      if (polePic) sign.addChild(polePic);
       sign.addChild(post);
+      if (boardPic) sign.addChild(boardPic);
       sign.addChild(board, t);
 
       /*  A POST IS PLANTED. IT DOES NOT SLIDE.
@@ -9309,9 +9934,37 @@ function renderPromenadePixi(model, host) {
           earth, which is what a sign lying against a wall looks like. */
       sign.__applyOff = off => {
         const top = baseTop + off * Z;
+        const bw = t.width + 6, bh = t.height + 4;
+        //  How wide the board ACTUALLY came out, which the drawn one decides
+        //  and the painted one does not. The hit box is measured off it.
+        let drawnW = bw;
         board.clear();
-        board.beginFill(0x4a3b28)
-          .drawRect(-t.width / 2 - 3, top, t.width + 6, t.height + 4).endFill();
+        if (boardPic) {
+          /*  The drawing sets the board's depth and the name sets its length:
+              scaled so one drawn row is one row of the board, then cut in three
+              and stretched across whatever the name asked for.
+
+              THE CAPS ARE NOT WRITING ROOM. left and right are the ENDS of the
+              board — a bolt, a bevel, a hanging ring — and the name has no
+              business being printed across them. So the width asked for is the
+              name's width PLUS both caps, which leaves the name sitting in the
+              center section, which is the section that stretches to hold it.
+              Asking for the name's width alone made the board exactly as long
+              as the word and then drew the two ends over the first and last few
+              letters of it. */
+          const bs = bh / Math.max(1, boardArt.height);
+          const cv = slicedSign(boardArt, Math.round(bw / bs) + signCaps(boardArt));
+          boardPic.texture = P.Texture.from(cv);
+          boardPic.scale.set(bs);
+          //  Centred on what was actually drawn, not on what the name asked
+          //  for: the caps made it wider, and half of wider is a different
+          //  number.
+          boardPic.x = -cv.width * bs / 2;
+          boardPic.y = top;
+          drawnW = cv.width * bs;
+        } else {
+          board.beginFill(0x4a3b28).drawRect(-bw / 2, top, bw, bh).endFill();
+        }
         t.y = top + 2;
         /*  THE POST IS THE GAP BETWEEN THE BOARD AND ITS FOOT.
 
@@ -9328,15 +9981,31 @@ function renderPromenadePixi(model, host) {
         const pTop = top + t.height + 4;        // the underside of the board
         const h = Math.max(0, foot - pTop);
         post.clear();
-        if (h > 0) post.beginFill(0x3a2f20).drawRect(-Z, pTop, 2 * Z, h).endFill();
+        if (polePic) polePic.visible = false;
+        if (h > 0) {
+          if (polePic) {
+            /*  At the street's own scale, so the post you drew is the post you
+                get: cap at the top, foot on the ground, shaft repeating for
+                however far the board has climbed. */
+            polePic.visible = true;
+            polePic.texture = P.Texture.from(slicedPole(postArt, Math.round(h / Z)));
+            polePic.scale.set(Z);
+            polePic.x = -postArt.width * Z / 2;
+            polePic.y = pTop;
+          } else {
+            post.beginFill(0x3a2f20).drawRect(-Z, pTop, 2 * Z, h).endFill();
+          }
+        }
         //  The target has to follow the board, or a sign you moved is a sign
         //  you cannot pick up again.
         const hitTop = top - 2;
         //  Down past the post as well, so a sign with a long drop can be
         //  picked up by the post rather than only by the board.
         const hitBot = Math.max(top + t.height + 6, pTop + h);
-        sign.hitArea = new P.Rectangle(-t.width / 2 - 4, hitTop,
-                                       t.width + 8, hitBot - hitTop);
+        //  As wide as the board is, caps included: an end you can see is an end
+        //  you should be able to take hold of.
+        const hitW = Math.max(t.width + 8, drawnW + 2);
+        sign.hitArea = new P.Rectangle(-hitW / 2, hitTop, hitW, hitBot - hitTop);
       };
       /*  HOW FAR IT MAY GO.
 
@@ -9499,6 +10168,331 @@ function renderPromenadePixi(model, host) {
     host._signs.push({ slug, node: sign });
   }
 
+  /*  FINGERPOSTS.
+
+      The street runs west to east by longitude, so left and right on this
+      panel are directions on the ground rather than a layout accident. That
+      makes a fingerpost honest: an arm pointing left at Killin is pointing the
+      way Killin actually is.
+
+      Three of them. One off the west end, one off the east end, and one
+      standing in the middle of the Promenade's own stretch, which is the long
+      empty run where you most want to know what is coming.
+
+      Each arm names the nearest place that way and how far off it is, in
+      miles worked out from the gazetteer's coordinates, so the number is a
+      fact about Perthshire rather than a number about pixels. Click an arm and
+      the street travels there.
+
+      Only where there is something to point AT: a post with no neighbour in
+      its direction grows no arm, and a street of one place gets no posts. */
+  const placedX = [...coord.keys()]
+    .filter(s => xOf.has(s))
+    .map(s => ({ slug: s, x: xOf.get(s) }))
+    .sort((a, b) => a.x - b.x);
+
+  if (!GRID && placedX.length > 1) {
+    const entName = new Map((model.entities || []).map(e => [e.slug, e.name]));
+    const nameOfPlace = s => entName.get(s) || titleCase(s);
+
+    /*  One arm: a plank that tapers to a point the way it is pointing, with
+        the name set back from the tip so the letters never ride the taper. */
+    /*  ONE ARM. NAME BY THE POST, DISTANCE AT THE TIP.
+
+        Read outward from the post it hangs on, every arm says the same two
+        things in the same order whichever way it points. Mirroring the whole
+        plank and then mirroring the lettering back put the distance on the
+        inside going one way and the outside going the other, so the two sides
+        of a post did not match.
+
+        Nothing is mirrored now. The taper is drawn toward `dir` and the words
+        are placed against the near and far ends, which is also what makes the
+        hit box honest: a left arm occupies the space to the LEFT of the post,
+        and its rectangle says so.
+
+        Shorter, too. The name is clipped rather than allowed to run, the
+        distance is set a size down, and the padding is what a plank needs
+        rather than what a signboard does. */
+    /*  NOTHING IS CUT ANY MORE.
+
+        There was a flat 13-character limit here, which turned "Port Of
+        Menteith" into "Port Of Mente…" on an arm that had room for all of it:
+        a letter count cannot know how wide the face you picked draws an M
+        against an i. The layout reserves street measured off the longest name
+        on it, and anything still too long WRAPS rather than losing its end.
+        See the wrap settings below. */
+    const arm = (slug, name, dist, dir) => {
+      const g = new P.Container();
+      /*  A BREAK YOU ASKED FOR.
+
+          `\n` in a place's name breaks the line there, so "Monzievaird
+          and\nStrowan" hangs as two lines on the arm and the break falls where
+          you wanted it rather than where the wrapping happened to land. Two
+          characters in the pile, because a brick is one line of plain text and
+          a real newline in the middle of one would be a second record.
+
+          Written as the escape rather than as a control character for the same
+          reason `\t` is: you can see it, type it, and search for it. */
+      const short = String(name).replace(/\\n/g, "\n");
+      /*  Painted lettering on timber, so it has to hold against whatever
+          colour the plank is: near-white rather than a tint of the wood, a
+          size up from where it started, and a dark outline under every letter.
+          The outline is what actually does it — a light glyph on a mid-brown
+          board has almost no contrast at its edges, and half a pixel of dark
+          around it puts the letter back on top of the wood rather than in it. */
+      /*  Round joins on the outline. A miter is the default and it spikes
+          wherever two strokes meet at a sharp angle, so an outlined lowercase
+          k or a capital A grew whiskers at the corners — at eight pixels those
+          spikes are as long as the letter is wide. Rounded, the outline stays
+          the same weight the whole way around a glyph. */
+      const inked = extra => Object.assign(
+        { fontFamily: signFont("post"),
+          stroke: 0x1a1109, strokeThickness: 2 * Z, lineJoin: "round", miterLimit: 2 },
+        extra || {});
+      const td = dist ? label(dist, ARM_DIST * Z, 0xe9d9bd, inked()) : null;
+      const pad = 4 * Z, gap = 5 * Z, tip = 7 * Z;
+
+      /*  AN ARM STAYS INSIDE THE GAP KEPT FOR IT, BY WRAPPING.
+
+          The street reserves POST_ROOM around each post, so half of that is
+          all an arm has before it is over somebody's roof. A name past that
+          used to be cut with an ellipsis, one letter at a time, until the
+          plank fitted — which loses the end of the name, and the end of a
+          name is often the half that tells two parishes apart.
+
+          It wraps instead. The plank gets deeper rather than shorter, which is
+          room the post has and the street does not, and the stacking measures
+          each arm now so a two-line plank simply pushes the next one down.
+
+          `breakWords` is the backstop: an unbroken run longer than the whole
+          arm has nowhere to wrap, and overflowing the plank is worse than
+          splitting a word nobody can read at that width anyway. */
+      const room = POST_ROOM / 2 - 5 * Z;
+      const fixed = pad * 2 + tip + (td ? gap + td.width : 0);
+      const tn = label(short, ARM_NAME * Z, 0xfbf6ec, inked({
+        fontWeight: "600",
+        wordWrap: true,
+        wordWrapWidth: Math.max(20 * Z, room - fixed),
+        breakWords: true,
+        //  Toward the post, so the ragged edge is at the pointing end and the
+        //  lines start from the same place your eye comes in from.
+        align: dir > 0 ? "left" : "right",
+      }));
+
+      const inner = tn.width + (td ? gap + td.width : 0);
+      const w = inner + pad * 2 + tip;
+      const h = Math.max(tn.height, td ? td.height : 0) + 3.5 * Z;
+
+      const plank = new P.Graphics();
+      const face = hexInt(ribbonOf(slug)), edge = shadeInt(ribbonOf(slug), -0.4);
+      //  Local space runs 0..w with the tip at whichever end `dir` says.
+      const pts = dir > 0
+        ? [0, 0, w - tip, 0, w, h / 2, w - tip, h, 0, h]
+        : [w, 0, tip, 0, 0, h / 2, tip, h, w, h];
+      plank.beginFill(face).drawPolygon(pts).endFill();
+      plank.lineStyle(1, edge, 0.9).drawPolygon(pts);
+      g.addChild(plank, tn);
+      if (td) g.addChild(td);
+
+      //  Near end and far end, rather than left and right.
+      const nearX = dir > 0 ? pad : w - pad - tn.width;
+      const farX = dir > 0 ? w - tip - pad - (td ? td.width : 0) : tip + pad;
+      tn.x = nearX; tn.y = (h - tn.height) / 2;
+      if (td) { td.x = farX; td.y = (h - td.height) / 2 + 0.5 * Z; }
+
+      //  The post is at x = 0, so a left arm hangs out to the left of it.
+      g.x = dir > 0 ? 0 : -w;
+      //  How deep the plank came out, which is what the stack advances by. The
+      //  container's own `height` would include the outline stroke and the
+      //  arms would creep apart by a pixel each.
+      g.__h = h;
+      g.eventMode = "static";
+      g.cursor = "pointer";
+      g.hitArea = new P.Rectangle(0, 0, w, h);
+      g.on("pointertap", ev => {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        //  Travel there, and select it on arrival: a fingerpost sends you
+        //  somewhere, so landing without that place picked out would leave you
+        //  to click it again to say the thing you already said.
+        panToColumn(host, slug, 900, true);
+      });
+      return g;
+    };
+
+    /*  A post carries a list each way, nearest at the top and furthest at the
+        bottom, which is how a real fingerpost stacks its arms. */
+    const postAt = (x, west, east, anchor) => {
+      const node = new P.Container();
+      node.x = x;
+      /*  POST HEIGHT, MEASURED FROM THE GROUND.
+
+          It used to start twenty pixels from the top of the panel and run all
+          the way down, which made a mast rather than a fingerpost: the arms
+          hung up in the weather where you could neither read them nor reach
+          them. A fingerpost is about head height plus a bit, so it is built
+          UP from the ground line instead, and the arms sit where a hand would
+          find them. */
+      const foot = H() * GROUND;
+
+      /*  THE ARMS ARE BUILT BEFORE THE POST THEY HANG ON.
+
+          How tall the post has to be is the sum of how tall the arms turned
+          out, and an arm's depth is decided by the lettering on it — which
+          depends on the face you picked and on the size the name is set at.
+          It cannot be known in advance, so it is measured.
+
+          It used to advance by a flat 13 * Z per arm, which was right when the
+          lettering was smaller and has been wrong since it was made legible: a
+          plank is about fifteen deep now, so every arm sat two pixels into the
+          one above it. That is the crowding. */
+      const ARM_GAP = 5 * Z;
+      const built = [];
+      const build = (list, dir) => {
+        for (const p of list || []) {
+          /*  Distance from where the post STANDS, which is the column it is
+              pitched beside. That is what somebody reading it wants: not how
+              far two other parishes are apart, but how far from here. */
+          const d = anchor ? sayDistance(haversineKm(coord.get(anchor), coord.get(p.slug))) : "";
+          built.push(arm(p.slug, nameOfPlace(p.slug), d, dir));
+        }
+      };
+      //  Both directions share one column of arms, so a post with a left and a
+      //  right never draws them over each other.
+      build(west, -1);
+      build(east, 1);
+
+      const armRoom = built.reduce((sum, a) => sum + a.__h + ARM_GAP, 0);
+      const top = foot - Math.max(58 * Z, armRoom + 20 * Z);
+      /*  The same post the signposts stand on. A fingerpost has no place of
+          its own, so it asks for the one belonging to the column it is pitched
+          beside and takes the street's default when there is none. */
+      const mastSheet = signArt(anchor, () => costumeArrived());
+      const mastArt = mastSheet && signPole(mastSheet);
+      if (mastArt) {
+        const mast = new P.Sprite(
+          P.Texture.from(slicedPole(mastArt, Math.round((foot - top) / Z))));
+        mast.scale.set(Z);
+        mast.x = -mastArt.width * Z / 2;
+        mast.y = top;
+        node.addChild(mast);
+      } else {
+        const shaft = new P.Graphics();
+        shaft.beginFill(shadeInt(RIBBON_DEFAULT, -0.35))
+             .drawRect(-1.5 * Z, top, 3 * Z, foot - top).endFill();
+        node.addChild(shaft);
+      }
+      //  Hung nearest at the top and furthest at the bottom, each one clear of
+      //  the one above by its own depth plus the gap.
+      let y = top + 3 * Z;
+      for (const a of built) {
+        a.y = y;
+        node.addChild(a);
+        y += a.__h + ARM_GAP;
+      }
+      signLayer.addChild(node);
+    };
+
+    /*  ONLY SOMEWHERE WORTH GOING.
+
+        A place with nobody recorded in it is a name in the gazetteer rather
+        than a destination, and an arm pointing at an empty column wastes the
+        one gesture this thing offers. Where nothing qualifies at all the whole
+        street is used instead, so a pile you have only just started still gets
+        its signposts. */
+    /*  A STAR OVERRULES ALL OF THIS.
+
+        `+|📍|<longforgan>|Longforgan|*` says you want that one on the posts,
+        and a choice you made beats any rule this code could apply. Starred
+        places are the whole pool when there are enough of them; otherwise the
+        guess below stands. */
+    const starred = placedX.filter(p => {
+      if (PROM_STAR.has(p.slug)) return true;
+      const e = (model.entities || []).find(k => k.slug === p.slug);
+      return !!(e && e.star);
+    });
+    const rel = host._related || { byPlace: new Map() };
+    const peopled = placedX.filter(p => {
+      const who = rel.byPlace.get(p.slug);
+      return !!who && who.size > 0;
+    });
+    /*  ONE STAR HAS TO COUNT.
+
+        Requiring two before they meant anything made the first one you set do
+        nothing at all, which reads as the control being broken. So a single
+        star is added to the two ends of the street, which is the fewest places
+        the posts need to be able to point anywhere. */
+    let pool;
+    if (starred.length) {
+      const ends = [placedX[0], placedX[placedX.length - 1]];
+      pool = [...new Set([...starred, ...ends])].sort((a, b) => a.x - b.x);
+    } else {
+      pool = peopled.length > 1 ? peopled : placedX;
+    }
+
+    const first = pool[0], last = pool[pool.length - 1];
+    const mid = pool[Math.floor(pool.length / 2)];
+    //  The column a post is pitched beside, which is what its distances are
+    //  measured from.
+    const nearestSlug = x =>
+      pool.reduce((b, p) => Math.abs(p.x - x) < Math.abs(b.x - x) ? p : b, pool[0]).slug;
+
+    /*  Each post stands in a slot the layout kept clear for it, so an arm has
+        a column's width of empty street to reach into.
+
+        Which way it points is decided by where the slot fell: everything east
+        of the first post, everything west of the last, and both ways for the
+        ones in between. The middle one names the two ENDS rather than its
+        neighbours, because standing halfway along, what you cannot see is how
+        much street there is either side of you. */
+    /*  STARRED PLACES STACK.
+
+        Once you have said which places matter, guessing stops: every post
+        carries every one of them, split by which way it lies and nearest
+        first, so a post reads as a list of everywhere worth going rather than
+        as two picks made on your behalf.
+
+        Capped at four each way. A post with nine arms is a ladder, and the
+        ones past the fourth are so far off that the distance is the only
+        useful thing on them. */
+    const STACK_MAX = 4;
+    const midSlot = Math.floor(postX.length / 2);
+    if (starred.length) {
+      for (const x of postX) {
+        const west = pool.filter(p => p.x < x).sort((a, b) => b.x - a.x).slice(0, STACK_MAX);
+        const east = pool.filter(p => p.x > x).sort((a, b) => a.x - b.x).slice(0, STACK_MAX);
+        if (west.length || east.length) postAt(x, west, east, nearestSlug(x));
+      }
+    } else postX.forEach((x, i) => {
+      if (i === 0) {
+        const east = [mid, last].filter((p, k, a) => p && p !== first && a.indexOf(p) === k);
+        postAt(x, null, east, first.slug);
+        return;
+      }
+      if (i === postX.length - 1) {
+        const west = [mid, first].filter((p, k, a) => p && p !== last && a.indexOf(p) === k);
+        postAt(x, west.reverse(), null, last.slug);
+        return;
+      }
+      if (i === midSlot && pool.length > 2) { postAt(x, [first], [last], nearestSlug(x)); return; }
+
+      /*  NEVER THE NEIGHBOURS.
+
+          The columns either side of a post are standing right there with their
+          own signs on them, so an arm naming one is the same word written
+          twice a foot apart. A fingerpost earns its place by naming what you
+          CANNOT see, so it reaches past the neighbour to a place a few columns
+          off, and falls back to the end of the street when there is nothing
+          further out. */
+      let iW = -1;
+      for (let k = 0; k < pool.length; k++) if (pool[k].x < x) iW = k;
+      const iE = iW + 1;
+      const REACH = 3;
+      const w = iW >= 0 ? pool[Math.max(0, iW - REACH)] : null;
+      const e = iE < pool.length ? pool[Math.min(pool.length - 1, iE + REACH)] : null;
+      if (w || e) postAt(x, w ? [w] : null, e ? [e] : null, nearestSlug(x));
+    });
+  }
+
 
   /*  Frames for one person: their era's colors, nudged by their own uid so
       the parish is not a line of identical twins. Textures are cached by
@@ -9508,6 +10502,11 @@ function renderPromenadePixi(model, host) {
   const costumeArrived = () => {
     clearTimeout(host._costumeSettle);
     host._costumeSettle = setTimeout(() => {
+      /*  Never in the middle of a drag. A render rebuilds every sign from what
+          is SAVED, and a sign you are holding has not been saved yet, so the
+          redraw would snatch it back to the height it started at. Waits for
+          the hand to come off instead. */
+      if (host._dragging) { costumeArrived(); return; }
       host._noTween = true;
       renderPromenadePixi(V(), host);
     }, 120);
@@ -9820,7 +10819,10 @@ function renderPromenadePixi(model, host) {
       }
       if (host._penGlow) host._penGlow.alpha = t.kind === "pen" ? 1 : 0.55;
       if (host._balloon) {
-        const bz = host._zoom || 1;
+        //  A quarter again on top of whatever size it currently is, so an
+        //  empty balloon still reaches for a passenger without jumping to the
+        //  size it will be once it has one.
+        const bz = balloonScale(host, host._balloon);
         host._balloon.node.scale.set(t.kind === "balloon" ? bz * 1.25 : bz);
       }
     });
@@ -9874,7 +10876,7 @@ function renderPromenadePixi(model, host) {
         host._lifted = null;
 
         if (t.kind === "balloon" && boardRider(host, me, P)) {
-          host._balloon.node.scale.set(host._zoom || 1);   // it swelled to catch them; it has
+          host._balloon.node.scale.set(balloonScale(host, host._balloon));   // it swelled to catch them; it has
         }
         else if (t.kind === "pen" || t.kind === "nowhere") {
           /*  The pen means you no longer know where they were — and that is now
@@ -10250,6 +11252,10 @@ function renderPromenadePixi(model, host) {
   /*  THE STREET AS IT STANDS. Arrange it by hand, press record, and the whole
       arrangement is kept, rather than you describing it to a form. */
   host._capture = () => sidecarData(host);
+
+  //  Anything that got us here also proves the panel is alive, so check the
+  //  ticker rather than trusting the observer to have kept up.
+  if (host._wake) host._wake();
 
   PROM_HOST = host;
 }
@@ -11174,16 +12180,50 @@ function renderSpriteEditor(model, host) {
       and it is never recolored. Same editor all the same — it is the same job
       of putting pixels down and seeing them in place, and a second panel would
       only drift from this one. */
-  const TARGETS = ROWS.concat(["place"]);
+  const TARGETS = ROWS.concat(["place", "sign"]);
   const PLACE_W = 102, PLACE_H = 64;      // 102 is the widest that draws 1:1 in a column
-  layers.place = (() => {
+  /*  A SIGN IS A SMALL, WIDE, ONE-FRAME DRAWING.
+
+      Same editor, same tools, and the same reasoning that let a place in here:
+      it is the job of putting pixels down and seeing them in place. It starts
+      at 40 by 14 because a board is a strip rather than a picture, and it is
+      the one target where the ↔ flag means anything — mark the column that
+      repeats and the board stretches to whatever name is written on it. */
+  /*  A SIGNPOST IS FOUR THINGS ON ONE CANVAS.
+
+      Left end, center, right end, pole. The canvas is divided into four equal
+      columns and each one is a sector: the first three are the board, the
+      fourth is the post it stands on. Nothing is marked and nothing is
+      configured — where a pixel sits is what it is.
+
+      The board uses the top third of the height and the post uses all of it,
+      because a board is a strip and a post is a length. The dead corner under
+      the board is drawn shaded so it does not read as somewhere to draw.
+
+      Stretching, in one line each: the board repeats its center column across
+      whatever the name needs, and the post repeats its middle third down
+      however far the board has climbed. Both ends of both are drawn once at
+      their own size, which is the whole reason for dividing them at all.
+
+      48 by 45 makes four 12-wide columns and a 15-deep board. */
+  const SIGN_W = 48, SIGN_H = 45;
+  const oneFrame = (w, h) => {
     const c = document.createElement("canvas");
-    c.width = PLACE_W; c.height = PLACE_H;
+    c.width = w; c.height = h;
     c.getContext("2d").imageSmoothingEnabled = false;
     c.__frames = 1;
     return c;
-  })();
+  };
+  layers.place = oneFrame(PLACE_W, PLACE_H);
+  layers.sign = oneFrame(SIGN_W, SIGN_H);
   const isPlace = () => slot === "place";
+  const isSign = () => slot === "sign";
+  //  The two targets that are one picture rather than a strip of frames.
+  const isFlat = () => isPlace() || isSign();
+  /*  Which folder it belongs in, which is also the folder it is read back out
+      of. Written once, because it was spelled out at four call sites and the
+      sign target had already been left out of one of them. */
+  const artKind = () => isPlace() ? "places" : isSign() ? "signs" : "wear";
 
   /*  What has been drawn on, and so must not be replaced under the hand.
 
@@ -11198,7 +12238,7 @@ function renderSpriteEditor(model, host) {
   //  name in the box has moved on from what you are looking at.
   let loadedAs = "";
   //  What each kind of drawing measured when it came off disk. See `defaultCell`.
-  const bornCell = { wear: null, place: null };
+  const bornCell = { wear: null, place: null, sign: null };
 
   const blitInto = (cv, img) => {
     cv.width = img.width; cv.height = img.height;
@@ -11287,9 +12327,10 @@ function renderSpriteEditor(model, host) {
       is opened, not only the one under the pen. */
   function openExisting() {
     const my = ++loadToken;
-    if (isPlace()) {
-      if (touched.place) return;
-      const base = ASSET_BASE + "images/places/";
+    if (isFlat()) {
+      const into = slot;                       // the target can change while this waits
+      if (touched[into]) return;
+      const base = ASSET_BASE + "images/" + artKind() + "/";
       const named = slugify(nameIn.value.trim());
       const tries = [];
       if (named) tries.push(base + encodeURIComponent(named) + ".png");
@@ -11298,10 +12339,10 @@ function renderSpriteEditor(model, host) {
         for (const url of tries) {
           const img = await loadImg(url);
           if (!img) continue;
-          if (my !== loadToken || !host.isConnected || touched.place) return;
-          blitInto(layers.place, img);
-          layers.place.__frames = 1;
-          bornCell.place = { w: layers.place.width, h: layers.place.height };
+          if (my !== loadToken || !host.isConnected || touched[into]) return;
+          blitInto(layers[into], img);
+          layers[into].__frames = 1;
+          bornCell[into] = { w: layers[into].width, h: layers[into].height };
           loadedAs = slugify(nameIn.value.trim());
           syncSize(); paint();
           return;
@@ -11486,6 +12527,8 @@ function renderSpriteEditor(model, host) {
     b.type = "button"; b.textContent = name;
     b.title = name === "body" ? "the figure itself, under everything"
             : name === "place" ? "scenery, standing behind a column"
+            : name === "sign" ? "a whole signpost on one canvas \u2014 four sectors, "
+                              + "left end, center, right end, and the pole"
             : "a layer, centered on the " + name + " anchor";
     b.onclick = () => { slot = name; syncSize(); openExisting(); paint(); };
     return b;
@@ -11524,15 +12567,15 @@ function renderSpriteEditor(model, host) {
       columns and nothing in a PNG can say otherwise. A shorter row is written
       out repeated, which is exactly how a one-frame hat behaves already. */
   const applySize = () => {
-    const cap = isPlace() ? 256 : 64;       // scenery is allowed to be a building
+    const cap = isFlat() ? 256 : 64;       // scenery is allowed to be a building
     const w = Math.max(1, Math.min(cap, +wIn.value || 1));
     const h = Math.max(1, Math.min(cap, +hIn.value || 1));
     //  The row keeps whatever frame count it arrived with; only the box changes.
-    const n = isPlace() ? 1 : nFrames();
+    const n = isFlat() ? 1 : nFrames();
     //  Shrinking crops. Nothing else here can lose pixels without a stroke.
     if (w !== cellW() || h !== cellH()) snapshot();
-    if (isPlace()) {
-      layers.place = layerResize(layers.place, w, h, 1);
+    if (isFlat()) {
+      layers[slot] = layerResize(layers[slot], w, h, 1);
     } else {
       for (const k of ROWS) {
         layers[k] = layerResize(layers[k], w, h, k === slot ? n : undefined);
@@ -11967,7 +13010,7 @@ function renderSpriteEditor(model, host) {
       and the buttons follow whichever you are drawing. */
   const recSets = { wear: { frames: [], left: 0, on: false, k: 0, fw: 0, fh: 0, used: false },
                     place: { frames: [], left: 0, on: false, k: 0, fw: 0, fh: 0, used: false } };
-  const rec = () => recSets[isPlace() ? "place" : "wear"];
+  const rec = () => recSets[isFlat() ? "place" : "wear"];
   let replaying = 0;
   /*  Drawn instead of the layers while a replay runs, so nothing in the file
       is touched by watching it. Declared up here because `paint` reads it and
@@ -12005,7 +13048,7 @@ function renderSpriteEditor(model, host) {
       ? "stop recording \u2014 " + r.left + " steps left of " + REC_BUDGET
         + ", frames kept in memory only"
       : r.frames.length
-      ? r.frames.length + " frames recorded for " + (isPlace() ? "this place" : "this wardrobe")
+      ? r.frames.length + " frames recorded for " + (isFlat() ? "this drawing" : "this wardrobe")
       : "keep a picture of the drawing after every change";
     /*  SHOWN ONCE ASKED FOR, THEN THEY STAY.
 
@@ -12056,7 +13099,7 @@ function renderSpriteEditor(model, host) {
       it, at the frame you are standing on. A place already recorded the thing
       itself and is unchanged. */
   function recordShot() {
-    if (isPlace()) return layers.place;
+    if (isFlat()) return layers[slot];
     const who = dressBody(ROWS.map(k => ({ img: layers[k], slot: k })), false);
     if (!who) return stitchSheet();
     const fw = who.__cellW || SPR_W, fh = who.__cellH || SPR_H;
@@ -12463,8 +13506,8 @@ function renderSpriteEditor(model, host) {
   };
   /*  One picker or two, never all three at once. */
   const syncBack = () => {
-    backOne.hidden = isPlace();
-    backSky.hidden = backGround.hidden = !isPlace();
+    backOne.hidden = isFlat();
+    backSky.hidden = backGround.hidden = !isFlat();
   };
   applyBg();
 
@@ -12531,14 +13574,14 @@ function renderSpriteEditor(model, host) {
   openBtn.onclick = async () => {
     const named = slugify(nameIn.value.trim());
     if (!named) return;
-    const kind = isPlace() ? "places" : "wear";
+    const kind = artKind();
     const img = await loadImg(artSrc(kind, named));
     if (!img) { hintOnce = "no drawing found for " + named; paint(); return; }
     snapshot();                       // undo can bring your canvas back
-    if (isPlace()) {
-      blitInto(layers.place, img);
-      layers.place.__frames = 1;
-      bornCell.place = { w: layers.place.width, h: layers.place.height };
+    if (isFlat()) {
+      blitInto(layers[slot], img);
+      layers[slot].__frames = 1;
+      bornCell[slot] = { w: layers[slot].width, h: layers[slot].height };
     } else {
       const rows = sheetRows(img) || [];
       rows.forEach((cvv, i) => { if (cvv) { blitInto(layers[ROWS[i]], cvv);
@@ -12578,7 +13621,7 @@ function renderSpriteEditor(model, host) {
   });
   // Drop either in images/wear/ and anyone whose uid or trade matches is
   // wearing it on the next load.
-  dl.onclick = () => save(isPlace() ? layers.place : stitchSheet(), fileName());
+  dl.onclick = () => save(isFlat() ? layers[slot] : stitchSheet(), fileName());
   /*  Straight onto the street, without a deploy.
 
       The same PNG the download button hands you, kept in the browser under the
@@ -12594,8 +13637,8 @@ function renderSpriteEditor(model, host) {
       name it. */
   keep.type = "button"; keep.textContent = "to promenade";
   keep.onclick = () => {
-    const cv = isPlace() ? layers.place : stitchSheet();
-    const path = (isPlace() ? "places/" : "wear/") + fileName();
+    const cv = isFlat() ? layers[slot] : stitchSheet();
+    const path = artKind() + "/" + fileName();
     const ok = putLocalArt(path, cv.toDataURL("image/png"));
     hint.textContent = ok === false
       ? "no room left in this browser to keep that — download it instead"
@@ -12622,7 +13665,7 @@ function renderSpriteEditor(model, host) {
   blank.onclick = () => {
     snapshot();
     const wipe = cv => cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
-    for (const k of (isPlace() ? ["place"] : ROWS)) { wipe(layers[k]); touched[k] = true; }
+    for (const k of (isFlat() ? [slot] : ROWS)) { wipe(layers[k]); touched[k] = true; }
     paint();
     recordStep();
   };
@@ -12727,9 +13770,9 @@ function renderSpriteEditor(model, host) {
       So the size each kind of drawing had when it was LOADED is remembered,
       and that is what this goes back to. The constants are only the answer
       before a file has had its say. */
-  const defaultCell = () => (isPlace() ? bornCell.place : bornCell.wear)
-    || (isPlace()
-        ? { w: PLACE_W, h: PLACE_H }
+  const defaultCell = () => (isFlat() ? bornCell[slot] : bornCell.wear)
+    || (isFlat()
+        ? (isSign() ? { w: SIGN_W, h: SIGN_H } : { w: PLACE_W, h: PLACE_H })
         : { w: Math.round(wear.body.width / (wear.body.__frames || SPR_FRAMES)),
             h: wear.body.height });
   sizeReset.onclick = () => {
@@ -12743,7 +13786,7 @@ function renderSpriteEditor(model, host) {
   }
   const cellsFor = v => Math.max(1, Math.round((+v || 0) / scale.per));
   const applyReal = () => {
-    if (!(isPlace() && scale.per > 0)) return;
+    if (!(isFlat() && scale.per > 0)) return;
     wIn.value = cellsFor(realW.value);
     hIn.value = cellsFor(realH.value);
     applySize();
@@ -12751,7 +13794,7 @@ function renderSpriteEditor(model, host) {
   realW.onchange = realH.onchange = applyReal;
   //  Kept in step with the cell boxes without fighting whichever one has focus.
   const syncReal = (w, h) => {
-    const on = isPlace() && scale.per > 0;
+    const on = isFlat() && scale.per > 0;
     for (const n of [realW, realX, realH, realU]) n.hidden = !on;
     if (!on) return;
     realU.textContent = scale.unit;
@@ -13775,11 +14818,11 @@ function renderSpriteEditor(model, host) {
 
     const named = /\.(body|bottom|top|hat)\.[^.]+$/i.exec(file.name);
     let note;
-    if (isPlace()) {
-      blitInto(layers.place, img);
-      layers.place.__frames = 1;
-      touched.place = true;
-      note = "opened as the place";
+    if (isFlat()) {
+      blitInto(layers[slot], img);
+      layers[slot].__frames = 1;
+      touched[slot] = true;
+      note = "opened as the " + slot;
     } else if (named) {
       slot = named[1].toLowerCase();
       blitInto(layers[slot], img);
@@ -13854,6 +14897,8 @@ function renderSpriteEditor(model, host) {
     /*  A coat has no windows, so the whole idea is hidden off a place — and
         a mode you cannot see you are in is the worst kind. */
     if (!isPlace() && fxMode) fxMode = false;
+    //  Both one-picture targets have marks to place: a building has glass,
+    //  doors, chimneys and an anchor; a sign has its stretch.
     fxBtn.hidden = !isPlace();
     fxBtn.textContent = fxMode ? "effects" : "paint";
     fxBtn.title = fxMode
@@ -13873,7 +14918,17 @@ function renderSpriteEditor(model, host) {
     const oneTools = new Set(EFFECTS.filter(e => e.one).map(e => e.tool));
     for (const b of markBtns) {
       const e = EFFECT[b.dataset.kind];
-      b.hidden = !isPlace() || !fxMode;
+      /*  Each mark belongs to a kind of drawing. Glass, a door, a chimney and
+          an anchor are things a BUILDING has; the stretch is the one thing a
+          SIGN has, and it is meaningless on either of the others. Showing the
+          whole row everywhere would offer four marks that do nothing and hide
+          the one that does. */
+      /*  Nothing to mark on a sign any more: the three sections are ruled on
+          the canvas, so where it stretches is where you drew it rather than
+          something you have to declare. The flag itself still works for any
+          drawing that already carries one. */
+      const belongs = !isSign() && e.id !== "stretch";
+      b.hidden = !fxMode || !isPlace() || !belongs;
       b.classList.toggle("on", e.one
         ? tool === e.tool
         : fxKind === e.alpha && !oneTools.has(tool));
@@ -13891,7 +14946,8 @@ function renderSpriteEditor(model, host) {
     sizeReset.disabled = cellW() === d.w && cellH() === d.h;
     sizeReset.title = "back to " + d.w + " \u00d7 " + d.h
                     + (isPlace() ? " \u2014 the widest a place draws 1:1 in a column"
-                                 : " \u2014 what the wardrobe art is drawn to");
+                     : isSign() ? " \u2014 four equal columns and a board a third deep"
+                                : " \u2014 what the wardrobe art is drawn to");
     onionBtn.classList.toggle("on", onion);
     gridBtn.classList.toggle("on", gridOn);
     stepIn.hidden = !gridOn;
@@ -14095,6 +15151,59 @@ function renderSpriteEditor(model, host) {
       g.beginPath(); g.moveTo(midX + 0.5, 0); g.lineTo(midX + 0.5, grid.height); g.stroke();
       g.beginPath(); g.moveTo(0, midY + 0.5); g.lineTo(grid.width, midY + 0.5); g.stroke();
       g.setLineDash([]);
+    }
+
+    /*  FOUR SECTORS, RULED AND NAMED.
+
+        left | center | right | pole, in four equal columns, with the board
+        living in the top third and the post in the whole of the fourth. The
+        rules are not a suggestion: they are where the drawing is cut when it
+        is stretched. The corner under the board is shaded because it belongs
+        to nothing and drawing in it does nothing.
+
+        Two fainter rules inside the pole show where IT divides, which is the
+        same three sections turned on end: cap, shaft, foot. */
+    if (isSign()) {
+      const sec = signSectors({ width: cellW(), height: cellH() });
+      if (sec) {
+        const ink = gridLight() ? "0,120,140" : "110,225,245";
+        g.save();
+        //  Nowhere. Shaded rather than cropped, so a canvas that was resized
+        //  taller still shows you what the extra rows are worth.
+        g.fillStyle = gridLight() ? "rgba(0,0,0,0.16)" : "rgba(0,0,0,0.38)";
+        g.fillRect(0, sec.boardH * z, sec.poleX * z, (cellH() - sec.boardH) * z);
+
+        g.strokeStyle = "rgba(" + ink + ",0.8)";
+        g.lineWidth = 1;
+        const rule = (x0, y0, x1, y1, dash) => {
+          g.setLineDash(dash);
+          g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+        };
+        //  Between the four columns, the whole way down.
+        for (const x of [sec.q, sec.q * 2, sec.poleX]) {
+          rule(x * z + 0.5, 0, x * z + 0.5, grid.height, [3, 3]);
+        }
+        //  The underside of the board, across the three that have one.
+        rule(0, sec.boardH * z + 0.5, sec.poleX * z, sec.boardH * z + 0.5, [3, 3]);
+        //  And where the pole divides, dimmer: it is the same rule turned.
+        g.strokeStyle = "rgba(" + ink + ",0.4)";
+        const pc = poleThirds({ height: cellH() });
+        if (pc) for (const y of [pc.from, pc.to + 1]) {
+          rule(sec.poleX * z, y * z + 0.5, grid.width, y * z + 0.5, [2, 4]);
+        }
+
+        g.setLineDash([]);
+        g.fillStyle = "rgba(" + ink + ",0.9)";
+        g.font = "10px ui-monospace, Menlo, monospace";
+        g.textBaseline = "top";
+        g.textAlign = "center";
+        const at = [[0, sec.q, "left"], [sec.q, sec.q * 2, "center"],
+                    [sec.q * 2, sec.poleX, "right"], [sec.poleX, cellW(), "pole"]];
+        for (const [x0, x1, name] of at) {
+          g.fillText(name, (x0 + x1) / 2 * z, 3);
+        }
+        g.restore();
+      }
     }
 
     /*  The guides, over everything they are guiding.
@@ -14469,7 +15578,7 @@ function renderSpriteEditor(model, host) {
       g.fillText(txt, 3 + pad, 5);
     }
 
-    nameOut.textContent = (isPlace() ? "images/places/" : "images/wear/") + fileName();
+    nameOut.textContent = "images/" + artKind() + "/" + fileName();
     /*  Offered only when the name has moved on from what is loaded. `loadedAs`
         is whatever the canvas was last filled from, so returning to that name
         puts the button away again. */
@@ -14518,6 +15627,7 @@ function renderSpriteEditor(model, host) {
     const dressed = dressBody(ROWS.map(k => ({ img: layers[k], slot: k })), false);
     if (!dressed) return;
     if (isPlace()) return drawPlacePreview(dressed);
+    if (isSign()) return drawPostPreview(dressed);
     const swapped = dressed;
     const cw = dressed.__cellW, ch = dressed.__cellH;
     const n = dressed.__frames || SPR_FRAMES;
@@ -14578,6 +15688,87 @@ function renderSpriteEditor(model, host) {
     litCache = readSignMark(copy).img;
     litKey = key;
     return litCache;
+  }
+
+  /*  THE FOUR SECTORS PUT BACK TOGETHER.
+
+      Every one of them is a fragment on the canvas and a signpost off it, and
+      the joins are the whole question: whether the cap sits square on the
+      shaft, whether the center tiles without a seam, whether the ends still
+      look like ends once there is a name between them. None of that is
+      visible on the canvas, where the four sectors are four rectangles.
+
+      So: the board stretched to a real name, on the post stretched to a real
+      height, with somebody standing beside it. A post is either a thing you
+      can walk under or it is a flagpole, and nothing but a person says
+      which. */
+  const PREV_WORD = "Longforgan";
+  const PREV_CLIMB = 34;                    // how high the board is bolted
+  const PREV_FONT = 8;
+
+  function drawPostPreview(fig) {
+    const sheet = layers.sign;
+    //  The slicer caches by name, and a drawing under the pen is a different
+    //  drawing after every stroke.
+    sheet.__key = "wip-sign:" + wipSeq;
+    const boardArt = signBoard(sheet), postArt = signPole(sheet);
+    prev1.hidden = true;
+    prev.hidden = false;
+    if (!boardArt || !postArt) { prev.width = prev.height = 1; return; }
+
+    const measure = prev.getContext("2d");
+    measure.font = PREV_FONT + "px " + signFont("board");
+    //  The word, plus both caps. left and right are the ends of the board and
+    //  the name goes between them, not across them — the same sum the street
+    //  does.
+    const want = Math.round(measure.measureText(PREV_WORD).width) + 8
+               + signCaps(boardArt);
+    const board = slicedSign(boardArt, want);
+    const post = slicedPole(postArt, PREV_CLIMB);
+    const fw = fig.__cellW || SPR_W, fh = fig.__cellH || SPR_H;
+
+    const sky = 5, ground = 6;
+    const sceneW = Math.max(board.width, fw) + fw + 12;
+    const sceneH = Math.max(fh, PREV_CLIMB + board.height) + sky + ground;
+    const boxW = Math.max(80, prevWrap.clientWidth - 18);
+    let zz = boxW / sceneW;
+    if (zz >= 1) zz = Math.floor(zz);
+    prev.width = Math.max(1, Math.round(sceneW * zz));
+    prev.height = Math.max(1, Math.round(sceneH * zz));
+
+    const c = prev.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    const gy = sceneH - ground;
+    c.fillStyle = bg.sky;
+    c.fillRect(0, 0, prev.width, Math.round(gy * zz));
+    c.fillStyle = bg.ground;
+    c.fillRect(0, Math.round(gy * zz), prev.width, prev.height);
+
+    //  The post stands left of the figure, and the board is bolted to it.
+    const stand = (sceneW - fw - 6) / 2;
+    const px = Math.round((stand - post.width / 2) * zz);
+    const py = Math.round((gy - post.height) * zz);
+    c.drawImage(post, 0, 0, post.width, post.height, px, py,
+                Math.round(post.width * zz), Math.round(post.height * zz));
+
+    const bx = Math.round((stand - board.width / 2) * zz);
+    const by = Math.round((gy - PREV_CLIMB - board.height) * zz);
+    const bw = Math.round(board.width * zz), bh = Math.round(board.height * zz);
+    c.drawImage(board, 0, 0, board.width, board.height, bx, by, bw, bh);
+
+    /*  The name, in the face the street paints it in. None of the lettering
+        belongs to the drawing — it is here because a blank board tells you
+        nothing about whether the writing will fit on it. */
+    c.fillStyle = "#f4ecdc";
+    c.font = Math.max(7, Math.round(PREV_FONT * zz)) + "px " + signFont("board");
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(PREV_WORD, bx + bw / 2, by + bh / 2);
+
+    const f = playing ? Math.floor(tick / 9) % (fig.__frames || SPR_FRAMES) : 0;
+    c.drawImage(fig, f * fw, 0, fw, fh,
+                Math.round((sceneW - fw - 3) * zz), Math.round((gy - fh) * zz),
+                Math.round(fw * zz), Math.round(fh * zz));
   }
 
   function drawPlacePreview(fig) {
@@ -15625,51 +16816,26 @@ function renderMap(model, host) {
           !(r.right + LABEL_PAD < p.left || r.left - LABEL_PAD > p.right ||
             r.bottom + LABEL_PAD < p.top || r.top - LABEL_PAD > p.bottom));
 
-        /*  ONE ROUND PER POSITION, NOT ONE PER LABEL.
-
-            Still measured rather than computed, for the reason the old note
-            gave: reading the rect back after the class is on cannot disagree
-            with the CSS. What changed is the ORDER of the reads and writes.
-
-            Trying each label's eight sides in turn wrote a class and then read
-            a rectangle, over and over, and every one of those reads forces the
-            browser to flush the style change that came before it. Fifty-nine
-            markers at eight tries each is up to 472 synchronous layouts on
-            every zoom and every pan, which is what made the map feel like it
-            was dragging something heavy behind it.
-
-            Now the positions are the outer loop: every label still waiting is
-            moved to the next side, THEN all of them are measured. Eight writes
-            and eight reads, so the browser lays out eight times instead of
-            hundreds. The priority sort still decides who claims a spot when
-            two want the same one; what changes is that a label takes the best
-            side left rather than the best side it can reach before its
-            neighbours have had a turn. */
-        let waiting = items.slice();
-        for (let step = 0; step < AUTO_ORDER.length && waiting.length; step++) {
+        for (const it of items) {
           /*  A placement you chose is honoured or nothing — trying seven other
               sides for you would quietly overrule the choice. Only a label on
-              auto gets to move, so a fixed one is considered once, on the
-              first pass, at the side it asked for. */
-          const round = waiting.filter(it => !it.fixed || step === 0);
-          if (!round.length) break;
-          for (const it of round) setPos(it.dot, it.fixed || AUTO_ORDER[step]);
-          //  Every write is in. One flush covers the lot.
-          for (const it of round) it.r = it.label.getBoundingClientRect();
-
-          const left = [];
-          for (const it of round) {
-            if (clear(it.r)) placed.push(it.r);
-            else left.push(it);
+              auto gets to move. */
+          const tries = it.fixed ? [it.fixed] : AUTO_ORDER;
+          let done = false;
+          for (const pos of tries) {
+            setPos(it.dot, pos);
+            // Measured rather than computed: reading the rect back after the
+            // class is on cannot disagree with the CSS, and a duplicated copy
+            // of those offsets in JS eventually would.
+            const r = it.label.getBoundingClientRect();
+            if (clear(r)) { placed.push(r); done = true; break; }
           }
-          waiting = waiting.filter(it => (it.fixed ? step !== 0 : true) && left.includes(it));
-        }
-
-        for (const it of waiting) {
-          // Nowhere to put it. Put it back where it started so the hidden
-          // label is at least consistent, then drop it.
-          setPos(it.dot, it.fixed || AUTO_ORDER[0]);
-          it.label.classList.add("suppressed");
+          if (!done) {
+            // Nowhere to put it. Put it back where it started so the hidden
+            // label is at least consistent, then drop it.
+            setPos(it.dot, it.fixed || AUTO_ORDER[0]);
+            it.label.classList.add("suppressed");
+          }
         }
       };
       host._declutter = declutter;
@@ -16215,8 +17381,103 @@ function renderTheme(body) {
       : "Unsaved — give it a name to keep it.";
   };
 
+  /*  THE STREET'S LETTERING, WITH THE PAGE'S COLOURS.
+
+      Both are "how it looks" rather than "what it says", both are stored
+      outside the pile, and both survive Clear all. Changing either asks the
+      Promenade to redraw — if it is on the board. If it is not, the new
+      setting is simply waiting for it, which is what every other stored
+      preference here does.
+
+      The size drives the layout as well as the lettering, since a fingerpost
+      reserves street from the longest name it has to print. So it is a full
+      rebuild per step rather than a restyle, and it is live on `input` because
+      the point of it is holding the arrow key down and watching. */
+  const signRowsIn = body.querySelector('[data-el="signrows"]');
+  const restreet = () => {
+    for (const p of document.querySelectorAll(".panel-body")) {
+      if (!p._signs) continue;
+      p._noTween = true;
+      renderPromenadePixi(V(), p);
+    }
+  };
+
   if (body._wired) { renderPresets(); paint(); return; }
   body._wired = true;
+
+  /*  A ROW PER KIND: the face and the size together.
+
+      They are one decision about one kind of lettering, and splitting them
+      into a picker and a row of three numbers meant reading two controls to
+      answer one question. Built from SIGN_KINDS rather than written out three
+      times, so a fourth kind is one entry in that list.
+
+      Live on `input` and `change`, because the point of these is to hold the
+      arrow key and watch the street settle. A full rebuild per step rather
+      than a restyle — the street's own layout does not read either of these,
+      deliberately, so a rebuild is the cheapest correct thing rather than a
+      necessary one.
+
+      Right-click either control to put that one back, which is the erase
+      everywhere else in this project. */
+  const faceOptions = stack =>
+    SIGN_FACES.map(f =>
+      '<option value="' + esc(f.stack) + '"' +
+      (f.stack === stack ? " selected" : "") + ">" + esc(f.name) + "</option>").join("") +
+    //  A stack from a v1 store, or one somebody hand-edited in, has no option
+    //  of its own. Kept rather than silently changed to the default.
+    (SIGN_FACES.some(f => f.stack === stack) ? ""
+      : '<option value="' + esc(stack) + '" selected>your own</option>');
+
+  signRowsIn.innerHTML = SIGN_KINDS.map(k =>
+    '<div class="th-sign-row" title="' + esc(k.hint) + '">' +
+      "<span>" + esc(k.label) + "</span>" +
+      '<select data-kind="' + k.key + '">' + faceOptions(SIGN_FONT[k.key]) + "</select>" +
+      '<input type="number" step="0.5" min="' + SIGN_SIZE_MIN +
+      '" max="' + SIGN_SIZE_MAX + '" data-kind="' + k.key + '">' +
+    "</div>").join("");
+
+  const sizeBoxes = [...signRowsIn.querySelectorAll("input[data-kind]")];
+  const faceBoxes = [...signRowsIn.querySelectorAll("select[data-kind]")];
+  const showSigns = () => {
+    for (const b of sizeBoxes) b.value = String(signSize(b.dataset.kind));
+    for (const f of faceBoxes) f.value = SIGN_FONT[f.dataset.kind];
+  };
+  showSigns();
+
+  const takeSize = (b, snapBack) => {
+    if (!snapBack && b.value.trim() === "") return;
+    setSignSize(b.dataset.kind, b.value);
+    saveSignSize();
+    restreet();
+    if (snapBack) showSigns();
+  };
+
+  signRowsIn.addEventListener("input", e => {
+    const b = e.target.closest("input[data-kind]");
+    if (b) takeSize(b, false);
+  });
+  //  On the way out, so a box left empty or out of range shows what is
+  //  actually in force rather than what was typed at it.
+  signRowsIn.addEventListener("change", e => {
+    const b = e.target.closest("input[data-kind]");
+    if (b) { takeSize(b, true); return; }
+    const f = e.target.closest("select[data-kind]");
+    if (!f) return;
+    setSignFont(f.dataset.kind, f.value);
+    saveSignFont();
+    restreet();
+  });
+  signRowsIn.addEventListener("contextmenu", e => {
+    const t = e.target.closest("[data-kind]");
+    if (!t) return;
+    e.preventDefault();
+    if (t.tagName === "SELECT") setSignFont(t.dataset.kind, SIGN_FONT_DEFAULT);
+    else setSignSize(t.dataset.kind, SIGN_SIZE_DEFAULT[t.dataset.kind]);
+    saveSignFont(); saveSignSize();
+    restreet();
+    showSigns();
+  });
 
   renderPresets();
 
@@ -17411,6 +18672,7 @@ function renderBoardTiles() {
     // (only the wrapper is torn down), so appending a fresh button every render
     // would pile up duplicates.
     ensureRemoveButton(panel, t.id);
+    ensureReloadButton(panel, t.id);
     wrap.appendChild(panel);
     appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
     appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
@@ -17450,7 +18712,7 @@ function resizeTile(id, dim, delta) {
     if (delta > 0 && overlaps(t, t.x, t.y + t.h, t.w, delta)) return;
     t.h = nh;
   }
-  renderBoard(); saveBoard();
+  renderBoard({ content: false }); saveBoard();
 }
 
 /*  DOCKS.
@@ -17488,11 +18750,16 @@ function setDock(id, side) {
   if (side && !DOCK_SIDES.includes(side)) return;
   if (side) t.dock = side; else delete t.dock;
   saveBoard();
-  renderBoard();
+  renderBoard({ content: false });
   //  Canvas panels measure themselves against their box, and that box has just
   //  changed shape completely.
   const pr = document.querySelector("#viz-promenade .panel-body");
-  if (pr && pr._reflowNow) requestAnimationFrame(pr._reflowNow);
+  if (pr && pr._reflowNow) requestAnimationFrame(() => {
+    pr._reflowNow();
+    //  A board change re-parents panels, which is exactly the case that can
+    //  leave the ticker switched off with the panel plainly in view.
+    if (pr._wake) pr._wake();
+  });
 }
 
 /*  The way off an edge, beside the ordinary ✕ rather than instead of it. Two
@@ -17505,6 +18772,79 @@ function setDock(id, side) {
     render, so appending a fresh button each time would pile up duplicates.
     Wanted in two places now, a tile and a rail, which is why it left
     renderBoardTiles. */
+/*  BUILD THIS PANEL AGAIN FROM NOTHING.
+
+    A panel that draws into a canvas keeps a great deal of state on its own
+    element: a renderer, a ticker, textures, a cast of display objects, a map
+    instance. When one of those ends up in a state it cannot draw out of, every
+    other route to fixing it costs you the whole page and everything else you
+    had open.
+
+    So: throw the panel's state away, empty its body, and let its renderer
+    build the thing fresh. The pile is untouched, because no panel owns any of
+    it — the Pallet is the only thing that does, and its state is a string.
+
+    Whatever the panel hung on itself goes with it. That is the point, and it
+    is why the underscore convention matters: anything private is prefixed, so
+    "forget everything this panel remembered" is one loop. */
+function reloadPanel(id) {
+  const node = document.getElementById(id);
+  const def = panels.get(id);
+  if (!node || !def) return;
+  const body = node.querySelector(".panel-body");
+  if (!body) return;
+
+  //  Hand back what the browser will not collect on its own: a WebGL context
+  //  and a map both hold resources that outlive the element.
+  try { if (body._app && body._app.destroy) body._app.destroy(true, { children: true }); } catch (e) { /* already gone */ }
+  try { if (body._map && body._map.remove) body._map.remove(); } catch (e) { /* already gone */ }
+  if (body._seen && body._seen.disconnect) { try { body._seen.disconnect(); } catch (e) { /* gone */ } }
+
+  for (const k of Object.keys(body)) if (k.charAt(0) === "_") delete body[k];
+  delete body.dataset.built;
+  body.innerHTML = "";
+
+  /*  PUT THE TEMPLATE BACK.
+
+      This emptied the body and then asked the panel to render into it, which
+      works only for the panels that build their own DOM — the Promenade, the
+      Sprite Editor, Tally. Every panel with a `tpl` renders by looking its own
+      markup UP, so an empty body handed them nothing to find and the render
+      threw on the first null: Theme, Filter, The Pallet, Gazetteer, Notation
+      reference. Pressing reload on any of those killed the panel rather than
+      rebuilding it.
+
+      Cloned from the same template `buildPanel` uses, and wired with the same
+      call, because "rebuild this panel" has to mean what the first build
+      meant. */
+  if (def.tpl) {
+    const tpl = el(def.tpl);
+    if (tpl) body.appendChild(tpl.content.cloneNode(true));
+    else body.innerHTML = '<p class="hint" style="color:var(--bad)">missing template “' + esc(def.tpl) + '”</p>';
+  }
+  //  Listeners that live for the panel's lifetime rather than for one render.
+  //  Without this a rebuilt Pallet took your typing nowhere.
+  try { wirePanelBody(def, body); } catch (e) { /* a template that lost a hook */ }
+
+  if (id === "viz-promenade") PROM_HOST = null;
+  refreshPanel(id);
+}
+
+function ensureReloadButton(panel, id) {
+  if (panel.querySelector(".panel-head > .tile-reload")) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "tile-reload";
+  b.textContent = "⟳";
+  //  Says what it does, not how it does it. It read "build this panel again,
+  //  from nothing", which describes the implementation and sounds like a
+  //  threat.
+  b.title = "reload this panel";
+  b.addEventListener("click", e => { e.stopPropagation(); reloadPanel(id); });
+  const head = panel.querySelector(".panel-head");
+  head.insertBefore(b, head.querySelector(".dock-pop") || head.querySelector(".tile-remove"));
+}
+
 function ensureRemoveButton(panel, id) {
   if (panel.querySelector(".panel-head > .tile-remove")) return;
   const rm = document.createElement("button");
@@ -17584,6 +18924,7 @@ function renderDocks() {
       //  renderBoardTiles, so it has no ✕ yet. Without this it arrives on the
       //  rail with no way off the board at all.
       ensureRemoveButton(panel, t.id);
+      ensureReloadButton(panel, t.id);
       addDockPop(panel, t.id);
     }
     //  Panels that left this rail since the last render.
@@ -17799,6 +19140,458 @@ function wireDockGrip(grip, side) {
   });
 }
 
+/*  HOW FAR, AND IN WHAT.
+
+    Great-circle distance, because the two points are latitudes and longitudes
+    on a sphere and Perthshire is wide enough for a flat approximation to be
+    visibly wrong at its edges. The earth's mean radius in kilometres, once,
+    and everything else derived from it.
+
+    The unit is yours and is remembered. Miles for a British parish register,
+    kilometres for anyone who would rather, and the arms on every fingerpost
+    redraw when you change it. */
+//  Roof heights, kept across renders so a reloading picture does not drop the
+//  signage to head height and lift it back. Keyed by zoom and column width,
+//  since those are the two things that actually change a roof's height.
+/*  THE LETTERING ON THE STREET.
+
+    Every name painted into the scene — signboards, ribbons, fingerpost arms,
+    the label under a walker — is drawn by the canvas rather than laid out by
+    the page, so it takes a font stack of its own rather than the theme's. A
+    monospace reads as a fascia board and is the default; a serif reads as a
+    parish nameplate, and somebody drawing a 1790s street should be able to say
+    so.
+
+    Stored as the raw stack, so anything the browser can resolve is allowed,
+    including a face the reader has installed. The fallback is appended rather
+    than trusted to the author, since a stack that resolves to nothing renders
+    as squares. */
+const SIGN_FONT_KEY = "brick-by-brick:signfont:v1";
+const SIGN_FONT_DEFAULT = "ui-monospace, Menlo, monospace";
+
+/*  Named by what the lettering IS on a street, not by the typeface, since the
+    typeface that actually answers depends on the machine. Every stack ends in
+    a family the browser is obliged to have. */
+const SIGN_FACES = [
+  { name: "fascia",    stack: SIGN_FONT_DEFAULT },
+  { name: "nameplate", stack: "Georgia, 'Times New Roman', serif" },
+  { name: "grotesque", stack: "'Helvetica Neue', Arial, sans-serif" },
+  { name: "narrow",    stack: "'Arial Narrow', 'Liberation Sans Narrow', sans-serif" },
+  { name: "block",     stack: "'Arial Black', Impact, sans-serif" },
+  { name: "painted",   stack: "'Brush Script MT', 'Snell Roundhand', cursive" },
+];
+/*  A FACE PER KIND, for the same reason as a size per kind.
+
+    I argued the face should be shared — that three typefaces on one street is
+    three signwriters. That is a real objection to a badly chosen set and not a
+    reason to withhold the choice: a painted nameplate over a column with plain
+    grotesque mileages under it is an ordinary way for a street to look, and
+    whether it works is a thing you can see and I cannot.
+
+    The fallback is appended rather than trusted to the stack, since one that
+    resolves to nothing renders as squares. */
+let SIGN_FONT = { board: SIGN_FONT_DEFAULT, post: SIGN_FONT_DEFAULT, note: SIGN_FONT_DEFAULT };
+//  Unknown kind answers with the board's, which is the lettering the rest of
+//  the street is read against.
+const signFont = kind => (SIGN_FONT[kind] || SIGN_FONT.board) + ", " + SIGN_FONT_DEFAULT;
+function setSignFont(kind, stack) {
+  if (SIGN_FONT[kind] === undefined) return;
+  SIGN_FONT[kind] = String(stack || "").trim().slice(0, 120) || SIGN_FONT_DEFAULT;
+}
+const signFontIsDefault = () =>
+  Object.keys(SIGN_FONT).every(k => SIGN_FONT[k] === SIGN_FONT_DEFAULT);
+function loadSignFont() {
+  try {
+    const raw = localStorage.getItem(SIGN_FONT_KEY);
+    if (raw && raw.trim()) {
+      /*  A v1 store held one stack for the lot. Honoured rather than dropped:
+          somebody who chose nameplate meant the street to read that way, and
+          resetting them to the default would look like the setting being
+          thrown away. */
+      const t = raw.trim();
+      if (t.charAt(0) === "{") {
+        const got = JSON.parse(t);
+        for (const k of Object.keys(SIGN_FONT)) if (got[k]) setSignFont(k, got[k]);
+      } else {
+        for (const k of Object.keys(SIGN_FONT)) setSignFont(k, t);
+      }
+    }
+  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
+}
+function saveSignFont() {
+  try {
+    if (signFontIsDefault()) localStorage.removeItem(SIGN_FONT_KEY);
+    else localStorage.setItem(SIGN_FONT_KEY, JSON.stringify(SIGN_FONT));
+  } catch (e) { /* unavailable */ }
+}
+
+/*  HOW BIG EACH KIND OF LETTERING IS/*  HOW BIG EACH KIND OF LETTERING IS, and they are not one decision.
+
+    Three different things carry words on this street and they are read at
+    three different distances. The board over a column is what you scan along
+    the street for. A fingerpost arm is something you stop and read, and its
+    mileage is the part you cannot guess. A note over a roof or on the ground
+    is an aside — you may want it quiet under a board you want loud, or the
+    other way about when the note is the point of the scene.
+
+    One number for all three was my mistake twice over: first by hard-coding
+    them (9, 8.5 and 7, none of them anybody's choice), then by collapsing them
+    into a single control, which is the same mistake with a slider on it.
+
+    The FACE stays shared. A street lettered in three typefaces is a street
+    with three signwriters, and that is a different thing from wanting the
+    small print small. */
+const SIGN_SIZE_KEY = "brick-by-brick:signsize:v2";
+const SIGN_SIZE_MIN = 5, SIGN_SIZE_MAX = 20;
+/*  Named for what the reader sees rather than for the code that draws it:
+    boards are what hangs over a column, posts are the fingerpost arms, notes
+    are the two lines you can write above and below a column. */
+const SIGN_KINDS = [
+  { key: "board", label: "boards", hint: "the name over a column, and a group's ribbon" },
+  { key: "post",  label: "posts",  hint: "a fingerpost's arms, name and distance" },
+  { key: "note",  label: "notes",  hint: "your lines over the roof and on the ground" },
+];
+const SIGN_SIZE_DEFAULT = { board: 9, post: 8.5, note: 7 };
+let SIGN_SIZE = Object.assign({}, SIGN_SIZE_DEFAULT);
+//  Unknown kind answers with the board's, since that is the lettering
+//  everything else on the street is judged against.
+const signSize = kind => SIGN_SIZE[kind] === undefined ? SIGN_SIZE.board : SIGN_SIZE[kind];
+function setSignSize(kind, v) {
+  const x = Number(v);
+  if (!isFinite(x) || SIGN_SIZE[kind] === undefined) return;
+  SIGN_SIZE[kind] = Math.max(SIGN_SIZE_MIN, Math.min(SIGN_SIZE_MAX, Math.round(x * 2) / 2));
+}
+const signSizeIsDefault = () =>
+  SIGN_KINDS.every(k => SIGN_SIZE[k.key] === SIGN_SIZE_DEFAULT[k.key]);
+function loadSignSize() {
+  try {
+    const raw = localStorage.getItem(SIGN_SIZE_KEY);
+    if (!raw) {
+      /*  A v1 store held one number for the lot. Honoured rather than
+          discarded: somebody who set 13 there meant the street to be bigger,
+          and dropping them back to three defaults would read as the setting
+          having been thrown away. */
+      const old = localStorage.getItem("brick-by-brick:signsize:v1");
+      if (old) for (const k of SIGN_KINDS) setSignSize(k.key, old);
+      return;
+    }
+    const got = JSON.parse(raw);
+    if (got && typeof got === "object") {
+      for (const k of SIGN_KINDS) if (got[k.key] !== undefined) setSignSize(k.key, got[k.key]);
+    }
+  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
+}
+function saveSignSize() {
+  try {
+    if (signSizeIsDefault()) localStorage.removeItem(SIGN_SIZE_KEY);
+    else localStorage.setItem(SIGN_SIZE_KEY, JSON.stringify(SIGN_SIZE));
+  } catch (e) { /* unavailable */ }
+}
+
+/*  A DRAWN SIGN, AT WHATEVER LENGTH IS WANTED./*  A DRAWN SIGN, AT WHATEVER LENGTH IS WANTED.
+
+    Three pieces, and the drawing decides where they divide: everything left of
+    the marked run is the left cap, everything right of it is the right cap,
+    and the run itself repeats across the middle. Caps are drawn once at their
+    own size, so a bolt, a bevel or a hanging ring keeps its proportions on a
+    board written for Perth and one written for Monzievaird and Strowan.
+
+    The arithmetic, in full, because it is the part worth being able to check:
+
+      capL   = from                     pixels before the marked run
+      capR   = width - 1 - to           pixels after it
+      band   = to - from + 1            the run itself
+      middle = want - capL - capR       what the caps leave to be filled
+      tiles  = ceil(middle / band)      how many copies cover it
+
+    The last copy is clipped rather than squeezed, so the pattern never
+    stretches out of square, and `want` is floored at the two caps plus one
+    band so a short name cannot make the ends overlap each other.
+
+    Cached by name and length: a street of sixty signs asks for about a dozen
+    distinct widths, and this is a canvas each. */
+const SIGN_SLICE = new Map();
+
+/*  THREE SECTIONS, AND THE CANVAS SAYS WHERE THEY ARE.
+
+    A sign is drawn in thirds: the left third is the left end, the right third
+    is the right end, and the middle third is the piece that repeats. Nothing
+    has to be marked, because the shape of the drawing IS the instruction, and
+    the editor rules the two lines so you can see where they fall.
+
+    A drawing that carries an explicit stretch mark keeps using it, so the few
+    made before this still work and anybody wanting an uneven split can still
+    have one. */
+function signThirds(img) {
+  if (img && img.__stretch) return img.__stretch;
+  const w = (img && img.width) || 0;
+  if (w < 3) return null;
+  return { from: Math.floor(w / 3), to: Math.ceil((w * 2) / 3) - 1 };
+}
+
+/*  HOW MUCH OF A BOARD IS NOT WRITING ROOM.
+
+    left and right are the ends of the sign, and a name printed across them is
+    a name printed over the bolts. Anybody asking for a board wide enough to
+    hold a word has to ask for the word PLUS this, or the two caps are drawn
+    over the first and last few letters of it.
+
+    Returns 0 for a drawing too small to divide, which is also the right answer
+    for one: there are no caps to keep clear of. */
+function signCaps(img) {
+  const s = signThirds(img);
+  if (!s) return 0;
+  return s.from + ((img.width || 0) - 1 - s.to);
+}
+
+function slicedSign(img, want) {
+  const s = signThirds(img);
+  if (!s) return img;                       // too small to divide: draw as it is
+  const w = img.width, h = img.height;
+  const capL = s.from, capR = w - 1 - s.to, band = s.to - s.from + 1;
+  if (band < 1 || capL + capR < 1) return img;
+
+  const width = Math.max(capL + capR + band, Math.round(want));
+  const key = (img.__key || "") + "|" + w + "x" + h + "|" + width;
+  const had = SIGN_SLICE.get(key);
+  if (had) return had;
+
+  const cv = document.createElement("canvas");
+  cv.width = width; cv.height = h;
+  const g = cv.getContext("2d");
+  g.imageSmoothingEnabled = false;
+
+  g.drawImage(img, 0, 0, capL, h, 0, 0, capL, h);
+  const middle = width - capL - capR;
+  for (let x = 0; x < middle; x += band) {
+    const run = Math.min(band, middle - x);
+    g.drawImage(img, s.from, 0, run, h, capL + x, 0, run, h);
+  }
+  g.drawImage(img, w - capR, 0, capR, h, width - capR, 0, capR, h);
+
+  //  A drawing changed in the editor invalidates its own entries by name, and
+  //  the cache is small enough that a hard cap is kinder than a policy.
+  if (SIGN_SLICE.size > 240) SIGN_SLICE.clear();
+  SIGN_SLICE.set(key, cv);
+  return cv;
+}
+
+/*  WHERE THE FOUR SECTORS ARE.
+
+    Four equal columns. The first three are the board and occupy the top third
+    of the height; the fourth is the pole and occupies all of it. Derived from
+    the image rather than written down, so a canvas somebody resized still
+    divides the same way, and a sign drawn at 48 x 45 and one drawn at 96 x 90
+    mean the same thing.
+
+    Integer division leaves the pole whatever the three columns did not take,
+    which is why the pole is measured from 3q rather than given a width of its
+    own: 50 pixels across is three columns of 12 and a pole of 14, and no
+    pixel is unaccounted for. */
+function signSectors(img) {
+  const w = (img && img.width) | 0, h = (img && img.height) | 0;
+  if (w < 8 || h < 6) return null;
+  const q = Math.floor(w / 4);
+  if (q < 1) return null;
+  return { q, poleX: q * 3, poleW: w - q * 3,
+           boardW: q * 3, boardH: Math.max(1, Math.round(h / 3)), h };
+}
+
+/*  One sector cut out as its own canvas, so everything downstream works on an
+    ordinary picture and never has to know it came out of a corner of another
+    one. Kept on the image and thrown away when the image changes — which for
+    a drawing still under the pen is every stroke, and for one off disk is
+    never. */
+function signPart(img, which) {
+  const sec = signSectors(img);
+  if (!sec) return null;
+  const key = (img.__key || "") + "|" + img.width + "x" + img.height;
+  const tag = "__sec" + which;
+  const had = img[tag];
+  if (had && had.__from === key) return had;
+
+  const box = which === "pole"
+    ? { x: sec.poleX, y: 0, w: sec.poleW, h: sec.h }
+    : { x: 0, y: 0, w: sec.boardW, h: sec.boardH };
+  if (box.w < 1 || box.h < 1) return null;
+  const cv = document.createElement("canvas");
+  cv.width = box.w; cv.height = box.h;
+  const g = cv.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  g.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+  cv.__from = key;
+  cv.__key = key + "/" + which;             // what the slicers cache under
+  try { img[tag] = cv; } catch (e) { /* a frozen image simply recuts */ }
+  return cv;
+}
+const signBoard = img => signPart(img, "board");
+const signPole = img => signPart(img, "pole");
+
+/*  THE SAME THREE SECTIONS, STOOD ON END.
+
+    The pole is the board turned through a right angle: the top third is the
+    cap, the bottom third is the foot, and the middle third is the length that
+    repeats down the shaft. Same arithmetic with the axes swapped, and the same
+    cache, which is why the key carries the word.
+
+    A board gets longer as the name on it gets longer; a post gets longer as
+    the board climbs away from the ground. Neither may stretch its ends to do
+    it. */
+function poleThirds(img) {
+  if (img && img.__stretchY) return img.__stretchY;
+  const h = (img && img.height) || 0;
+  if (h < 3) return null;
+  return { from: Math.floor(h / 3), to: Math.ceil((h * 2) / 3) - 1 };
+}
+
+function slicedPole(img, want) {
+  const s = poleThirds(img);
+  if (!s) return img;                       // too short to divide: draw as it is
+  const w = img.width, h = img.height;
+  const capT = s.from, capB = h - 1 - s.to, band = s.to - s.from + 1;
+  if (band < 1 || capT + capB < 1) return img;
+
+  const height = Math.max(capT + capB + band, Math.round(want));
+  const key = (img.__key || "") + "|pole|" + w + "x" + h + "|" + height;
+  const had = SIGN_SLICE.get(key);
+  if (had) return had;
+
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = height;
+  const g = cv.getContext("2d");
+  g.imageSmoothingEnabled = false;
+
+  g.drawImage(img, 0, 0, w, capT, 0, 0, w, capT);
+  const middle = height - capT - capB;
+  for (let y = 0; y < middle; y += band) {
+    const run = Math.min(band, middle - y);
+    g.drawImage(img, 0, s.from, w, run, 0, capT + y, w, run);
+  }
+  g.drawImage(img, 0, h - capB, w, capB, 0, height - capB, w, capB);
+
+  if (SIGN_SLICE.size > 240) SIGN_SLICE.clear();
+  SIGN_SLICE.set(key, cv);
+  return cv;
+}
+
+/*  THE SIGNPOST THIS PLACE USES, IF YOU DREW ONE.
+
+    images/signs/<uid>.png is the whole thing — board and pole on one canvas,
+    four sectors — with `default` standing in for the rest of the street.
+    Nothing there is the ordinary case: the painted rectangles the panel has
+    always drawn are what most streets will go on showing, and a folder with
+    no signs in it costs one 404 and nothing after that.
+
+    The name is stamped onto the image because the slicers cache by it, and
+    two drawings of the same size would otherwise be one entry. */
+function signArt(slug, onReady) {
+  let img = slug ? layerImage("signs", slug, onReady) : null;
+  let named = slug;
+  if (!img) { img = layerImage("signs", "default", onReady); named = "default"; }
+  if (img && !img.__key) { try { img.__key = "signs/" + named; } catch (e) { /* frozen */ } }
+  return img;
+}
+
+const ART_TOP = new Map();
+//  And where each place's signpost is nailed, for the same reason: the pixel
+//  belongs to the drawing, not to the hour it is drawn in.
+const SIGN_AT = new Map();
+
+/*  Places you have starred by pointing at them, as opposed to the ones starred
+    with a `*` in the pile. Two ways to say one thing, and the fingerposts
+    accept either: the notation is for somebody typing their research, this is
+    for somebody looking at the street and deciding.
+
+    A sidecar fact, like a placement or a column colour. It says nothing about
+    the records and travels in brick.json with the rest of the arrangement. */
+const STAR_KEY = "brick-by-brick:starred:v1";
+const PROM_STAR = new Set();
+function loadStarred() {
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(STAR_KEY) || "null"); } catch (e) { return; }
+  if (Array.isArray(raw)) for (const s of raw) if (typeof s === "string") PROM_STAR.add(s);
+}
+function saveStarred() {
+  try {
+    if (PROM_STAR.size) localStorage.setItem(STAR_KEY, JSON.stringify([...PROM_STAR]));
+    else localStorage.removeItem(STAR_KEY);
+  } catch (e) { /* unavailable */ }
+}
+
+const DIST_KEY = "brick-by-brick:distunit:v1";
+let DIST_UNIT = "mi";
+function loadDistUnit() {
+  try { DIST_UNIT = localStorage.getItem(DIST_KEY) === "km" ? "km" : "mi"; } catch (e) { /* unavailable */ }
+}
+function saveDistUnit() {
+  try { localStorage.setItem(DIST_KEY, DIST_UNIT); } catch (e) { /* unavailable */ }
+}
+
+function haversineKm(a, b) {
+  if (!a || !b || !isFinite(a.lat) || !isFinite(b.lat)) return null;
+  const R = 6371, rad = d => d * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 +
+            Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/*  Rounded to what the number is worth: under ten it gets a decimal, because
+    the difference between 2 and 2.4 miles is a different walk; over ten it
+    does not, because nothing here is surveyed to a tenth of a mile. */
+function sayDistance(km) {
+  if (km === null || !isFinite(km)) return "";
+  const v = DIST_UNIT === "km" ? km : km * 0.621371;
+  if (v < 0.15) return "";                       // the same place, near enough
+  return (v < 10 ? v.toFixed(1) : Math.round(v)) + " " + DIST_UNIT;
+}
+
+/*  Travel to a column, the way a story beat does. Lives out here because a
+    fingerpost arm wants it too, and an arm is built long before the beat
+    player exists. */
+function panToColumn(host, slug, ms, landOn) {
+  if (!host || !host._colX || !host._colX.has(slug) || !host._app) return false;
+  const app = host._app;
+  const cx = host._colX.get(slug);
+  const span = Math.max(0, host._worldW - app.screen.width);
+  const to = Math.min(0, Math.max(-span, -(cx - app.screen.width / 2)));
+  if (host._setDrift) host._setDrift(false);
+  /*  `land` is what to select once the travelling stops. Selecting at the
+      moment of the click would light a column you cannot see yet and dim the
+      one you are looking at for the length of the journey. */
+  host._panTo = { from: host._world.x, to, t: 0,
+                  dur: Math.max(1, ms === undefined ? 900 : ms),
+                  land: landOn ? slug : null };
+  return true;
+}
+
+/*  WHICH PANEL IS THE ONE YOU ARE IN.
+
+    The pointer decides, and what has the caret decides when the pointer is
+    over nothing: leave the mouse on the map while you type in the Pallet and
+    the Pallet is still where you are working.
+
+    Only ever a class. Whether it means anything is the focus switch's
+    business, so the page is not computing a lighting scheme for a setting
+    almost nobody has on. */
+const FOCUS_KEY = "brick-by-brick:focusmode:v1";
+
+function markActivePanel(id) {
+  let want = id;
+  if (!want) {
+    const held = document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest(".panel") : null;
+    want = held ? held.id : null;
+  }
+  for (const p of document.querySelectorAll(".panel.is-active")) {
+    if (p.id !== want) p.classList.remove("is-active");
+  }
+  if (want) {
+    const p = document.getElementById(want);
+    if (p) p.classList.add("is-active");
+  }
+}
+
 /*  THE MINIMAP.
 
     A board of twenty panels is taller than any window, so "where is the
@@ -17842,10 +19635,19 @@ function renderMiniMap() {
       if (id === lastOver) return;
       lastOver = id;
       for (const c of document.querySelectorAll(".mm-cell.lit")) c.classList.remove("lit");
+      markActivePanel(id);
       if (!id) return;
       const cell = document.querySelector('.mm-cell[data-id="' + CSS.escape(id) + '"]');
       if (cell) cell.classList.add("lit");
     }, { passive: true });
+
+    /*  Typing counts as being in a panel. Without this, writing in the Pallet
+        with the pointer parked over the map turned the Pallet down while you
+        were looking at it. */
+    document.addEventListener("focusin", ev => {
+      const panel = ev.target.closest && ev.target.closest(".panel");
+      if (panel) markActivePanel(panel.id);
+    });
   }
   const grid = host.querySelector('[data-el="grid"]');
   const name = host.querySelector('[data-el="name"]');
@@ -17895,7 +19697,11 @@ function renderMiniMap() {
     };
     grid.appendChild(cell);
   }
-  syncMiniView();
+  /*  Next frame, not now. This reads a rectangle per tile, and calling it
+      immediately after the grid was rewritten makes the browser lay the whole
+      board out again before it has finished the one it is doing. Deferred, it
+      reads a settled page once. */
+  requestAnimationFrame(syncMiniView);
 }
 
 /*  Which tiles are on screen, and where the window sits over the whole board.
@@ -17914,7 +19720,19 @@ function syncMiniView() {
   }
 }
 
-function renderBoard() {
+/*  MOVING A PANEL DOES NOT CHANGE WHAT IS IN IT.
+
+    This used to re-render every panel body on any board change, which meant a
+    drop cost about a tenth of a second: eighty of those milliseconds were
+    panels redrawing content that had not altered by so much as a character.
+    That is the pause you feel between letting go and the tile landing.
+
+    Pass `{ content: false }` for a pure layout change — a move, a swap, a
+    dock, a removal. The panels are re-parented, not rebuilt, so their scroll
+    position and their typing survive untouched, and the two canvas panels get
+    told to remeasure below because a new box is the one thing they do care
+    about. */
+function renderBoard(opts) {
   renderBoardCells();
   renderBoardTiles();
   renderDocks();
@@ -17929,12 +19747,17 @@ function renderBoard() {
       b.appendChild(d);
     }
   } else if (empty) empty.remove();
-  refreshAll();
+  if (!opts || opts.content !== false) refreshAll();
   /*  Canvas panels size themselves against the tile, and a ResizeObserver does
       not survive this function re-parenting them. So the board tells them
       directly — it is the only thing that reliably knows the grid moved. */
   const pr = document.querySelector("#viz-promenade .panel-body");
-  if (pr && pr._reflowNow) requestAnimationFrame(pr._reflowNow);
+  if (pr && pr._reflowNow) requestAnimationFrame(() => {
+    pr._reflowNow();
+    //  A board change re-parents panels, which is exactly the case that can
+    //  leave the ticker switched off with the panel plainly in view.
+    if (pr._wake) pr._wake();
+  });
 }
 
 function renderBoardCardList() {
@@ -18019,7 +19842,7 @@ function moveTile(id, x, y) {
   const t = board.tiles.find(k => k.id === id);
   if (!t) return;
   t.x = x; t.y = y;
-  renderBoard(); saveBoard();
+  renderBoard({ content: false }); saveBoard();
 }
 
 /* Two tiles of identical footprint exchange positions. Same size is the whole
@@ -18032,7 +19855,7 @@ function swapTiles(idA, idB) {
   const x = a.x, y = a.y;
   a.x = b.x; a.y = b.y;
   b.x = x;   b.y = y;
-  renderBoard(); saveBoard();
+  renderBoard({ content: false }); saveBoard();
 }
 
 function removeTile(id) {
@@ -18050,7 +19873,7 @@ function removeTile(id) {
     panel.classList.remove("is-docked");
     el("panelStore").appendChild(panel);
   }
-  renderBoard(); renderBoardCardList(); saveBoard();
+  renderBoard({ content: false }); renderBoardCardList(); saveBoard();
 }
 
 function resetBoard() {
@@ -21292,6 +23115,10 @@ loadColNotes();
 loadSmoke();
 loadWeather();
 loadScenery();
+loadDistUnit();
+loadSignFont();
+loadSignSize();
+loadStarred();
 loadStory();
 loadParts();
 loadNight();
@@ -21351,6 +23178,27 @@ topSearchInput.addEventListener("blur", () => {
 
 /* ---------- flyout + board controls ---------- */
 /* ---------- header: autosave, save, download ---------- */
+/*  Focus mode, remembered. A view preference that resets on every reload is a
+    view preference nobody keeps using. */
+{
+  const box = el("spotlight");
+  let on = false;
+  try { on = localStorage.getItem(FOCUS_KEY) === "1"; } catch (e) { on = false; }
+  const apply = () => {
+    document.body.classList.toggle("spotlight", on);
+    box.checked = on;
+    //  Something has to be lit the moment it comes on, or every panel is dark
+    //  until the pointer moves.
+    if (on) markActivePanel(null);
+  };
+  box.addEventListener("change", () => {
+    on = box.checked;
+    try { localStorage.setItem(FOCUS_KEY, on ? "1" : "0"); } catch (e) { /* unavailable */ }
+    apply();
+  });
+  apply();
+}
+
 el("autoSave").checked = AUTOSAVE;
 showSaved();
 el("autoSave").addEventListener("change", e => {
@@ -21458,13 +23306,13 @@ el("boardReset").addEventListener("click", resetBoard);
 el("boardCols").addEventListener("change", e => {
   const cols = Math.max(1, Math.min(12, Math.round(Number(e.target.value)) || 4));
   e.target.value = cols;
-  if (cols !== board.cols) { board.cols = cols; repackForCols(cols); renderBoard(); saveBoard(); }
+  if (cols !== board.cols) { board.cols = cols; repackForCols(cols); renderBoard({ content: false }); saveBoard(); }
 });
 el("boardRowUnit").addEventListener("change", e => {
   const px = Math.max(80, Math.min(600, Math.round(Number(e.target.value)) || 220));
   e.target.value = px;
   board.rowUnit = px;
-  renderBoard(); saveBoard();
+  renderBoard({ content: false }); saveBoard();
 });
 
 /* ---------- drag wiring ---------- */
