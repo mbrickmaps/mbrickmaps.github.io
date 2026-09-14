@@ -820,6 +820,7 @@
     transform: translateX(100%); transition: transform 0.18s ease;
   }
   #boardFlyoutWrap.open { transform: none; }
+  @media (prefers-reduced-motion: reduce) { #boardFlyoutWrap { transition: none; } }
   #boardFlyout {
     position: absolute; inset: 0; background: var(--field);
     border-left: 1px solid var(--border); padding: 10px; overflow-y: auto;
@@ -20157,7 +20158,7 @@ function addCover(panel, id) {
   tab.className = "panel-tab";
   const grip = document.createElement("i");
   grip.className = "tab-grip";
-  grip.title = "drag to open or shut \u2014 click to throw it wide";
+  grip.title = "drag to open or shut \u2014 click to peek under it";
   const mat = document.createElement("i");
   mat.className = "tab-mat";
   mat.title = "what the cover is made of \u2014 click to change it";
@@ -20232,10 +20233,42 @@ function addCover(panel, id) {
     if (!moved) {
       if (el === tab) {
         if (onSwatch) cycleMat();
-        //  Shut it if it is open at all, throw it wide if it is not. Either
-        //  way the cover stays on the panel: the header's ▤ is what removes
-        //  it, and a slider that could remove it made that button pointless.
-        else setCoverX(panel, id, coverAt(id).x > 0.02 ? 0 : 1);
+        else {
+          /*  A CLICK IS A PEEK, NOT A SWEEP.
+
+              It threw the sheet the whole way across, which is a big thing to
+              do by accident on the one control you are most likely to brush
+              past — and it is rarely what you want: uncovering a panel
+              entirely is what the ▤ is for. What a press is actually asking is
+              "what is under here", and the answer to that is a gap.
+
+              Twice the handle's own width, so the opening is measured in the
+              thing you are holding rather than in a number: one tab of sheet
+              moved, one tab of panel showing. Drag it if you want more.
+
+              As a fraction, because that is what the store keeps — the same
+              34 pixels is a third of a narrow panel and a twentieth of a wide
+              one, and the gap should be the same gap either way. */
+          /*  IT PARKS UNDER THE CORNER CONTROLS.
+
+              A press slides the sheet almost the whole way across and stops
+              where the panel's own buttons begin, so the strip left showing
+              sits beneath ↻ and ✕ rather than somewhere arbitrary. Two
+              handles was a number I chose; this is a number the panel already
+              has, and it lines the cover's edge up with something real.
+
+              Measured off the reload button rather than written down, so it
+              follows if those controls are ever resized or one is added. */
+          const box = coverBox(panel);
+          const w = Math.max(1, box.width);
+          const rl = panel.querySelector(".tile-reload");
+          const pr = panel.getBoundingClientRect();
+          const corner = rl
+            ? Math.max(0, pr.right - rl.getBoundingClientRect().left) + 6
+            : TAB_W * 2;
+          const open = Math.max(0, Math.min(0.98, 1 - corner / w));
+          setCoverX(panel, id, coverAt(id).x > 0.01 ? 0 : open);
+        }
       }
       return;
     }
@@ -20321,7 +20354,7 @@ function syncCoverBtn(panel, id) {
   const on = COVERS.has(id);
   b.classList.toggle("on", on);
   b.title = on ? "take the cover off"
-               : "cover this panel \u2014 then drag its tab to open it again";
+               : "cover this panel \u2014 then press its tab to peek, or drag it";
 }
 
 function ensureCoverButton(panel, id) {
