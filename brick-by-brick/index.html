@@ -204,7 +204,22 @@
   }
   .tile-remove:hover { border-color: var(--bad); color: var(--bad); }
   /* Keeps any header control from sliding under the overlaid circle. */
-  .panel-head { padding-right: calc(var(--close-size) / 2 + 4px); }
+  /*  THE HEADER IS ALWAYS REACHABLE.
+
+      It was not. The header and the body are both statically positioned, so
+      whichever comes later in the DOM wins — and the Promenade's canvas is
+      drawn over the top of its own title bar. ✕ survived because it is placed
+      absolutely with a key of its own; ⟳ and the cover toggle sat underneath
+      the street and could not be pressed at all. The reload button on the one
+      panel that has ever needed reloading.
+
+      Above the cover as well as the body, which is the rule the cover depends
+      on: you must always be able to take a cover off, move the tile or close
+      it without uncovering it first. */
+  .panel-head {
+    padding-right: calc(var(--close-size) / 2 + 4px);
+    position: relative; z-index: 7;
+  }
 
   /* ---------- panels ---------- */
   .panel {
@@ -385,7 +400,7 @@
   }
   /*  A label that is not the row's first is a mid-row caption, and does not
       need the leading column width that keeps the first ones aligned. */
-  .sp-cap + * ~ .sp-cap { min-width: 0; margin-left: 4px; }
+  .sp-cap + * ' .sp-cap { min-width: 0; margin-left: 4px; }
   .sp-row button { font-size: 0.68rem; padding: 2px 7px; }
   /*  A tool button is a picture, not a word, and 0.68rem is a size chosen for
       words. At that size a pencil and a box outline are two smudges you have
@@ -1756,6 +1771,306 @@
   .th-sign-row select:focus, .th-sign-row input[type="number"]:focus {
     border-color: var(--accent2); outline: none;
   }
+  /*  A SHEET YOU PULL ACROSS A PANEL, AND THE TAB YOU PULL IT BY.
+
+      Over the body and nothing else, so the header stays reachable: you must
+      always be able to take the cover off, move the tile or close it without
+      first uncovering it.
+
+      It BLOCKS by being there. Not `pointer-events: none` with a guard
+      somewhere, not a flag the panel checks — an actual element over the
+      canvas that receives the press instead of the thing underneath. The panel
+      beneath does not know it exists and nothing about its state changes: a
+      Promenade under a cover goes on ticking, a map keeps its centre, a
+      half-typed brick stays half-typed.
+
+      Three elements. The SHADE is a clipped frame the size of the body — a
+      curtain leaves the window, it does not leave the house. The SHEET slides
+      inside it, translated rather than resized so the GPU does the work. The
+      TAB is a sibling of the shade, outside the clip, so it can stand proud of
+      the leading edge the way a real one does. */
+  .panel-shade {
+    position: absolute; z-index: 6; overflow: hidden;
+    border-radius: calc(var(--panel-radius) - 2px);
+    pointer-events: none;
+  }
+  .panel-cover {
+    position: absolute; inset: 0; pointer-events: auto;
+    border-radius: calc(var(--panel-radius) - 2px);
+    cursor: grab;
+    touch-action: none;
+    will-change: transform;
+  }
+  .panel-cover.sliding { cursor: grabbing; transition: none; }
+  .panel-cover:not(.sliding) { transition: transform 0.2s ease-out; }
+  /*  What it says while it is shut. Faint, because a cover is not a message,
+      and gone entirely on glass — you can see the panel through it, which says
+      the same thing better. */
+  .panel-cover > span {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    opacity: 0.22; white-space: nowrap; pointer-events: none;
+  }
+  .panel-cover[data-mat="frosted"] > span,
+  .panel-cover[data-mat="smoked"] > span { opacity: 0.3; }
+
+  /*  FOUR MATERIALS, because what you want a cover to DO differs.
+
+      Frosted and smoked still show you the panel is alive under them, which is
+      what you want over something that moves. Metal and card do not, which is
+      what you want when the point is to stop looking at it. */
+  /*  Glass. `backdrop-filter` blurs what is behind rather than painting over
+      it, so the street under it goes on moving as a smear of its own colours.
+      The hairline and the sheen are what stop it reading as a bug. */
+  .panel-cover[data-mat="frosted"] {
+    background: linear-gradient(150deg,
+      rgba(255,255,255,0.16), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.12));
+    backdrop-filter: blur(7px) saturate(0.85);
+    -webkit-backdrop-filter: blur(7px) saturate(0.85);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .panel-cover[data-mat="smoked"] {
+    background: linear-gradient(150deg,
+      rgba(10,8,14,0.62), rgba(10,8,14,0.44) 45%, rgba(10,8,14,0.6));
+    backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
+    -webkit-backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  /*  Brushed, so the grain runs ACROSS the way it is pulled: a sheet with the
+      grain along its travel reads as a smear rather than as metal. */
+  .panel-cover[data-mat="metal"] {
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(255,255,255,0.055) 0 1px, rgba(0,0,0,0.05) 1px 3px),
+      linear-gradient(105deg, #6f747c 0%, #9aa1aa 26%, #71767e 38%,
+                              #8d949d 62%, #60656c 84%, #7c828b 100%);
+    border: 1px solid rgba(0,0,0,0.45);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35),
+                inset 0 -1px 0 rgba(0,0,0,0.35);
+  }
+  .panel-cover[data-mat="metal"] > span { color: #1b1f24; opacity: 0.45; }
+  .panel-cover[data-mat="card"] {
+    background:
+      repeating-linear-gradient(135deg,
+        rgba(255,255,255,0.035) 0 6px, rgba(255,255,255,0) 6px 12px),
+      var(--panel);
+    border: 1px solid var(--border);
+  }
+
+  /*  THE TAB.
+
+      A sibling of the shade rather than a child, so the clip that keeps the
+      sheet inside the panel does not also cut the handle off. It straddles the
+      leading edge: half on the sheet, half on whatever has been uncovered, so
+      there is always something to take hold of at either extreme.
+
+      Ridged, because a grip that is not ridged is a rectangle. */
+  .panel-tab {
+    position: absolute; z-index: 7; width: 17px; border-radius: 4px;
+    will-change: transform;
+    cursor: grab; touch-action: none;
+    background: linear-gradient(90deg, #9aa1aa, #6f747c 55%, #878e97);
+    border: 1px solid rgba(0,0,0,0.5);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35);
+    display: flex; flex-direction: column; align-items: center;
+    overflow: hidden;
+  }
+  /*  THE HANDLE TRAVELS WITH THE SHEET.
+
+      The sheet has always eased open and shut; the tab's position was written
+      straight into style.left, so it jumped to the end while the sheet was
+      still on its way. A handle that arrives before the thing it is attached
+      to reads as two objects rather than one.
+
+      Same duration and same curve as the sheet — and the same PROPERTY, which
+      is the part that actually matters. The tab moved on `left` while the
+      sheet moved on `transform`: one is laid out on the main thread and the
+      other is handed to the compositor, so even at identical timings the two
+      are stepped by different clocks and visibly drift apart. Matching the
+      numbers was not enough; they had to be the same kind of animation.
+
+      Both are called off while you are dragging — during a drag the position
+      is the pointer's, and easing toward the pointer is lag rather than
+      polish. */
+  .panel-tab:not(.sliding) { transition: transform 0.2s ease-out; }
+  .panel-tab.sliding { cursor: grabbing; transition: none; }
+  .panel-tab:hover { border-color: var(--accent2); }
+  @media (prefers-reduced-motion: reduce) {
+    .panel-cover:not(.sliding), .panel-tab:not(.sliding) { transition: none; }
+  }
+  /*  THE UPPER HALF IS THE GRIP. Ridged, because a handle that is not ridged
+      is a rectangle. Press it and the cover throws fully open or shut. */
+  .tab-grip {
+    flex: 1; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tab-grip::after {
+    content: ""; width: 5px; height: 60%; max-height: 26px; border-radius: 1px;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,0,0,0.4) 0 1px, rgba(255,255,255,0.22) 1px 3px);
+  }
+  /*  THE LOWER SECTION IS WHAT IT IS MADE OF.
+
+      A swatch of the material itself, so the answer to "which of the four am I
+      on" is the thing you press to change it — there is no label to read and
+      nothing to remember. Cut off by a groove so it reads as a separate part
+      of the handle rather than as the end of the ridges. */
+  .tab-mat {
+    flex: none; width: 100%; height: 17px;
+    border-top: 1px solid rgba(0,0,0,0.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+    cursor: pointer;
+  }
+  .tab-mat[data-mat="frosted"] {
+    background: linear-gradient(145deg, rgba(255,255,255,0.75), rgba(255,255,255,0.3));
+  }
+  .tab-mat[data-mat="smoked"] {
+    background: linear-gradient(145deg, #4a4550, #211d28);
+  }
+  .tab-mat[data-mat="metal"] {
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(255,255,255,0.09) 0 1px, rgba(0,0,0,0.08) 1px 3px),
+      linear-gradient(105deg, #6f747c, #9aa1aa 40%, #60656c);
+  }
+  .tab-mat[data-mat="card"] {
+    background:
+      repeating-linear-gradient(135deg,
+        rgba(255,255,255,0.12) 0 3px, rgba(255,255,255,0) 3px 6px),
+      #2a2233;
+  }
+
+  /*  A BIG ROUND BUTTON.
+
+      Round because of what it is: the one control on this board that does
+      something you cannot take back, and the only one that should not look
+      like the rest of the furniture. Every other control here is a rectangle
+      in a row of rectangles, which is right for a tool and wrong for this.
+
+      It takes whatever the cell gives it and stays circular — the height
+      decides, the width follows, and it never outgrows the panel in either
+      direction. Domed with a radial highlight and pressed in on :active, so
+      the press itself feels like a press.
+
+      It still asks before it does anything. Five presses arm it and the dialog
+      lists what will go; the size and the shape are emphasis, not permission. */
+  /*  The full height of the body, taken rather than asked for.
+
+      This was \`flex: 1\`, which does nothing at all here: .panel-body is a
+      block, not a flex container, so the wrap fell back to the height of its
+      contents — 58 pixels — and the dial was measured against that. It came
+      out a third of the size of the cell it was sitting in.
+
+      The body has a definite height, so 100% is the whole of it. */
+  .reset-wrap {
+    height: 100%; min-height: 0; box-sizing: border-box;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 7px; padding: 2px;
+  }
+  /*  Sized in script, not here. A circle wants the SMALLER of the two axes and
+      CSS cannot see the cross one: `.panel` is a container-type: inline-size
+      box, so height container queries are inert, and aspect-ratio plus a
+      max-width clamp gives an oval rather than a smaller circle. Eight lines of
+      measurement beat a stack of rules that are nearly right. */
+  .reset-big {
+    flex: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 5px; padding: 8px; cursor: pointer;
+    border-radius: 50%;
+    border: 1px solid #7d1d1d;
+    background:
+      radial-gradient(circle at 50% 30%,
+        rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.06) 42%, rgba(0,0,0,0) 62%),
+      linear-gradient(180deg, #b3352f, #8c211c);
+    color: #ffe9e6;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),
+                inset 0 -3px 8px rgba(0,0,0,0.35),
+                0 2px 5px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  /*  em rather than rem, so it follows the size the dial was measured to. */
+  .reset-big b { font-size: 1em; letter-spacing: 0.03em; line-height: 1.1; }
+  /*  The resting face is the warning sign and nothing else. The panel's own
+      title already says Clear all, and a button repeating its header is a
+      label looking for something to do. Bigger than the countdown, because a
+      glyph at text size reads as punctuation. */
+  .reset-big b.sign { font-size: 2.1em; line-height: 1; }
+  /*  Sunk into the panel rather than lit up. A destructive control should not
+      reward the press with anything that looks like approval. */
+  .reset-big:active {
+    background:
+      radial-gradient(circle at 50% 70%,
+        rgba(255,255,255,0.16) 0%, rgba(0,0,0,0) 58%),
+      linear-gradient(180deg, #8c211c, #741a16);
+    box-shadow: inset 0 3px 7px rgba(0,0,0,0.5);
+  }
+  .reset-big:hover {
+    border-color: #a82a2a;
+    background:
+      radial-gradient(circle at 50% 30%,
+        rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.08) 42%, rgba(0,0,0,0) 62%),
+      linear-gradient(180deg, #c93f38, #9c2722);
+  }
+  .reset-big:focus-visible { outline: 2px solid var(--accent2); outline-offset: 3px; }
+  /*  FIVE LIGHTS, coming on one at a time from the left.
+
+      Unlit they are the dark glass of a lamp that is not on — sunk into the
+      button rather than drawn over it, so an unlit one reads as a fitting and
+      not as a blank. Lit they are warm and they spill: the glow is the part
+      that catches the eye at a glance across a full board, which is the whole
+      job, since nothing else on this button changes as you press it. */
+  .reset-pips { display: flex; gap: 5px; }
+  .reset-pips i {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(0,0,0,0.32);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.55),
+                inset 0 -1px 0 rgba(255,255,255,0.12);
+    transition: background 0.12s ease-out, box-shadow 0.12s ease-out;
+  }
+  .reset-pips i.on {
+    background: #ffd79a;
+    box-shadow: 0 0 5px 1px rgba(255,190,120,0.95),
+                0 0 12px 2px rgba(255,150,70,0.55),
+                inset 0 1px 0 rgba(255,255,255,0.7);
+  }
+  /*  The last one is the one that fires. It says so by being a different
+      colour from the four that only count. */
+  .reset-pips i.on.last {
+    background: #fff2d8;
+    box-shadow: 0 0 7px 2px rgba(255,225,180,1),
+                0 0 16px 4px rgba(255,170,90,0.7),
+                inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reset-pips i { transition: none; }
+  }
+  /*  ARMED: past halfway, so the panel stops looking like a button you are
+      idly pressing and starts looking like one that is about to go off. A ring
+      round a circle rather than a glow round a box. */
+  .reset-big.armed {
+    border-color: #ffb4ac;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),
+                inset 0 -3px 8px rgba(0,0,0,0.35),
+                0 0 0 3px rgba(255,120,110,0.45);
+  }
+  /*  The toll, under the dial. It goes quietly: the button is the thing to
+      look at and this is the small print beneath it. */
+  .reset-note {
+    flex: none; font-style: normal; font-size: 0.58rem; line-height: 1.25;
+    text-align: center; opacity: 0.6;
+  }
+  /*  Hidden by the same measurement that sizes the dial: a short cell has no
+      room for both, the dial is the control, and the caption says what the
+      button's own tooltip says. */
+  .reset-note[hidden] { display: none; }
+  .tile-cover {
+    border: 1px solid transparent; background: none; color: inherit;
+    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
+    cursor: pointer; opacity: 0.45;
+  }
+  .tile-cover:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  .tile-cover.on { opacity: 1; color: var(--accent); }
   .tile-reload {
     border: 1px solid transparent; background: none; color: inherit;
     font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
@@ -2190,6 +2505,25 @@
   <div class="tl-lanes" data-el="lanes"></div>
 </template>
 
+<!-- One button and nothing else. A panel this size has room for a control or
+     for an explanation of it, not both, and the button's own words plus the
+     dialog it opens are the explanation. -->
+<template id="tpl-reset">
+  <!-- The dial and its caption, stacked. The caption is outside the button
+       because a circle is a bad shape to set a line of text in: it wants the
+       middle and the words want the width. -->
+  <div class="reset-wrap">
+    <button type="button" class="reset-big" data-el="go">
+      <b data-el="lead">Clear all</b>
+      <!-- One pip per press. A number counting down tells you how many are
+           left; the pips also tell you how many you have already made, which
+           is the half you want when you are wondering whether to stop. -->
+      <span class="reset-pips" data-el="pips"></span>
+    </button>
+    <em class="reset-note" data-el="what">everything on this page</em>
+  </div>
+</template>
+
 <template id="tpl-count"><div class="stats" data-el="stats"></div></template>
 <template id="tpl-notes"><div class="issues" data-el="issues"></div></template>
 <template id="tpl-reference"><div data-el="ref"></div></template>
@@ -2237,7 +2571,7 @@ const TOKENS = {
 };
 
 const RE_DATE = /^\d{4}(-\d{2})?(-\d{2})?$/;
-const RE_EST = /~\s*(\d{4})/;
+const RE_EST = /'\s*(\d{4})/;
 const RE_UNKNOWN = /^\?+$/;
 const RE_ALIAS = /<([^<>]*)>/g;
 
@@ -2383,7 +2717,7 @@ function parseLine(raw, lineNumber, section) {
     if (a) { brick.alias = a; start = 1; }
     else brick.notes.push({ level: "warn", msg: TYPES[type].label + " has no <uid>" });
   } else if (brick.kind === "census") {
-    // '-|✏️|1891|George|22 1891-22 ~1869' — year, forename, then an age blob
+    // '-|✏️|1891|George|22 1891-22 '1869' — year, forename, then an age blob
     // that may carry the author's own arithmetic. The working is part of the
     // record, so the blob is kept verbatim too.
     if (looksLikeDate(rest[0])) { brick.date = rest[0]; start = 1; }
@@ -2563,9 +2897,9 @@ function buildModel(bricks) {
 
   /*  Birth and death years per person, so an age can be worked out anywhere.
 
-      A birth EVENT is a recorded fact and wins. A census estimate ("22 ~1869")
+      A birth EVENT is a recorded fact and wins. A census estimate ("22 '1869")
       is arithmetic done on a rounded age and is only ever approximate, so it
-      is kept separately and marked — an age derived from it is written "~22"
+      is kept separately and marked — an age derived from it is written "'22"
       and must never be mistaken for one derived from a real date. */
   for (const b of real) {
     if (!b.valid) continue;
@@ -2631,7 +2965,7 @@ function buildModel(bricks) {
 /*  The year a brick sits at, or null if it has none.
 
     A record's own date wins; a census row falls back to its derived birth year
-    (`~1869`), which is the only year some of them carry. "????" is deliberately
+    (`'1869`), which is the only year some of them carry. "????" is deliberately
     a date that yields no year — the question was asked and not answered, which
     is not the same as the record being undated. */
 function brickYear(b) {
@@ -2659,21 +2993,21 @@ function timeWindow(t) {
 
     Bounded to plausible record years so a house number or a reference like
     "377/4/1" cannot masquerade as a date. */
-/*  An age at a given year, or "" when it cannot be worked out. Prefixed "~"
+/*  An age at a given year, or "" when it cannot be worked out. Prefixed "'"
     whenever the birth year is itself an estimate, and negative results are
     suppressed — a record predating a birth is a data problem, not an age. */
 function ageAt(entity, year) {
   if (!entity || year === null || entity.birthYear === undefined) return "";
   const age = year - entity.birthYear;
   if (age < 0 || age > 120) return "";
-  return (entity.birthExact ? "" : "~") + age;
+  return (entity.birthExact ? "" : "'") + age;
 }
 
-// "b. 1869 · d. 1931 · ~62" — whatever of it is known.
+// "b. 1869 · d. 1931 · '62" — whatever of it is known.
 function lifeSummary(e) {
   if (!e) return "";
   const bits = [];
-  if (e.birthYear !== undefined) bits.push("b. " + (e.birthExact ? "" : "~") + e.birthYear);
+  if (e.birthYear !== undefined) bits.push("b. " + (e.birthExact ? "" : "'") + e.birthYear);
   if (e.deathYear !== undefined) bits.push("d. " + e.deathYear);
   if (e.birthYear !== undefined && e.deathYear !== undefined) {
     const a = ageAt(e, e.deathYear);
@@ -3267,6 +3601,149 @@ definePanel({ role: "read", id: "mapstyle", title: "Map Style", tpl: "tpl-mapsty
 definePanel({ roles: ["read", "filter"], id: "timeline", title: "Timeline", tpl: "tpl-timeline", w: 2, h: 2,
   help: "Every dated record, one lane per person, in order. Years found in a note or heading count too, and are drawn hollow. Hover a mark for the detail.",
   render(body) { renderTimeline(body); } });
+
+/*  THE WAY OUT OF A PROJECT, on the board rather than only in the top bar.
+
+    Clear all has always been up beside Export, which is the right place for it
+    and an easy one to miss once you are working three screens down. This is the
+    same call — the same dialog, the same counts, the same warning when you have
+    never exported — with a button you can put wherever you want it.
+
+    It is a `write` panel because it changes the pile, and it is the only panel
+    whose entire function is to change it to nothing. */
+definePanel({ role: "write", id: "reset", title: "Clear all", tpl: "tpl-reset", w: 1, h: 1,
+  help: "One red button. Empties the pile and puts every panel back as it started — the same thing Clear all does in the top bar, and it asks first in exactly the same way.",
+  render(body) {
+    const btn = body.querySelector('[data-el="go"]');
+    if (!btn) return;
+    const lead = body.querySelector('[data-el="lead"]');
+    const what = body.querySelector('[data-el="what"]');
+    const pips = body.querySelector('[data-el="pips"]');
+
+    /*  FIVE PRESSES, AND THEY HAVE TO BE FIVE IN A ROW.
+
+        A single button that empties a project is one slip away from emptying
+        it. Five is enough that you cannot get there by brushing the mouse, and
+        few enough that somebody who means it is not made to feel stupid.
+
+        The count forgets itself after a few seconds of nothing, so a stray
+        press is a stray press rather than a quarter of a decision left lying
+        about. That is the important half of the design: an arming sequence
+        with no timeout is just a slower single button.
+
+        Held on the panel body, because the render below runs on every
+        keystroke in the Pallet and a count kept in this closure would be reset
+        by somebody typing in another panel. */
+    const NEED = 5, FORGET_MS = 3000;
+    if (body._taps === undefined) body._taps = 0;
+
+    /*  AS BIG AS THE CELL ALLOWS, AND STILL ROUND.
+
+        The smaller of the two axes, less the caption when there is room for
+        one. Watched rather than measured once, because the cell changes size
+        whenever you resize the tile, change the board's column count or dock
+        the panel — and a circle that only fits the size it was born at is a
+        circle that goes oval the first time you touch anything.
+
+        The observer is hung on the body so a re-render reuses it rather than
+        stacking a new one on every keystroke. */
+    const wrap = body.querySelector(".reset-wrap");
+    const note = body.querySelector(".reset-note");
+    const fit = () => {
+      if (!wrap) return;
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      if (!w || !h) return;
+      //  Under this there is no room for the dial AND a line of small print.
+      const room = h >= 150;
+      if (note) note.hidden = !room;
+      const spare = room && note ? note.offsetHeight + 7 : 0;
+      const d = Math.max(44, Math.floor(Math.min(w, h - spare)) - 4);
+      btn.style.width = d + "px";
+      btn.style.height = d + "px";
+      //  The lettering follows the dial, or a small one reads as a word with a
+      //  circle drawn round it.
+      btn.style.fontSize = Math.max(0.6, Math.min(1.1, d / 110)) + "rem";
+    };
+    if (!body._fitRO && wrap) {
+      body._fitRO = new ResizeObserver(fit);
+      body._fitRO.observe(wrap);
+    }
+    fit();
+
+    /*  What the pile would actually lose, counted live, so the button is
+        honest about the size of what it is offering to do. */
+    const bricks = state.text.trim()
+      ? state.text.trim().split(/\n/).filter(l => l.trim()).length : 0;
+    const bits = [bricks + " line" + (bricks === 1 ? "" : "s")];
+    if (typeof GAZETTEER !== "undefined" && GAZETTEER && GAZETTEER.size) {
+      bits.push(GAZETTEER.size + " place" + (GAZETTEER.size === 1 ? "" : "s"));
+    }
+    if (typeof LOCAL_ART !== "undefined" && LOCAL_ART && LOCAL_ART.size) {
+      bits.push(LOCAL_ART.size + " drawing" + (LOCAL_ART.size === 1 ? "" : "s"));
+    }
+    const toll = bits.join(" · ");
+
+    const paint = () => {
+      const left = NEED - body._taps;
+      /*  THE SIGN DOES NOT CHANGE. THE LIGHTS DO.
+
+          It used to swap to "4 more", "3 more" and so on, which put a number
+          where the warning had been — so the one thing on the button that says
+          what kind of button it is disappeared exactly when it mattered most.
+
+          The lights carry the count instead. Five of them, lighting one at a
+          time, and you can read how far along you are without reading
+          anything. */
+      if (lead) {
+        lead.textContent = "\u26a0";
+        lead.classList.add("sign");
+      }
+      if (what) {
+        //  The number lives here now that the face has stopped carrying it.
+        what.textContent = body._taps
+          ? left + " more \u2014 " + toll
+          : "press " + NEED + " times \u2014 " + toll;
+      }
+      if (pips) {
+        pips.innerHTML = "";
+        for (let i = 0; i < NEED; i++) {
+          const dot = document.createElement("i");
+          //  The one just lit burns brighter than the ones before it, so a
+          //  press is visible even when you are not counting.
+          if (i < body._taps) dot.className = i === body._taps - 1 ? "on last" : "on";
+          pips.appendChild(dot);
+        }
+      }
+      btn.classList.toggle("armed", body._taps >= Math.ceil(NEED / 2));
+      btn.title = body._taps
+        ? left + " more press" + (left === 1 ? "" : "es") + " and it asks to clear everything"
+        : "press " + NEED + " times to empty the pile and put every panel back "
+          + "as it started \u2014 it asks before it does it";
+    };
+
+    const forget = () => {
+      clearTimeout(body._tapTimer);
+      body._tapTimer = setTimeout(() => { body._taps = 0; paint(); }, FORGET_MS);
+    };
+
+    //  Assigned rather than added, since the render runs on every keystroke.
+    btn.onclick = () => {
+      body._taps++;
+      if (body._taps < NEED) { paint(); forget(); return; }
+      /*  There. The dialog still opens: five presses says you meant to press
+          the button, and the dialog is what tells you what is actually in the
+          pile and whether you have ever exported it. Those are different
+          questions and both are worth asking.
+
+          Counted back to nothing first, so declining the dialog leaves the
+          button at rest rather than one press from going again. */
+      clearTimeout(body._tapTimer);
+      body._taps = 0;
+      paint();
+      clearAll();
+    };
+    paint();
+  } });
 
 definePanel({ role: "read", id: "count", title: "Tally", tpl: "tpl-count", w: 1, h: 1,
   help: "Live tally of the pile.",
@@ -5329,7 +5806,40 @@ function readSignMark(img) {
     px[i + 3] = a === ANCHOR_AIR ? 0 : 255;
   }
   const glass = found.glass.list, doors = found.door.list;
-  if (glass.length) lightGlass(px, found.glass.mask, w, h);
+  /*  THE HOUSE GOES DARK FIRST, AND THE LIGHTS COME ON AFTER.
+
+      Night used to arrive as one swap: the whole street repainted with every
+      window already burning. That reads as a switch being thrown rather than
+      as evening, and it threw away the one moment a drawn street can actually
+      perform.
+
+      So at night the drawing is painted with its windows OUT, and the lit
+      panes are kept aside in a second canvas of their own — glass only,
+      transparent everywhere else. The Promenade lays that over the dark house
+      and fades it up, one building at a time. A place with no glass in it has
+      no second canvas and simply goes dark, which is also correct: nobody is
+      home.
+
+      Two passes over the panes rather than one, and only at night, on a
+      canvas that is cached per drawing per hour. */
+  if (glass.length) {
+    if (NIGHT) {
+      const glow = new Uint8ClampedArray(px);
+      lightGlass(glow, found.glass.mask, w, h, "lit");
+      cv.__lights = glassOnly(glow, found.glass.mask, w, h);
+      lightGlass(px, found.glass.mask, w, h, "out");
+    } else {
+      lightGlass(px, found.glass.mask, w, h, "day");
+    }
+  }
+  /*  The step between. Taken AFTER the panes are put out, so the twilight
+      picture is the night scene with its colour drained rather than the day
+      scene with its windows still showing sky — the two are one drawing apart
+      and the wrong one flickers as it clears.
+
+      Every place gets one, glass or no glass: a barn with no windows still has
+      an evening. */
+  if (NIGHT) cv.__dusk = duskCopy(px, w, h);
 
   /*  The bottom row first and on its own, because that row is the question
       being asked. An anchor down there is a post; anywhere else it is a label
@@ -5380,7 +5890,62 @@ function readSignMark(img) {
     Panes are found four-connected, the same rule the fill and the measure
     tools use, so what counts as one window here is what looks like one window
     everywhere else. */
-function lightGlass(px, isGlass, w, h) {
+/*  THE HOUR BETWEEN, as a picture.
+
+    Colour goes before light does. Standing in a street at dusk you lose the
+    reds and the greens well before you lose the shapes, and everything flattens
+    toward one grey — so the step between full day and a lit night is a drawing
+    with the colour drained out of it and the whole thing turned down.
+
+    Mixed toward its own luminance rather than to a flat grey, so a dark wall
+    stays darker than a pale one and the building keeps its form. 0.82 rather
+    than all the way, because a completely grey street reads as a fault; a
+    trace of colour reads as failing light.
+
+    Kept as its own canvas so the Promenade can lay it over the night scene and
+    fade it OUT, which is the transition: the colour comes back as the picture
+    underneath is revealed, and only then do the windows light. */
+function duskCopy(px, w, h) {
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  const d = g.createImageData(w, h);
+  const out = d.data;
+  const DRAIN = 0.82, DIM = 0.52;
+  for (let i = 0; i < px.length; i += 4) {
+    const a = px[i + 3];
+    out[i + 3] = a;
+    if (!a) continue;
+    const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+    for (let ch = 0; ch < 3; ch++) {
+      out[i + ch] = Math.round((px[i + ch] + (lum - px[i + ch]) * DRAIN) * DIM);
+    }
+  }
+  g.putImageData(d, 0, 0);
+  return cv;
+}
+
+/*  THE LIT PANES ON THEIR OWN, on a transparent field.
+
+    Everything that is not glass is cleared, so this canvas can be laid over
+    the dark house and faded up without touching a brick of it. Drawn at the
+    same size and anchored the same way, so the two cannot drift apart. */
+function glassOnly(px, isGlass, w, h) {
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  const d = g.createImageData(w, h);
+  const out = d.data;
+  for (let k = 0; k < w * h; k++) {
+    if (!isGlass[k]) continue;
+    const i = k * 4;
+    out[i] = px[i]; out[i + 1] = px[i + 1]; out[i + 2] = px[i + 2]; out[i + 3] = 255;
+  }
+  g.putImageData(d, 0, 0);
+  return cv;
+}
+
+function lightGlass(px, isGlass, w, h, mode) {
   const N = w * h;
   const depth = new Int32Array(N).fill(-1);
   const pane = new Int32Array(N).fill(-1);
@@ -5434,9 +5999,20 @@ function lightGlass(px, isGlass, w, h) {
     bounds.push({ x0, y0, x1, y1 });
   }
 
-  const edge = hexBytes(NIGHT ? GLASS_NIGHT_EDGE : GLASS_DAY_EDGE);
-  const mid  = hexBytes(NIGHT ? GLASS_NIGHT_MID  : GLASS_DAY_EDGE);
-  const core = hexBytes(NIGHT ? GLASS_NIGHT_CORE : GLASS_DAY_CORE);
+  /*  THREE STATES, NOT TWO.
+
+      "day" is sky in the pane. "lit" is a candle behind it. "out" is the third
+      and it is what a house looks like the moment night falls and before
+      anybody has struck a light: night glass, no flame — the dark end of the
+      ramp, flat across the pane.
+
+      Passed in rather than read off NIGHT, because the transition needs two
+      versions of the same drawing at the same moment: the dark house, and the
+      lights that fade up over it. */
+  const lit = mode === "lit", out = mode === "out";
+  const edge = hexBytes(lit || out ? GLASS_NIGHT_EDGE : GLASS_DAY_EDGE);
+  const mid  = hexBytes(lit ? GLASS_NIGHT_MID  : out ? GLASS_NIGHT_EDGE : GLASS_DAY_EDGE);
+  const core = hexBytes(lit ? GLASS_NIGHT_CORE : out ? GLASS_NIGHT_EDGE : GLASS_DAY_CORE);
   //  edge -> mid over the first half of the ramp, mid -> core over the second.
   /*  The amber holds most of the ramp and the pale heart is the last fifth of
       it. Split evenly, half of every window came out near-white and the whole
@@ -5504,7 +6080,8 @@ function lightGlass(px, isGlass, w, h) {
 
         By day the mix is barely anything — daylight through glass is the
         drawing itself, very slightly cooled. */
-    const mix = NIGHT ? 0.30 + 0.62 * t : 0.16;
+    //  A dark pane is mixed flat: there is no flame to fall off from.
+    const mix = lit ? 0.30 + 0.62 * t : out ? 0.62 : 0.16;
     for (let ch = 0; ch < 3; ch++) {
       const lit = px[i + ch] + (c3[ch] - px[i + ch]) * mix;
       px[i + ch] = Math.max(0, Math.min(255, Math.round(lit)));
@@ -7303,6 +7880,20 @@ function renderPromenadePixi(model, host) {
       NIGHT = !NIGHT;
       saveNight();
       syncNight();
+      /*  Only a change of hour lights the lamps. Every other render at night —
+          a zoom, a sort, a ribbon dragged — must find them already burning, or
+          the street would put itself to bed and wake up again every time you
+          touched it. */
+      /*  WHEN the hour turned, not whether. A flag was wrong: the first render
+          consumed it and then the scene art arrived, which asks for a second
+          render — and that one found the flag already spent, so the lamps
+          were built already burning and nothing ever faded.
+
+          A stamp survives any number of redraws, and because each lamp works
+          its start time out FROM the stamp rather than from "now", a redraw
+          landing mid-fade picks the fade up where it was instead of starting
+          it again. */
+      host._lightUp = NIGHT ? performance.now() : 0;
       resetSceneCache();
       syncBgBar();
       redrawScene();
@@ -8144,6 +8735,38 @@ function renderPromenadePixi(model, host) {
         for (const q of host._smokePool) q.sp.visible = false;
       }
 
+      /*  LAMPS COMING UP.
+
+          Smoothstepped rather than linear: a wick catches slowly, brightens,
+          and settles, and a straight ramp reads as a dimmer being turned.
+          Dropped from the list once every one of them has arrived, so a still
+          street costs nothing.
+
+          Destroyed nodes are skipped rather than written to. A render between
+          one frame and the next throws these away while the list still holds
+          them, and writing alpha through a null transform is the crash this
+          panel already learned once. */
+      if (host._lamps && host._lamps.length) {
+        const nowS = performance.now() / 1000;
+        let waiting = false;
+        for (const L of host._lamps) {
+          if (!L.node || L.node.destroyed) continue;
+          const k = (nowS - L.at) / L.dur;
+          const e = k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+          //  One list, two directions: a lamp runs 0 to 1 and the twilight
+          //  sheet over it runs 1 to 0.
+          const from = L.from === undefined ? 0 : L.from;
+          const to = L.to === undefined ? 1 : L.to;
+          const a = from + (to - from) * e;
+          if (L.node.alpha !== a) L.node.alpha = a;
+          if (k < 1) waiting = true;
+          //  A sheet that has finished clearing is not scenery. Dropped from
+          //  the world rather than left at alpha 0 over every building.
+          else if (L.gone && L.node.parent) L.node.parent.removeChild(L.node);
+        }
+        if (!waiting) host._lamps = [];
+      }
+
       /*  The sun sits in the world so it can be drawn on the sky, under the
           roofs. It must not travel with the world, though, so the pan comes
           straight back off it here — every frame, because the street can be
@@ -8606,8 +9229,25 @@ function renderPromenadePixi(model, host) {
         } else {
           const was = SUN_LOW;
           sn.__place(sn.__sx, y);
+          /*  WHERE THE SUN ACTUALLY IS, not where it was last put by hand.
+
+              THIS IS THE HOUR RESETTING ITSELF. The clock moved the disc and
+              nothing wrote it down: only a drag and the sunset handover ever
+              touched SUN_POS. Every render rebuilds the sun FROM SUN_POS — so
+              the moment anything asked for a redraw, and a tint slider asks
+              for one on every step, the sun jumped back to wherever you last
+              dragged it and took the light with it. Ten minutes of dusk undone
+              by moving a colour.
+
+              Written every step because it is two divisions, and only
+              PERSISTED when the quantised light changes — about once every
+              twelve seconds at a pixel a second, rather than sixty times a
+              second into localStorage. */
+          const sw = app.screen.width || 1, sh = app.screen.height || 1;
+          SUN_POS = { fx: Math.max(0, Math.min(1, sn.__sx / sw)),
+                      fy: Math.max(0, Math.min(1, y / sh)) };
           setSunLow(y, host._sunHorizon);
-          if (SUN_LOW !== was) host._relight();
+          if (SUN_LOW !== was) { host._relight(); saveSunPos(); }
         }
       }
 
@@ -9317,6 +9957,19 @@ function renderPromenadePixi(model, host) {
         somewhere to go that is already the right depth. */
     host._doorLayer = new P.Container();
     host._doorLayer.eventMode = "static";
+    /*  Windows waiting to be lit. Rebuilt with the scene, because every one of
+        them belongs to a sprite this render made. */
+    host._lamps = [];
+    /*  Still within the evening. Eight seconds covers the longest wait a lamp
+        can draw plus the longest it can take to come up; past that the hour is
+        simply the hour, and a redraw finds the street already lit. */
+    const DUSK_FOR = 9000;
+    /*  How long the grey holds before it starts to clear, and how long it
+        takes. Slower than a lamp comes up: losing the light is the long half
+        of an evening and getting it back is the short one. */
+    const DUSK_HOLD = 0.25, DUSK_CLEAR = 1.8;
+    const lightUp = NIGHT && host._lightUp > 0 &&
+                    performance.now() - host._lightUp < DUSK_FOR;
     const place = (c, img) => {
       if (!img || host._renderId !== myRender) return;
       // Fit the column, never blown up past its own pixels.
@@ -9365,6 +10018,77 @@ function renderPromenadePixi(model, host) {
           anchored centre and standing on the ground: the same arithmetic the
           signpost anchor uses, so the two can never disagree about where a
           point on a building is. */
+      /*  THE LIGHTS, OVER THE DARK HOUSE.
+
+          Same picture, same size, same spot, one slot higher — so a lit pane
+          lands exactly on the dark pane it belongs to. Alpha does the rest.
+
+          Each house waits its own moment before it lights. Real ones do: the
+          lamp gets lit when somebody in that house gets round to it, and a
+          street that came on all at once would be a floodlight rather than an
+          evening. The wait is drawn from the place's own uid, so Longforgan
+          lights before Killin tonight and does again tomorrow — a delay that
+          reshuffled on every redraw would read as flicker. */
+      /*  THE TWILIGHT FRAME, over the night scene and under the lights.
+
+          Laid on at full strength the moment the hour turns, held for a beat,
+          then faded out — so the street loses its colour, sits grey for a
+          second, and comes back as night. The picture underneath never moves,
+          so nothing shifts or pops: only this one layer's alpha.
+
+          Nothing to do on the way to day. Morning is not this. */
+      if (img.__dusk && NIGHT && lightUp) {
+        const dsrc = fit < 1 ? shrunk(img.__dusk, fit) : img.__dusk;
+        const dim = new P.Sprite(P.Texture.from(dsrc));
+        dim.texture.baseTexture.scaleMode = P.SCALE_MODES.NEAREST;
+        dim.anchor.set(0.5, 1);
+        dim.x = spr.x; dim.y = spr.y;
+        dim.scale.set(spr.scale.x);
+        dim.eventMode = "none";
+        dim.alpha = 1;
+        const me = world.getChildIndex(spr);
+        world.addChildAt(dim, Math.min(me + 1, world.children.length));
+        host._lamps.push({
+          node: dim,
+          //  A beat of grey before it starts to clear, and it clears slower
+          //  than a lamp comes up — losing the light is the slow half of
+          //  evening and getting it back is the quick one.
+          at: host._lightUp / 1000 + DUSK_HOLD,
+          dur: DUSK_CLEAR,
+          from: 1, to: 0,
+          //  Taken off the scene once it has gone, rather than left as a
+          //  transparent sheet over every building for the rest of the night.
+          gone: true,
+        });
+      }
+
+      if (img.__lights && NIGHT) {
+        const lsrc = fit < 1 ? shrunk(img.__lights, fit) : img.__lights;
+        const lamp = new P.Sprite(P.Texture.from(lsrc));
+        lamp.texture.baseTexture.scaleMode = P.SCALE_MODES.NEAREST;
+        lamp.anchor.set(0.5, 1);
+        lamp.x = spr.x; lamp.y = spr.y;
+        lamp.scale.set(spr.scale.x);
+        lamp.eventMode = "none";
+        const me = world.getChildIndex(spr);
+        world.addChildAt(lamp, Math.min(me + 1, world.children.length));
+        if (lightUp) {
+          lamp.alpha = 0;
+          const r = seedOf(c.slug);
+          host._lamps.push({
+            node: lamp,
+            //  From the moment the hour turned, so this is the same instant
+            //  however many times the scene is rebuilt before it arrives.
+            //  After the grey has begun to clear, never during the hold: a
+            //  window lighting behind a sheet of twilight is a window nobody
+            //  sees light.
+            at: host._lightUp / 1000 + DUSK_HOLD + DUSK_CLEAR * 0.55 + (r % 1) * 3.4,
+            //  A lamp takes a moment to come up, and not all at the same rate.
+            dur: 0.9 + ((r * 7) % 1) * 1.1,
+          });
+        } else lamp.alpha = 1;
+      }
+
       const chimneys = (img.__smoke || []);
       if (chimneys.length) {
         const sc = fit * Z;
@@ -9374,7 +10098,16 @@ function renderPromenadePixi(model, host) {
             wx: c.x + (ix + 0.5 - img.width / 2) * sc,
             wy: groundY() + (iy + 0.5 - img.height) * sc,
             ink: look.ink, thick: look.thick, fade: look.fade,
-            next: Math.random() * 0.9,
+            /*  A CHIMNEY TAKES A WHILE TO CATCH.
+
+                This was under a second, so every chimney on the street was
+                drawing within one breath of the scene appearing — which reads
+                as the smoke having always been there. A fire is lit when
+                somebody lights it: a few seconds of nothing, then one roof
+                going, then another. The long wait is only on the way into
+                night, when a scene is being built for an hour that just
+                changed; otherwise a redraw would put every chimney out. */
+            next: lightUp ? 1.5 + Math.random() * 6 : Math.random() * 0.9,
           });
         }
       }
@@ -10954,7 +11687,7 @@ function renderPromenadePixi(model, host) {
         sixty-five people that was sixty-five of them made on every render —
         every drop, sort, zoom and resize — for labels that are hidden until
         you hover. Making them on demand is most of what a rebuild was doing. */
-    const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "~") + p.birthYear : "");
+    const nameText = p.name + (p.birthYear ? " " + (p.birthExact ? "" : "'") + p.birthYear : "");
     /*  PICKED AGAINST WHAT IT IS ACTUALLY SITTING ON.
 
         This read the SKY, from back when a name floated over a head. The name
@@ -14785,7 +15518,7 @@ function renderSpriteEditor(model, host) {
 
       A finished drawing left here by the only door available: you downloaded
       it, and the editor could not read it back. It reads the server's own
-      images folder and nothing else, so a file in ~/Downloads — the file this
+      images folder and nothing else, so a file in '/Downloads — the file this
       panel handed you five minutes ago — was out of reach.
 
       The FILENAME decides how it is read, because the filenames here already
@@ -18541,8 +19274,33 @@ function repackForCols(cols) {
 
 // Builds the panel element once; afterwards it is moved between tiles and the
 // store, never rebuilt, so an off-board panel keeps its scroll and its input.
+/*  EVERY PANEL EVER BUILT, WHETHER IT IS IN THE DOCUMENT OR NOT.
+
+    getElementById cannot see a detached node, and a board render detaches
+    plenty of them: tearing down a tile wrapper takes the panel inside it out
+    of the document in the same call. renderBoardTiles already knew that — it
+    looks every panel up BEFORE it removes anything, and says so in a comment.
+
+    renderDocks did not. So docking a panel ran the board render first, which
+    detached the panel along with its wrapper, and then asked getElementById
+    for it: nothing. It built a fresh, empty one and hung that in the rail,
+    dropping the live panel on the floor — for the Promenade that is a Pixi
+    renderer, a ticker and the whole cast, gone, leaving a blank rectangle.
+
+    One map fixes the class of bug rather than that one instance of it: a
+    panel's node is looked up here, and a detached node is still the panel. */
+const PANEL_NODES = new Map();
+function panelNode(id) {
+  const live = document.getElementById(id);
+  if (live) return live;
+  const kept = PANEL_NODES.get(id);
+  if (kept) return kept;
+  const def = panels.get(id);
+  return def ? buildPanel(def) : null;
+}
+
 function buildPanel(def) {
-  let node = document.getElementById(def.id);
+  let node = document.getElementById(def.id) || PANEL_NODES.get(def.id);
   if (node) return node;
 
   node = document.createElement("section");
@@ -18596,6 +19354,7 @@ function buildPanel(def) {
   });
 
   wirePanelBody(def, body);
+  PANEL_NODES.set(def.id, node);
   return node;
 }
 
@@ -18644,7 +19403,7 @@ function renderBoardTiles() {
      detached node is invisible to getElementById even though the object is
      still alive — so looking a panel up afterwards silently loses it on every
      render past the first. */
-  const nodes = new Map(board.tiles.map(t => [t.id, document.getElementById(t.id) || buildPanel(panels.get(t.id))]));
+  const nodes = new Map(board.tiles.map(t => [t.id, panelNode(t.id)]));
   [...b.querySelectorAll(".board-tile")].forEach(t => t.remove());
   b.style.setProperty("--board-cols", board.cols);
   b.style.setProperty("--board-row", board.rowUnit + "px");
@@ -18673,6 +19432,7 @@ function renderBoardTiles() {
     // would pile up duplicates.
     ensureRemoveButton(panel, t.id);
     ensureReloadButton(panel, t.id);
+    ensureCoverButton(panel, t.id);
     wrap.appendChild(panel);
     appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
     appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
@@ -18787,6 +19547,421 @@ function setDock(id, side) {
     Whatever the panel hung on itself goes with it. That is the point, and it
     is why the underscore convention matters: anything private is prefixed, so
     "forget everything this panel remembered" is one loop. */
+/*  WHAT EACH PANEL'S COVER IS MADE OF, AND HOW FAR IT IS PULLED.
+
+    The position is a FRACTION of the panel's width rather than a pixel count,
+    so a cover survives the tile being resized, the board changing its column
+    count and the window being made narrower. 0 is shut; past 0.9 it is off
+    altogether and there is no entry at all.
+
+    Kept beside the board layout rather than in the pile: a cover is a thing
+    about this screen right now, not a fact about your research. */
+const COVER_KEY = "brick-by-brick:covers:v2";
+/*  Named for what they are rather than for how they are drawn, because the
+    choice you are making is what you want to be able to see through.
+
+    Glass first. A cover over a panel that MOVES — the street, the map, a
+    timeline — wants to leave you the movement while taking the controls away,
+    and frosted does that. Card is the one that hides it completely, and it is
+    last because that is the rarer want. */
+const COVER_MATS = ["frosted", "smoked", "metal", "card"];
+const COVER_MAT_DEFAULT = "frosted";
+let COVERS = new Map();                 // id -> { x: 0..0.9, m: material }
+
+/*  WHAT A PANEL'S COVER IS LIKE, WHETHER IT HAS ONE ON OR NOT.
+
+    COVERS says which panels are covered right now. This says what the cover
+    looks like when there is one, and it outlives taking it off — a material
+    you chose is a decision about that panel, not about that particular sheet,
+    and having it thrown away because you uncovered the panel for a minute is
+    the kind of small forgetting that makes a setting not worth making.
+
+    The openness is remembered the same way. Take a cover off with ▤ and put it
+    back, and it returns exactly as you left it — same material, same distance
+    across. */
+const COVER_PREF_KEY = "brick-by-brick:coverprefs:v1";
+let COVER_PREFS = new Map();            // id -> { x, m }, kept when uncovered
+
+function coverPref(id) {
+  const p = COVER_PREFS.get(id);
+  return { x: p && isFinite(p.x) ? p.x : 0,
+           m: p && COVER_MATS.includes(p.m) ? p.m : COVER_MAT_DEFAULT };
+}
+function rememberCover(id, st) {
+  COVER_PREFS.set(id, { x: st.x, m: st.m });
+  try {
+    if (!COVER_PREFS.size) localStorage.removeItem(COVER_PREF_KEY);
+    else localStorage.setItem(COVER_PREF_KEY, JSON.stringify([...COVER_PREFS.entries()]));
+  } catch (e) { /* unavailable */ }
+}
+function loadCoverPrefs() {
+  try {
+    const raw = localStorage.getItem(COVER_PREF_KEY);
+    if (!raw) return;
+    for (const [id, v] of JSON.parse(raw)) {
+      const x = Number(v && v.x);
+      COVER_PREFS.set(id, { x: isFinite(x) && x >= 0 && x <= 1 ? x : 0,
+                            m: COVER_MATS.includes(v && v.m) ? v.m : COVER_MAT_DEFAULT });
+    }
+  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
+}
+
+function loadCovers() {
+  try {
+    const raw = localStorage.getItem(COVER_KEY);
+    if (raw) {
+      for (const [id, v] of JSON.parse(raw)) {
+        const x = Number(v && v.x);
+        //  1 is a legal position now — fully aside, still on the panel.
+        if (!isFinite(x) || x < 0 || x > 1) continue;
+        COVERS.set(id, { x, m: COVER_MATS.includes(v.m) ? v.m : COVER_MAT_DEFAULT });
+      }
+      return;
+    }
+    /*  A v1 store held a bare number and no material. Honoured rather than
+        dropped: a panel you covered is one you meant to cover. */
+    const old = localStorage.getItem("brick-by-brick:covers:v1");
+    if (!old) return;
+    for (const [id, v] of JSON.parse(old)) {
+      const x = Number(v);
+      if (isFinite(x) && x >= 0 && x <= 1) COVERS.set(id, { x, m: COVER_MAT_DEFAULT });
+    }
+  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
+}
+function saveCovers() {
+  try {
+    if (!COVERS.size) localStorage.removeItem(COVER_KEY);
+    else localStorage.setItem(COVER_KEY, JSON.stringify([...COVERS.entries()]));
+  } catch (e) { /* unavailable */ }
+}
+//  What is on the panel now, or failing that what it had last time.
+const coverAt = id => COVERS.get(id) || coverPref(id);
+
+function coverOf(panel) { return panel.querySelector(":scope > .panel-shade"); }
+function tabOf(panel) { return panel.querySelector(":scope > .panel-tab"); }
+
+/*  EVERYTHING BELOW THE TITLE BAR, not the .panel-body.
+
+    The body was the obvious thing to measure and it is wrong for any panel
+    whose content breaks out of it. The Promenade's shell does exactly that —
+    its canvas sits at the panel's own edge with the bar and the footnote
+    bled past the body's box — so a cover cut to the body left a strip of live
+    street showing top and bottom. A cover with a gap in it is not a cover.
+
+    So it is measured off the PANEL: the whole inside of it, from the underside
+    of the header down. That covers anything a panel can do with its own
+    content, including the things it has not thought of yet.
+
+    Offsets are from the padding edge, because that is what an absolutely
+    positioned child of a relatively positioned box is laid out against. */
+/*  HOW FAR THE HANDLE SITS FROM THE SHADE'S LEFT EDGE.
+
+    Straddling the sheet's leading edge — half on the cover, half on what has
+    been uncovered — and never past either end of the panel. One expression,
+    because the drag and the settle both need it and they were drifting apart
+    when each worked it out for itself. */
+const TAB_W = 17;
+function tabShift(x, width) {  // width is unused: see below
+  /*  FLUSH TO THE EDGE, NOT CENTRED ON IT.
+
+      Centred looks better standing still and cannot be animated. The sheet
+      travels the full width; a tab centred on its edge has to stop half its
+      own width short, so the two ease toward DIFFERENT endpoints and the
+      browser spreads that difference across the whole journey — the handle
+      creeps against the edge it is supposed to be fixed to. Same duration,
+      same property, same curve, and still out of step, because the distances
+      were never the same.
+
+      Flush was no better: clamping the far end still shortens the journey, and
+      the browser spreads the seventeen pixels it lost across the whole of it.
+      Any clamp at all, at either end, IS the drift. There is no version of
+      this where the tab travels a different distance and still looks attached.
+
+      So it travels exactly as far as the sheet does, and it is parked half its
+      own width to the left of the shade. Shut, half of it stands proud of the
+      panel; wide open, half of it stands proud the other way. Both of those
+      are eight pixels into the panel's own padding, both look like a handle on
+      a sliding thing, and in between it is welded to the edge. */
+  return Math.round(x);
+}
+
+function coverBox(panel) {
+  /*  ALL OF IT, including the strip behind the title bar.
+
+      Starting under the header was still short. A header is transparent and
+      several panels draw UNDER it — the Promenade's canvas begins thirty
+      pixels above the header's baseline, so a cover that started where the
+      header stopped left a band of live street running along the top of the
+      panel.
+
+      The header does not need the room. It sits above the cover in the
+      stacking order, so the title, the badges and every button stay legible
+      and clickable ON the cover rather than beside it. Which means the cover
+      can simply be the panel: everything inside the border, corner to corner.
+
+      Offsets are from the padding edge, because that is what an absolutely
+      positioned child of a relatively positioned box is laid out against. */
+  return { left: 0, top: 0, width: panel.clientWidth, height: panel.clientHeight };
+}
+
+/*  Everything about where the three pieces sit, in one place, so the sheet and
+    its handle can never disagree about which edge is the leading one. */
+function placeCover(panel, id) {
+  const shade = coverOf(panel), tab = tabOf(panel);
+  if (!shade) return;
+  const box = coverBox(panel);
+  const br = { width: box.width, height: box.height };
+  const ox = box.left, oy = box.top;
+  shade.style.left = ox + "px";
+  shade.style.top = oy + "px";
+  shade.style.width = br.width + "px";
+  shade.style.height = br.height + "px";
+  const st = coverAt(id);
+  const x = Math.round(st.x * br.width);
+  const sheet = shade.firstElementChild;
+  if (sheet) {
+    sheet.style.transform = "translateX(" + x + "px)";
+    sheet.dataset.mat = st.m;
+  }
+  //  The swatch on the handle IS the current material, so what you press to
+  //  change it is also what tells you where you are.
+  const swatch = tab && tab.querySelector(".tab-mat");
+  if (swatch) swatch.dataset.mat = st.m;
+  if (tab) {
+    /*  Parked at the shade's left edge and moved by transform from there, so
+        it animates on the same property as the sheet does. `left` stays put
+        and only the transform changes.
+
+        Held inside the panel at both ends. Fully open, the sheet's leading
+        edge is the panel's own right edge, and a tab centred on it would hang
+        half over the tile next door with nothing to pull it back by. */
+    const TH = Math.max(34, Math.min(72, br.height * 0.28));
+    //  Half a tab left of the shade, so travelling the sheet's full distance
+    //  leaves it straddling the leading edge the whole way across.
+    tab.style.left = Math.round(ox - TAB_W / 2) + "px";
+    tab.style.top = Math.round(oy + (br.height - TH) / 2) + "px";
+    tab.style.height = Math.round(TH) + "px";
+    tab.style.transform = "translateX(" + tabShift(x, br.width) + "px)";
+  }
+}
+
+function addCover(panel, id) {
+  if (coverOf(panel)) { placeCover(panel, id); return; }
+  const body = panel.querySelector(".panel-body");
+  if (!body) return;
+
+  const shade = document.createElement("div");
+  shade.className = "panel-shade";
+  const cv = document.createElement("div");
+  cv.className = "panel-cover";
+  const tag = document.createElement("span");
+  tag.textContent = "covered";
+  cv.appendChild(tag);
+  shade.appendChild(cv);
+  panel.appendChild(shade);
+
+  const tab = document.createElement("div");
+  tab.className = "panel-tab";
+  const grip = document.createElement("i");
+  grip.className = "tab-grip";
+  grip.title = "drag to open or shut \u2014 click to throw it wide";
+  const mat = document.createElement("i");
+  mat.className = "tab-mat";
+  mat.title = "what the cover is made of \u2014 click to change it";
+  tab.appendChild(grip);
+  tab.appendChild(mat);
+  panel.appendChild(tab);
+
+  placeCover(panel, id);
+
+  /*  ONE GESTURE, TWO GRIPS. The tab is the handle and the sheet is the rest
+      of the same thing, so both run the same drag — you should not have to
+      find a 15-pixel target to move something the size of a panel.
+
+      Pointer capture, so the sheet keeps following the hand when the pointer
+      leaves the panel, which it will: sliding a cover aside is a gesture that
+      ends outside the tile it started in. */
+  let from = 0, grabbed = 0, w = 1, moved = false, live = null, onSwatch = false;
+  const start = (el, e) => {
+    if (e.button !== 0) return;
+    /*  WHERE THE PRESS LANDED, recorded now.
+
+        It cannot be read at pointerup. setPointerCapture retargets every later
+        pointer event to the element holding the capture, so by the time the
+        finger lifts, the event's target is the tab and not the swatch inside
+        it — and the material click fell through to "throw it wide" every
+        single time.
+
+        The test that should have caught this was firing a synthetic event with
+        its own target, which is the one shape of event the bug cannot happen
+        on. pointerdown runs before the capture is taken, so its target is the
+        real one. */
+    onSwatch = !!(e.target && e.target.closest && e.target.closest(".tab-mat"));
+    w = Math.max(1, coverBox(panel).width);
+    from = coverAt(id).x * w;
+    grabbed = e.clientX;
+    moved = false;
+    live = el;
+    /*  BOTH of them, whichever one was grabbed. Dragging the sheet used to
+        leave the tab without the class, so the handle eased along behind the
+        pointer while the sheet kept up with it — the one case the transition
+        must not apply to. */
+    cv.classList.add("sliding");
+    tab.classList.add("sliding");
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* no capture */ }
+    e.preventDefault();
+    e.stopPropagation();           // never starts a tile drag
+  };
+  const move = e => {
+    if (!live) return;
+    const dx = e.clientX - grabbed;
+    if (!moved && Math.abs(dx) < 3) return;
+    moved = true;
+    const x = Math.max(0, Math.min(w, from + dx));
+    cv.style.transform = "translateX(" + Math.round(x) + "px)";
+    //  The same sum the settle uses, so letting go does not shift it.
+    tab.style.transform = "translateX(" + tabShift(x, coverBox(panel).width) + "px)";
+  };
+  const letGo = e => {
+    if (!live) return;
+    const el = live; live = null;
+    cv.classList.remove("sliding");
+    tab.classList.remove("sliding");
+    try { el.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
+    /*  A press that never moved is a press, not a drag — and WHERE on the
+        handle decides which press it was. The ridged upper part throws the
+        cover wide or shuts it, which is what a tab does. The swatch along the
+        bottom steps through the materials, which is the only way any of them
+        but the first was ever going to be found.
+
+        Dragging works from either, so nothing is lost by splitting it: the
+        whole handle still slides. */
+    if (!moved) {
+      if (el === tab) {
+        if (onSwatch) cycleMat();
+        //  Shut it if it is open at all, throw it wide if it is not. Either
+        //  way the cover stays on the panel: the header's ▤ is what removes
+        //  it, and a slider that could remove it made that button pointless.
+        else setCoverX(panel, id, coverAt(id).x > 0.02 ? 0 : 1);
+      }
+      return;
+    }
+    setCoverX(panel, id, Math.max(0, Math.min(w, from + (e.clientX - grabbed))) / w);
+  };
+  for (const el of [cv, tab]) {
+    el.addEventListener("pointerdown", e => start(el, e));
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", letGo);
+    el.addEventListener("pointercancel", letGo);
+  }
+
+  const cycleMat = () => {
+    const st = coverAt(id);
+    const next = COVER_MATS[(COVER_MATS.indexOf(st.m) + 1) % COVER_MATS.length];
+    COVERS.set(id, { x: st.x, m: next });
+    rememberCover(id, { x: st.x, m: next });
+    saveCovers();
+    placeCover(panel, id);
+  };
+  //  Right-click on the handle does the same thing, for anybody who reaches
+  //  for it. It is a shortcut to the swatch, not the way in.
+  tab.addEventListener("contextmenu", e => { e.preventDefault(); cycleMat(); });
+  cv.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    setCoverX(panel, id, 0);
+  });
+
+  /*  MEASURED WHENEVER THE BODY IS, not once when it is made.
+
+      A cover put on during a board render measured a body the browser had not
+      laid out yet — zero by zero — and then never looked again, so the sheet
+      was an invisible speck in the corner of the tile.
+
+      Everything that can change a panel's size ends in the same place: the
+      body's own box. One observer per cover rather than a hook in each of the
+      five things that reflow a board, and disconnected with the cover, so a
+      board of uncovered panels is watching nothing. */
+  /*  The PANEL and its header. The box is cut from both, and a header that
+      wraps to two lines moves the top of the cover without the panel changing
+      size at all. */
+  const ro = new ResizeObserver(() => placeCover(panel, id));
+  ro.observe(panel);
+  const head = panel.querySelector(".panel-head");
+  if (head) ro.observe(head);
+  shade.__ro = ro;
+}
+
+/*  HOW FAR ACROSS, AND NOTHING ELSE.
+
+    Sliding it right off used to take the cover away. That was one gesture
+    doing two jobs, and it made the wrong one easy: a drag that went a little
+    too far removed the thing you were only trying to move, and the ▤ in the
+    header — which exists for exactly that — was left with nothing to do that
+    you had not already done by accident.
+
+    So the slider only ever slides. Fully open is a position like any other:
+    the sheet sits clear of the panel and the tab stands at the far edge
+    waiting to be pulled back. The toggle is the only way on and the only way
+    off. */
+function setCoverX(panel, id, f) {
+  const st = coverAt(id);
+  const x = Math.max(0, Math.min(1, f));
+  COVERS.set(id, { x, m: st.m });
+  rememberCover(id, { x, m: st.m });
+  placeCover(panel, id);
+  saveCovers();
+  syncCoverBtn(panel, id);
+}
+
+function removeCover(panel, id) {
+  const shade = coverOf(panel), tab = tabOf(panel);
+  if (shade) {
+    if (shade.__ro) { try { shade.__ro.disconnect(); } catch (e) { /* gone */ } }
+    shade.remove();
+  }
+  if (tab) tab.remove();
+}
+
+function syncCoverBtn(panel, id) {
+  const b = panel.querySelector(".panel-head > .tile-cover");
+  if (!b) return;
+  const on = COVERS.has(id);
+  b.classList.toggle("on", on);
+  b.title = on ? "take the cover off"
+               : "cover this panel \u2014 then drag its tab to open it again";
+}
+
+function ensureCoverButton(panel, id) {
+  if (!panel.querySelector(".panel-head > .tile-cover")) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tile-cover";
+    b.textContent = "\u25a4";
+    b.addEventListener("click", e => {
+      e.stopPropagation();
+      if (COVERS.has(id)) {
+        //  Put away as it stands, so it comes back the same.
+        rememberCover(id, COVERS.get(id));
+        COVERS.delete(id);
+        removeCover(panel, id);
+      } else {
+        COVERS.set(id, coverPref(id));
+        addCover(panel, id);
+      }
+      saveCovers();
+      syncCoverBtn(panel, id);
+    });
+    const head = panel.querySelector(".panel-head");
+    head.insertBefore(b, head.querySelector(".tile-reload")
+                      || head.querySelector(".dock-pop")
+                      || head.querySelector(".tile-remove"));
+  }
+  //  The panel element is reused across board renders, so a cover that should
+  //  be there is put back rather than assumed to have survived.
+  if (COVERS.has(id)) addCover(panel, id); else removeCover(panel, id);
+  syncCoverBtn(panel, id);
+}
+
 function reloadPanel(id) {
   const node = document.getElementById(id);
   const def = panels.get(id);
@@ -18903,7 +20078,7 @@ function renderDocks() {
     const want = [];
     tiles.forEach((t, i) => {
       if (i) want.push(dockSplit(rail, side, tiles[i - 1].id, t.id));
-      want.push(document.getElementById(t.id) || buildPanel(panels.get(t.id)));
+      want.push(panelNode(t.id));
     });
     const have = [...rail.querySelectorAll(":scope > .panel, :scope > .dock-split")];
     if (have.length !== want.length || have.some((n, i) => n !== want[i])) {
@@ -18926,6 +20101,7 @@ function renderDocks() {
       ensureRemoveButton(panel, t.id);
       ensureReloadButton(panel, t.id);
       addDockPop(panel, t.id);
+      ensureCoverButton(panel, t.id);
     }
     //  Panels that left this rail since the last render.
     for (const node of [...rail.querySelectorAll(":scope > .panel")]) {
@@ -21629,7 +22805,7 @@ function fieldsFor(type) {
   return [   // census
     { key: "date", label: "year", ph: "1891" },
     { key: "name", label: "forename", ph: "George" },
-    { key: "detail", label: "age", ph: "22 ~1869", sub: "keep your working — '22 1891-22 ~1869' is kept verbatim" },
+    { key: "detail", label: "age", ph: "22 '1869", sub: "keep your working — '22 1891-22 '1869' is kept verbatim" },
     // Without this a census row attaches to nobody, and census rows are the
     // bulk of the evidence. The forename is what the enumerator wrote; the link
     // is who you think it was — deliberately two different fields.
@@ -21925,7 +23101,7 @@ function renderClassification(host) {
     else { cls.push("ok"); if (b.status === "draft") cls.push("draft"); }
     const tag = b.comment ? "section" : (b.valid ? (b.type || "") : "unparsed");
     const name = (!b.comment && b.name && b.name !== b.raw.trim())
-      ? '<br><span class="name">&rarr; ' + esc(b.name) + (b.estimate ? " · ~" + b.estimate : "") +
+      ? '<br><span class="name">&rarr; ' + esc(b.name) + (b.estimate ? " · '" + b.estimate : "") +
         (b.links.length ? " · " + b.links.length + " link" + (b.links.length > 1 ? "s" : "") : "") + "</span>"
       : "";
     if (b.lineNumber === builder.editing) cls.push("editing");
@@ -22120,7 +23296,7 @@ function exampleFor(k) {
     death: "-|⚰️|1901|@james",
     place: "-|📍|<longforgan>|Longforgan|West of Dundee",
     document: "+|📜|census|1891|@george,margaret",
-    census: "-|✏️|1891|George|22 ~1869",
+    census: "-|✏️|1891|George|22 '1869",
   }[k] || "";
 }
 
@@ -23030,26 +24206,26 @@ const SAMPLE = `# DOCUMENTS
 +|👤|<5><james>|Mason
 # CENSUS - there is a whole thing about age estimates during the census, subtracting an age gives us an idea of birth year, but not a valid date.
 # longforgan Bricknals
--|✏️|1891|George|22 1891-22 ~1869
--|✏️|1891|Margaret|60 ~1831
--|✏️|1891|Maggie|16 ~1875
--|✏️|1891|Helen|20 ~1871
--|✏️|1891|James|35 ~1856
--|✏️|1891|Agnes|26 ~1865
--|✏️|1891|Elizabeth|64 ~1827
--|✏️|1891|James|64 ~1827
--|✏️|1891|Charles|58 ~1833
--|✏️|1891|John|32 ~1859
+-|✏️|1891|George|22 1891-22 '1869
+-|✏️|1891|Margaret|60 '1831
+-|✏️|1891|Maggie|16 '1875
+-|✏️|1891|Helen|20 '1871
+-|✏️|1891|James|35 '1856
+-|✏️|1891|Agnes|26 '1865
+-|✏️|1891|Elizabeth|64 '1827
+-|✏️|1891|James|64 '1827
+-|✏️|1891|Charles|58 '1833
+-|✏️|1891|John|32 '1859
 # dundee Bricknals
--|✏️|1891|Magaret|73|~1818
--|✏️|1891|Alexander|40|~1851
--|✏️|1891|Cathrine|35|~1856
--|✏️|1891|Christina|19|~1872
--|✏️|1891|George|14|~1877
--|✏️|1891|James|58|~1833
--|✏️|1891|Harry|21|~1870
--|✏️|1891|Betsy|58|~1833
--|✏️|1891|Betsy|16|~1875
+-|✏️|1891|Magaret|73|'1818
+-|✏️|1891|Alexander|40|'1851
+-|✏️|1891|Cathrine|35|'1856
+-|✏️|1891|Christina|19|'1872
+-|✏️|1891|George|14|'1877
+-|✏️|1891|James|58|'1833
+-|✏️|1891|Harry|21|'1870
+-|✏️|1891|Betsy|58|'1833
+-|✏️|1891|Betsy|16|'1875
 # EVENTS
 +|👶|1894-06-10|@george
 -|👶|1876|@george-maloch
@@ -23118,6 +24294,8 @@ loadScenery();
 loadDistUnit();
 loadSignFont();
 loadSignSize();
+loadCovers();
+loadCoverPrefs();
 loadStarred();
 loadStory();
 loadParts();
