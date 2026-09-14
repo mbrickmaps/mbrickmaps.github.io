@@ -22,6 +22,19 @@
     --draft: #7a8a99;       /* the '-' status, used everywhere a brick is drawn */
     --ghost: #b06a00;       /* referenced but never declared */
     --bad: #f44336;
+    /*  GO AND STOP, and they are not theme colours.
+
+        The rest of this page is dressed from the theme, and these two are
+        deliberately not: green means the way in and red means you have to do
+        something, and both of those are conventions a reader brings WITH them
+        rather than ones the page gets to redefine. Tying them to --accent2
+        made the search glass purple on the Plum theme, which is a lit button
+        that tells you nothing.
+
+        On their own tokens so a theme can still overrule them if it ever has
+        a reason to. */
+    --go: #34d17a;
+    --stop: #f44336;
     /*  The "on" washes, mixed from the color they belong to rather than
         hand-picked. One less thing for a theme to get wrong: change --accent2
         and its wash follows, in any theme, light or dark. */
@@ -54,14 +67,69 @@
   h1 .brickmark { color: var(--accent); }
   .topbar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; flex: 1; min-width: 180px; }
-  /*  Collapsed to the glass until wanted. Width, not display, so it can
-      animate and so the input keeps focus through the transition. */
+  /*  Collapsed to the glass until wanted. The box itself is not in here — see
+      #topsearchBar, which slides down the whole width of the page the way the
+      panel drawer slides in from the side. This is only the way in. */
   .topsearch { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .topsearch input {
-    width: 0; padding: 3px 0; border-width: 0; opacity: 0;
-    transition: width 0.15s ease, opacity 0.15s ease, padding 0.15s ease;
+
+  /*  THE SEARCH, FULL WIDTH.
+
+      It used to grow to 170 pixels in the corner of the top bar, which is a
+      box for a word. What goes in it is a phrase out of somebody's research —
+      a parish, a trade, half a name — and the thing it searches is every panel
+      on the page at once. A control that reaches across the whole page should
+      look like it does.
+
+      Same drawer as the panel list, turned ninety degrees: off-screen by a
+      transform, slid in on a class, and nothing about it is display:none, so
+      the field keeps focus the whole way. */
+  #topsearchBar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 62;
+    display: block;
+    padding: 16px 20px;
+    background: var(--field);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    transform: translateY(-100%);
+    transition: transform 0.18s ease;
   }
-  .topsearch.open input { width: 170px; padding: 3px 7px; border-width: 1px; opacity: 1; }
+  #topsearchBar.open { transform: none; }
+  /*  THE SHEET IS FULL WIDTH; THE FIELD IS NOT.
+
+      A box that runs the entire width of a wide screen is a box you cannot
+      read the end of and a cursor you have to travel to. What wants to be the
+      full width is the SURFACE — so you cannot miss that the search is open
+      and so it sits above everything — and what wants to be a comfortable
+      measure is the thing you type into.
+
+      Centred with a cap rather than left-aligned, because it belongs to the
+      whole page rather than to the corner it was opened from. */
+  .ts-row {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; max-width: 760px; margin: 0 auto;
+  }
+  /*  Room round the words. It was seven pixels, which put the caret against
+      the frame — and the caret is a block now, so it sat half on the border. */
+  #topsearchBar input {
+    flex: 1 1 auto; min-width: 0;
+    font-size: 1rem; padding: 10px 14px; border-radius: 5px; line-height: 1.4;
+  }
+  /*  How many it found, beside the box rather than somewhere else on the page:
+      the answer belongs next to the question. */
+  .ts-count {
+    flex: 0 0 auto; font-size: 0.72rem; opacity: 0.55;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  /*  The same treatment, so the two ends of the search read as a pair. A
+      little smaller: it is the way out, not the way in. */
+  #topsearchClose {
+    flex: 0 0 auto; width: 30px; height: 30px; padding: 7px;
+    box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-size: 1rem; line-height: 1;
+  }
+  #topsearchClose:hover { border-color: var(--accent2); color: var(--accent2); }
+  @media (prefers-reduced-motion: reduce) { #topsearchBar { transition: none; } }
   /* Quiet by design: reassurance, not a notification. */
   .top-btn { font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0; }
   .top-auto {
@@ -83,13 +151,44 @@
 
   .save-state[hidden] { display: none; }
   .save-state.bad { color: var(--bad); opacity: 1; }
-  .topsearch.active input { border-color: var(--accent2); }
-  /* A round button to match the panels' corner control, and large enough to
-     read as the primary way in rather than a minor toggle. */
+  #topsearchBar.active input { border-color: var(--accent2); }
+  /*  A round button to match the panels' corner control, and large enough to
+      read as the primary way in rather than a minor toggle.
+
+      LIT, because it is the way in. Everything else in the top bar is a thing
+      you do occasionally — save, export, clear — and this is the one you reach
+      for while you are working. A ring in the theme's own "active" colour says
+      that without a label and without taking any more room.
+
+      `--accent2` rather than a green: it is the colour this page already uses
+      for what is switched on and what you can press, so the glass stays in
+      step when you change the theme instead of being the one green thing on a
+      brick-coloured board. */
+  /*  ROOM ROUND THE GLASS.
+
+      It was a sixteen-pixel glyph in a twenty-six pixel circle: five pixels of
+      air on each side, which on a round button reads as a glyph that has been
+      squeezed into one rather than placed in one. A circle needs more margin
+      than a rectangle does for the same glyph to look centred — the corners
+      are further away than the sides, so the eye measures the gap at the sides
+      and finds it short.
+
+      Padding rather than a bigger box alone, so the size comes from the
+      content and the two stay in step if the glyph ever changes. */
   #topsearchBtn {
-    width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+    width: 34px; height: 34px; padding: 8px; flex-shrink: 0;
+    box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%; font-size: 1rem; line-height: 1;
+    border-color: color-mix(in srgb, var(--go) 60%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 25%, transparent),
+                0 0 10px -1px color-mix(in srgb, var(--go) 50%, transparent);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  #topsearchBtn:hover, #topsearchBtn:focus-visible {
+    border-color: var(--go); color: var(--go);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 50%, transparent),
+                0 0 16px 1px color-mix(in srgb, var(--go) 70%, transparent);
   }
   /* A filter that is on but collapsed would be invisible; the glass stays lit. */
   .topsearch.active #topsearchBtn { border-color: var(--accent2); color: var(--accent2); }
@@ -244,10 +343,21 @@
       the row — the close button is an overlay now — which squeezed every
       1-cell title to zero width. The title gets the room; only the drag
       handle, badge and a small margin come out of it. */
+  /*  LINED UP WITH THE PANEL BODY, not floated in from the corner.
+
+      It sat at left:10 with 6 of its own padding, which put the cartouche box
+      ten pixels right of where the content underneath it starts — so every
+      panel had its title indented past its own contents by an amount nothing
+      else on the page shared.
+
+      Flush instead: the box edge lands on the body content edge, and the
+      header reads as belonging to the panel rather than hovering over it. The
+      handle still leads, because it is the thing you grab and it belongs at
+      the corner. */
   .panel-head-lead {
-    position: absolute; top: -7px; left: 10px; z-index: 2;
-    display: flex; align-items: center; gap: 5px; max-width: calc(100% - 34px);
-    background: var(--panel); padding: 0 6px; border-radius: 3px;
+    position: absolute; top: -7px; left: 0; z-index: 2;
+    display: flex; align-items: center; gap: 4px; max-width: calc(100% - 34px);
+    background: var(--panel); padding: 0 5px; border-radius: 3px;
   }
   /* Without an explicit min-width a flex child may collapse entirely rather
      than ellipsise; 3ch keeps at least a stub of the title visible. */
@@ -262,6 +372,8 @@
   }
   .role-badge:hover { opacity: 1; }
   .role-badge + .role-badge { margin-left: -3px; }
+  /*  Leading the name now, so the gap goes on the other side of it. */
+  .role-badge + h2 { margin-left: 2px; }
   /*  In a one-cell panel the handle and badge left the title about 46px — the
       name matters more than the annotation, so the badge stands down. The
       panel is the query container (container-type: inline-size). */
@@ -270,14 +382,27 @@
       hover. Sized off the badges beside it so the row keeps one baseline. It
       outlives them when a tile narrows, being the one thing in the header you
       cannot get to any other way. */
+  /*  A QUESTION MARK, NOT THE WORD.
+
+      "help" is four characters of a title bar that has room for about twelve,
+      and on a one-cell panel it was taking a third of the name. A ringed ? is
+      the same offer in one character, it is the mark everything else uses for
+      the same thing, and it stops competing with the title for the row.
+
+      Still a real link — it opens the panel's own write-up in a tab — so it
+      keeps a link's cursor and its focus ring. */
   .panel-doc {
-    font: 500 0.6rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-    letter-spacing: 0.04em; color: var(--muted); text-decoration: none;
-    opacity: 0.6; flex-shrink: 0; white-space: nowrap;
-    border-bottom: 1px dotted currentColor;
-    margin-left: 3px; transition: opacity 0.12s, color 0.12s;
+    flex: 0 0 auto;
+    width: 13px; height: 13px; box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    font: 700 0.58rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted); text-decoration: none; opacity: 0.5;
+    border: 1px solid currentColor; border-radius: 50%;
+    margin-left: 2px; transition: opacity 0.12s, color 0.12s;
   }
-  .panel-doc:hover, .panel-doc:focus-visible { opacity: 1; color: var(--accent2); }
+  .panel-doc:hover, .panel-doc:focus-visible {
+    opacity: 1; color: var(--accent2); border-color: var(--accent2);
+  }
   /*  Reads as dangerous only once you are near it: quiet in the bar, plainly
       red under the cursor. A permanently red button in a toolbar is either
       ignored or feared, and neither is useful. */
@@ -701,15 +826,81 @@
   }
   #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
   #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
-  /*  As wide as the number that goes in them. Columns is one or two digits and
-      Row px three, so 54px was reserving room for a value neither can hold and
-      pushing the close button off the end of the row. */
-  #boardFlyout input[type=number] { width: 3.4em; }
-  #boardFlyout #boardCols { width: 2.6em; }
+  /*  AS WIDE AS THE NUMBER, WITH THE NUMBER ACTUALLY IN IT.
+
+      These were cut to 3.4em and 2.6em so they stopped reserving room for
+      values neither could hold — and then the native spinner arrows took about
+      fifteen pixels of what was left, so "220" was drawn into twenty-six
+      pixels of box and clipped. A number box you cannot read the number in is
+      worse than a long one.
+
+      The arrows go instead of the width. They are a poor control at this size
+      anyway — a four-pixel hit target you have to aim at twice — and the box
+      still takes the up and down keys, a typed value and a scroll, which is
+      every way anybody actually changes one of these.
+
+      Padding trimmed to match: at seven pixels a side, a third of the box was
+      margin. */
+  #boardFlyout input[type=number],
+  .board-card .fp input[type=number] {
+    appearance: textfield; -moz-appearance: textfield;
+    padding: 3px 5px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  #boardFlyout input[type=number]::-webkit-outer-spin-button,
+  #boardFlyout input[type=number]::-webkit-inner-spin-button,
+  .board-card .fp input[type=number]::-webkit-outer-spin-button,
+  .board-card .fp input[type=number]::-webkit-inner-spin-button {
+    appearance: none; -webkit-appearance: none; margin: 0;
+  }
+  /*  Three digits for Row px, two for Columns, plus the padding. Centred, so a
+      one-digit value does not sit against the left wall of a box sized for
+      three. */
+  #boardFlyout input[type=number] { width: 4em; }
+  #boardFlyout #boardCols { width: 3em; }
   #boardSearch { width: 100%; margin-bottom: 8px; }
+  /*  THE WAY TO EVERY PANEL THAT IS NOT OUT.
+
+      Lit like the search glass, for the same reason and in the same colour:
+      both are doors rather than switches, and a door on a page this full needs
+      to say so.
+
+      It goes RED when the board is empty. That is the one moment this tab is
+      not a convenience but the only useful thing on the page — there is
+      nothing to read, nothing to type into, and no way to put anything there
+      except through here. A slow pulse, because a still red light on an empty
+      page reads as an error rather than as an invitation. */
   #boardFlyoutTab {
     position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
     padding: 8px 6px; font-size: 1.1rem; line-height: 1; border-radius: 6px 0 0 6px;
+    border-color: color-mix(in srgb, var(--go) 60%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 25%, transparent),
+                -3px 0 13px -2px color-mix(in srgb, var(--go) 50%, transparent);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  #boardFlyoutTab:hover, #boardFlyoutTab:focus-visible {
+    border-color: var(--go); color: var(--go);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 50%, transparent),
+                -4px 0 20px -1px color-mix(in srgb, var(--go) 70%, transparent);
+  }
+  /*  Nothing on the board: this is the only way forward, so it says so. */
+  #boardFlyoutTab.empty {
+    border-color: color-mix(in srgb, var(--stop) 70%, var(--border));
+    color: var(--stop);
+    animation: tabBeacon 2.2s ease-in-out infinite;
+  }
+  @keyframes tabBeacon {
+    0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 30%, transparent),
+                           -3px 0 10px -2px color-mix(in srgb, var(--stop) 40%, transparent); }
+    50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 60%, transparent),
+                           -5px 0 22px 0 color-mix(in srgb, var(--stop) 75%, transparent); }
+  }
+  /*  Open, it has done its job and stops asking. */
+  #boardFlyoutWrap.open #boardFlyoutTab { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    #boardFlyoutTab.empty { animation: none;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 55%, transparent),
+                  -4px 0 16px -1px color-mix(in srgb, var(--stop) 65%, transparent); }
   }
   .board-card {
     display: flex; flex-direction: column; gap: 4px;
@@ -722,7 +913,9 @@
   .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.35; margin-left: 28px; }
   .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
-  .board-card .fp input[type=number] { width: 30px; font-size: 0.7rem; padding: 1px 2px; }
+  /*  The panel's own width x height, in the drawer card. Same treatment: two
+      digits and no arrows, rather than one digit and two arrows. */
+  .board-card .fp input[type=number] { width: 30px; font-size: 0.7rem; padding: 1px 3px; }
   .board-card .fp-add {
     display: inline-flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; flex-shrink: 0; border: 1px solid var(--border);
@@ -742,6 +935,30 @@
     font-family: var(--mono); font-size: 12px; line-height: 1.55; padding: 8px;
   }
   textarea:focus { outline: none; border-color: var(--accent); }
+
+  /*  A BLOCK CARET, THE WAY A TERMINAL DOES IT.
+
+      The pile is plain text in a monospace face and the whole page is a thing
+      you type into, so the thin insertion bar every other form on the web uses
+      is the wrong furniture: it belongs to word processors, and this is a
+      notation. A block sitting in the cell it would fill reads as a CHARACTER
+      POSITION, which is what it actually is when every glyph is the same width.
+
+      Native, not drawn: `caret-shape` is the browser property for exactly
+      this, so it blinks at the readers own system rate, follows selection and
+      wrapping, and costs nothing. Where it is not supported the caret simply
+      stays a bar in the accent colour, which is a smaller version of the same
+      idea rather than a broken one.
+
+      Monospace surfaces only. In a proportional field a block covers whatever
+      is under it and lines up with nothing, which is a novelty rather than a
+      help. */
+  textarea, input.sp-name, .ent-controls input, #topsearchInput {
+    caret-color: var(--accent2);
+  }
+  @supports (caret-shape: block) {
+    textarea, #topsearchInput { caret-shape: block; }
+  }
   /*  The body must actually FILL the panel for the editor's flex:1 to mean
       anything — otherwise the body is content-height, there is no spare space
       to distribute, and the textarea sits at its min-height no matter how much
@@ -799,8 +1016,44 @@
   .ent.draft { border-color: var(--draft); color: var(--draft); border-style: dashed; }
   .ent.ghost { border-color: var(--ghost); color: var(--ghost); border-style: dotted; }
   .ent .n { opacity: 0.45; margin-left: 5px; }
-  .ent { cursor: pointer; }
-  .ent.focused { background: var(--tint); box-shadow: 0 0 0 1px var(--accent2); }
+  .ent { cursor: pointer; transition: opacity 0.15s ease, filter 0.15s ease; }
+  /*  THE ONE YOU PICKED, AND EVERYTHING ELSE STANDING DOWN.
+
+      Clicking a name filters the whole board to it, and the panel used to say
+      so with a one-pixel outline on a chip somewhere in an alphabetical list of
+      sixty. The filter was on, the reason was two rows down, and the way to
+      undo it was to find that chip again.
+
+      Now the chosen one comes to the front and lights, and the rest go to
+      standby: dimmed and desaturated, plainly not what you are looking at, but
+      still there and still clickable — you move the filter by pressing the next
+      name rather than by clearing this one first.
+
+      Standby, not disabled. A list you cannot click is a list you have to
+      escape from, and the escape would be the very control the dimming is
+      meant to make obvious. */
+  /*  A SOLID LINE, whatever the chip was drawn with.
+
+      Solid, dashed and dotted already mean verified, draft and ghost, and a
+      lit chip keeping a dotted edge reads as a ghost somebody shone a torch
+      at. The pick is a different kind of fact from the confidence, so it gets
+      the one border style none of the three uses on its own: solid, in the
+      active colour, with the glow doing the work the style used to. */
+  .ent.focused {
+    background: var(--tint);
+    border-style: solid;
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 1px var(--accent2), 0 0 10px -2px var(--accent2);
+    opacity: 1;
+  }
+  /*  A × on the lit chip, because "press it again" is not discoverable and
+      this is the only control that turns the board's loudest filter off. */
+  .ent.focused::after {
+    content: "×"; margin-left: 6px; opacity: 0.65; font-weight: 700;
+  }
+  .ent.standby { opacity: 0.32; filter: saturate(0.35); }
+  .ent.standby:hover { opacity: 0.85; filter: none; }
+  @media (prefers-reduced-motion: reduce) { .ent { transition: none; } }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 7px; }
   .stat { background: var(--field); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
@@ -2080,19 +2333,64 @@
       room for both, the dial is the control, and the caption says what the
       button's own tooltip says. */
   .reset-note[hidden] { display: none; }
+  /*  BELOW THE TITLE LINE, on the side the cover comes from.
+
+      It was in the header beside ⟳ and ✕, which are both things you do TO the
+      panel — reload it, remove it. Covering is not one of those: it is a thing
+      you do to your view of it, it has a handle of its own down the left edge,
+      and it belongs with that rather than with the destructive pair.
+
+      So it sits under the title at the top left, where the sheet appears from.
+      Absolutely placed so it costs the header no width and the body no row,
+      and it carries the panel's own background so it reads over whatever is
+      underneath. */
+  /*  ON THE TITLE LINE, AFTER THE ?.
+
+      Below it, floating over the body's top-left corner, it read as a checkbox
+      somebody had left on the panel — a lone bordered square with nothing
+      beside it and no row to belong to.
+
+      In the cartouche it is plainly one of the marks that annotate the panel,
+      which is what it is: the badges say what this panel can do, the ? offers
+      to explain it, and this covers it. Last in that line because it is the
+      only one of the three you press.
+
+      Sized and weighted like the badges beside it rather than like a button,
+      so the title bar stays a line of marks instead of becoming a toolbar. */
   .tile-cover {
+    flex: 0 0 auto;
+    width: 13px; height: 13px; box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.58rem; line-height: 1; padding: 0;
     border: 1px solid transparent; background: none; color: inherit;
-    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
-    cursor: pointer; opacity: 0.45;
+    border-radius: 2px; cursor: pointer; opacity: 0.4;
+    margin-left: 1px;
+    transition: opacity 0.12s, color 0.12s, border-color 0.12s;
   }
   .tile-cover:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
-  .tile-cover.on { opacity: 1; color: var(--accent); }
+  .tile-cover.on { opacity: 1; color: var(--accent); border-color: var(--accent); }
+  /*  THE SAME BUTTON AS ✕, WITH A DIFFERENT GLYPH.
+
+      It was a rounded rectangle with no fill beside a solid disc, so two
+      controls that sit together and do the same KIND of thing — act on this
+      panel — looked like they came from different parts of the page.
+
+      Same disc, same border, same size, same trick with the colour: the fill
+      is solid panel and only the glyph is faint, because fading the whole
+      element fades the fill with it and whatever is underneath shows through
+      the circle that is supposed to be masking it. Placed beside ✕ rather than
+      on the corner, since only one of them can have the corner. */
   .tile-reload {
-    border: 1px solid transparent; background: none; color: inherit;
-    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
-    cursor: pointer; opacity: 0.45;
+    position: absolute; z-index: 3;
+    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    right: calc(var(--panel-radius) + var(--close-size) / 2 + 3px - var(--panel-border));
+    width: var(--close-size); height: var(--close-size); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; line-height: 1; cursor: pointer;
+    color: color-mix(in srgb, var(--fg) 52%, transparent);
   }
-  .tile-reload:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  .tile-reload:hover { border-color: var(--accent2); color: var(--accent2); }
   /*  Worth signposting. Hollow when it is not, filled and in the verified
       colour when it is, and unpressable when a star on the brick already says
       so — the pile outranks a click, and saying that with a disabled control
@@ -2275,12 +2573,23 @@
   <button type="button" id="quickClear" class="top-btn danger"
           title="empty the pile and put every panel back as it started">Clear all</button>
   <div class="topsearch" id="topsearch">
-    <input type="text" id="topsearchInput" placeholder="find in the text…" spellcheck="false">
     <button id="topsearchBtn" title="search the pile">&#128269;</button>
   </div>
 </div>
 
 <div id="board"></div>
+
+<!-- The search, across the whole page. Outside .topbar because it is fixed to
+     the window rather than laid out in a row, and it must sit over the board
+     rather than push it down. -->
+<div id="topsearchBar">
+  <!-- The sheet is the full width; what is ON it is not. See .ts-row. -->
+  <div class="ts-row">
+    <input type="text" id="topsearchInput" placeholder="find in the text&hellip;" spellcheck="false">
+    <span class="ts-count" data-el="tscount"></span>
+    <button type="button" id="topsearchClose" title="close the search">&times;</button>
+  </div>
+</div>
 
 <div id="boardFlyoutWrap">
   <button type="button" id="boardFlyoutTab" title="show/hide the panel list">&#129520;</button>
@@ -3165,8 +3474,10 @@ function brickPasses(b, f) {
   if (b.comment) return true;                       // headings give the list its shape
   if (f.status !== "all" && b.status !== f.status) return false;
   if (f.types.size && !f.types.has(b.type)) return false;
-  if (f.focus) {
-    const mine = (b.alias && b.alias.slug === f.focus) || b.links.includes(f.focus);
+  if (f.focus.size) {
+    //  Any of them. See the note on `focus` in the state.
+    const mine = (b.alias && f.focus.has(b.alias.slug)) ||
+                 b.links.some(l => f.focus.has(l));
     if (!mine) return false;
   }
   if (f.text) {
@@ -3387,25 +3698,65 @@ function loadMapSource() {
     boot with it. */
 function syncSearchInputs() {
   const wrap = document.getElementById("topsearch");
+  const bar = document.getElementById("topsearchBar");
   const inp = document.getElementById("topsearchInput");
-  if (!wrap || !inp) return;
+  if (!wrap || !bar || !inp) return;
   const text = state.filter.text || "";
   if (document.activeElement !== inp && inp.value !== text) inp.value = text;
+  //  The glass stays lit while a search is on, because the bar it belongs to
+  //  may be shut and a filter nobody can see is a filter nobody can undo.
   wrap.classList.toggle("active", !!text);
-  // A search with text in it must not collapse and hide what it is doing.
-  if (text) wrap.classList.add("open");
+  bar.classList.toggle("active", !!text);
+  // A search with text in it must not close and hide what it is doing.
+  if (text) bar.classList.add("open");
+
+  /*  WHAT IT FOUND, off the same numbers the Filter panel reports.
+
+      `view.stats` is the narrowed pile and `model.stats` is the whole of it,
+      which is the pairing the Filter panel already prints as "3 of 61 bricks".
+      Saying it here as well means the answer is beside the question rather
+      than in a panel that may not even be on the board.
+
+      `view.active` rather than the text alone: a search is one of several
+      things that can narrow the pile, and the stats describe all of them
+      together. Showing a count that ignored the rest would be a number that
+      disagreed with the board. */
+  const out = bar.querySelector('[data-el="tscount"]');
+  if (out) {
+    const view = state.model && state.model.view;
+    const total = (state.model && state.model.stats && state.model.stats.bricks);
+    if (!text || !view || total === undefined) out.textContent = "";
+    else if (!view.active) out.textContent = total + " bricks";
+    else {
+      const hits = (view.stats && view.stats.bricks) || 0;
+      //  The plural follows the TOTAL, which is the noun being counted:
+      //  "1 of 59 bricks", not "1 of 59 brick".
+      out.textContent = hits + " of " + total + (total === 1 ? " brick" : " bricks");
+    }
+  }
 }
 
 const state = {
   text: "", model: null,
   filter: {
-    text: "", status: "all", types: new Set(), sections: new Set(), focus: null,
+    /*  A SET, BECAUSE RESEARCH IS COMPARATIVE.
+
+        This was one slug. Picking a second name replaced the first, so the one
+        question this panel is for — what do these two have in common, who
+        turns up in both — could not be asked at all. Every other narrowing
+        here is already a set; this was the odd one out for no reason beyond
+        the order they were written in.
+
+        Records naming ANY of them, not all: you are gathering, and a record
+        that names one of your three people is a record about your three
+        people. */
+    text: "", status: "all", types: new Set(), sections: new Set(), focus: new Set(),
     time: { on: false, mode: "range", min: 1800, max: 1900, decade: 1890, year: 1891, span: 5 },
   },
 };
 function filterIsActive() {
   const f = state.filter;
-  return !!(f.text || f.status !== "all" || f.types.size || f.sections.size || f.focus ||
+  return !!(f.text || f.status !== "all" || f.types.size || f.sections.size || f.focus.size ||
             (f.time && f.time.on));
 }
 
@@ -19328,14 +19679,26 @@ function buildPanel(def) {
   head.innerHTML =
     '<span class="panel-head-lead">' +
       '<span class="drag-handle" title="drag to move this tile">\u2725</span>' +
-      "<h2>" + esc(def.title) + "</h2>" +
-      // After the title: the name identifies the panel, the role annotates it.
+      /*  BEFORE the title, not after it.
+
+          The badge is the only coloured thing in a panel header — W in the
+          verified colour for one that writes to your pile, F in the active
+          colour for one that can narrow every other panel. That is the fact
+          you scan a board for: which of these can change what I am looking at.
+          Trailing the name it was found by reading; leading it, the whole
+          column of headers can be read down in one pass.
+
+          It also stops the title's own truncation from eating it, which it did
+          on any panel narrow enough to ellipsise. */
       (def.roles || ["read"]).map(r =>
         '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join("") +
+      "<h2>" + esc(def.title) + "</h2>" +
       // …and, where one exists, the way to the panel's own write-up.
+      /*  The word was "help"; the mark is "?". The title attribute still spells
+          it out, because a lone glyph has to say what it is on hover. */
       (docHref(def.id) ? '<a class="panel-doc" href="' + docHref(def.id) + '"' +
-        ' target="_blank" rel="noopener" title="how ' + esc(def.title) +
-        ' works">help</a>' : "") +
+        ' target="_blank" rel="noopener" aria-label="how ' + esc(def.title) +
+        ' works" title="how ' + esc(def.title) + ' works">?</a>' : "") +
     "</span>" +
     // Panel-declared controls share the header row with the × rather than
     // costing the body a bar of its own.
@@ -19726,6 +20089,20 @@ function placeCover(panel, id) {
   const shade = coverOf(panel), tab = tabOf(panel);
   if (!shade) return;
   const box = coverBox(panel);
+  /*  A PANEL WITH NO SIZE IS A PANEL THAT IS NOT THERE YET.
+
+      A board render detaches every tile wrapper before re-appending it, so for
+      part of that pass the panel measures zero by zero. Placed against that,
+      the sheet was written to translateX(0) — flat shut — and the fraction it
+      had been at was still in the store but no longer on the screen. Whether
+      the ResizeObserver noticed depends on whether the browser coalesced the
+      detach and the re-attach into one report: when the panel came back the
+      same size it left, there was no change to observe and nothing put it
+      right. A cover that "reset when I changed the grid".
+
+      So: measure, and if the answer is nothing, leave everything exactly as it
+      was. The observer will call again the moment there is a real box. */
+  if (box.width < 1 || box.height < 1) return;
   const br = { width: box.width, height: box.height };
   const ox = box.left, oy = box.top;
   shade.style.left = ox + "px";
@@ -19939,7 +20316,7 @@ function removeCover(panel, id) {
 }
 
 function syncCoverBtn(panel, id) {
-  const b = panel.querySelector(".panel-head > .tile-cover");
+  const b = panel.querySelector(".tile-cover");
   if (!b) return;
   const on = COVERS.has(id);
   b.classList.toggle("on", on);
@@ -19948,7 +20325,7 @@ function syncCoverBtn(panel, id) {
 }
 
 function ensureCoverButton(panel, id) {
-  if (!panel.querySelector(".panel-head > .tile-cover")) {
+  if (!panel.querySelector(".tile-cover")) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "tile-cover";
@@ -19967,14 +20344,20 @@ function ensureCoverButton(panel, id) {
       saveCovers();
       syncCoverBtn(panel, id);
     });
-    const head = panel.querySelector(".panel-head");
-    head.insertBefore(b, head.querySelector(".tile-reload")
-                      || head.querySelector(".dock-pop")
-                      || head.querySelector(".tile-remove"));
+    /*  Last in the cartouche, after the ?. Appended to the lead rather than to
+        the header, so it travels with the title: the cartouche is what moves
+        when the panel is narrow, and a mark that belongs to the title has to
+        move with it. */
+    const lead = panel.querySelector(".panel-head-lead");
+    (lead || panel.querySelector(".panel-head")).appendChild(b);
   }
-  //  The panel element is reused across board renders, so a cover that should
-  //  be there is put back rather than assumed to have survived.
-  if (COVERS.has(id)) addCover(panel, id); else removeCover(panel, id);
+  /*  The panel element is reused across board renders, so a cover that should
+      be there is put back rather than assumed to have survived — and one that
+      should not is taken off, but only if there is one. This ran removeCover
+      on every uncovered panel on every render: a dozen calls a keystroke, each
+      one a query and a branch for a cover that was never there. */
+  if (COVERS.has(id)) addCover(panel, id);
+  else if (coverOf(panel)) removeCover(panel, id);
   syncCoverBtn(panel, id);
 }
 
@@ -20022,18 +20405,32 @@ function reloadPanel(id) {
 }
 
 function ensureReloadButton(panel, id) {
-  if (panel.querySelector(".panel-head > .tile-reload")) return;
+  if (panel.querySelector(".tile-reload")) return;
   const b = document.createElement("button");
   b.type = "button";
   b.className = "tile-reload";
-  b.textContent = "⟳";
+  /*  A LIGHT ARROW, TO MATCH THE CROSS IT SITS BESIDE.
+
+      U+27F3 is a heavy circular arrow drawn for body text, and in an
+      eighteen-pixel disc next to a hairline cross it read as a blot: two
+      controls the same size and the same shape, one of them twice the weight
+      of the other. U+21BB is the same gesture at the cross's own weight.
+
+      Clockwise, because that is the way every reload control anybody has used
+      turns; a counter-clockwise one reads as undo. */
+  b.textContent = "↻";
   //  Says what it does, not how it does it. It read "build this panel again,
   //  from nothing", which describes the implementation and sounds like a
   //  threat.
   b.title = "reload this panel";
   b.addEventListener("click", e => { e.stopPropagation(); reloadPanel(id); });
-  const head = panel.querySelector(".panel-head");
-  head.insertBefore(b, head.querySelector(".dock-pop") || head.querySelector(".tile-remove"));
+  /*  In the HEADER, where ✕ lives, not on the panel.
+
+      Both are placed with the same `top`, and an absolute offset resolves
+      against the nearest positioned ancestor — the header is one, so a button
+      hung on the panel instead measured from a different box and landed
+      fourteen pixels higher than its twin. */
+  panel.querySelector(".panel-head").appendChild(b);
 }
 
 function ensureRemoveButton(panel, id) {
@@ -20952,6 +21349,15 @@ function renderBoard(opts) {
       b.appendChild(d);
     }
   } else if (empty) empty.remove();
+  /*  An empty board makes the drawer tab the only thing worth pressing, so it
+      stops being decoration and starts being a beacon. Counted off the DOM
+      rather than board.tiles, because a docked panel is still on the page and
+      an empty grid with a full rail is not an empty board. */
+  const tab = el("boardFlyoutTab");
+  if (tab) {
+    tab.classList.toggle("empty",
+      !document.querySelector(".board-tile > .panel, .dock > .panel"));
+  }
   if (!opts || opts.content !== false) refreshAll();
   /*  Canvas panels size themselves against the tile, and a ResizeObserver does
       not survive this function re-parenting them. So the board tells them
@@ -21304,7 +21710,7 @@ function renderFilter(body) {
     body.querySelector('[data-act="clear"]').onclick = () => {
       body.querySelector('[data-el="text"]').value = "";
       setFilter(f => {
-        f.text = ""; f.status = "all"; f.focus = null; f.types.clear(); f.sections.clear();
+        f.text = ""; f.status = "all"; f.focus.clear(); f.types.clear(); f.sections.clear();
         f.time.on = false;
       });
     };
@@ -21343,11 +21749,19 @@ function renderFilter(body) {
   renderTimeFilter(body, all);
 
   const fw = body.querySelector('[data-el="focuswrap"]');
-  fw.hidden = !f.focus;
-  if (f.focus) {
-    const e = all.entities.find(x => x.slug === f.focus);
+  fw.hidden = !f.focus.size;
+  if (f.focus.size) {
+    /*  One chip per name, each with its own ✕, plus a way to drop the lot.
+        A set you can only clear entirely is a set you rebuild by hand every
+        time you change your mind about one of them. */
+    const one = slug => {
+      const e = all.entities.find(x => x.slug === slug);
+      return chip((e ? esc(e.name) : esc(slug)) + " ✕", true,
+                  'data-focus="drop" data-slug="' + esc(slug) + '"');
+    };
     body.querySelector('[data-el="focus"]').innerHTML =
-      chip((e ? esc(e.name) : esc(f.focus)) + " ✕", true, 'data-focus="clear"');
+      [...f.focus].map(one).join("") +
+      (f.focus.size > 1 ? chip("clear all ✕", false, 'data-focus="clear"') : "");
   }
 
   /*  The panel's own box is created once and then never re-read the state, so
@@ -21371,7 +21785,10 @@ function renderFilter(body) {
   body.querySelectorAll("[data-status]").forEach(b => b.onclick = () => setFilter(f2 => { f2.status = b.dataset.status; }));
   body.querySelectorAll("[data-type]").forEach(b => b.onclick = () => setFilter(f2 => toggleIn(f2.types, b.dataset.type)));
   body.querySelectorAll("[data-section]").forEach(b => b.onclick = () => setFilter(f2 => toggleIn(f2.sections, b.dataset.section)));
-  body.querySelectorAll('[data-focus="clear"]').forEach(b => b.onclick = () => setFilter(f2 => { f2.focus = null; }));
+  body.querySelectorAll('[data-focus="clear"]').forEach(b =>
+    b.onclick = () => setFilter(f2 => { f2.focus.clear(); }));
+  body.querySelectorAll('[data-focus="drop"]').forEach(b =>
+    b.onclick = () => setFilter(f2 => { f2.focus.delete(b.dataset.slug); }));
 }
 
 // Focusing on a person shows every record that names them — their family as the
@@ -21451,7 +21868,12 @@ function refreshAllExcept(skipId) {
   }
 }
 
-function focusEntity(slug) { setFilter(f => { f.focus = f.focus === slug ? null : slug; }); }
+/*  Add or drop, never replace. Clicking a lit name takes it out of the set,
+    clicking a dark one adds it, and there is no gesture that silently throws
+    away what you had chosen. */
+function focusEntity(slug) {
+  setFilter(f => { f.focus.has(slug) ? f.focus.delete(slug) : f.focus.add(slug); });
+}
 
 /* ---------- document viewer ----------
    One document, large: the scan on the left of your eye and what you wrote
@@ -22326,7 +22748,12 @@ function renderTree(model, host) {
       best-connected person — rooting on a leaf grows one twig and hides the
       tree it came off. */
   let root = TREE_ROOT && g.has(TREE_ROOT) ? TREE_ROOT : null;
-  if (!root && state.filter.focus && g.has(state.filter.focus)) root = state.filter.focus;
+  /*  A tree has one root. With several names picked it takes the first that is
+      actually in the graph — the others are still narrowing every panel, this
+      one just has to stand somewhere. */
+  if (!root) {
+    for (const slug of state.filter.focus) if (g.has(slug)) { root = slug; break; }
+  }
   if (!root) {
     root = g.people.slice().sort((a, b) => g.degree(b) - g.degree(a) || a.localeCompare(b))[0];
   }
@@ -23186,9 +23613,14 @@ function renderEntities(body) {
         be filtered for. Ghost is listed separately because it is a state
         (never declared), not a kind. */
     const KIND_ICON = { person: "👤", place: "📍", document: "📜", event: "🔔" };
-    const present = [...new Set(V().entities.filter(e => e.declared).map(e => e.kind))]
+    //  The whole pile, for the same reason the chips are: a kind that exists
+    //  in your research does not stop existing because you filtered to one
+    //  person, and a row of buttons that empties as you use it is worse than
+    //  no row at all.
+    const every = (state.model && state.model.entities) || V().entities || [];
+    const present = [...new Set(every.filter(e => e.declared).map(e => e.kind))]
       .filter(k => KIND_ICON[k]).sort();
-    const hasGhosts = V().entities.some(e => !e.declared);
+    const hasGhosts = every.some(e => !e.declared);
     // "persons" is what naive pluralisation gives; spell the labels out.
     const KIND_LABEL = { person: "people", place: "places", document: "documents", event: "events" };
     const wanted = present.map(k => [k, KIND_ICON[k], KIND_LABEL[k] || k + "s"])
@@ -23221,7 +23653,25 @@ function renderEntities(body) {
 
 function renderEntityChips(host, root) {
   if (!host) return;
-  const all = V().entities.slice().sort((a, b) =>
+  /*  EVERY NAME, ALWAYS — not the ones that survive the filter.
+
+      This read V(), the filtered view, so clicking a name filtered the pile to
+      that name and the list then rebuilt itself from a pile containing one
+      name. The panel collapsed to a single chip: nothing to compare against,
+      nothing to switch to, and the only way on was to clear the filter and
+      start again.
+
+      A list of names is a map of the pile. A map that shrinks to a dot when
+      you point at somewhere is not a map. So the chips come from the whole
+      model and the FILTER is drawn on them — lit for the one in force, stood
+      down for the rest — which is the panel saying what it did rather than
+      disappearing into it.
+
+      The panel's own search box still narrows this list. That one is a way of
+      finding a name in sixty, it changes nothing anywhere else, and it is the
+      one narrowing that should still apply. */
+  const source = (state.model && state.model.entities) || V().entities || [];
+  const all = source.slice().sort((a, b) =>
     a.declared !== b.declared ? (a.declared ? -1 : 1) : a.name.localeCompare(b.name));
 
   // Local visibility only — no effect on state.filter or any other panel.
@@ -23241,13 +23691,35 @@ function renderEntityChips(host, root) {
 
   const note = root && root.querySelector('[data-el="entnote"]');
   if (note) {
-    note.textContent = ents.length === all.length
-      ? "solid verified · dashed draft · dotted ghost"
-      : "showing " + ents.length + " of " + all.length + " — this panel only";
+    /*  What the board is doing outranks the legend. A filter that narrows
+        every other panel on the page is the more important fact, and it is the
+        one you want an undo for. */
+    const picked = [...state.filter.focus]
+      .map(slug => all.find(e => e.slug === slug))
+      .filter(Boolean);
+    note.textContent = picked.length === 1
+      ? "every panel is showing " + picked[0].name + " — click the lit name to stop"
+      : picked.length > 1
+        ? "every panel is showing " + picked.length + " names: " +
+          picked.map(e => e.name).join(", ")
+        : ents.length === all.length
+          ? "solid verified · dashed draft · dotted ghost"
+          : "showing " + ents.length + " of " + all.length + " — this panel only";
   }
 
   if (!all.length) { host.innerHTML = '<p class="hint">No aliases yet.</p>'; return; }
   if (!ents.length) { host.innerHTML = '<p class="hint">Nothing matches here.</p>'; return; }
+
+  /*  THE ORDER DOES NOT MOVE.
+
+      I had the pick lifted to the head of the list. It is not: a name lives
+      where the alphabet put it, and a list that rearranges itself around your
+      selection is one you have to re-read after every click — the thing you
+      were about to press has moved, and so has everything else.
+
+      The pick lights instead, where it stands. Only the lighting changes. */
+  const pick = state.filter.focus;   // a Set: several names can be lit at once
+
   host.innerHTML = ents.map(e => {
     const cls = ["ent"];
     if (!e.declared) cls.push("ghost");
@@ -23264,11 +23736,17 @@ function renderEntityChips(host, root) {
     // Coordinates show in the tooltip only. One icon per kind — a second pin
     // emoji was not a distinction anyone could read.
     const geo = e.coords ? " · " + e.coords.lat + ", " + e.coords.lng : "";
-    const on = state.filter.focus === e.slug;
-    return '<span class="' + cls.join(" ") + (on ? " focused" : "") + '" data-slug="' + esc(e.slug) +
-      '" title="' + esc(title + geo) + ' — click to show only records naming them">' +
-      icon + " " +
-      esc(e.name) + (e.refs ? '<span class="n">' + e.refs + "</span>" : "") + "</span>";
+    const on = pick.has(e.slug);
+    //  Everything not picked stands down, and only while something IS: with
+    //  nothing chosen the list is an ordinary list.
+    if (pick.size && !on) cls.push("standby");
+    const chip = '<span class="' + cls.join(" ") + (on ? " focused" : "") +
+      '" data-slug="' + esc(e.slug) + '" title="' + esc(title + geo) +
+      (on ? " \u2014 showing only records naming them; click to stop"
+          : " \u2014 click to show only records naming them") + '">' +
+      icon + " " + esc(e.name) +
+      (e.refs ? '<span class="n">' + e.refs + "</span>" : "") + "</span>";
+    return chip;
   }).join("");
 
   if (!host.dataset.wired) {
@@ -24361,26 +24839,38 @@ loadHostedGazetteer().then(loadHostedBricks);
 const topSearch = el("topsearch");
 const topSearchInput = el("topsearchInput");
 
-el("topsearchBtn").onclick = () => {
-  const open = topSearch.classList.toggle("open");
-  if (open) topSearchInput.focus();
-  else if (state.filter.text) setFilter(f => { f.text = ""; });   // collapsing clears
+const topSearchBar = el("topsearchBar");
+
+/*  One way in, one way out, and closing clears.
+
+    A search bar left open with nothing in it is clutter; one left SHUT with
+    something in it is worse, because the board is filtered and the reason is
+    off-screen. So closing empties the box, which is the only way those two
+    can never disagree. */
+const closeSearch = () => {
+  topSearchBar.classList.remove("open");
+  if (state.filter.text) setFilter(f => { f.text = ""; });
+  topSearchInput.blur();
 };
+el("topsearchBtn").onclick = () => {
+  if (topSearchBar.classList.contains("open")) { closeSearch(); return; }
+  topSearchBar.classList.add("open");
+  topSearchInput.focus();
+  topSearchInput.select();
+};
+el("topsearchClose").onclick = closeSearch;
 
 topSearchInput.addEventListener("input", () => {
   setFilter(f => { f.text = topSearchInput.value; });
 });
 topSearchInput.addEventListener("keydown", e => {
-  if (e.key === "Escape") {
-    topSearchInput.value = "";
-    setFilter(f => { f.text = ""; });
-    topSearch.classList.remove("open");
-    topSearchInput.blur();
-  }
+  if (e.key === "Escape") { topSearchInput.value = ""; closeSearch(); }
 });
-// Collapse on blur only when it has nothing to show.
+/*  Closed on blur only when it has nothing to show. It was closing the old
+    inline box; the bar is what closes now, and an empty one going away when
+    you click elsewhere is tidiness rather than a decision being undone. */
 topSearchInput.addEventListener("blur", () => {
-  if (!topSearchInput.value) topSearch.classList.remove("open");
+  if (!topSearchInput.value) topSearchBar.classList.remove("open");
 });
 
 /* ---------- flyout + board controls ---------- */
