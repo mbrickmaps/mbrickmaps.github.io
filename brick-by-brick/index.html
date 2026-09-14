@@ -1107,15 +1107,29 @@
 
   /* ---------- the minimap ---------- */
   /*  Bottom right, clear of the 🧰 tab, which sits centred on the right edge.
-      Quiet until you go near it: it is a way back, not a thing to look at. */
+
+      SOLID UNTIL YOU HAVE USED IT. It opened at 0.42 and only came up to full
+      on hover, which is backwards for a thing whose whole job is to be findable
+      from across the page: a map you cannot read is not a way back, and you
+      cannot hover something you have not noticed.
+
+      So it starts solid and stays solid, and the fade only begins once you have
+      actually been on it and come off again. After that it holds for a beat and
+      goes quiet slowly, because it has done its job and you are looking
+      somewhere else. Going back onto it brings it up at once — dimming is
+      allowed to be leisurely, waking is not. */
   #miniMap {
     position: fixed; right: 10px; bottom: 10px; z-index: 55;
     background: color-mix(in srgb, var(--panel) 88%, transparent);
     border: 1px solid var(--border); border-radius: 5px; padding: 5px;
-    width: 104px; opacity: 0.42; transition: opacity 0.15s;
+    width: 104px; opacity: 1; transition: opacity 0.15s;
     backdrop-filter: blur(2px);
   }
-  #miniMap:hover { opacity: 1; }
+  /*  Set when the pointer leaves, cleared the moment it comes back. The delay
+      lives in the transition rather than in a timer, so moving away and
+      straight back cancels it without anything having to be cleaned up. */
+  #miniMap.dozing { opacity: 0.42; transition: opacity 1.4s ease-in 0.7s; }
+  #miniMap:hover { opacity: 1; transition: opacity 0.12s; }
   #miniMap[hidden] { display: none; }
   .mm-grid { display: grid; gap: 2px; width: 100%; }
   .mm-cell {
@@ -1139,7 +1153,9 @@
       is a fact about the scroll rather than about the pointer. */
   .mm-cell.lit { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
   .panel.mm-lit { outline: 1px solid var(--accent2); outline-offset: -1px; }
-  @media (prefers-reduced-motion: reduce) { #miniMap { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    #miniMap, #miniMap.dozing, #miniMap:hover { transition: none; }
+  }
 
   /* ---------- story ---------- */
   .st-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 4px; }
@@ -20794,6 +20810,19 @@ function renderMiniMap() {
     //  only thing that moves, and it is one style write.
     window.addEventListener("scroll", () => syncMiniView(), { passive: true });
     window.addEventListener("resize", () => syncMiniView(), { passive: true });
+
+    /*  THE FADE STARTS WHEN YOU LEAVE, NOT WHEN THE PAGE LOADS.
+
+        `dozing` is only ever added on the way OUT, so a map nobody has touched
+        is still at full strength however long the page has been open. One
+        pointer in and out is what arms it.
+
+        pointerleave rather than mouseleave, so a pen or a touch behaves the
+        same way, and pointerenter to wake it rather than relying on the :hover
+        rule alone — the class has to come off or it would fight the hover for
+        the rest of the session. */
+    host.addEventListener("pointerenter", () => host.classList.remove("dozing"));
+    host.addEventListener("pointerleave", () => host.classList.add("dozing"));
 
     /*  AND THE OTHER WAY ROUND.
 
