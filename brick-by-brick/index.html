@@ -226,6 +226,11 @@
     border-color: var(--accent2); color: var(--accent2);
     background: color-mix(in srgb, #000 28%, var(--bg));
   }
+  /* The cell a panel added from the list will land in. */
+  .board-cell.picked {
+    border: 1px solid var(--accent2); color: var(--accent2);
+    background: color-mix(in srgb, var(--accent2) 14%, var(--bg));
+  }
   .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
   /* Raise a tile while its label is the thing being read, so a neighboring
      tile's background cannot paint over the overhanging cartouche. */
@@ -316,9 +321,15 @@
       on: you must always be able to take a cover off, move the tile or close
       it without uncovering it first. */
   .panel-head {
-    padding-right: calc(var(--close-size) / 2 + 4px);
+    /*  Clear of BOTH discs, ↻ and ✕. Clearing only ✕ put ☰ under ↻. */
+    padding-right: calc(var(--close-size) * 2 + 4px);
     position: relative; z-index: 7;
+    /*  Raised above the body so its controls stay pressable, but the empty
+        strip lets presses through to whatever the body has up there, such as
+        the Promenade's inputs. Only the controls themselves take the mouse. */
+    pointer-events: none;
   }
+  .panel-head > * { pointer-events: auto; }
 
   /* ---------- panels ---------- */
   .panel {
@@ -333,7 +344,7 @@
   }
   .panel-head {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 6px; margin-bottom: 8px; flex-wrap: wrap; cursor: grab;
+    gap: 6px; margin-bottom: 8px; flex-wrap: wrap;
   }
   /*  The title as a cartouche: lifted out of the flow and set ON the top
       border, like a label on a map's neatline. It reclaims the line the header
@@ -361,6 +372,12 @@
   }
   /* Without an explicit min-width a flex child may collapse entirely rather
      than ellipsise; 3ch keeps at least a stub of the title visible. */
+  /*  A panel with its own header buttons (☰) gives the cartouche less room, so
+      a long title ellipsises instead of running over the button. */
+  .panel-head:has(> .panel-head-btn:not([hidden])) > .panel-head-lead {
+    max-width: calc(100% - var(--close-size) * 2 - 44px);
+  }
+  .panel-head-btn { position: relative; z-index: 3; }
   .panel-head-lead h2 { min-width: 3ch; }
   .panel-head-lead h2 { opacity: 0.75; }
   /* One letter, quiet by default — it is a property of the panel, not a
@@ -372,6 +389,12 @@
   }
   .role-badge:hover { opacity: 1; }
   .role-badge + .role-badge { margin-left: -3px; }
+  /*  A panel still being built: a bare 🚧, no box, so it takes less of a
+      narrow title than a word would. */
+  .wip-badge {
+    flex-shrink: 0; font-size: 0.7rem; line-height: 1; cursor: default;
+    vertical-align: middle;
+  }
   /*  Leading the name now, so the gap goes on the other side of it. */
   .role-badge + h2 { margin-left: 2px; }
   /*  In a one-cell panel the handle and badge left the title about 46px — the
@@ -821,9 +844,16 @@
   }
   #boardFlyoutWrap.open { transform: none; }
   @media (prefers-reduced-motion: reduce) { #boardFlyoutWrap { transition: none; } }
+  /*  THE VOID. The drawer is the empty slot the cartridges sit in, so it is
+      darker than anything on the board and shaded in from its edges, and the
+      cartridges read as solid things standing in it. */
   #boardFlyout {
-    position: absolute; inset: 0; background: var(--field);
-    border-left: 1px solid var(--border); padding: 10px; overflow-y: auto;
+    position: absolute; inset: 0;
+    background: color-mix(in srgb, #000 55%, var(--bg));
+    box-shadow: inset 10px 0 18px -8px rgba(0, 0, 0, 0.75),
+                inset 0 0 40px rgba(0, 0, 0, 0.45);
+    border-left: 1px solid color-mix(in srgb, #000 40%, var(--border));
+    padding: 10px; overflow-y: auto;
   }
   #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
   #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
@@ -903,16 +933,66 @@
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 55%, transparent),
                   -4px 0 16px -1px color-mix(in srgb, var(--stop) 65%, transparent); }
   }
+  /*  CARTRIDGES. Each panel is a thing you pick up and plug into the board:
+      a plastic shell, rounded across the top and square at the bottom where
+      it goes in, with a notch in the top edge, a paper label set into the
+      face, and grip ridges along the bottom. */
   .board-card {
-    display: flex; flex-direction: column; gap: 4px;
-    border: 1px solid var(--border); border-radius: 5px; background: var(--field);
-    padding: 7px 9px; margin-bottom: 6px; cursor: grab; font-size: 0.8rem;
+    --shell: color-mix(in srgb, var(--fg) 9%, var(--panel));
+    position: relative;
+    display: flex; flex-direction: column;
+    margin-bottom: 10px; padding: 9px 8px 17px;
+    cursor: grab; font-size: 0.8rem;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, #fff 6%, var(--shell)) 0%, var(--shell) 30%,
+      color-mix(in srgb, #000 18%, var(--shell)) 100%);
+    border: 1px solid color-mix(in srgb, #000 45%, var(--shell));
+    border-radius: 11px 11px 3px 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+                0 3px 6px rgba(0, 0, 0, 0.55);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
   }
-  .board-card:hover { border-color: var(--accent2); }
-  .board-card.dragging { opacity: 0.4; }
+  /*  The notch: a slot of void cut into the top edge. */
+  .board-card::before {
+    content: ""; position: absolute; top: -1px; left: 50%;
+    width: 34px; height: 4px; transform: translateX(-50%);
+    background: color-mix(in srgb, #000 55%, var(--bg));
+    border: 1px solid color-mix(in srgb, #000 45%, var(--shell)); border-top: 0;
+    border-radius: 0 0 3px 3px;
+  }
+  /*  Grip ridges along the bottom edge. */
+  .board-card::after {
+    content: ""; position: absolute; left: 22%; right: 22%; bottom: 5px; height: 6px;
+    background: repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.45) 0 2px, rgba(255, 255, 255, 0.08) 2px 3px, transparent 3px 6px);
+    border-radius: 1px; pointer-events: none;
+  }
+  .board-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+                0 6px 12px rgba(0, 0, 0, 0.6),
+                0 0 0 1px color-mix(in srgb, var(--accent2) 35%, transparent);
+  }
+  .board-card.dragging { opacity: 0.4; transform: none; }
+  /*  The label: paper set into the shell, with the name, size and blurb. */
+  .cart-label {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 6px 7px 7px;
+    background: color-mix(in srgb, var(--fg) 4%, var(--field));
+    border: 1px solid color-mix(in srgb, #000 35%, var(--shell));
+    border-radius: 3px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .board-card, .board-card:hover { transition: none; transform: none; }
+  }
   .board-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.35; margin-left: 28px; }
+  .cart-foot { display: flex; justify-content: flex-end; margin-top: 1px; }
   .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
   /*  The panel's own width x height, in the drawer card. Same treatment: two
       digits and no arrows, rather than one digit and two arrows. */
@@ -928,6 +1008,8 @@
     text-transform: uppercase; opacity: 0.55;
   }
   .board-group-heading:first-child { margin-top: 0; }
+  /*  Nothing to list: said in the void, not printed on an empty cartridge. */
+  .board-card-empty { font-size: 0.75rem; opacity: 0.5; padding: 10px 2px; text-align: center; }
 
   /* ---------- panel bodies ---------- */
   textarea {
@@ -1395,9 +1477,18 @@
       because at nine pixels across an outline is the whole block. */
   .mm-cell.here { background: color-mix(in srgb, var(--accent2) 32%, var(--field));
                   border-color: color-mix(in srgb, var(--accent2) 55%, var(--border)); }
-  .mm-name {
-    font-size: 0.56rem; opacity: 0.75; height: 0.9rem; margin-top: 3px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /*  The block's name, beside the pointer rather than in a line under the map,
+      so your eye does not have to leave the block to read it. Up and to the
+      left of the cursor, because the map lives in the bottom-right corner and
+      anything placed right or below would run off the screen. */
+  #mmTip {
+    position: fixed; z-index: 70; pointer-events: none;
+    transform: translate(calc(-100% - 10px), calc(-100% - 6px));
+    font-size: 0.66rem; line-height: 1.2; white-space: nowrap;
+    padding: 3px 6px; border-radius: 3px;
+    background: var(--panel); color: var(--fg);
+    border: 1px solid var(--accent2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   }
   /*  Two seconds of "this one", for the end of a smooth scroll. */
   .mm-ping { outline: 2px solid var(--accent2); outline-offset: -2px; }
@@ -2084,10 +2175,10 @@
   .panel-cover[data-mat="frosted"] > span,
   .panel-cover[data-mat="smoked"] > span { opacity: 0.3; }
 
-  /*  FOUR MATERIALS, because what you want a cover to DO differs.
+  /*  THREE MATERIALS, because what you want a cover to DO differs.
 
       Frosted and smoked still show you the panel is alive under them, which is
-      what you want over something that moves. Metal and card do not, which is
+      what you want over something that moves. Card does not, which is
       what you want when the point is to stop looking at it. */
   /*  Glass. `backdrop-filter` blurs what is behind rather than painting over
       it, so the street under it goes on moving as a smear of its own colours.
@@ -2107,19 +2198,6 @@
     -webkit-backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
     border: 1px solid rgba(255,255,255,0.1);
   }
-  /*  Brushed, so the grain runs ACROSS the way it is pulled: a sheet with the
-      grain along its travel reads as a smear rather than as metal. */
-  .panel-cover[data-mat="metal"] {
-    background:
-      repeating-linear-gradient(90deg,
-        rgba(255,255,255,0.055) 0 1px, rgba(0,0,0,0.05) 1px 3px),
-      linear-gradient(105deg, #6f747c 0%, #9aa1aa 26%, #71767e 38%,
-                              #8d949d 62%, #60656c 84%, #7c828b 100%);
-    border: 1px solid rgba(0,0,0,0.45);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35),
-                inset 0 -1px 0 rgba(0,0,0,0.35);
-  }
-  .panel-cover[data-mat="metal"] > span { color: #1b1f24; opacity: 0.45; }
   .panel-cover[data-mat="card"] {
     background:
       repeating-linear-gradient(135deg,
@@ -2197,12 +2275,6 @@
   }
   .tab-mat[data-mat="smoked"] {
     background: linear-gradient(145deg, #4a4550, #211d28);
-  }
-  .tab-mat[data-mat="metal"] {
-    background:
-      repeating-linear-gradient(90deg,
-        rgba(255,255,255,0.09) 0 1px, rgba(0,0,0,0.08) 1px 3px),
-      linear-gradient(105deg, #6f747c, #9aa1aa 40%, #60656c);
   }
   .tab-mat[data-mat="card"] {
     background:
@@ -2610,6 +2682,7 @@
       <span><span class="role-badge role-write">W</span>write &mdash; changes the pile</span>
       <span><span class="role-badge role-filter">F</span>filter &mdash; changes what is in view</span>
       <span><span class="role-badge role-read">R</span>read only</span>
+      <span><span class="wip-badge">&#x1F6A7;</span>still being built</span>
     </p>
     <div id="boardCardList"></div>
   </div>
@@ -3841,7 +3914,7 @@ function definePanel(cfg) {
   panels.set(cfg.id, def);
   FOOTPRINTS[cfg.id] = { name: cfg.title, desc: cfg.help, w: cfg.w || 1, h: cfg.h || 1,
                          group: cfg.group || "Data & structure",
-                         role: panels.get(cfg.id).role };
+                         role: panels.get(cfg.id).role, wip: !!cfg.wip };
   return cfg.id;
 }
 
@@ -3873,6 +3946,7 @@ const Brick = {
         title: slot.emoji + " " + slot.label,
         help: slot.description,
         group: "Visualizations",
+        wip: !!slot.wip,
         w: slot.w || 2, h: slot.h || 2,
         render(body) { renderSlotBody(slot, body); },
       });
@@ -3940,6 +4014,7 @@ definePanel({ role: "filter", id: "filter", title: "Filter", tpl: "tpl-filter", 
   render(body) { renderFilter(body); } });
 
 definePanel({ roles: ["read", "filter"], id: "document", title: "Document", tpl: "tpl-document", w: 1, h: 2,
+  wip: true,   // still being built: marked WIP in its header and in the panel list
   help: "One document at a time — its scan, what it says, and who it names. Step through with the arrows.",
   render(body) { renderDocument(body); } });
 
@@ -19694,6 +19769,7 @@ function buildPanel(def) {
       (def.roles || ["read"]).map(r =>
         '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join("") +
       "<h2>" + esc(def.title) + "</h2>" +
+      (def.wip ? '<span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
       // …and, where one exists, the way to the panel's own write-up.
       /*  The word was "help"; the mark is "?". The title attribute still spells
           it out, because a lone glyph has to say what it is on hover. */
@@ -19768,8 +19844,15 @@ function renderBoardCells() {
       cell.style.gridColumn = (x + 1) + " / span 1";
       cell.style.gridRow = (y + 1) + " / span 1";
       cell.textContent = "+";
-      cell.title = "open the panel list";
-      cell.addEventListener("click", () => el("boardFlyoutWrap").classList.add("open"));
+      cell.title = "add a panel here";
+      if (boardPick && boardPick.x === x && boardPick.y === y) cell.classList.add("picked");
+      //  The cell you pressed is where the next panel added from the list goes.
+      cell.addEventListener("click", () => {
+        boardPick = { x, y };
+        b.querySelectorAll(".board-cell.picked").forEach(c => c.classList.remove("picked"));
+        cell.classList.add("picked");
+        el("boardFlyoutWrap").classList.add("open");
+      });
       frag.appendChild(cell);
     }
   }
@@ -19944,7 +20027,7 @@ const COVER_KEY = "brick-by-brick:covers:v2";
     timeline — wants to leave you the movement while taking the controls away,
     and frosted does that. Card is the one that hides it completely, and it is
     last because that is the rarer want. */
-const COVER_MATS = ["frosted", "smoked", "metal", "card"];
+const COVER_MATS = ["frosted", "smoked", "card"];
 const COVER_MAT_DEFAULT = "frosted";
 let COVERS = new Map();                 // id -> { x: 0..0.9, m: material }
 
@@ -20654,7 +20737,7 @@ function wireDockReorder(rail, side) {
   const across = side === "left" || side === "right";
   rail.addEventListener("mousedown", ev => {
     const panel = ev.target.closest(".panel");
-    if (!panel || !ev.target.closest(".panel-head") || ev.target.closest("button")) return;
+    if (!panel || !ev.target.closest(".drag-handle")) return;
     ev.preventDefault();
     panel.classList.add("dock-moving");
 
@@ -21233,9 +21316,12 @@ function renderMiniMap() {
   if (!host) {
     host = document.createElement("div");
     host.id = "miniMap";
-    host.innerHTML = '<div class="mm-grid" data-el="grid"></div>' +
-                     '<div class="mm-name" data-el="name"></div>';
+    host.innerHTML = '<div class="mm-grid" data-el="grid"></div>';
     document.body.appendChild(host);
+    const tip = document.createElement("div");
+    tip.id = "mmTip";
+    tip.hidden = true;
+    document.body.appendChild(tip);
     //  Follows the scroll it is describing, cheaply: the viewport box is the
     //  only thing that moves, and it is one style write.
     window.addEventListener("scroll", () => syncMiniView(), { passive: true });
@@ -21285,7 +21371,8 @@ function renderMiniMap() {
     });
   }
   const grid = host.querySelector('[data-el="grid"]');
-  const name = host.querySelector('[data-el="name"]');
+  const tip = document.getElementById("mmTip");
+  tip.hidden = true;   // the block it was naming may be gone after a redraw
   grid.innerHTML = "";
   host.hidden = board.tiles.length < 2;
   /*  Slid clear of a bottom or right rail. It is fixed to the corner and a
@@ -21309,15 +21396,19 @@ function renderMiniMap() {
     cell.style.gridColumn = (t.x + 1) + " / span " + t.w;
     cell.style.gridRow = (t.y + 1) + " / span " + t.h;
     const label = (FOOTPRINTS[t.id] && FOOTPRINTS[t.id].name) || t.id;
-    cell.title = label;
+    cell.setAttribute("aria-label", label);
     cell.dataset.id = t.id;
-    cell.onmouseenter = () => {
-      name.textContent = label;
+    const placeTip = e => { tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; };
+    cell.onmouseenter = e => {
+      tip.textContent = label;
+      placeTip(e);
+      tip.hidden = false;
       const node = document.getElementById(t.id);
       if (node) node.classList.add("mm-lit");
     };
+    cell.onmousemove = placeTip;
     cell.onmouseleave = () => {
-      name.textContent = "";
+      tip.hidden = true;
       const node = document.getElementById(t.id);
       if (node) node.classList.remove("mm-lit");
     };
@@ -21429,16 +21520,23 @@ function renderBoardCardList() {
       card.draggable = true;
       card.dataset.id = id;
       card.innerHTML =
+        '<div class="cart-label">' +
         '<div class="board-card-row">' +
           '<button type="button" class="fp-add" title="add to board">+</button>' +
-          '<span class="board-card-name">' + esc(fp.name) + "</span>" +
+          '<span class="board-card-name">' + esc(fp.name) +
+            (fp.wip ? ' <span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
+          "</span>" +
+        "</div>" +
+        '<div class="board-card-desc">' + esc(fp.desc || "") + "</div>" +
+        //  Size in the bottom-right corner of the label, out of the name's way.
+        '<div class="cart-foot">' +
           '<span class="fp">' +
             '<input type="number" class="fp-w" min="1" max="12" step="1" value="' + fp.w + '" title="width (cells)">' +
             "<span>&times;</span>" +
             '<input type="number" class="fp-h" min="1" max="12" step="1" value="' + fp.h + '" title="height (cells)">' +
           "</span>" +
         "</div>" +
-        '<div class="board-card-desc">' + esc(fp.desc || "") + "</div>";
+        "</div>";
 
       const wIn = card.querySelector(".fp-w"), hIn = card.querySelector(".fp-h");
       [wIn, hIn].forEach(i => i.addEventListener("mousedown", e => e.stopPropagation()));
@@ -21449,16 +21547,23 @@ function renderBoardCardList() {
       add.addEventListener("mousedown", e => e.stopPropagation());
       add.addEventListener("click", e => {
         e.stopPropagation();
-        const slot = findFreeSlot(fp.w, fp.h);
+        const slot = pickedSlot(fp.w, fp.h) || findFreeSlot(fp.w, fp.h);
+        clearBoardPick();
+        hideFootprint();
         addTile(id, slot.x, slot.y, fp.w, fp.h);
       });
+      card.addEventListener("mouseenter", () => previewFootprint(fp.w, fp.h));
+      card.addEventListener("mouseleave", hideFootprint);
+      //  Resizing the footprint in the card updates the outline straight away.
+      [wIn, hIn].forEach(i => i.addEventListener("input", () =>
+        previewFootprint(Math.max(1, parseInt(wIn.value, 10) || 1), Math.max(1, parseInt(hIn.value, 10) || 1))));
       list.appendChild(card);
       shown++;
     }
   }
   if (!shown) {
     const none = document.createElement("div");
-    none.className = "board-card";
+    none.className = "board-card-empty";
     none.style.cursor = "default";
     none.textContent = board.tiles.length ? "everything is on the board" : "no match";
     list.appendChild(none);
@@ -21470,6 +21575,43 @@ function addTile(id, x, y, w, h) {
   if (!fp) return;
   board.tiles.push({ id, x, y, w: Math.min(w || fp.w, board.cols), h: h || fp.h });
   renderBoard(); renderBoardCardList(); saveBoard();
+}
+
+/*  The empty cell last pressed, or null. A panel added from the list goes
+    there if its footprint fits with that cell as its top-left corner; a wide
+    panel picked near the right edge is pulled left to stay on the grid. If it
+    still does not fit, it falls back to the first free slot. */
+let boardPick = null;
+function pickedSlot(w, h) {
+  if (!boardPick) return null;
+  const cw = Math.min(w, board.cols);
+  const x = Math.min(boardPick.x, board.cols - cw);
+  return overlaps(null, x, boardPick.y, cw, h) ? null : { x, y: boardPick.y };
+}
+/*  Hovering a card in the panel list shows where + would put it, using the
+    drag ghost. With a picked cell it outlines the footprint there, red if it
+    does not fit; with none it outlines the first free slot. */
+function previewFootprint(w, h) {
+  if (boardDrag) return;
+  const cw = Math.min(w, board.cols);
+  let x, y, bad = false;
+  if (boardPick) {
+    x = Math.min(boardPick.x, board.cols - cw); y = boardPick.y;
+    bad = overlaps(null, x, y, cw, h);
+  } else ({ x, y } = findFreeSlot(w, h));
+  const g = ghostEl();
+  g.hidden = false;
+  g.classList.toggle("invalid", bad);
+  g.classList.remove("swap");
+  g.style.gridColumn = (x + 1) + " / span " + cw;
+  g.style.gridRow = (y + 1) + " / span " + h;
+}
+function hideFootprint() {
+  if (!boardDrag) ghostEl().hidden = true;
+}
+function clearBoardPick() {
+  boardPick = null;
+  boardEl().querySelectorAll(".board-cell.picked").forEach(c => c.classList.remove("picked"));
 }
 
 function findFreeSlot(w, h) {
@@ -25028,8 +25170,15 @@ function clearAll() {
 
 el("quickClear").addEventListener("click", clearAll);
 
-el("boardFlyoutTab").addEventListener("click", () => el("boardFlyoutWrap").classList.toggle("open"));
-el("boardFlyoutClose").addEventListener("click", () => el("boardFlyoutWrap").classList.remove("open"));
+//  Opening from the tab has no cell behind it, and closing forgets any cell picked.
+el("boardFlyoutTab").addEventListener("click", () => {
+  clearBoardPick();
+  el("boardFlyoutWrap").classList.toggle("open");
+});
+el("boardFlyoutClose").addEventListener("click", () => {
+  clearBoardPick();
+  el("boardFlyoutWrap").classList.remove("open");
+});
 el("boardSearch").addEventListener("input", renderBoardCardList);
 el("boardReset").addEventListener("click", resetBoard);
 
@@ -25073,11 +25222,12 @@ boardEl().addEventListener("drop", e => {
   endBoardDrag(true);
 });
 
-// Repositioning a tile already on the board — grabbed by its own header.
+// Repositioning a tile already on the board — grabbed by its ✥ handle only,
+// so the rest of the header (and anything under it) stays clickable.
 boardEl().addEventListener("mousedown", e => {
-  const head = e.target.closest(".panel-head");
+  const head = e.target.closest(".drag-handle");
   const tile = e.target.closest(".board-tile");
-  if (!head || !tile || e.target.closest("button")) return;
+  if (!head || !tile) return;
   const t = board.tiles.find(k => k.id === tile.dataset.id);
   if (!t) return;
   tile.classList.add("dragging");
