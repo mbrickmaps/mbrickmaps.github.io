@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow, noimageindex">
 <title>Brick by Brick</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧱</text></svg>">
+<link rel="stylesheet" href="board/board.css">
 <style>
   /* Palette and board grammar deliberately match collage/index.html (v2). */
   :root {
@@ -61,75 +62,29 @@
   }
   body {
     background: var(--bg); color: var(--fg);
-    font-family: system-ui, sans-serif; margin: 0; padding: 14px; font-size: 14px;
+    /*  0, not 14px. The board used to overwrite the body's padding with the
+        dock rails' sizes, so 14px never showed; now the board adds rails on
+        top of this, and 0 keeps the page looking exactly as it always has. */
+    font-family: system-ui, sans-serif; margin: 0; padding: 0; font-size: 14px;
   }
   h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.02em; }
   h1 .brickmark { color: var(--accent); }
-  .topbar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; flex: 1; min-width: 180px; }
-  /*  Collapsed to the glass until wanted. The box itself is not in here — see
-      #topsearchBar, which slides down the whole width of the page the way the
-      panel drawer slides in from the side. This is only the way in. */
-  .topsearch { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-
-  /*  THE SEARCH, FULL WIDTH.
-
-      It used to grow to 170 pixels in the corner of the top bar, which is a
-      box for a word. What goes in it is a phrase out of somebody's research —
-      a parish, a trade, half a name — and the thing it searches is every panel
-      on the page at once. A control that reaches across the whole page should
-      look like it does.
-
-      Same drawer as the panel list, turned ninety degrees: off-screen by a
-      transform, slid in on a class, and nothing about it is display:none, so
-      the field keeps focus the whole way. */
-  #topsearchBar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 62;
-    display: block;
-    padding: 16px 20px;
-    background: var(--field);
-    border-bottom: 1px solid var(--border);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-    transform: translateY(-100%);
-    transition: transform 0.18s ease;
-  }
-  #topsearchBar.open { transform: none; }
-  /*  THE SHEET IS FULL WIDTH; THE FIELD IS NOT.
-
-      A box that runs the entire width of a wide screen is a box you cannot
-      read the end of and a cursor you have to travel to. What wants to be the
-      full width is the SURFACE — so you cannot miss that the search is open
-      and so it sits above everything — and what wants to be a comfortable
-      measure is the thing you type into.
-
-      Centred with a cap rather than left-aligned, because it belongs to the
-      whole page rather than to the corner it was opened from. */
-  .ts-row {
-    display: flex; align-items: center; gap: 12px;
-    width: 100%; max-width: 760px; margin: 0 auto;
-  }
-  /*  Room round the words. It was seven pixels, which put the caret against
-      the frame — and the caret is a block now, so it sat half on the border. */
-  #topsearchBar input {
+  /*  THE PROJECT PANEL — what used to be the top of the page, in a panel. */
+  .pj { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
+  .pj-title { display: flex; flex-direction: column; gap: 3px; }
+  .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; }
+  .pj-search { display: flex; align-items: center; gap: 8px; }
+  .pj-search input {
     flex: 1 1 auto; min-width: 0;
-    font-size: 1rem; padding: 10px 14px; border-radius: 5px; line-height: 1.4;
+    font-size: 0.9rem; padding: 7px 10px; border-radius: 5px; line-height: 1.4;
   }
-  /*  How many it found, beside the box rather than somewhere else on the page:
-      the answer belongs next to the question. */
+  /*  A search that is on stays lit, so a narrowed board always says why. */
+  .pj-search.active input { border-color: var(--accent2); }
   .ts-count {
     flex: 0 0 auto; font-size: 0.72rem; opacity: 0.55;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  /*  The same treatment, so the two ends of the search read as a pair. A
-      little smaller: it is the way out, not the way in. */
-  #topsearchClose {
-    flex: 0 0 auto; width: 30px; height: 30px; padding: 7px;
-    box-sizing: border-box;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; font-size: 1rem; line-height: 1;
-  }
-  #topsearchClose:hover { border-color: var(--accent2); color: var(--accent2); }
-  @media (prefers-reduced-motion: reduce) { #topsearchBar { transition: none; } }
+  .pj-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; }
   /* Quiet by design: reassurance, not a notification. */
   .top-btn { font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0; }
   .top-auto {
@@ -151,235 +106,6 @@
 
   .save-state[hidden] { display: none; }
   .save-state.bad { color: var(--bad); opacity: 1; }
-  #topsearchBar.active input { border-color: var(--accent2); }
-  /*  A round button to match the panels' corner control, and large enough to
-      read as the primary way in rather than a minor toggle.
-
-      LIT, because it is the way in. Everything else in the top bar is a thing
-      you do occasionally — save, export, clear — and this is the one you reach
-      for while you are working. A ring in the theme's own "active" colour says
-      that without a label and without taking any more room.
-
-      `--accent2` rather than a green: it is the colour this page already uses
-      for what is switched on and what you can press, so the glass stays in
-      step when you change the theme instead of being the one green thing on a
-      brick-coloured board. */
-  /*  ROOM ROUND THE GLASS.
-
-      It was a sixteen-pixel glyph in a twenty-six pixel circle: five pixels of
-      air on each side, which on a round button reads as a glyph that has been
-      squeezed into one rather than placed in one. A circle needs more margin
-      than a rectangle does for the same glyph to look centred — the corners
-      are further away than the sides, so the eye measures the gap at the sides
-      and finds it short.
-
-      Padding rather than a bigger box alone, so the size comes from the
-      content and the two stay in step if the glyph ever changes. */
-  #topsearchBtn {
-    width: 34px; height: 34px; padding: 8px; flex-shrink: 0;
-    box-sizing: border-box;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; font-size: 1rem; line-height: 1;
-    border-color: color-mix(in srgb, var(--go) 60%, var(--border));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 25%, transparent),
-                0 0 10px -1px color-mix(in srgb, var(--go) 50%, transparent);
-    transition: box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  }
-  #topsearchBtn:hover, #topsearchBtn:focus-visible {
-    border-color: var(--go); color: var(--go);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 50%, transparent),
-                0 0 16px 1px color-mix(in srgb, var(--go) 70%, transparent);
-  }
-  /* A filter that is on but collapsed would be invisible; the glass stays lit. */
-  .topsearch.active #topsearchBtn { border-color: var(--accent2); color: var(--accent2); }
-
-  /* ---------- THE BOARD ----------
-     A coordinate space, not a queue. Cells and tiles are BOTH explicitly
-     placed, so neither can push the other around via auto-flow. */
-  /*  A margin down both sides, the width of the flyout's tab, so the board is
-      not flush against the window. Panels have a cartouche that sits proud of
-      their top left corner and a close button on their top right, and at the
-      window edge both had nowhere to be. */
-  #board {
-    display: grid; gap: var(--panel-gap); position: relative;
-    grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr));
-    grid-auto-rows: var(--board-row, 220px);
-    padding: 0 26px 40px;
-  }
-  /*  AN EMPTY CELL IS A HOLE, NOT A GAP.
-
-      It used to be transparent, so it took the board's own colour and read as
-      more board. Sunk instead: darker than whatever is behind it, with the
-      shadow falling from the top edge the way it does inside a recess. In the
-      Brick theme that makes the wall literal, a missing brick with the dark
-      of the cavity behind it, and it works the same in every other theme
-      because the colour is mixed from that theme's own board rather than
-      being a fixed grey. */
-  .board-cell {
-    border: 1px dashed var(--border-soft); border-radius: 6px; z-index: 0;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--border-soft); font-size: 1.4rem; cursor: pointer; user-select: none;
-    background: color-mix(in srgb, #000 42%, var(--bg));
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
-  }
-  .board-cell:hover {
-    border-color: var(--accent2); color: var(--accent2);
-    background: color-mix(in srgb, #000 28%, var(--bg));
-  }
-  /* The cell a panel added from the list will land in. */
-  .board-cell.picked {
-    border: 1px solid var(--accent2); color: var(--accent2);
-    background: color-mix(in srgb, var(--accent2) 14%, var(--bg));
-  }
-  .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
-  /* Raise a tile while its label is the thing being read, so a neighboring
-     tile's background cannot paint over the overhanging cartouche. */
-  .board-tile:hover { z-index: 3; }
-  /*  Scrolling belongs to the BODY, not the panel. With overflow:auto on the
-      panel, the half of the cartouche that hangs above the top border was
-      clipped away — an element cannot overflow a scroll container it lives
-      inside. The body scrolls; the panel stays visible so the label can sit
-      proud of the frame. */
-  /*  A docked panel is the same panel in a different frame, so it gets the
-      same rules. Without them its body had no height to be bounded by and a
-      long table simply hung out of the bottom of the rail and off the window.
-      The dock rules further down re-assert the flex along the rail. */
-  .board-tile > .panel, .dock > .panel {
-    flex: 1 1 auto; min-width: 0; overflow: visible;
-    display: flex; flex-direction: column;
-  }
-  .board-tile > .panel > .panel-body, .dock > .panel > .panel-body {
-    flex: 1 1 auto; min-height: 0; overflow: auto;
-    scrollbar-width: none; -ms-overflow-style: none;
-  }
-  .board-tile > .panel > .panel-body::-webkit-scrollbar,
-  .dock > .panel > .panel-body::-webkit-scrollbar { display: none; }
-  .board-tile.dragging { opacity: 0.4; }
-  /* The footprint a drop would occupy. Never placed until mouseup. */
-  #boardGhost {
-    z-index: 2; pointer-events: none; border-radius: 6px;
-    border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
-  }
-  #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
-  /* A swap is still a drop preview, so it stays green like every other
-     structural affordance. Solid rather than dashed is what separates it from
-     an ordinary move — the shape carries the difference, not the hue. */
-  #boardGhost.swap { border-style: solid; background: rgba(51,255,51,0.16); }
-  #boardGhost[hidden] { display: none; }
-  .board-tile.swap-target > .panel { outline: 2px solid var(--accent2); outline-offset: -2px; }
-  .board-empty {
-    grid-column: 1 / -1; text-align: center; padding: 40px 10px;
-    opacity: 0.35; font-size: 0.85rem;
-  }
-
-  /* Grow/shrink a placed tile by a column or row. Only the legal buttons are
-     shown — a "+" never appears toward an occupied neighbor or past the edge. */
-  .tile-resize { position: absolute; display: flex; gap: 2px; z-index: 4; opacity: 0; transition: opacity 0.15s; }
-  .board-tile:hover .tile-resize { opacity: 1; }
-  .tile-resize button {
-    width: 18px; height: 18px; padding: 0; font-size: 0.8rem; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); border-radius: 3px; background: var(--field); color: var(--fg); cursor: pointer;
-  }
-  .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
-  .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
-  .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
-  /*  Sits on the top-right corner rather than in the header row, centered on
-      the corner arc's own center of curvature — which is (radius, radius) in
-      from the corner, so the circle is offset half its width back from that
-      point. Derived from the variables, so changing the panel radius keeps it
-      centered without re-tuning any numbers. */
-  .tile-remove {
-    position: absolute; z-index: 3;
-    /* Less the border: absolute offsets are measured from the PADDING edge,
-       which is inside the border, while the corner arc lives on the border
-       box — without this the circle sits 1px off center in both axes. */
-    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
-    right: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
-    width: var(--close-size); height: var(--close-size); padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
-    font-size: 0.7rem; line-height: 1;
-    /*  Quiet by dimming the GLYPH, never the button. Fading the whole element
-        faded its fill with it, so the panel's corner and whatever sat under it
-        showed through the circle that is supposed to be masking them. The disc
-        is solid panel colour; only the cross is faint. */
-    color: color-mix(in srgb, var(--fg) 52%, transparent);
-  }
-  .tile-remove:hover { border-color: var(--bad); color: var(--bad); }
-  /* Keeps any header control from sliding under the overlaid circle. */
-  /*  THE HEADER IS ALWAYS REACHABLE.
-
-      It was not. The header and the body are both statically positioned, so
-      whichever comes later in the DOM wins — and the Promenade's canvas is
-      drawn over the top of its own title bar. ✕ survived because it is placed
-      absolutely with a key of its own; ⟳ and the cover toggle sat underneath
-      the street and could not be pressed at all. The reload button on the one
-      panel that has ever needed reloading.
-
-      Above the cover as well as the body, which is the rule the cover depends
-      on: you must always be able to take a cover off, move the tile or close
-      it without uncovering it first. */
-  .panel-head {
-    /*  Clear of BOTH discs, ↻ and ✕. Clearing only ✕ put ☰ under ↻. */
-    padding-right: calc(var(--close-size) * 2 + 4px);
-    position: relative; z-index: 7;
-    /*  Raised above the body so its controls stay pressable, but the empty
-        strip lets presses through to whatever the body has up there, such as
-        the Promenade's inputs. Only the controls themselves take the mouse. */
-    pointer-events: none;
-  }
-  .panel-head > * { pointer-events: auto; }
-
-  /* ---------- panels ---------- */
-  .panel {
-    background: var(--panel); border: var(--panel-border) solid var(--border);
-    border-radius: var(--panel-radius);
-    /* Extra top padding is the room the cartouche occupies where it straddles
-       the border; the label is pulled up into it rather than adding a row. */
-    padding: 14px 12px 12px; min-width: 0; position: relative;
-    /* Container query context: contents respond to the PANEL's width, not the
-       viewport's, so the same panel works at 1 cell and at 4. */
-    container-type: inline-size;
-  }
-  .panel-head {
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 6px; margin-bottom: 8px; flex-wrap: wrap;
-  }
-  /*  The title as a cartouche: lifted out of the flow and set ON the top
-      border, like a label on a map's neatline. It reclaims the line the header
-      used to spend on itself, and the panel's own background masks the border
-      behind it so the rule appears to break cleanly around the text. */
-  /*  max-width was reserving 90px for header controls that are no longer in
-      the row — the close button is an overlay now — which squeezed every
-      1-cell title to zero width. The title gets the room; only the drag
-      handle, badge and a small margin come out of it. */
-  /*  LINED UP WITH THE PANEL BODY, not floated in from the corner.
-
-      It sat at left:10 with 6 of its own padding, which put the cartouche box
-      ten pixels right of where the content underneath it starts — so every
-      panel had its title indented past its own contents by an amount nothing
-      else on the page shared.
-
-      Flush instead: the box edge lands on the body content edge, and the
-      header reads as belonging to the panel rather than hovering over it. The
-      handle still leads, because it is the thing you grab and it belongs at
-      the corner. */
-  .panel-head-lead {
-    position: absolute; top: -7px; left: 0; z-index: 2;
-    display: flex; align-items: center; gap: 4px; max-width: calc(100% - 34px);
-    background: var(--panel); padding: 0 5px; border-radius: 3px;
-  }
-  /* Without an explicit min-width a flex child may collapse entirely rather
-     than ellipsise; 3ch keeps at least a stub of the title visible. */
-  /*  A panel with its own header buttons (☰) gives the cartouche less room, so
-      a long title ellipsises instead of running over the button. */
-  .panel-head:has(> .panel-head-btn:not([hidden])) > .panel-head-lead {
-    max-width: calc(100% - var(--close-size) * 2 - 44px);
-  }
-  .panel-head-btn { position: relative; z-index: 3; }
-  .panel-head-lead h2 { min-width: 3ch; }
-  .panel-head-lead h2 { opacity: 0.75; }
   /* One letter, quiet by default — it is a property of the panel, not a
      control, so it should not compete with the title. */
   .role-badge {
@@ -395,37 +121,10 @@
     flex-shrink: 0; font-size: 0.7rem; line-height: 1; cursor: default;
     vertical-align: middle;
   }
-  /*  Leading the name now, so the gap goes on the other side of it. */
-  .role-badge + h2 { margin-left: 2px; }
   /*  In a one-cell panel the handle and badge left the title about 46px — the
       name matters more than the annotation, so the badge stands down. The
       panel is the query container (container-type: inline-size). */
   @container (max-width: 210px) { .role-badge { display: none; } }
-  /*  Reads as an annotation, not a control: no fill, and only fully legible on
-      hover. Sized off the badges beside it so the row keeps one baseline. It
-      outlives them when a tile narrows, being the one thing in the header you
-      cannot get to any other way. */
-  /*  A QUESTION MARK, NOT THE WORD.
-
-      "help" is four characters of a title bar that has room for about twelve,
-      and on a one-cell panel it was taking a third of the name. A ringed ? is
-      the same offer in one character, it is the mark everything else uses for
-      the same thing, and it stops competing with the title for the row.
-
-      Still a real link — it opens the panel's own write-up in a tab — so it
-      keeps a link's cursor and its focus ring. */
-  .panel-doc {
-    flex: 0 0 auto;
-    width: 13px; height: 13px; box-sizing: border-box;
-    display: inline-flex; align-items: center; justify-content: center;
-    font: 700 0.58rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: var(--muted); text-decoration: none; opacity: 0.5;
-    border: 1px solid currentColor; border-radius: 50%;
-    margin-left: 2px; transition: opacity 0.12s, color 0.12s;
-  }
-  .panel-doc:hover, .panel-doc:focus-visible {
-    opacity: 1; color: var(--accent2); border-color: var(--accent2);
-  }
   /*  Reads as dangerous only once you are near it: quiet in the bar, plainly
       red under the cursor. A permanently red button in a toolbar is either
       ignored or feared, and neither is useful. */
@@ -793,28 +492,6 @@
   .role-key > span { display: flex; align-items: center; gap: 5px; }
   .role-write  { color: var(--accent); border-color: var(--accent); }
   .role-filter { color: var(--accent2); border-color: var(--accent2); }
-  /*  With the title absolutely positioned it is no longer a flex item, so
-      space-between has nothing to push against and the controls collapse to
-      the left — directly under the cartouche. Pin them right instead, and hold
-      the row open so it does not lose its height entirely. */
-  .panel-head { min-height: 16px; justify-content: flex-end; flex-wrap: nowrap; }
-  .board-tile.dragging .panel-head { cursor: grabbing; }
-  .panel-head h2 {
-    margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-size: 0.66rem; font-weight: 500; opacity: 0.55; line-height: 1.3;
-    text-transform: uppercase; letter-spacing: 0.07em;
-  }
-  /* A four-way move glyph rather than the braille grip dots — it names the
-     action instead of implying only a texture to grab. */
-  .drag-handle {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 17px; height: 17px; flex-shrink: 0;
-    border: 1px solid var(--border); border-radius: 3px;
-    /* cursor:move states the affordance; the glyph needs a touch more size
-       than the grip dots did to stay legible at this scale. */
-    background: var(--field); opacity: 0.35; cursor: move; font-size: 12px; line-height: 1;
-  }
-  .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
 
   button, select, input, textarea {
     background: var(--field); color: var(--fg); border: 1px solid var(--border);
@@ -836,180 +513,12 @@
   .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
   .hint { font-size: 0.69rem; opacity: 0.45; line-height: 1.55; margin: 6px 0 0; }
   code, .hint code { color: var(--accent2); font-family: var(--mono); }
-
-  /* ---------- flyout: the panel list ---------- */
-  #boardFlyoutWrap {
-    position: fixed; top: 0; right: 0; bottom: 0; width: 300px; z-index: 60;
-    transform: translateX(100%); transition: transform 0.18s ease;
-  }
-  #boardFlyoutWrap.open { transform: none; }
-  @media (prefers-reduced-motion: reduce) { #boardFlyoutWrap { transition: none; } }
-  /*  THE VOID. The drawer is the empty slot the cartridges sit in, so it is
-      darker than anything on the board and shaded in from its edges, and the
-      cartridges read as solid things standing in it. */
-  #boardFlyout {
-    position: absolute; inset: 0;
-    background: color-mix(in srgb, #000 55%, var(--bg));
-    box-shadow: inset 10px 0 18px -8px rgba(0, 0, 0, 0.75),
-                inset 0 0 40px rgba(0, 0, 0, 0.45);
-    border-left: 1px solid color-mix(in srgb, #000 40%, var(--border));
-    padding: 10px; overflow-y: auto;
-  }
-  #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
-  #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
-  /*  AS WIDE AS THE NUMBER, WITH THE NUMBER ACTUALLY IN IT.
-
-      These were cut to 3.4em and 2.6em so they stopped reserving room for
-      values neither could hold — and then the native spinner arrows took about
-      fifteen pixels of what was left, so "220" was drawn into twenty-six
-      pixels of box and clipped. A number box you cannot read the number in is
-      worse than a long one.
-
-      The arrows go instead of the width. They are a poor control at this size
-      anyway — a four-pixel hit target you have to aim at twice — and the box
-      still takes the up and down keys, a typed value and a scroll, which is
-      every way anybody actually changes one of these.
-
-      Padding trimmed to match: at seven pixels a side, a third of the box was
-      margin. */
-  #boardFlyout input[type=number],
-  .board-card .fp input[type=number] {
-    appearance: textfield; -moz-appearance: textfield;
-    padding: 3px 5px; text-align: center;
-    font-variant-numeric: tabular-nums;
-  }
-  #boardFlyout input[type=number]::-webkit-outer-spin-button,
-  #boardFlyout input[type=number]::-webkit-inner-spin-button,
-  .board-card .fp input[type=number]::-webkit-outer-spin-button,
-  .board-card .fp input[type=number]::-webkit-inner-spin-button {
-    appearance: none; -webkit-appearance: none; margin: 0;
-  }
-  /*  Three digits for Row px, two for Columns, plus the padding. Centred, so a
-      one-digit value does not sit against the left wall of a box sized for
-      three. */
-  #boardFlyout input[type=number] { width: 4em; }
-  #boardFlyout #boardCols { width: 3em; }
-  #boardSearch { width: 100%; margin-bottom: 8px; }
-  /*  THE WAY TO EVERY PANEL THAT IS NOT OUT.
-
-      Lit like the search glass, for the same reason and in the same colour:
-      both are doors rather than switches, and a door on a page this full needs
-      to say so.
-
-      It goes RED when the board is empty. That is the one moment this tab is
-      not a convenience but the only useful thing on the page — there is
-      nothing to read, nothing to type into, and no way to put anything there
-      except through here. A slow pulse, because a still red light on an empty
-      page reads as an error rather than as an invitation. */
-  #boardFlyoutTab {
-    position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
-    padding: 8px 6px; font-size: 1.1rem; line-height: 1; border-radius: 6px 0 0 6px;
-    border-color: color-mix(in srgb, var(--go) 60%, var(--border));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 25%, transparent),
-                -3px 0 13px -2px color-mix(in srgb, var(--go) 50%, transparent);
-    transition: box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  }
-  #boardFlyoutTab:hover, #boardFlyoutTab:focus-visible {
-    border-color: var(--go); color: var(--go);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 50%, transparent),
-                -4px 0 20px -1px color-mix(in srgb, var(--go) 70%, transparent);
-  }
-  /*  Nothing on the board: this is the only way forward, so it says so. */
-  #boardFlyoutTab.empty {
-    border-color: color-mix(in srgb, var(--stop) 70%, var(--border));
-    color: var(--stop);
-    animation: tabBeacon 2.2s ease-in-out infinite;
-  }
   @keyframes tabBeacon {
     0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 30%, transparent),
                            -3px 0 10px -2px color-mix(in srgb, var(--stop) 40%, transparent); }
     50%      { box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 60%, transparent),
                            -5px 0 22px 0 color-mix(in srgb, var(--stop) 75%, transparent); }
   }
-  /*  Open, it has done its job and stops asking. */
-  #boardFlyoutWrap.open #boardFlyoutTab { animation: none; }
-  @media (prefers-reduced-motion: reduce) {
-    #boardFlyoutTab.empty { animation: none;
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 55%, transparent),
-                  -4px 0 16px -1px color-mix(in srgb, var(--stop) 65%, transparent); }
-  }
-  /*  CARTRIDGES. Each panel is a thing you pick up and plug into the board:
-      a plastic shell, rounded across the top and square at the bottom where
-      it goes in, with a notch in the top edge, a paper label set into the
-      face, and grip ridges along the bottom. */
-  .board-card {
-    --shell: color-mix(in srgb, var(--fg) 9%, var(--panel));
-    position: relative;
-    display: flex; flex-direction: column;
-    margin-bottom: 10px; padding: 9px 8px 17px;
-    cursor: grab; font-size: 0.8rem;
-    background: linear-gradient(180deg,
-      color-mix(in srgb, #fff 6%, var(--shell)) 0%, var(--shell) 30%,
-      color-mix(in srgb, #000 18%, var(--shell)) 100%);
-    border: 1px solid color-mix(in srgb, #000 45%, var(--shell));
-    border-radius: 11px 11px 3px 3px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14),
-                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-                0 3px 6px rgba(0, 0, 0, 0.55);
-    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
-  }
-  /*  The notch: a slot of void cut into the top edge. */
-  .board-card::before {
-    content: ""; position: absolute; top: -1px; left: 50%;
-    width: 34px; height: 4px; transform: translateX(-50%);
-    background: color-mix(in srgb, #000 55%, var(--bg));
-    border: 1px solid color-mix(in srgb, #000 45%, var(--shell)); border-top: 0;
-    border-radius: 0 0 3px 3px;
-  }
-  /*  Grip ridges along the bottom edge. */
-  .board-card::after {
-    content: ""; position: absolute; left: 22%; right: 22%; bottom: 5px; height: 6px;
-    background: repeating-linear-gradient(90deg,
-      rgba(0, 0, 0, 0.45) 0 2px, rgba(255, 255, 255, 0.08) 2px 3px, transparent 3px 6px);
-    border-radius: 1px; pointer-events: none;
-  }
-  .board-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent2);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
-                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
-                0 6px 12px rgba(0, 0, 0, 0.6),
-                0 0 0 1px color-mix(in srgb, var(--accent2) 35%, transparent);
-  }
-  .board-card.dragging { opacity: 0.4; transform: none; }
-  /*  The label: paper set into the shell, with the name, size and blurb. */
-  .cart-label {
-    display: flex; flex-direction: column; gap: 4px;
-    padding: 6px 7px 7px;
-    background: color-mix(in srgb, var(--fg) 4%, var(--field));
-    border: 1px solid color-mix(in srgb, #000 35%, var(--shell));
-    border-radius: 3px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .board-card, .board-card:hover { transition: none; transform: none; }
-  }
-  .board-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.35; margin-left: 28px; }
-  .cart-foot { display: flex; justify-content: flex-end; margin-top: 1px; }
-  .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
-  /*  The panel's own width x height, in the drawer card. Same treatment: two
-      digits and no arrows, rather than one digit and two arrows. */
-  .board-card .fp input[type=number] { width: 30px; font-size: 0.7rem; padding: 1px 3px; }
-  .board-card .fp-add {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; flex-shrink: 0; border: 1px solid var(--border);
-    border-radius: 3px; background: var(--field); color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
-  }
-  .board-card .fp-add:hover { opacity: 1; border-color: var(--accent2); }
-  .board-group-heading {
-    margin: 12px 0 4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; opacity: 0.55;
-  }
-  .board-group-heading:first-child { margin-top: 0; }
-  /*  Nothing to list: said in the void, not printed on an empty cartridge. */
-  .board-card-empty { font-size: 0.75rem; opacity: 0.5; padding: 10px 2px; text-align: center; }
 
   /* ---------- panel bodies ---------- */
   textarea {
@@ -1051,9 +560,6 @@
   #pallet .panel-body {
     display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0;
   }
-  .panel-head-btn { order: 98; flex-shrink: 0; padding: 0 6px; font-size: 0.7rem; line-height: 1.4; }
-  .panel-head-btn.on { border-color: var(--accent2); color: var(--accent2); }
-  .panel-head-btn[hidden] { display: none; }
   /* The log shares the bar rather than owning a line of its own; it is
      usually empty, and an empty element still reserved height. */
   /* :empty so a quiet status line costs no height at all. */
@@ -1336,171 +842,6 @@
   .tl-dot:hover { box-shadow: 0 0 0 2px var(--accent2); z-index: 2; }
   .tl-empty { font-size: 0.7rem; opacity: 0.45; }
 
-  /* ---------- focus: one panel lit, the rest turned down ---------- */
-  /*  A LIGHTNESS SHIFT, NOT A TRANSPARENCY.
-
-      Fading a panel would let the board show through it, so a dimmed panel
-      would take the colour of whatever it is sitting on and stop looking like
-      a panel at all. `brightness` turns the whole thing down instead, the
-      picture, the inputs and the text with it, exactly as though that panel
-      were further from the lamp. In the Brick theme the unlit ones read as
-      bricks in shadow rather than as ghosts.
-
-      One filter on the panel rather than a rule per token, so a panel nobody
-      has themed still dims, and nothing has to be kept in step with the eight
-      colours. */
-  body.spotlight .panel { filter: brightness(0.46); transition: filter 0.18s ease; }
-  body.spotlight .panel.is-active { filter: none; }
-  @media (prefers-reduced-motion: reduce) { body.spotlight .panel { transition: none; } }
-
-  /* ---------- docks ---------- */
-  /*  A rail is fixed to an edge of the window and the page is padded out of
-      its way, so the board never has to know it exists. Above the board and
-      below the flyout, which is the only thing that should cover a dock. */
-  /*  The title is a cartouche sitting 7px ABOVE its panel's top border, so a
-      rail has to leave room for it or every docked panel is decapitated. Same
-      reason the gap down a vertical rail is wider than the one across a
-      horizontal one: stacked panels each need that clearance, side by side
-      ones share the rail's own top padding. */
-  .dock {
-    position: fixed; z-index: 50; display: flex; gap: 8px; padding: 13px 8px 8px;
-    background: var(--bg); border: 0 solid var(--border);
-    overflow: auto; align-items: stretch;
-  }
-  .dock-left, .dock-right { top: 0; bottom: 0; flex-direction: column; gap: 16px; }
-  .dock-top, .dock-bottom { left: 0; right: 0; flex-direction: row; }
-  .dock-left { left: 0; border-right-width: 1px; }
-  .dock-right { right: 0; border-left-width: 1px; }
-  .dock-top { top: 0; border-bottom-width: 1px; }
-  .dock-bottom { bottom: 0; border-top-width: 1px; }
-  /*  Panels share the rail equally along it and fill it across it, which is
-      what a split pane does and what two docked panels should do. */
-  /*  overflow stays VISIBLE, like a tile's: the body is what scrolls, and a
-      panel that clips itself cuts the title off its own top border. */
-  .dock > .panel { flex: 1 1 0; min-width: 120px; min-height: 0; margin: 0; }
-  /*  A wide table in a shallow rail scrolls sideways inside its own box rather
-      than stretching the panel past the edge of the window. */
-  .dock > .panel .table-wrap, .dock > .panel table { max-width: 100%; }
-  /*  The grab edge. Sits inside the rail on the side facing the page, four
-      pixels wide, and only shows itself under the pointer. */
-  .dock-grip { position: absolute; z-index: 1; background: transparent; }
-  .dock-grip:hover { background: var(--accent2); opacity: 0.5; }
-  /*  The one being carried, so an exchange reads as an exchange. */
-  .dock > .panel.dock-moving { opacity: 0.55; outline: 1px dashed var(--accent2); }
-  /*  Between two panels: divides the rail rather than resizing it. Invisible
-      until wanted, like the rail's own grip. */
-  .dock-split { flex: 0 0 7px; align-self: stretch; background: transparent; }
-  .dock-split:hover, .dock-split.live { background: var(--accent2); opacity: 0.45; }
-  .dock-top .dock-split, .dock-bottom .dock-split { cursor: col-resize; }
-  .dock-left .dock-split, .dock-right .dock-split { cursor: row-resize; }
-  .dock-left .dock-grip, .dock-right .dock-grip { top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
-  .dock-top .dock-grip, .dock-bottom .dock-grip { left: 0; right: 0; height: 5px; cursor: ns-resize; }
-  .dock-left .dock-grip { right: 0; }
-  .dock-right .dock-grip { left: 0; }
-  .dock-top .dock-grip { bottom: 0; }
-  .dock-bottom .dock-grip { top: 0; }
-
-  /*  The drop targets. Out of the way until a panel is moving, then a plus at
-      each edge of the window. */
-  #dockTargets { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
-  .dock-target {
-    position: fixed; display: none; place-items: center;
-    width: 34px; height: 34px; font-size: 1.1rem; line-height: 1;
-    border: 1px dashed var(--accent2); border-radius: 6px;
-    background: color-mix(in srgb, var(--accent2) 14%, var(--panel));
-    color: var(--accent2); cursor: copy; pointer-events: auto;
-  }
-  #dockTargets.live .dock-target { display: grid; }
-  .dock-target.over { background: var(--accent2); color: var(--bg); border-style: solid; }
-  .dock-target-top, .dock-target-bottom { left: 50%; margin-left: -17px; }
-  .dock-target-left, .dock-target-right { top: 50%; margin-top: -17px; }
-  /*  The plus on the end of a rail, which is how an edge takes a second panel.
-      Thin along the rail, full width across it. */
-  /*  The same hole as an empty board cell, since it is the same thing: a place
-      on the wall with no brick in it yet. */
-  .dock-slot {
-    flex: 0 0 22px; border: 1px dashed var(--border); border-radius: 4px;
-    background: color-mix(in srgb, #000 42%, var(--bg));
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
-    color: inherit; opacity: 0.5; cursor: copy;
-    font-size: 0.9rem; line-height: 1;
-  }
-  .dock-slot:hover, .dock-slot.over { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
-  body.panel-dragging .dock-slot { opacity: 0.8; border-color: var(--accent2); }
-
-  .dock-pop {
-    border: 1px solid transparent; background: none; color: inherit;
-    font-size: 0.72rem; line-height: 1; padding: 1px 4px; border-radius: 3px;
-    cursor: pointer; opacity: 0.5;
-  }
-  .dock-pop:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
-  /*  Two controls on a docked panel, each meaning one thing: ⊞ puts it back on
-      the board, ✕ takes it off the board altogether, exactly as ✕ does
-      everywhere else. Hiding the ✕ while docked made the Promenade look
-      unremovable without first undocking it. */
-  .panel:not(.is-docked) .dock-pop { display: none; }
-
-
-  /* ---------- the minimap ---------- */
-  /*  Bottom right, clear of the 🧰 tab, which sits centred on the right edge.
-
-      SOLID UNTIL YOU HAVE USED IT. It opened at 0.42 and only came up to full
-      on hover, which is backwards for a thing whose whole job is to be findable
-      from across the page: a map you cannot read is not a way back, and you
-      cannot hover something you have not noticed.
-
-      So it starts solid and stays solid, and the fade only begins once you have
-      actually been on it and come off again. After that it holds for a beat and
-      goes quiet slowly, because it has done its job and you are looking
-      somewhere else. Going back onto it brings it up at once — dimming is
-      allowed to be leisurely, waking is not. */
-  #miniMap {
-    position: fixed; right: 10px; bottom: 10px; z-index: 55;
-    background: color-mix(in srgb, var(--panel) 88%, transparent);
-    border: 1px solid var(--border); border-radius: 5px; padding: 5px;
-    width: 104px; opacity: 1; transition: opacity 0.15s;
-    backdrop-filter: blur(2px);
-  }
-  /*  Set when the pointer leaves, cleared the moment it comes back. The delay
-      lives in the transition rather than in a timer, so moving away and
-      straight back cancels it without anything having to be cleaned up. */
-  #miniMap.dozing { opacity: 0.42; transition: opacity 1.4s ease-in 0.7s; }
-  #miniMap:hover { opacity: 1; transition: opacity 0.12s; }
-  #miniMap[hidden] { display: none; }
-  .mm-grid { display: grid; gap: 2px; width: 100%; }
-  .mm-cell {
-    border: 1px solid var(--border); border-radius: 2px; background: var(--field);
-    padding: 0; min-width: 0; min-height: 0; cursor: pointer;
-  }
-  .mm-cell:hover { border-color: var(--accent2); background: var(--tint); }
-  /*  The part of the board the window is over. Filled rather than outlined,
-      because at nine pixels across an outline is the whole block. */
-  .mm-cell.here { background: color-mix(in srgb, var(--accent2) 32%, var(--field));
-                  border-color: color-mix(in srgb, var(--accent2) 55%, var(--border)); }
-  /*  The block's name, beside the pointer rather than in a line under the map,
-      so your eye does not have to leave the block to read it. Up and to the
-      left of the cursor, because the map lives in the bottom-right corner and
-      anything placed right or below would run off the screen. */
-  #mmTip {
-    position: fixed; z-index: 70; pointer-events: none;
-    transform: translate(calc(-100% - 10px), calc(-100% - 6px));
-    font-size: 0.66rem; line-height: 1.2; white-space: nowrap;
-    padding: 3px 6px; border-radius: 3px;
-    background: var(--panel); color: var(--fg);
-    border: 1px solid var(--accent2);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  }
-  /*  Two seconds of "this one", for the end of a smooth scroll. */
-  .mm-ping { outline: 2px solid var(--accent2); outline-offset: -2px; }
-  /*  The pairing, both ways: the block under the pointer lights its panel, and
-      the panel under the pointer lights its block. Softer than the ping, which
-      has to be findable across a whole screen, and distinct from .here, which
-      is a fact about the scroll rather than about the pointer. */
-  .mm-cell.lit { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
-  .panel.mm-lit { outline: 1px solid var(--accent2); outline-offset: -1px; }
-  @media (prefers-reduced-motion: reduce) {
-    #miniMap, #miniMap.dozing, #miniMap:hover { transition: none; }
-  }
 
   /* ---------- story ---------- */
   .st-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 4px; }
@@ -2139,156 +1480,6 @@
   .th-sign-row select:focus, .th-sign-row input[type="number"]:focus {
     border-color: var(--accent2); outline: none;
   }
-  /*  A SHEET YOU PULL ACROSS A PANEL, AND THE TAB YOU PULL IT BY.
-
-      Over the body and nothing else, so the header stays reachable: you must
-      always be able to take the cover off, move the tile or close it without
-      first uncovering it.
-
-      It BLOCKS by being there. Not `pointer-events: none` with a guard
-      somewhere, not a flag the panel checks — an actual element over the
-      canvas that receives the press instead of the thing underneath. The panel
-      beneath does not know it exists and nothing about its state changes: a
-      Promenade under a cover goes on ticking, a map keeps its centre, a
-      half-typed brick stays half-typed.
-
-      Three elements. The SHADE is a clipped frame the size of the body — a
-      curtain leaves the window, it does not leave the house. The SHEET slides
-      inside it, translated rather than resized so the GPU does the work. The
-      TAB is a sibling of the shade, outside the clip, so it can stand proud of
-      the leading edge the way a real one does. */
-  .panel-shade {
-    position: absolute; z-index: 6; overflow: hidden;
-    border-radius: calc(var(--panel-radius) - 2px);
-    pointer-events: none;
-  }
-  .panel-cover {
-    position: absolute; inset: 0; pointer-events: auto;
-    border-radius: calc(var(--panel-radius) - 2px);
-    cursor: grab;
-    touch-action: none;
-    will-change: transform;
-  }
-  .panel-cover.sliding { cursor: grabbing; transition: none; }
-  .panel-cover:not(.sliding) { transition: transform 0.2s ease-out; }
-  /*  What it says while it is shut. Faint, because a cover is not a message,
-      and gone entirely on glass — you can see the panel through it, which says
-      the same thing better. */
-  .panel-cover > span {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
-    opacity: 0.22; white-space: nowrap; pointer-events: none;
-  }
-  .panel-cover[data-mat="frosted"] > span,
-  .panel-cover[data-mat="smoked"] > span { opacity: 0.3; }
-
-  /*  THREE MATERIALS, because what you want a cover to DO differs.
-
-      Frosted and smoked still show you the panel is alive under them, which is
-      what you want over something that moves. Card does not, which is
-      what you want when the point is to stop looking at it. */
-  /*  Glass. `backdrop-filter` blurs what is behind rather than painting over
-      it, so the street under it goes on moving as a smear of its own colours.
-      The hairline and the sheen are what stop it reading as a bug. */
-  .panel-cover[data-mat="frosted"] {
-    background: linear-gradient(150deg,
-      rgba(255,255,255,0.16), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.12));
-    backdrop-filter: blur(7px) saturate(0.85);
-    -webkit-backdrop-filter: blur(7px) saturate(0.85);
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
-  }
-  .panel-cover[data-mat="smoked"] {
-    background: linear-gradient(150deg,
-      rgba(10,8,14,0.62), rgba(10,8,14,0.44) 45%, rgba(10,8,14,0.6));
-    backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
-    -webkit-backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .panel-cover[data-mat="card"] {
-    background:
-      repeating-linear-gradient(135deg,
-        rgba(255,255,255,0.035) 0 6px, rgba(255,255,255,0) 6px 12px),
-      var(--panel);
-    border: 1px solid var(--border);
-  }
-
-  /*  THE TAB.
-
-      A sibling of the shade rather than a child, so the clip that keeps the
-      sheet inside the panel does not also cut the handle off. It straddles the
-      leading edge: half on the sheet, half on whatever has been uncovered, so
-      there is always something to take hold of at either extreme.
-
-      Ridged, because a grip that is not ridged is a rectangle. */
-  .panel-tab {
-    position: absolute; z-index: 7; width: 17px; border-radius: 4px;
-    will-change: transform;
-    cursor: grab; touch-action: none;
-    background: linear-gradient(90deg, #9aa1aa, #6f747c 55%, #878e97);
-    border: 1px solid rgba(0,0,0,0.5);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35);
-    display: flex; flex-direction: column; align-items: center;
-    overflow: hidden;
-  }
-  /*  THE HANDLE TRAVELS WITH THE SHEET.
-
-      The sheet has always eased open and shut; the tab's position was written
-      straight into style.left, so it jumped to the end while the sheet was
-      still on its way. A handle that arrives before the thing it is attached
-      to reads as two objects rather than one.
-
-      Same duration and same curve as the sheet — and the same PROPERTY, which
-      is the part that actually matters. The tab moved on `left` while the
-      sheet moved on `transform`: one is laid out on the main thread and the
-      other is handed to the compositor, so even at identical timings the two
-      are stepped by different clocks and visibly drift apart. Matching the
-      numbers was not enough; they had to be the same kind of animation.
-
-      Both are called off while you are dragging — during a drag the position
-      is the pointer's, and easing toward the pointer is lag rather than
-      polish. */
-  .panel-tab:not(.sliding) { transition: transform 0.2s ease-out; }
-  .panel-tab.sliding { cursor: grabbing; transition: none; }
-  .panel-tab:hover { border-color: var(--accent2); }
-  @media (prefers-reduced-motion: reduce) {
-    .panel-cover:not(.sliding), .panel-tab:not(.sliding) { transition: none; }
-  }
-  /*  THE UPPER HALF IS THE GRIP. Ridged, because a handle that is not ridged
-      is a rectangle. Press it and the cover throws fully open or shut. */
-  .tab-grip {
-    flex: 1; width: 100%;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .tab-grip::after {
-    content: ""; width: 5px; height: 60%; max-height: 26px; border-radius: 1px;
-    background: repeating-linear-gradient(0deg,
-      rgba(0,0,0,0.4) 0 1px, rgba(255,255,255,0.22) 1px 3px);
-  }
-  /*  THE LOWER SECTION IS WHAT IT IS MADE OF.
-
-      A swatch of the material itself, so the answer to "which of the four am I
-      on" is the thing you press to change it — there is no label to read and
-      nothing to remember. Cut off by a groove so it reads as a separate part
-      of the handle rather than as the end of the ridges. */
-  .tab-mat {
-    flex: none; width: 100%; height: 17px;
-    border-top: 1px solid rgba(0,0,0,0.55);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
-    cursor: pointer;
-  }
-  .tab-mat[data-mat="frosted"] {
-    background: linear-gradient(145deg, rgba(255,255,255,0.75), rgba(255,255,255,0.3));
-  }
-  .tab-mat[data-mat="smoked"] {
-    background: linear-gradient(145deg, #4a4550, #211d28);
-  }
-  .tab-mat[data-mat="card"] {
-    background:
-      repeating-linear-gradient(135deg,
-        rgba(255,255,255,0.12) 0 3px, rgba(255,255,255,0) 3px 6px),
-      #2a2233;
-  }
 
   /*  A BIG ROUND BUTTON.
 
@@ -2413,64 +1604,6 @@
       room for both, the dial is the control, and the caption says what the
       button's own tooltip says. */
   .reset-note[hidden] { display: none; }
-  /*  BELOW THE TITLE LINE, on the side the cover comes from.
-
-      It was in the header beside ⟳ and ✕, which are both things you do TO the
-      panel — reload it, remove it. Covering is not one of those: it is a thing
-      you do to your view of it, it has a handle of its own down the left edge,
-      and it belongs with that rather than with the destructive pair.
-
-      So it sits under the title at the top left, where the sheet appears from.
-      Absolutely placed so it costs the header no width and the body no row,
-      and it carries the panel's own background so it reads over whatever is
-      underneath. */
-  /*  ON THE TITLE LINE, AFTER THE ?.
-
-      Below it, floating over the body's top-left corner, it read as a checkbox
-      somebody had left on the panel — a lone bordered square with nothing
-      beside it and no row to belong to.
-
-      In the cartouche it is plainly one of the marks that annotate the panel,
-      which is what it is: the badges say what this panel can do, the ? offers
-      to explain it, and this covers it. Last in that line because it is the
-      only one of the three you press.
-
-      Sized and weighted like the badges beside it rather than like a button,
-      so the title bar stays a line of marks instead of becoming a toolbar. */
-  .tile-cover {
-    flex: 0 0 auto;
-    width: 13px; height: 13px; box-sizing: border-box;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 0.58rem; line-height: 1; padding: 0;
-    border: 1px solid transparent; background: none; color: inherit;
-    border-radius: 2px; cursor: pointer; opacity: 0.4;
-    margin-left: 1px;
-    transition: opacity 0.12s, color 0.12s, border-color 0.12s;
-  }
-  .tile-cover:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
-  .tile-cover.on { opacity: 1; color: var(--accent); border-color: var(--accent); }
-  /*  THE SAME BUTTON AS ✕, WITH A DIFFERENT GLYPH.
-
-      It was a rounded rectangle with no fill beside a solid disc, so two
-      controls that sit together and do the same KIND of thing — act on this
-      panel — looked like they came from different parts of the page.
-
-      Same disc, same border, same size, same trick with the colour: the fill
-      is solid panel and only the glyph is faint, because fading the whole
-      element fades the fill with it and whatever is underneath shows through
-      the circle that is supposed to be masking it. Placed beside ✕ rather than
-      on the corner, since only one of them can have the corner. */
-  .tile-reload {
-    position: absolute; z-index: 3;
-    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
-    right: calc(var(--panel-radius) + var(--close-size) / 2 + 3px - var(--panel-border));
-    width: var(--close-size); height: var(--close-size); padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
-    font-size: 0.7rem; line-height: 1; cursor: pointer;
-    color: color-mix(in srgb, var(--fg) 52%, transparent);
-  }
-  .tile-reload:hover { border-color: var(--accent2); color: var(--accent2); }
   /*  Worth signposting. Hollow when it is not, filled and in the verified
       colour when it is, and unpressable when a star on the brick already says
       so — the pile outranks a click, and saying that with a disabled control
@@ -2709,43 +1842,7 @@
 </head>
 <body>
 
-<div class="topbar">
-  <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
-  <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.
-    <!-- Next to the tagline, which is where someone who does not yet know what
-         this is has just finished reading. The per-panel “?” answers “what is
-         THIS box”; this answers “what is any of this”. -->
-    <a class="top-guide" href="doc/quick-guide.html" target="_blank" rel="noopener"
-       title="what a brick is, what the panels do, and how to keep your work safe">quick guide</a></p>
-  <!-- Same filter state as the Filter panel's search, reachable without it. -->
-  <!-- The autosave has no button, so it needs a line saying it happened. -->
-  <span class="save-state" id="saveState" hidden></span>
-  <label class="top-auto" title="darken every panel except the one you are working in"><input type="checkbox" id="spotlight">focus</label>
-  <label class="top-auto"><input type="checkbox" id="autoSave" checked>auto</label>
-  <button type="button" id="quickSave" class="top-btn">Save to browser</button>
-  <button type="button" id="quickDownload" class="top-btn">Export</button>
-  <!-- Beside Export on purpose: the safe way out sits next to the
-       destructive one, so the escape route is already under the cursor. -->
-  <button type="button" id="quickClear" class="top-btn danger"
-          title="empty the pile and put every panel back as it started">Clear all</button>
-  <div class="topsearch" id="topsearch">
-    <button id="topsearchBtn" title="search the pile">&#128269;</button>
-  </div>
-</div>
-
 <div id="board"></div>
-
-<!-- The search, across the whole page. Outside .topbar because it is fixed to
-     the window rather than laid out in a row, and it must sit over the board
-     rather than push it down. -->
-<div id="topsearchBar">
-  <!-- The sheet is the full width; what is ON it is not. See .ts-row. -->
-  <div class="ts-row">
-    <input type="text" id="topsearchInput" placeholder="find in the text&hellip;" spellcheck="false">
-    <span class="ts-count" data-el="tscount"></span>
-    <button type="button" id="topsearchClose" title="close the search">&times;</button>
-  </div>
-</div>
 
 <div id="boardFlyoutWrap">
   <button type="button" id="boardFlyoutTab" title="show/hide the panel list">&#129520;</button>
@@ -2990,6 +2087,41 @@
 <!-- One button and nothing else. A panel this size has room for a control or
      for an explanation of it, not both, and the button's own words plus the
      dialog it opens are the explanation. -->
+<!--  THE PROJECT PANEL: what used to be the top of the page. The name and what
+      it is, the search across every panel, and the things you do to the pile
+      as a whole — keep it, export it, clear it — plus focus mode. A panel, so
+      it can be moved, docked, covered or put away like everything else. -->
+<template id="tpl-project">
+  <div class="pj">
+    <div class="pj-title">
+      <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
+      <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.
+        <a class="top-guide" href="doc/quick-guide.html" target="_blank" rel="noopener"
+           title="what a brick is, what the panels do, and how to keep your work safe">quick guide</a>
+        <!-- The grid these panels sit on, on its own: board/board.js + board.css. -->
+        <a class="top-guide" href="board/demo.html"
+           title="the panel board on its own, with a guide to building panels">board demo</a></p>
+    </div>
+    <!-- The same filter the Filter panel's search box writes: one search, two ways in. -->
+    <div class="pj-search">
+      <input type="text" id="topsearchInput" placeholder="search the pile&hellip;" spellcheck="false">
+      <span class="ts-count" data-el="tscount"></span>
+    </div>
+    <div class="pj-row">
+      <label class="top-auto" title="darken every panel except the one you are working in"><input type="checkbox" id="spotlight">focus</label>
+      <label class="top-auto"><input type="checkbox" id="autoSave" checked>auto</label>
+      <button type="button" id="quickSave" class="top-btn">Save to browser</button>
+      <button type="button" id="quickDownload" class="top-btn">Export</button>
+      <!-- Beside Export on purpose: the safe way out sits next to the
+           destructive one, so the escape route is already under the cursor. -->
+      <button type="button" id="quickClear" class="top-btn danger"
+              title="empty the pile and put every panel back as it started">Clear all</button>
+      <!-- The autosave has no button, so it needs a line saying it happened. -->
+      <span class="save-state" id="saveState" hidden></span>
+    </div>
+  </div>
+</template>
+
 <template id="tpl-reset">
   <!-- The dial and its caption, stacked. The caption is outside the button
        because a circle is a bad shape to set a line of text in: it wants the
@@ -3010,6 +2142,8 @@
 <template id="tpl-notes"><div class="issues" data-el="issues"></div></template>
 <template id="tpl-reference"><div data-el="ref"></div></template>
 
+<script>window.BOARD_NS = "brick-by-brick:";</script>
+<script src="board/board.js"></script>
 <script>
 "use strict";
 /* ==========================================================================
@@ -3702,8 +2836,7 @@ function V() { return (state.model && state.model.view) || state.model; }
    -------------------------------------------------------------------------- */
 const TEXT_KEY = "brick-by-brick:text:v1";
 const AUTOSAVE_KEY = "brick-by-brick:autosave:v1";
-const BOARD_KEY = "brick-by-brick:board:v2";
-const FOOTPRINT_KEY = "brick-by-brick:footprints:v2";
+//  BOARD_KEY and FOOTPRINT_KEY come from board/board.js (same keys as ever).
 const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
 const MAPSOURCE_KEY = "brick-by-brick:mapsource:v1";
 const THEME_KEY = "brick-by-brick:theme:v1";     // the one in use
@@ -3854,31 +2987,22 @@ function loadMapSource() {
     in its temporal dead zone at that point — which threw and took the whole
     boot with it. */
 function syncSearchInputs() {
-  const wrap = document.getElementById("topsearch");
-  const bar = document.getElementById("topsearchBar");
   const inp = document.getElementById("topsearchInput");
-  if (!wrap || !bar || !inp) return;
+  if (!inp) return;                         // the Project panel is not on the board
+  const wrap = inp.closest(".pj-search");
   const text = state.filter.text || "";
   if (document.activeElement !== inp && inp.value !== text) inp.value = text;
-  //  The glass stays lit while a search is on, because the bar it belongs to
-  //  may be shut and a filter nobody can see is a filter nobody can undo.
-  wrap.classList.toggle("active", !!text);
-  bar.classList.toggle("active", !!text);
-  // A search with text in it must not close and hide what it is doing.
-  if (text) bar.classList.add("open");
+  //  Lit while a search is on: a filter nobody can see is a filter nobody can undo.
+  if (wrap) wrap.classList.toggle("active", !!text);
 
   /*  WHAT IT FOUND, off the same numbers the Filter panel reports.
 
       `view.stats` is the narrowed pile and `model.stats` is the whole of it,
       which is the pairing the Filter panel already prints as "3 of 61 bricks".
-      Saying it here as well means the answer is beside the question rather
-      than in a panel that may not even be on the board.
-
       `view.active` rather than the text alone: a search is one of several
       things that can narrow the pile, and the stats describe all of them
-      together. Showing a count that ignored the rest would be a number that
-      disagreed with the board. */
-  const out = bar.querySelector('[data-el="tscount"]');
+      together. */
+  const out = wrap && wrap.querySelector('[data-el="tscount"]');
   if (out) {
     const view = state.model && state.model.view;
     const total = (state.model && state.model.stats && state.model.stats.bricks);
@@ -3935,8 +3059,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
    kind of object, so a viz gets every affordance a core panel has: place,
    move, resize, remove.
    -------------------------------------------------------------------------- */
-const panels = new Map();       // id -> {id, title, help, group, render, tpl}
-const FOOTPRINTS = {};          // id -> {name, desc, w, h, group}
+//  panels and FOOTPRINTS, the panel registry, live in board/board.js.
 /*  What a panel does to state, not what it looks like.
       write  — changes the pile (state.text / GAZETTEER)
       filter — changes what is in view (state.filter)
@@ -4066,6 +3189,11 @@ window.Brick = Brick;
 let booted = false;
 
 /* ---------- core panels ---------- */
+/*  What used to be the top of the page: name, search, save, export, clear. */
+definePanel({ role: "write", id: "project", title: "Project", tpl: "tpl-project", w: 2, h: 1,
+  help: "The name, the search across every panel, and saving, exporting or clearing the pile.",
+  render() { syncSearchInputs(); showSaved(); } });
+
 definePanel({ role: "write", id: "pallet", title: "The Pallet", tpl: "tpl-pallet", w: 1, h: 2,
   headButtons: [
     { act: "menu", label: "\u2630", title: "pile actions" },
@@ -19946,203 +19074,52 @@ function renderMapStyle(body) {
 }
 
 /* --------------------------------------------------------------------------
-   THE BOARD
+   THE BOARD lives in board/board.js. This is Brick by Brick's own starting
+   layout, handed to it before loadBoard() runs.
    -------------------------------------------------------------------------- */
-const DEFAULT_BOARD = {
+const BRICK_DEFAULT_BOARD = {
   cols: 4, rowUnit: 220,
   tiles: [
-    { id: "builder",        x: 0, y: 0, w: 1, h: 2 },
-    { id: "pallet",         x: 1, y: 0, w: 1, h: 2 },
-    { id: "classification", x: 2, y: 0, w: 1, h: 2 },
-    { id: "gazetteer",      x: 3, y: 0, w: 1, h: 1 },
-    { id: "count",          x: 3, y: 1, w: 1, h: 1 },
-    { id: "filter",         x: 0, y: 2, w: 1, h: 1 },
-    { id: "entities",       x: 1, y: 2, w: 2, h: 1 },
-    { id: "notes",          x: 3, y: 2, w: 1, h: 1 },
-    { id: "document",       x: 0, y: 3, w: 1, h: 2 },
-    { id: "viz-map",        x: 1, y: 3, w: 3, h: 2 },
-    { id: "timeline",       x: 0, y: 5, w: 4, h: 1 },
-    { id: "reference",      x: 0, y: 6, w: 4, h: 1 },
+    { id: "project",        x: 0, y: 0, w: 2, h: 1 },
+    { id: "builder",        x: 0, y: 1, w: 1, h: 2 },
+    { id: "pallet",         x: 1, y: 1, w: 1, h: 2 },
+    { id: "classification", x: 2, y: 1, w: 1, h: 2 },
+    { id: "gazetteer",      x: 3, y: 1, w: 1, h: 1 },
+    { id: "count",          x: 3, y: 2, w: 1, h: 1 },
+    { id: "filter",         x: 0, y: 3, w: 1, h: 1 },
+    { id: "entities",       x: 1, y: 3, w: 2, h: 1 },
+    { id: "notes",          x: 3, y: 3, w: 1, h: 1 },
+    { id: "document",       x: 0, y: 4, w: 1, h: 2 },
+    { id: "viz-map",        x: 1, y: 4, w: 3, h: 2 },
+    { id: "timeline",       x: 0, y: 6, w: 4, h: 1 },
+    { id: "reference",      x: 0, y: 7, w: 4, h: 1 },
   ],
 };
+setDefaultBoard(BRICK_DEFAULT_BOARD);
 
-let board = JSON.parse(JSON.stringify(DEFAULT_BOARD));
-
-const boardEl = () => el("board");
-const ghostEl = () => el("boardGhost");
-
-function loadBoard() {
-  let raw;
-  try { raw = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); } catch (e) { raw = null; }
-  if (!raw || typeof raw !== "object") return;
-  const cols = Math.max(1, Math.min(12, Math.round(raw.cols) || 4));
-  const rowUnit = Math.max(80, Math.min(600, Math.round(raw.rowUnit) || 220));
-  const seen = new Set(), tiles = [];
-  for (const t of Array.isArray(raw.tiles) ? raw.tiles : []) {
-    if (!t || !FOOTPRINTS[t.id] || seen.has(t.id)) continue;
-    const w = Math.max(1, Math.min(cols, Math.round(t.w) || FOOTPRINTS[t.id].w));
-    const h = Math.max(1, Math.round(t.h) || FOOTPRINTS[t.id].h);
-    const x = Math.max(0, Math.min(cols - w, Math.round(t.x) || 0));
-    const y = Math.max(0, Math.round(t.y) || 0);
-    // A corrupt board degrades to a partial one: an overlap is dropped rather
-    // than repaired, never left to render on top of another tile.
-    if (tiles.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y)) continue;
-    seen.add(t.id);
-    tiles.push({ id: t.id, x, y, w, h });
-  }
-  board = { cols, rowUnit, tiles };
-}
-
-function saveBoard() {
-  try { localStorage.setItem(BOARD_KEY, JSON.stringify(board)); } catch (e) { /* unavailable */ }
-}
-function saveFootprints() {
-  try {
-    const out = {};
-    for (const id in FOOTPRINTS) out[id] = { w: FOOTPRINTS[id].w, h: FOOTPRINTS[id].h };
-    localStorage.setItem(FOOTPRINT_KEY, JSON.stringify(out));
-  } catch (e) { /* unavailable */ }
-}
-function loadFootprints() {
-  let raw;
-  try { raw = JSON.parse(localStorage.getItem(FOOTPRINT_KEY) || "null"); } catch (e) { return; }
-  if (!raw) return;
-  for (const id in raw) {
-    if (!FOOTPRINTS[id]) continue;
-    FOOTPRINTS[id].w = Math.max(1, Math.min(12, Math.round(raw[id].w) || FOOTPRINTS[id].w));
-    FOOTPRINTS[id].h = Math.max(1, Math.min(12, Math.round(raw[id].h) || FOOTPRINTS[id].h));
-  }
-}
-
-function isOnBoard(id) { return board.tiles.some(t => t.id === id); }
-function boardRows() { return board.tiles.reduce((m, t) => Math.max(m, t.y + t.h), 0) + 2; }
-function overlaps(a, x, y, w, h) {
-  return board.tiles.some(t => t !== a && x < t.x + t.w && x + w > t.x && y < t.y + t.h && y + h > t.y);
-}
-
-/* Cols shrinking can strand a tile past the new edge. Repacked in reading order
-   with a simple skyline scan — first free slot wins — rather than trying to
-   preserve exact positions that no longer fit. Only on an explicit column
-   change, never on an ordinary drop. */
-function repackForCols(cols) {
-  const ordered = [...board.tiles].sort((a, b) => a.y - b.y || a.x - b.x);
-  const placed = [];
-  for (const t of ordered) {
-    const w = Math.min(t.w, cols);
-    let x = 0, y = 0;
-    outer:
-    for (y = 0; y < 999; y++) {
-      for (x = 0; x <= cols - w; x++) {
-        if (!placed.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + t.h > o.y)) break outer;
-      }
-    }
-    placed.push({ id: t.id, x, y, w, h: t.h });
-  }
-  board.tiles = placed;
-}
-
-// Builds the panel element once; afterwards it is moved between tiles and the
-// store, never rebuilt, so an off-board panel keeps its scroll and its input.
-/*  EVERY PANEL EVER BUILT, WHETHER IT IS IN THE DOCUMENT OR NOT.
-
-    getElementById cannot see a detached node, and a board render detaches
-    plenty of them: tearing down a tile wrapper takes the panel inside it out
-    of the document in the same call. renderBoardTiles already knew that — it
-    looks every panel up BEFORE it removes anything, and says so in a comment.
-
-    renderDocks did not. So docking a panel ran the board render first, which
-    detached the panel along with its wrapper, and then asked getElementById
-    for it: nothing. It built a fresh, empty one and hung that in the rail,
-    dropping the live panel on the floor — for the Promenade that is a Pixi
-    renderer, a ticker and the whole cast, gone, leaving a blank rectangle.
-
-    One map fixes the class of bug rather than that one instance of it: a
-    panel's node is looked up here, and a detached node is still the panel. */
-const PANEL_NODES = new Map();
-function panelNode(id) {
-  const live = document.getElementById(id);
-  if (live) return live;
-  const kept = PANEL_NODES.get(id);
-  if (kept) return kept;
-  const def = panels.get(id);
-  return def ? buildPanel(def) : null;
-}
-
-function buildPanel(def) {
-  let node = document.getElementById(def.id) || PANEL_NODES.get(def.id);
-  if (node) return node;
-
-  node = document.createElement("section");
-  node.className = "panel";
-  node.id = def.id;
-
-  const head = document.createElement("div");
-  head.className = "panel-head";
-  head.innerHTML =
-    '<span class="panel-head-lead">' +
-      '<span class="drag-handle" title="drag to move this tile">\u2725</span>' +
-      /*  BEFORE the title, not after it.
-
-          The badge is the only coloured thing in a panel header — W in the
-          verified colour for one that writes to your pile, F in the active
-          colour for one that can narrow every other panel. That is the fact
-          you scan a board for: which of these can change what I am looking at.
-          Trailing the name it was found by reading; leading it, the whole
-          column of headers can be read down in one pass.
-
-          It also stops the title's own truncation from eating it, which it did
-          on any panel narrow enough to ellipsise. */
-      (def.roles || ["read"]).map(r =>
-        '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join("") +
-      "<h2>" + esc(def.title) + "</h2>" +
-      (def.wip ? '<span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
-      // …and, where one exists, the way to the panel's own write-up.
-      /*  The word was "help"; the mark is "?". The title attribute still spells
-          it out, because a lone glyph has to say what it is on hover. */
-      (docHref(def.id) ? '<a class="panel-doc" href="' + docHref(def.id) + '"' +
-        ' target="_blank" rel="noopener" aria-label="how ' + esc(def.title) +
-        ' works" title="how ' + esc(def.title) + ' works">?</a>' : "") +
-    "</span>" +
-    // Panel-declared controls share the header row with the × rather than
-    // costing the body a bar of its own.
-    (def.headButtons || []).map(b =>
-      '<button class="panel-head-btn" data-act="' + b.act + '"' +
-      (b.hidden ? " hidden" : "") + ' title="' + esc(b.title) + '">' +
-      b.label + "</button>").join("");
-  node.appendChild(head);
-
-  const body = document.createElement("div");
-  body.className = "panel-body";
-  // A panel whose template is missing must fail as one broken tile, not as a
-  // blank page — the board is the only way back to everything else.
-  if (def.tpl) {
-    const tpl = el(def.tpl);
-    if (tpl) body.appendChild(tpl.content.cloneNode(true));
-    else body.innerHTML = '<p class="hint" style="color:var(--bad)">missing template “' + esc(def.tpl) + '”</p>';
-  }
-  node.appendChild(body);
-
-  // Header buttons sit outside .panel-body, so the body-scoped wiring below
-  // cannot see them; route them through the same action handler.
-  head.querySelectorAll(".panel-head-btn").forEach(btn => {
-    btn.onclick = () => {
-      if (def.id === "pallet") palletAction(btn.dataset.act, body.querySelector("textarea"));
-      else if (btn.dataset.act === "gazmenu") {
-        const menu = body.querySelector('[data-el="menu"]');
-        menu.hidden = !menu.hidden;
-        btn.classList.toggle("on", !menu.hidden);
-      }
-    };
-  });
-
-  wirePanelBody(def, body);
-  PANEL_NODES.set(def.id, node);
-  return node;
-}
-
-// Body wiring that must survive re-renders lives here, once per panel.
-function wirePanelBody(def, body) {
-  if (def.id === "pallet") {
+/*  WHAT BRICK BY BRICK TELLS THE BOARD. See BOARD_HOOKS in board/board.js. */
+configureBoard({
+  refresh: () => refreshAll(),
+  refreshPanel: id => {
+    if (id === "viz-promenade") PROM_HOST = null;
+    refreshPanel(id);
+  },
+  //  The Promenade sizes itself against its tile, and a ResizeObserver does
+  //  not survive the board re-parenting it, so the board says when to look.
+  resized: soon => {
+    const pr = document.querySelector("#viz-promenade .panel-body");
+    if (!pr || !pr._reflowNow) return;
+    if (!soon) { pr._reflowNow(); return; }
+    requestAnimationFrame(() => {
+      pr._reflowNow();
+      //  A re-layout is exactly what can leave the ticker off while in view.
+      if (pr._wake) pr._wake();
+    });
+  },
+  //  Body wiring that must survive re-renders, once per panel.
+  wireBody: (def, body) => {
+    if (def.id === "project") { wireProject(body); return; }
+    if (def.id !== "pallet") return;
     const ta = body.querySelector('[data-el="text"]');
     ta.addEventListener("input", e => { state.text = e.target.value; saveText(); update(); });
     body.querySelectorAll("button[data-act]").forEach(b => { b.onclick = () => palletAction(b.dataset.act, ta); });
@@ -20155,1021 +19132,24 @@ function wirePanelBody(def, body) {
       });
     });
     wireFolderDrop(body);
-  }
-}
-
-function renderBoardCells() {
-  const b = boardEl();
-  [...b.querySelectorAll(".board-cell")].forEach(c => c.remove());
-  const rows = boardRows();
-  const frag = document.createDocumentFragment();
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < board.cols; x++) {
-      const cell = document.createElement("div");
-      cell.className = "board-cell";
-      cell.style.gridColumn = (x + 1) + " / span 1";
-      cell.style.gridRow = (y + 1) + " / span 1";
-      cell.textContent = "+";
-      cell.title = "add a panel here";
-      if (boardPick && boardPick.x === x && boardPick.y === y) cell.classList.add("picked");
-      //  The cell you pressed is where the next panel added from the list goes.
-      cell.addEventListener("click", () => {
-        boardPick = { x, y };
-        b.querySelectorAll(".board-cell.picked").forEach(c => c.classList.remove("picked"));
-        cell.classList.add("picked");
-        el("boardFlyoutWrap").classList.add("open");
-      });
-      frag.appendChild(cell);
+  },
+  //  Header buttons sit outside .panel-body, so they come through here.
+  headAction: (def, act, btn, body) => {
+    if (def.id === "pallet") palletAction(act, body.querySelector("textarea"));
+    else if (act === "gazmenu") {
+      const menu = body.querySelector('[data-el="menu"]');
+      menu.hidden = !menu.hidden;
+      btn.classList.toggle("on", !menu.hidden);
     }
-  }
-  b.insertBefore(frag, b.firstChild);
-}
-
-function renderBoardTiles() {
-  const b = boardEl();
-  /* Every placed panel is looked up BEFORE any wrapper is torn down. .remove()
-     detaches the wrapper and the panel living inside it in the same call — a
-     detached node is invisible to getElementById even though the object is
-     still alive — so looking a panel up afterwards silently loses it on every
-     render past the first. */
-  const nodes = new Map(board.tiles.map(t => [t.id, panelNode(t.id)]));
-  [...b.querySelectorAll(".board-tile")].forEach(t => t.remove());
-  b.style.setProperty("--board-cols", board.cols);
-  b.style.setProperty("--board-row", board.rowUnit + "px");
-
-  /*  Appended in visual order (top row first, then left to right), not in the
-      order the array happens to hold. Tiles all share z-index:1, so DOM order
-      decides who paints over whom — and a cartouche overhangs UP into the tile
-      above it, which must therefore already be on the page. Out of order, the
-      label of a lower tile was painted over by its upper neighbor. */
-  const painted = [...board.tiles].sort((a, c) => a.y - c.y || a.x - c.x);
-  for (const t of painted) {
-    const panel = nodes.get(t.id);
-    if (!panel) continue;
-    //  A docked panel is not in the grid. renderDocks() parents it instead,
-    //  and it keeps its x/y/w/h so undocking puts it back where it was.
-    if (t.dock) continue;
-    panel.classList.remove("is-docked");
-    const wrap = document.createElement("div");
-    wrap.className = "board-tile";
-    wrap.dataset.id = t.id;
-    wrap.style.gridColumn = (t.x + 1) + " / span " + t.w;
-    wrap.style.gridRow = (t.y + 1) + " / span " + t.h;
-
-    // Reused across re-renders rather than recreated — the panel-head survives
-    // (only the wrapper is torn down), so appending a fresh button every render
-    // would pile up duplicates.
-    ensureRemoveButton(panel, t.id);
-    ensureReloadButton(panel, t.id);
-    ensureCoverButton(panel, t.id);
-    wrap.appendChild(panel);
-    appendTileResize(wrap, t, "w", t.x + t.w < board.cols && !overlaps(t, t.x + t.w, t.y, 1, t.h));
-    appendTileResize(wrap, t, "h", !overlaps(t, t.x, t.y + t.h, t.w, 1));
-    b.appendChild(wrap);
-  }
-}
-
-// Only the legal buttons — a "+" never appears toward an occupied neighbor or
-// past the board edge.
-function appendTileResize(wrap, t, dim, canGrow) {
-  const canShrink = (dim === "w" ? t.w : t.h) > 1;
-  if (!canGrow && !canShrink) return;
-  const box = document.createElement("div");
-  box.className = "tile-resize tile-resize-" + dim;
-  const mk = (label, delta, title) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.textContent = label; b.title = title;
-    b.addEventListener("click", e => { e.stopPropagation(); resizeTile(t.id, dim, delta); });
-    box.appendChild(b);
-  };
-  if (canGrow) mk("+", 1, dim === "w" ? "widen by one column" : "taller by one row");
-  if (canShrink) mk("−", -1, dim === "w" ? "narrow by one column" : "shorter by one row");
-  wrap.appendChild(box);
-}
-
-function resizeTile(id, dim, delta) {
-  const t = board.tiles.find(k => k.id === id);
-  if (!t) return;
-  if (dim === "w") {
-    const nw = t.w + delta;
-    if (nw < 1) return;
-    if (delta > 0 && (t.x + nw > board.cols || overlaps(t, t.x + t.w, t.y, delta, t.h))) return;
-    t.w = nw;
-  } else {
-    const nh = t.h + delta;
-    if (nh < 1) return;
-    if (delta > 0 && overlaps(t, t.x, t.y + t.h, t.w, delta)) return;
-    t.h = nh;
-  }
-  renderBoard({ content: false }); saveBoard();
-}
-
-/*  DOCKS.
-
-    A panel pinned to an edge of the WINDOW rather than placed on the board. It
-    stays where it is while the board scrolls past it, which is the whole point:
-    the Pallet is the thing you are typing into and the panel you want to see
-    is three screens down.
-
-    A docked tile keeps its x, y, w and h untouched, so undocking drops it back
-    into the cell it came from. `dock` and `dockSize` are the only additions,
-    and a board saved without them reads exactly as it always did.
-
-    The board gets padding rather than a smaller width, so nothing about the
-    grid has to know a dock exists. */
-const DOCK_SIDES = ["top", "right", "bottom", "left"];
-const DOCK_MIN = 90, DOCK_MAX = 0.7;     // px, and a share of the window
-
-function dockedTiles(side) {
-  return board.tiles.filter(t => t.dock === side);
-}
-function dockSizeOf(side) {
-  const tiles = dockedTiles(side);
-  if (!tiles.length) return 0;
-  const across = side === "left" || side === "right";
-  const room = (across ? window.innerWidth : window.innerHeight) * DOCK_MAX;
-  //  One size per EDGE, taken from the first panel on it: two panels sharing an
-  //  edge share its thickness, the way a split pane does.
-  return Math.max(DOCK_MIN, Math.min(room, tiles[0].dockSize || (across ? 300 : 240)));
-}
-
-function setDock(id, side) {
-  const t = board.tiles.find(x => x.id === id);
-  if (!t) return;
-  if (side && !DOCK_SIDES.includes(side)) return;
-  if (side) t.dock = side; else delete t.dock;
-  saveBoard();
-  renderBoard({ content: false });
-  //  Canvas panels measure themselves against their box, and that box has just
-  //  changed shape completely.
-  const pr = document.querySelector("#viz-promenade .panel-body");
-  if (pr && pr._reflowNow) requestAnimationFrame(() => {
-    pr._reflowNow();
-    //  A board change re-parents panels, which is exactly the case that can
-    //  leave the ticker switched off with the panel plainly in view.
-    if (pr._wake) pr._wake();
-  });
-}
-
-/*  The way off an edge, beside the ordinary ✕ rather than instead of it. Two
-    glyphs, two meanings: ⊞ goes back to the board, ✕ leaves the board. An
-    earlier version hid the ✕ while docked to avoid two crosses in one header,
-    which read as a panel you were not allowed to remove.
-
-    Added once and kept, since the header survives a re-render. */
-/*  Reused across re-renders rather than recreated: the panel-head survives a
-    render, so appending a fresh button each time would pile up duplicates.
-    Wanted in two places now, a tile and a rail, which is why it left
-    renderBoardTiles. */
-/*  BUILD THIS PANEL AGAIN FROM NOTHING.
-
-    A panel that draws into a canvas keeps a great deal of state on its own
-    element: a renderer, a ticker, textures, a cast of display objects, a map
-    instance. When one of those ends up in a state it cannot draw out of, every
-    other route to fixing it costs you the whole page and everything else you
-    had open.
-
-    So: throw the panel's state away, empty its body, and let its renderer
-    build the thing fresh. The pile is untouched, because no panel owns any of
-    it — the Pallet is the only thing that does, and its state is a string.
-
-    Whatever the panel hung on itself goes with it. That is the point, and it
-    is why the underscore convention matters: anything private is prefixed, so
-    "forget everything this panel remembered" is one loop. */
-/*  WHAT EACH PANEL'S COVER IS MADE OF, AND HOW FAR IT IS PULLED.
-
-    The position is a FRACTION of the panel's width rather than a pixel count,
-    so a cover survives the tile being resized, the board changing its column
-    count and the window being made narrower. 0 is shut; past 0.9 it is off
-    altogether and there is no entry at all.
-
-    Kept beside the board layout rather than in the pile: a cover is a thing
-    about this screen right now, not a fact about your research. */
-const COVER_KEY = "brick-by-brick:covers:v2";
-/*  Named for what they are rather than for how they are drawn, because the
-    choice you are making is what you want to be able to see through.
-
-    Glass first. A cover over a panel that MOVES — the street, the map, a
-    timeline — wants to leave you the movement while taking the controls away,
-    and frosted does that. Card is the one that hides it completely, and it is
-    last because that is the rarer want. */
-const COVER_MATS = ["frosted", "smoked", "card"];
-const COVER_MAT_DEFAULT = "frosted";
-let COVERS = new Map();                 // id -> { x: 0..0.9, m: material }
-
-/*  WHAT A PANEL'S COVER IS LIKE, WHETHER IT HAS ONE ON OR NOT.
-
-    COVERS says which panels are covered right now. This says what the cover
-    looks like when there is one, and it outlives taking it off — a material
-    you chose is a decision about that panel, not about that particular sheet,
-    and having it thrown away because you uncovered the panel for a minute is
-    the kind of small forgetting that makes a setting not worth making.
-
-    The openness is remembered the same way. Take a cover off with ▤ and put it
-    back, and it returns exactly as you left it — same material, same distance
-    across. */
-const COVER_PREF_KEY = "brick-by-brick:coverprefs:v1";
-let COVER_PREFS = new Map();            // id -> { x, m }, kept when uncovered
-
-function coverPref(id) {
-  const p = COVER_PREFS.get(id);
-  return { x: p && isFinite(p.x) ? p.x : 0,
-           m: p && COVER_MATS.includes(p.m) ? p.m : COVER_MAT_DEFAULT };
-}
-function rememberCover(id, st) {
-  COVER_PREFS.set(id, { x: st.x, m: st.m });
-  try {
-    if (!COVER_PREFS.size) localStorage.removeItem(COVER_PREF_KEY);
-    else localStorage.setItem(COVER_PREF_KEY, JSON.stringify([...COVER_PREFS.entries()]));
-  } catch (e) { /* unavailable */ }
-}
-function loadCoverPrefs() {
-  try {
-    const raw = localStorage.getItem(COVER_PREF_KEY);
-    if (!raw) return;
-    for (const [id, v] of JSON.parse(raw)) {
-      const x = Number(v && v.x);
-      COVER_PREFS.set(id, { x: isFinite(x) && x >= 0 && x <= 1 ? x : 0,
-                            m: COVER_MATS.includes(v && v.m) ? v.m : COVER_MAT_DEFAULT });
-    }
-  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
-}
-
-function loadCovers() {
-  try {
-    const raw = localStorage.getItem(COVER_KEY);
-    if (raw) {
-      for (const [id, v] of JSON.parse(raw)) {
-        const x = Number(v && v.x);
-        //  1 is a legal position now — fully aside, still on the panel.
-        if (!isFinite(x) || x < 0 || x > 1) continue;
-        COVERS.set(id, { x, m: COVER_MATS.includes(v.m) ? v.m : COVER_MAT_DEFAULT });
-      }
-      return;
-    }
-    /*  A v1 store held a bare number and no material. Honoured rather than
-        dropped: a panel you covered is one you meant to cover. */
-    const old = localStorage.getItem("brick-by-brick:covers:v1");
-    if (!old) return;
-    for (const [id, v] of JSON.parse(old)) {
-      const x = Number(v);
-      if (isFinite(x) && x >= 0 && x <= 1) COVERS.set(id, { x, m: COVER_MAT_DEFAULT });
-    }
-  } catch (e) { /* unavailable, or a store somebody hand-edited */ }
-}
-function saveCovers() {
-  try {
-    if (!COVERS.size) localStorage.removeItem(COVER_KEY);
-    else localStorage.setItem(COVER_KEY, JSON.stringify([...COVERS.entries()]));
-  } catch (e) { /* unavailable */ }
-}
-//  What is on the panel now, or failing that what it had last time.
-const coverAt = id => COVERS.get(id) || coverPref(id);
-
-function coverOf(panel) { return panel.querySelector(":scope > .panel-shade"); }
-function tabOf(panel) { return panel.querySelector(":scope > .panel-tab"); }
-
-/*  EVERYTHING BELOW THE TITLE BAR, not the .panel-body.
-
-    The body was the obvious thing to measure and it is wrong for any panel
-    whose content breaks out of it. The Promenade's shell does exactly that —
-    its canvas sits at the panel's own edge with the bar and the footnote
-    bled past the body's box — so a cover cut to the body left a strip of live
-    street showing top and bottom. A cover with a gap in it is not a cover.
-
-    So it is measured off the PANEL: the whole inside of it, from the underside
-    of the header down. That covers anything a panel can do with its own
-    content, including the things it has not thought of yet.
-
-    Offsets are from the padding edge, because that is what an absolutely
-    positioned child of a relatively positioned box is laid out against. */
-/*  HOW FAR THE HANDLE SITS FROM THE SHADE'S LEFT EDGE.
-
-    Straddling the sheet's leading edge — half on the cover, half on what has
-    been uncovered — and never past either end of the panel. One expression,
-    because the drag and the settle both need it and they were drifting apart
-    when each worked it out for itself. */
-const TAB_W = 17;
-function tabShift(x, width) {  // width is unused: see below
-  /*  FLUSH TO THE EDGE, NOT CENTRED ON IT.
-
-      Centred looks better standing still and cannot be animated. The sheet
-      travels the full width; a tab centred on its edge has to stop half its
-      own width short, so the two ease toward DIFFERENT endpoints and the
-      browser spreads that difference across the whole journey — the handle
-      creeps against the edge it is supposed to be fixed to. Same duration,
-      same property, same curve, and still out of step, because the distances
-      were never the same.
-
-      Flush was no better: clamping the far end still shortens the journey, and
-      the browser spreads the seventeen pixels it lost across the whole of it.
-      Any clamp at all, at either end, IS the drift. There is no version of
-      this where the tab travels a different distance and still looks attached.
-
-      So it travels exactly as far as the sheet does, and it is parked half its
-      own width to the left of the shade. Shut, half of it stands proud of the
-      panel; wide open, half of it stands proud the other way. Both of those
-      are eight pixels into the panel's own padding, both look like a handle on
-      a sliding thing, and in between it is welded to the edge. */
-  return Math.round(x);
-}
-
-function coverBox(panel) {
-  /*  ALL OF IT, including the strip behind the title bar.
-
-      Starting under the header was still short. A header is transparent and
-      several panels draw UNDER it — the Promenade's canvas begins thirty
-      pixels above the header's baseline, so a cover that started where the
-      header stopped left a band of live street running along the top of the
-      panel.
-
-      The header does not need the room. It sits above the cover in the
-      stacking order, so the title, the badges and every button stay legible
-      and clickable ON the cover rather than beside it. Which means the cover
-      can simply be the panel: everything inside the border, corner to corner.
-
-      Offsets are from the padding edge, because that is what an absolutely
-      positioned child of a relatively positioned box is laid out against. */
-  return { left: 0, top: 0, width: panel.clientWidth, height: panel.clientHeight };
-}
-
-/*  Everything about where the three pieces sit, in one place, so the sheet and
-    its handle can never disagree about which edge is the leading one. */
-function placeCover(panel, id) {
-  const shade = coverOf(panel), tab = tabOf(panel);
-  if (!shade) return;
-  const box = coverBox(panel);
-  /*  A PANEL WITH NO SIZE IS A PANEL THAT IS NOT THERE YET.
-
-      A board render detaches every tile wrapper before re-appending it, so for
-      part of that pass the panel measures zero by zero. Placed against that,
-      the sheet was written to translateX(0) — flat shut — and the fraction it
-      had been at was still in the store but no longer on the screen. Whether
-      the ResizeObserver noticed depends on whether the browser coalesced the
-      detach and the re-attach into one report: when the panel came back the
-      same size it left, there was no change to observe and nothing put it
-      right. A cover that "reset when I changed the grid".
-
-      So: measure, and if the answer is nothing, leave everything exactly as it
-      was. The observer will call again the moment there is a real box. */
-  if (box.width < 1 || box.height < 1) return;
-  const br = { width: box.width, height: box.height };
-  const ox = box.left, oy = box.top;
-  shade.style.left = ox + "px";
-  shade.style.top = oy + "px";
-  shade.style.width = br.width + "px";
-  shade.style.height = br.height + "px";
-  const st = coverAt(id);
-  const x = Math.round(st.x * br.width);
-  const sheet = shade.firstElementChild;
-  if (sheet) {
-    sheet.style.transform = "translateX(" + x + "px)";
-    sheet.dataset.mat = st.m;
-  }
-  //  The swatch on the handle IS the current material, so what you press to
-  //  change it is also what tells you where you are.
-  const swatch = tab && tab.querySelector(".tab-mat");
-  if (swatch) swatch.dataset.mat = st.m;
-  if (tab) {
-    /*  Parked at the shade's left edge and moved by transform from there, so
-        it animates on the same property as the sheet does. `left` stays put
-        and only the transform changes.
-
-        Held inside the panel at both ends. Fully open, the sheet's leading
-        edge is the panel's own right edge, and a tab centred on it would hang
-        half over the tile next door with nothing to pull it back by. */
-    const TH = Math.max(34, Math.min(72, br.height * 0.28));
-    //  Half a tab left of the shade, so travelling the sheet's full distance
-    //  leaves it straddling the leading edge the whole way across.
-    tab.style.left = Math.round(ox - TAB_W / 2) + "px";
-    tab.style.top = Math.round(oy + (br.height - TH) / 2) + "px";
-    tab.style.height = Math.round(TH) + "px";
-    tab.style.transform = "translateX(" + tabShift(x, br.width) + "px)";
-  }
-}
-
-function addCover(panel, id) {
-  if (coverOf(panel)) { placeCover(panel, id); return; }
-  const body = panel.querySelector(".panel-body");
-  if (!body) return;
-
-  const shade = document.createElement("div");
-  shade.className = "panel-shade";
-  const cv = document.createElement("div");
-  cv.className = "panel-cover";
-  const tag = document.createElement("span");
-  tag.textContent = "covered";
-  cv.appendChild(tag);
-  shade.appendChild(cv);
-  panel.appendChild(shade);
-
-  const tab = document.createElement("div");
-  tab.className = "panel-tab";
-  const grip = document.createElement("i");
-  grip.className = "tab-grip";
-  grip.title = "drag to open or shut \u2014 click to peek under it";
-  const mat = document.createElement("i");
-  mat.className = "tab-mat";
-  mat.title = "what the cover is made of \u2014 click to change it";
-  tab.appendChild(grip);
-  tab.appendChild(mat);
-  panel.appendChild(tab);
-
-  placeCover(panel, id);
-
-  /*  ONE GESTURE, TWO GRIPS. The tab is the handle and the sheet is the rest
-      of the same thing, so both run the same drag — you should not have to
-      find a 15-pixel target to move something the size of a panel.
-
-      Pointer capture, so the sheet keeps following the hand when the pointer
-      leaves the panel, which it will: sliding a cover aside is a gesture that
-      ends outside the tile it started in. */
-  let from = 0, grabbed = 0, w = 1, moved = false, live = null, onSwatch = false;
-  const start = (el, e) => {
-    if (e.button !== 0) return;
-    /*  WHERE THE PRESS LANDED, recorded now.
-
-        It cannot be read at pointerup. setPointerCapture retargets every later
-        pointer event to the element holding the capture, so by the time the
-        finger lifts, the event's target is the tab and not the swatch inside
-        it — and the material click fell through to "throw it wide" every
-        single time.
-
-        The test that should have caught this was firing a synthetic event with
-        its own target, which is the one shape of event the bug cannot happen
-        on. pointerdown runs before the capture is taken, so its target is the
-        real one. */
-    onSwatch = !!(e.target && e.target.closest && e.target.closest(".tab-mat"));
-    w = Math.max(1, coverBox(panel).width);
-    from = coverAt(id).x * w;
-    grabbed = e.clientX;
-    moved = false;
-    live = el;
-    /*  BOTH of them, whichever one was grabbed. Dragging the sheet used to
-        leave the tab without the class, so the handle eased along behind the
-        pointer while the sheet kept up with it — the one case the transition
-        must not apply to. */
-    cv.classList.add("sliding");
-    tab.classList.add("sliding");
-    try { el.setPointerCapture(e.pointerId); } catch (err) { /* no capture */ }
-    e.preventDefault();
-    e.stopPropagation();           // never starts a tile drag
-  };
-  const move = e => {
-    if (!live) return;
-    const dx = e.clientX - grabbed;
-    if (!moved && Math.abs(dx) < 3) return;
-    moved = true;
-    const x = Math.max(0, Math.min(w, from + dx));
-    cv.style.transform = "translateX(" + Math.round(x) + "px)";
-    //  The same sum the settle uses, so letting go does not shift it.
-    tab.style.transform = "translateX(" + tabShift(x, coverBox(panel).width) + "px)";
-  };
-  const letGo = e => {
-    if (!live) return;
-    const el = live; live = null;
-    cv.classList.remove("sliding");
-    tab.classList.remove("sliding");
-    try { el.releasePointerCapture(e.pointerId); } catch (err) { /* already gone */ }
-    /*  A press that never moved is a press, not a drag — and WHERE on the
-        handle decides which press it was. The ridged upper part throws the
-        cover wide or shuts it, which is what a tab does. The swatch along the
-        bottom steps through the materials, which is the only way any of them
-        but the first was ever going to be found.
-
-        Dragging works from either, so nothing is lost by splitting it: the
-        whole handle still slides. */
-    if (!moved) {
-      if (el === tab) {
-        if (onSwatch) cycleMat();
-        else {
-          /*  A CLICK IS A PEEK, NOT A SWEEP.
-
-              It threw the sheet the whole way across, which is a big thing to
-              do by accident on the one control you are most likely to brush
-              past — and it is rarely what you want: uncovering a panel
-              entirely is what the ▤ is for. What a press is actually asking is
-              "what is under here", and the answer to that is a gap.
-
-              Twice the handle's own width, so the opening is measured in the
-              thing you are holding rather than in a number: one tab of sheet
-              moved, one tab of panel showing. Drag it if you want more.
-
-              As a fraction, because that is what the store keeps — the same
-              34 pixels is a third of a narrow panel and a twentieth of a wide
-              one, and the gap should be the same gap either way. */
-          /*  IT PARKS UNDER THE CORNER CONTROLS.
-
-              A press slides the sheet almost the whole way across and stops
-              where the panel's own buttons begin, so the strip left showing
-              sits beneath ↻ and ✕ rather than somewhere arbitrary. Two
-              handles was a number I chose; this is a number the panel already
-              has, and it lines the cover's edge up with something real.
-
-              Measured off the reload button rather than written down, so it
-              follows if those controls are ever resized or one is added. */
-          const box = coverBox(panel);
-          const w = Math.max(1, box.width);
-          const rl = panel.querySelector(".tile-reload");
-          const pr = panel.getBoundingClientRect();
-          const corner = rl
-            ? Math.max(0, pr.right - rl.getBoundingClientRect().left) + 6
-            : TAB_W * 2;
-          const open = Math.max(0, Math.min(0.98, 1 - corner / w));
-          setCoverX(panel, id, coverAt(id).x > 0.01 ? 0 : open);
-        }
-      }
-      return;
-    }
-    setCoverX(panel, id, Math.max(0, Math.min(w, from + (e.clientX - grabbed))) / w);
-  };
-  for (const el of [cv, tab]) {
-    el.addEventListener("pointerdown", e => start(el, e));
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", letGo);
-    el.addEventListener("pointercancel", letGo);
-  }
-
-  const cycleMat = () => {
-    const st = coverAt(id);
-    const next = COVER_MATS[(COVER_MATS.indexOf(st.m) + 1) % COVER_MATS.length];
-    COVERS.set(id, { x: st.x, m: next });
-    rememberCover(id, { x: st.x, m: next });
-    saveCovers();
-    placeCover(panel, id);
-  };
-  //  Right-click on the handle does the same thing, for anybody who reaches
-  //  for it. It is a shortcut to the swatch, not the way in.
-  tab.addEventListener("contextmenu", e => { e.preventDefault(); cycleMat(); });
-  cv.addEventListener("contextmenu", e => {
-    e.preventDefault();
-    setCoverX(panel, id, 0);
-  });
-
-  /*  MEASURED WHENEVER THE BODY IS, not once when it is made.
-
-      A cover put on during a board render measured a body the browser had not
-      laid out yet — zero by zero — and then never looked again, so the sheet
-      was an invisible speck in the corner of the tile.
-
-      Everything that can change a panel's size ends in the same place: the
-      body's own box. One observer per cover rather than a hook in each of the
-      five things that reflow a board, and disconnected with the cover, so a
-      board of uncovered panels is watching nothing. */
-  /*  The PANEL and its header. The box is cut from both, and a header that
-      wraps to two lines moves the top of the cover without the panel changing
-      size at all. */
-  const ro = new ResizeObserver(() => placeCover(panel, id));
-  ro.observe(panel);
-  const head = panel.querySelector(".panel-head");
-  if (head) ro.observe(head);
-  shade.__ro = ro;
-}
-
-/*  HOW FAR ACROSS, AND NOTHING ELSE.
-
-    Sliding it right off used to take the cover away. That was one gesture
-    doing two jobs, and it made the wrong one easy: a drag that went a little
-    too far removed the thing you were only trying to move, and the ▤ in the
-    header — which exists for exactly that — was left with nothing to do that
-    you had not already done by accident.
-
-    So the slider only ever slides. Fully open is a position like any other:
-    the sheet sits clear of the panel and the tab stands at the far edge
-    waiting to be pulled back. The toggle is the only way on and the only way
-    off. */
-function setCoverX(panel, id, f) {
-  const st = coverAt(id);
-  const x = Math.max(0, Math.min(1, f));
-  COVERS.set(id, { x, m: st.m });
-  rememberCover(id, { x, m: st.m });
-  placeCover(panel, id);
-  saveCovers();
-  syncCoverBtn(panel, id);
-}
-
-function removeCover(panel, id) {
-  const shade = coverOf(panel), tab = tabOf(panel);
-  if (shade) {
-    if (shade.__ro) { try { shade.__ro.disconnect(); } catch (e) { /* gone */ } }
-    shade.remove();
-  }
-  if (tab) tab.remove();
-}
-
-function syncCoverBtn(panel, id) {
-  const b = panel.querySelector(".tile-cover");
-  if (!b) return;
-  const on = COVERS.has(id);
-  b.classList.toggle("on", on);
-  b.title = on ? "take the cover off"
-               : "cover this panel \u2014 then press its tab to peek, or drag it";
-}
-
-function ensureCoverButton(panel, id) {
-  if (!panel.querySelector(".tile-cover")) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "tile-cover";
-    b.textContent = "\u25a4";
-    b.addEventListener("click", e => {
-      e.stopPropagation();
-      if (COVERS.has(id)) {
-        //  Put away as it stands, so it comes back the same.
-        rememberCover(id, COVERS.get(id));
-        COVERS.delete(id);
-        removeCover(panel, id);
-      } else {
-        COVERS.set(id, coverPref(id));
-        addCover(panel, id);
-      }
-      saveCovers();
-      syncCoverBtn(panel, id);
-    });
-    /*  Last in the cartouche, after the ?. Appended to the lead rather than to
-        the header, so it travels with the title: the cartouche is what moves
-        when the panel is narrow, and a mark that belongs to the title has to
-        move with it. */
-    const lead = panel.querySelector(".panel-head-lead");
-    (lead || panel.querySelector(".panel-head")).appendChild(b);
-  }
-  /*  The panel element is reused across board renders, so a cover that should
-      be there is put back rather than assumed to have survived — and one that
-      should not is taken off, but only if there is one. This ran removeCover
-      on every uncovered panel on every render: a dozen calls a keystroke, each
-      one a query and a branch for a cover that was never there. */
-  if (COVERS.has(id)) addCover(panel, id);
-  else if (coverOf(panel)) removeCover(panel, id);
-  syncCoverBtn(panel, id);
-}
-
-function reloadPanel(id) {
-  const node = document.getElementById(id);
-  const def = panels.get(id);
-  if (!node || !def) return;
-  const body = node.querySelector(".panel-body");
-  if (!body) return;
-
-  //  Hand back what the browser will not collect on its own: a WebGL context
-  //  and a map both hold resources that outlive the element.
-  try { if (body._app && body._app.destroy) body._app.destroy(true, { children: true }); } catch (e) { /* already gone */ }
-  try { if (body._map && body._map.remove) body._map.remove(); } catch (e) { /* already gone */ }
-  if (body._seen && body._seen.disconnect) { try { body._seen.disconnect(); } catch (e) { /* gone */ } }
-
-  for (const k of Object.keys(body)) if (k.charAt(0) === "_") delete body[k];
-  delete body.dataset.built;
-  body.innerHTML = "";
-
-  /*  PUT THE TEMPLATE BACK.
-
-      This emptied the body and then asked the panel to render into it, which
-      works only for the panels that build their own DOM — the Promenade, the
-      Sprite Editor, Tally. Every panel with a `tpl` renders by looking its own
-      markup UP, so an empty body handed them nothing to find and the render
-      threw on the first null: Theme, Filter, The Pallet, Gazetteer, Notation
-      reference. Pressing reload on any of those killed the panel rather than
-      rebuilding it.
-
-      Cloned from the same template `buildPanel` uses, and wired with the same
-      call, because "rebuild this panel" has to mean what the first build
-      meant. */
-  if (def.tpl) {
-    const tpl = el(def.tpl);
-    if (tpl) body.appendChild(tpl.content.cloneNode(true));
-    else body.innerHTML = '<p class="hint" style="color:var(--bad)">missing template “' + esc(def.tpl) + '”</p>';
-  }
-  //  Listeners that live for the panel's lifetime rather than for one render.
-  //  Without this a rebuilt Pallet took your typing nowhere.
-  try { wirePanelBody(def, body); } catch (e) { /* a template that lost a hook */ }
-
-  if (id === "viz-promenade") PROM_HOST = null;
-  refreshPanel(id);
-}
-
-function ensureReloadButton(panel, id) {
-  if (panel.querySelector(".tile-reload")) return;
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "tile-reload";
-  /*  A LIGHT ARROW, TO MATCH THE CROSS IT SITS BESIDE.
-
-      U+27F3 is a heavy circular arrow drawn for body text, and in an
-      eighteen-pixel disc next to a hairline cross it read as a blot: two
-      controls the same size and the same shape, one of them twice the weight
-      of the other. U+21BB is the same gesture at the cross's own weight.
-
-      Clockwise, because that is the way every reload control anybody has used
-      turns; a counter-clockwise one reads as undo. */
-  b.textContent = "↻";
-  //  Says what it does, not how it does it. It read "build this panel again,
-  //  from nothing", which describes the implementation and sounds like a
-  //  threat.
-  b.title = "reload this panel";
-  b.addEventListener("click", e => { e.stopPropagation(); reloadPanel(id); });
-  /*  In the HEADER, where ✕ lives, not on the panel.
-
-      Both are placed with the same `top`, and an absolute offset resolves
-      against the nearest positioned ancestor — the header is one, so a button
-      hung on the panel instead measured from a different box and landed
-      fourteen pixels higher than its twin. */
-  panel.querySelector(".panel-head").appendChild(b);
-}
-
-function ensureRemoveButton(panel, id) {
-  if (panel.querySelector(".panel-head > .tile-remove")) return;
-  const rm = document.createElement("button");
-  rm.type = "button";
-  rm.className = "tile-remove";
-  rm.title = "remove from board";
-  rm.textContent = "✕";
-  rm.addEventListener("click", e => { e.stopPropagation(); removeTile(id); });
-  panel.querySelector(".panel-head").appendChild(rm);
-}
-
-function addDockPop(panel, id) {
-  if (panel.querySelector(".panel-head > .dock-pop")) return;
-  const x = document.createElement("button");
-  x.type = "button";
-  x.className = "dock-pop";
-  x.textContent = "⊞";
-  x.title = "take it off this edge and put it back on the board";
-  x.addEventListener("click", e => { e.stopPropagation(); setDock(id, ""); });
-  //  Before the ✕, which owns the corner, so the two never trade places.
-  const head = panel.querySelector(".panel-head");
-  head.insertBefore(x, head.querySelector(".tile-remove"));
-}
-
-function renderDocks() {
-  for (const side of DOCK_SIDES) {
-    const tiles = dockedTiles(side);
-    let rail = document.getElementById("dock-" + side);
-    if (!tiles.length) { if (rail) rail.remove(); continue; }
-    if (!rail) {
-      rail = document.createElement("div");
-      rail.id = "dock-" + side;
-      rail.className = "dock dock-" + side;
-      const grip = document.createElement("div");
-      grip.className = "dock-grip";
-      grip.title = "drag to resize this edge";
-      rail.appendChild(grip);
-      wireDockGrip(grip, side);
-      wireDockReorder(rail, side);
-      document.body.appendChild(rail);
-    }
-    const size = dockSizeOf(side);
-    if (side === "left" || side === "right") rail.style.width = size + "px";
-    else rail.style.height = size + "px";
-
-    /*  The rail is laid out in the order the tiles sit in, and appending only
-        when the parent is wrong was not enough: a panel already in the right
-        rail in the wrong place stayed put, so reordering did nothing. Compared
-        first, then re-appended in one pass, because appendChild MOVES a node
-        and doing that every render costs the Promenade a reflow it does not
-        need. */
-    /*  Panels with a splitter between each pair, so the share of the rail is
-        yours as well as its thickness. The pair is the handle's identity, so a
-        reorder retires the old handles and mints the ones the new neighbours
-        need. */
-    const want = [];
-    tiles.forEach((t, i) => {
-      if (i) want.push(dockSplit(rail, side, tiles[i - 1].id, t.id));
-      want.push(panelNode(t.id));
-    });
-    const have = [...rail.querySelectorAll(":scope > .panel, :scope > .dock-split")];
-    if (have.length !== want.length || have.some((n, i) => n !== want[i])) {
-      for (const n of want) rail.appendChild(n);
-    }
-    for (const n of have) if (!want.includes(n) && n.classList.contains("dock-split")) n.remove();
-    //  Each panel's share, which the splitter writes and this reads back.
-    for (const t of tiles) {
-      const p = document.getElementById(t.id);
-      if (p) p.style.flexGrow = t.dockGrow || 1;
-    }
-
-    for (const t of tiles) {
-      const panel = document.getElementById(t.id);
-      if (!panel) continue;
-      panel.classList.add("is-docked");
-      //  A board restored with this panel already docked never went through
-      //  renderBoardTiles, so it has no ✕ yet. Without this it arrives on the
-      //  rail with no way off the board at all.
-      ensureRemoveButton(panel, t.id);
-      ensureReloadButton(panel, t.id);
-      addDockPop(panel, t.id);
-      ensureCoverButton(panel, t.id);
-    }
-    //  Panels that left this rail since the last render.
-    for (const node of [...rail.querySelectorAll(":scope > .panel")]) {
-      if (!tiles.some(t => t.id === node.id)) node.remove();
-    }
-
-    /*  The rail's own plus, FIRST rather than last. On the end of a bottom
-        rail it lands in the bottom right corner, which is where the minimap
-        lives, and a drop target you cannot reach is not one. */
-    let slot = rail.querySelector(":scope > .dock-slot");
-    if (!slot) {
-      slot = document.createElement("button");
-      slot.type = "button";
-      slot.className = "dock-slot";
-      slot.textContent = "+";
-      slot.title = "drop a panel here to add it to this edge";
-      wireDockTarget(slot, side);
-    }
-    //  Kept at the head of the rail as panels come and go.
-    rail.insertBefore(slot, rail.querySelector(":scope > .panel") || null);
-  }
-
-  /*  The page keeps clear of every rail. Set on the documentElement rather
-      than the board, because the header and the minimap have to move too. */
-  const s = document.body.style;
-  s.paddingTop = dockSizeOf("top") + "px";
-  s.paddingRight = dockSizeOf("right") + "px";
-  s.paddingBottom = dockSizeOf("bottom") + "px";
-  s.paddingLeft = dockSizeOf("left") + "px";
-}
-
-/*  THE SPLITTER BETWEEN TWO DOCKED PANELS.
-
-    The grip on the rail's inner edge sets how thick the edge is; this sets how
-    the panels on it divide that thickness between them. Two different
-    questions, two handles, and the second one was missing.
-
-    Sizes are kept as flex-grow rather than pixels, so a rail that changes
-    thickness, or a window that changes width, keeps the proportions you set
-    instead of leaving one panel at a stale 340px. */
-const DOCK_SHARE_MIN = 80;   // px, the narrowest a panel may be squeezed to
-
-function dockSplit(rail, side, aId, bId) {
-  const key = aId + "|" + bId;
-  let node = rail.querySelector(':scope > .dock-split[data-pair="' + CSS.escape(key) + '"]');
-  if (node) return node;
-  node = document.createElement("div");
-  node.className = "dock-split";
-  node.dataset.pair = key;
-  node.title = "drag to divide the space between these two";
-
-  const across = side === "left" || side === "right";
-  node.addEventListener("mousedown", ev => {
-    ev.preventDefault();
-    ev.stopPropagation();              // not a reorder, and not a rail resize
-    const a = board.tiles.find(t => t.id === aId);
-    const b = board.tiles.find(t => t.id === bId);
-    const pa = document.getElementById(aId), pb = document.getElementById(bId);
-    if (!a || !b || !pa || !pb) return;
-
-    const ra = pa.getBoundingClientRect(), rb = pb.getBoundingClientRect();
-    const sizeA = across ? ra.height : ra.width;
-    const totalPx = sizeA + (across ? rb.height : rb.width);
-    const totalGrow = (a.dockGrow || 1) + (b.dockGrow || 1);
-    const from = across ? ev.clientY : ev.clientX;
-    node.classList.add("live");
-
-    const onMove = e => {
-      const delta = (across ? e.clientY : e.clientX) - from;
-      const newA = Math.max(DOCK_SHARE_MIN,
-                            Math.min(totalPx - DOCK_SHARE_MIN, sizeA + delta));
-      a.dockGrow = totalGrow * (newA / totalPx);
-      b.dockGrow = totalGrow - a.dockGrow;
-      //  Written straight onto the elements: a full render per mousemove would
-      //  rebuild every panel body sixty times a second.
-      pa.style.flexGrow = a.dockGrow;
-      pb.style.flexGrow = b.dockGrow;
-    };
-    const onUp = () => {
-      node.classList.remove("live");
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      saveBoard();
-      const pr = document.querySelector("#viz-promenade .panel-body");
-      if (pr && pr._reflowNow) pr._reflowNow();
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  });
-  return node;
-}
-
-/*  REORDERING WITHIN A RAIL.
-
-    Drag a docked panel by its header and it changes places with its
-    neighbours. The board's own tile drag is wired to the board element, so a
-    docked header reached nothing and an edge was stuck in whatever order you
-    happened to dock things in.
-
-    The rail draws in `board.tiles` order, so reordering the rail is reordering
-    that array. No positions change: a docked tile's x and y are the cell it
-    goes back to, and where it sits on the edge is a separate question. */
-function wireDockReorder(rail, side) {
-  const across = side === "left" || side === "right";
-  rail.addEventListener("mousedown", ev => {
-    const panel = ev.target.closest(".panel");
-    if (!panel || !ev.target.closest(".drag-handle")) return;
-    ev.preventDefault();
-    panel.classList.add("dock-moving");
-
-    const tile = board.tiles.find(t => t.id === panel.id);
-
-    const onMove = e => {
-      /*  OFF THE EDGE IS ONTO THE FLOOR.
-
-          Carry it out of the rail and the drag stops being a reorder and
-          becomes the ordinary board drag: the ghost appears over the grid and
-          the dock targets light up, so the same gesture can put it in a cell
-          or on a different edge. Coming back inside the rail hands it back to
-          the reorder. */
-      const r = rail.getBoundingClientRect();
-      const inside = e.clientX >= r.left && e.clientX <= r.right &&
-                     e.clientY >= r.top && e.clientY <= r.bottom;
-
-      if (!inside && tile) {
-        if (!boardDrag) {
-          boardDrag = { id: panel.id, w: tile.w, h: tile.h, fromTile: tile, valid: false };
-          showDockTargets(true);
-        }
-        updateGhost(e.clientX, e.clientY);
-        return;
-      }
-      if (inside && boardDrag) { endBoardDrag(false); ghostEl().hidden = true; }
-
-      const over = [...rail.querySelectorAll(":scope > .panel")].find(n => {
-        if (n === panel) return false;
-        const b = n.getBoundingClientRect();
-        return across ? (e.clientY >= b.top && e.clientY <= b.bottom)
-                      : (e.clientX >= b.left && e.clientX <= b.right);
-      });
-      if (!over) return;
-      const b = over.getBoundingClientRect();
-      //  Past the middle of a neighbour is what commits the exchange, so a
-      //  panel does not flicker back and forth on the boundary.
-      const before = across ? e.clientY < b.top + b.height / 2
-                            : e.clientX < b.left + b.width / 2;
-      if (reorderDock(panel.id, over.id, before)) renderDocks();
-    };
-    const onUp = e => {
-      panel.classList.remove("dock-moving");
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      if (boardDrag) {
-        //  A dock target may already have caught this press and undocked it,
-        //  in which case boardDrag is gone and there is nothing to commit.
-        const landed = boardDrag.valid;
-        if (landed) {
-          updateGhost(e.clientX, e.clientY);
-          //  Off the edge FIRST, so the tile is back on the grid before it is
-          //  asked to move within it.
-          setDock(panel.id, "");
-        }
-        endBoardDrag(landed);
-      }
-      saveBoard();
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  });
-}
-
-//  Returns whether anything actually moved, so the caller can skip a redraw.
-function reorderDock(id, overId, before) {
-  const from = board.tiles.findIndex(t => t.id === id);
-  const to = board.tiles.findIndex(t => t.id === overId);
-  if (from < 0 || to < 0 || from === to) return false;
-  const want = before ? to : to + 1;
-  if (want === from || want === from + 1) return false;
-  const [moved] = board.tiles.splice(from, 1);
-  board.tiles.splice(want > from ? want - 1 : want, 0, moved);
-  return true;
-}
-
-/*  Dragging the inside edge of a rail. Written onto every tile on that edge,
-    so the size belongs to the edge rather than to whichever panel happens to
-    be first on it. */
-function wireDockGrip(grip, side) {
-  let from = 0, start = 0;
-  const across = side === "left" || side === "right";
-  const move = ev => {
-    const now = across ? ev.clientX : ev.clientY;
-    const away = (side === "left" || side === "top") ? now - from : from - now;
-    const room = (across ? window.innerWidth : window.innerHeight) * DOCK_MAX;
-    const size = Math.max(DOCK_MIN, Math.min(room, start + away));
-    for (const t of dockedTiles(side)) t.dockSize = size;
-    renderDocks();
-  };
-  const up = () => {
-    document.removeEventListener("pointermove", move);
-    document.removeEventListener("pointerup", up);
-    saveBoard();
-    renderMiniMap();
-    const pr = document.querySelector("#viz-promenade .panel-body");
-    if (pr && pr._reflowNow) pr._reflowNow();
-  };
-  grip.addEventListener("pointerdown", ev => {
-    ev.preventDefault();
-    from = across ? ev.clientX : ev.clientY;
-    start = dockSizeOf(side);
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up);
-  });
-}
+  },
+  /*  BEFORE the title: the W / F / R role badges. The badge is the fact you
+      scan a board for — which of these can change what I am looking at — and
+      leading the name, a column of headers reads down in one pass. */
+  badges: def => (def.roles || ["read"]).map(r =>
+    '<span class="role-badge role-' + r + '">' + ROLES[r].badge + "</span>").join(""),
+  docHref: id => docHref(id),
+  groups: () => ROLE_ORDER,
+});
 
 /*  HOW FAR, AND IN WHAT.
 
@@ -21594,553 +19574,6 @@ function panToColumn(host, slug, ms, landOn) {
                   dur: Math.max(1, ms === undefined ? 900 : ms),
                   land: landOn ? slug : null };
   return true;
-}
-
-/*  WHICH PANEL IS THE ONE YOU ARE IN.
-
-    The pointer decides, and what has the caret decides when the pointer is
-    over nothing: leave the mouse on the map while you type in the Pallet and
-    the Pallet is still where you are working.
-
-    Only ever a class. Whether it means anything is the focus switch's
-    business, so the page is not computing a lighting scheme for a setting
-    almost nobody has on. */
-const FOCUS_KEY = "brick-by-brick:focusmode:v1";
-
-function markActivePanel(id) {
-  let want = id;
-  if (!want) {
-    const held = document.activeElement && document.activeElement.closest
-      ? document.activeElement.closest(".panel") : null;
-    want = held ? held.id : null;
-  }
-  for (const p of document.querySelectorAll(".panel.is-active")) {
-    if (p.id !== want) p.classList.remove("is-active");
-  }
-  if (want) {
-    const p = document.getElementById(want);
-    if (p) p.classList.add("is-active");
-  }
-}
-
-/*  THE MINIMAP.
-
-    A board of twenty panels is taller than any window, so "where is the
-    Gazetteer" becomes a scroll and a hunt. This is the board at about a
-    fiftieth scale in the corner: every tile at its own grid position and
-    footprint, which makes it a recognisable shape rather than a legend. You
-    already know the Pallet is the tall one second from the left.
-
-    Click a block to bring that panel into view. The lit outline is the part of
-    the board you are actually looking at, so the map says where you are as
-    well as what there is.
-
-    Built from `board.tiles` and nothing else. It cannot drift from the layout
-    because it IS the layout, read at draw time. */
-function renderMiniMap() {
-  let host = document.getElementById("miniMap");
-  if (!host) {
-    host = document.createElement("div");
-    host.id = "miniMap";
-    host.innerHTML = '<div class="mm-grid" data-el="grid"></div>';
-    document.body.appendChild(host);
-    const tip = document.createElement("div");
-    tip.id = "mmTip";
-    tip.hidden = true;
-    document.body.appendChild(tip);
-    //  Follows the scroll it is describing, cheaply: the viewport box is the
-    //  only thing that moves, and it is one style write.
-    window.addEventListener("scroll", () => syncMiniView(), { passive: true });
-    window.addEventListener("resize", () => syncMiniView(), { passive: true });
-
-    /*  THE FADE STARTS WHEN YOU LEAVE, NOT WHEN THE PAGE LOADS.
-
-        `dozing` is only ever added on the way OUT, so a map nobody has touched
-        is still at full strength however long the page has been open. One
-        pointer in and out is what arms it.
-
-        pointerleave rather than mouseleave, so a pen or a touch behaves the
-        same way, and pointerenter to wake it rather than relying on the :hover
-        rule alone — the class has to come off or it would fight the hover for
-        the rest of the session. */
-    host.addEventListener("pointerenter", () => host.classList.remove("dozing"));
-    host.addEventListener("pointerleave", () => host.classList.add("dozing"));
-
-    /*  AND THE OTHER WAY ROUND.
-
-        Hovering a panel lights its block on the map, which is how you learn
-        the map: you find the Gazetteer the ordinary way once and see where it
-        lives in the little shape. After that you use the map.
-
-        One delegated listener rather than one per panel, and it does nothing
-        at all unless the panel under the pointer has changed, so sweeping
-        across the board is a string comparison per event. */
-    let lastOver = null;
-    document.addEventListener("pointerover", ev => {
-      const panel = ev.target.closest && ev.target.closest(".panel");
-      const id = panel ? panel.id : null;
-      if (id === lastOver) return;
-      lastOver = id;
-      for (const c of document.querySelectorAll(".mm-cell.lit")) c.classList.remove("lit");
-      markActivePanel(id);
-      if (!id) return;
-      const cell = document.querySelector('.mm-cell[data-id="' + CSS.escape(id) + '"]');
-      if (cell) cell.classList.add("lit");
-    }, { passive: true });
-
-    /*  Typing counts as being in a panel. Without this, writing in the Pallet
-        with the pointer parked over the map turned the Pallet down while you
-        were looking at it. */
-    document.addEventListener("focusin", ev => {
-      const panel = ev.target.closest && ev.target.closest(".panel");
-      if (panel) markActivePanel(panel.id);
-    });
-  }
-  const grid = host.querySelector('[data-el="grid"]');
-  const tip = document.getElementById("mmTip");
-  tip.hidden = true;   // the block it was naming may be gone after a redraw
-  grid.innerHTML = "";
-  host.hidden = board.tiles.length < 2;
-  /*  Slid clear of a bottom or right rail. It is fixed to the corner and a
-      rail is fixed to the same corner, so without this the map sits under the
-      drawer and the one thing that is meant to be reachable is the one thing
-      covered. */
-  host.style.bottom = (10 + dockSizeOf("bottom")) + "px";
-  host.style.right = (10 + dockSizeOf("right")) + "px";
-  if (host.hidden) return;
-
-  const rows = board.tiles.reduce((n, t) => Math.max(n, t.y + t.h), 1);
-  grid.style.gridTemplateColumns = "repeat(" + board.cols + ", 1fr)";
-  grid.style.gridTemplateRows = "repeat(" + rows + ", 1fr)";
-  //  Taller boards get a taller map rather than squashed blocks, up to a cap.
-  grid.style.height = Math.min(120, Math.max(40, rows * 13)) + "px";
-
-  for (const t of board.tiles) {
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = "mm-cell";
-    cell.style.gridColumn = (t.x + 1) + " / span " + t.w;
-    cell.style.gridRow = (t.y + 1) + " / span " + t.h;
-    const label = (FOOTPRINTS[t.id] && FOOTPRINTS[t.id].name) || t.id;
-    cell.setAttribute("aria-label", label);
-    cell.dataset.id = t.id;
-    const placeTip = e => { tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; };
-    cell.onmouseenter = e => {
-      tip.textContent = label;
-      placeTip(e);
-      tip.hidden = false;
-      const node = document.getElementById(t.id);
-      if (node) node.classList.add("mm-lit");
-    };
-    cell.onmousemove = placeTip;
-    cell.onmouseleave = () => {
-      tip.hidden = true;
-      const node = document.getElementById(t.id);
-      if (node) node.classList.remove("mm-lit");
-    };
-    cell.onclick = () => {
-      const node = document.getElementById(t.id);
-      if (!node) return;
-      node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      /*  A flash, because a smooth scroll ending on a wall of identical panels
-          leaves you asking which one you asked for. */
-      node.classList.add("mm-ping");
-      setTimeout(() => node.classList.remove("mm-ping"), 900);
-    };
-    grid.appendChild(cell);
-  }
-  /*  Next frame, not now. This reads a rectangle per tile, and calling it
-      immediately after the grid was rewritten makes the browser lay the whole
-      board out again before it has finished the one it is doing. Deferred, it
-      reads a settled page once. */
-  requestAnimationFrame(syncMiniView);
-}
-
-/*  Which tiles are on screen, and where the window sits over the whole board.
-    Measured rather than computed from scroll maths, so a sticky header or a
-    board that has not finished laying out cannot put it out by a row. */
-function syncMiniView() {
-  const host = document.getElementById("miniMap");
-  if (!host || host.hidden) return;
-  const top = window.scrollY, bot = top + window.innerHeight;
-  for (const cell of host.querySelectorAll(".mm-cell")) {
-    const node = document.getElementById(cell.dataset.id);
-    if (!node) { cell.classList.remove("here"); continue; }
-    const r = node.getBoundingClientRect();
-    const y0 = r.top + window.scrollY, y1 = y0 + r.height;
-    cell.classList.toggle("here", y1 > top && y0 < bot);
-  }
-}
-
-/*  MOVING A PANEL DOES NOT CHANGE WHAT IS IN IT.
-
-    This used to re-render every panel body on any board change, which meant a
-    drop cost about a tenth of a second: eighty of those milliseconds were
-    panels redrawing content that had not altered by so much as a character.
-    That is the pause you feel between letting go and the tile landing.
-
-    Pass `{ content: false }` for a pure layout change — a move, a swap, a
-    dock, a removal. The panels are re-parented, not rebuilt, so their scroll
-    position and their typing survive untouched, and the two canvas panels get
-    told to remeasure below because a new box is the one thing they do care
-    about. */
-function renderBoard(opts) {
-  renderBoardCells();
-  renderBoardTiles();
-  renderDocks();
-  renderMiniMap();
-  const b = boardEl();
-  const empty = b.querySelector(".board-empty");
-  if (!board.tiles.length) {
-    if (!empty) {
-      const d = document.createElement("div");
-      d.className = "board-empty";
-      d.textContent = "Empty board — open Panels and drag one in.";
-      b.appendChild(d);
-    }
-  } else if (empty) empty.remove();
-  /*  An empty board makes the drawer tab the only thing worth pressing, so it
-      stops being decoration and starts being a beacon. Counted off the DOM
-      rather than board.tiles, because a docked panel is still on the page and
-      an empty grid with a full rail is not an empty board. */
-  const tab = el("boardFlyoutTab");
-  if (tab) {
-    tab.classList.toggle("empty",
-      !document.querySelector(".board-tile > .panel, .dock > .panel"));
-  }
-  if (!opts || opts.content !== false) refreshAll();
-  /*  Canvas panels size themselves against the tile, and a ResizeObserver does
-      not survive this function re-parenting them. So the board tells them
-      directly — it is the only thing that reliably knows the grid moved. */
-  const pr = document.querySelector("#viz-promenade .panel-body");
-  if (pr && pr._reflowNow) requestAnimationFrame(() => {
-    pr._reflowNow();
-    //  A board change re-parents panels, which is exactly the case that can
-    //  leave the ticker switched off with the panel plainly in view.
-    if (pr._wake) pr._wake();
-  });
-}
-
-function renderBoardCardList() {
-  const list = el("boardCardList");
-  const q = el("boardSearch").value.trim().toLowerCase();
-  const available = Object.keys(FOOTPRINTS).filter(id => !isOnBoard(id));
-  list.innerHTML = "";
-  let shown = 0;
-
-  // Grouped by what a panel does to state, which is a fact about it, rather
-  // than by the ad-hoc labels the list used before.
-  for (const group of ROLE_ORDER) {
-    const ids = available.filter(id => (FOOTPRINTS[id].role || "read") === group.role);
-    const visible = q ? ids.filter(id => FOOTPRINTS[id].name.toLowerCase().includes(q)) : ids;
-    if (!visible.length) continue;
-    const heading = document.createElement("h4");
-    heading.className = "board-group-heading";
-    heading.textContent = group.title;
-    list.appendChild(heading);
-
-    for (const id of visible) {
-      const fp = FOOTPRINTS[id];
-      const card = document.createElement("div");
-      card.className = "board-card";
-      card.draggable = true;
-      card.dataset.id = id;
-      card.innerHTML =
-        '<div class="cart-label">' +
-        '<div class="board-card-row">' +
-          '<button type="button" class="fp-add" title="add to board">+</button>' +
-          '<span class="board-card-name">' + esc(fp.name) +
-            (fp.wip ? ' <span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
-          "</span>" +
-        "</div>" +
-        '<div class="board-card-desc">' + esc(fp.desc || "") + "</div>" +
-        //  Size in the bottom-right corner of the label, out of the name's way.
-        '<div class="cart-foot">' +
-          '<span class="fp">' +
-            '<input type="number" class="fp-w" min="1" max="12" step="1" value="' + fp.w + '" title="width (cells)">' +
-            "<span>&times;</span>" +
-            '<input type="number" class="fp-h" min="1" max="12" step="1" value="' + fp.h + '" title="height (cells)">' +
-          "</span>" +
-        "</div>" +
-        "</div>";
-
-      const wIn = card.querySelector(".fp-w"), hIn = card.querySelector(".fp-h");
-      [wIn, hIn].forEach(i => i.addEventListener("mousedown", e => e.stopPropagation()));
-      wIn.addEventListener("change", () => { fp.w = Math.max(1, Math.min(12, parseInt(wIn.value, 10) || 1)); wIn.value = fp.w; saveFootprints(); });
-      hIn.addEventListener("change", () => { fp.h = Math.max(1, Math.min(12, parseInt(hIn.value, 10) || 1)); hIn.value = fp.h; saveFootprints(); });
-
-      const add = card.querySelector(".fp-add");
-      add.addEventListener("mousedown", e => e.stopPropagation());
-      add.addEventListener("click", e => {
-        e.stopPropagation();
-        const slot = pickedSlot(fp.w, fp.h) || findFreeSlot(fp.w, fp.h);
-        clearBoardPick();
-        hideFootprint();
-        addTile(id, slot.x, slot.y, fp.w, fp.h);
-      });
-      card.addEventListener("mouseenter", () => previewFootprint(fp.w, fp.h));
-      card.addEventListener("mouseleave", hideFootprint);
-      //  Resizing the footprint in the card updates the outline straight away.
-      [wIn, hIn].forEach(i => i.addEventListener("input", () =>
-        previewFootprint(Math.max(1, parseInt(wIn.value, 10) || 1), Math.max(1, parseInt(hIn.value, 10) || 1))));
-      list.appendChild(card);
-      shown++;
-    }
-  }
-  if (!shown) {
-    const none = document.createElement("div");
-    none.className = "board-card-empty";
-    none.style.cursor = "default";
-    none.textContent = board.tiles.length ? "everything is on the board" : "no match";
-    list.appendChild(none);
-  }
-}
-
-function addTile(id, x, y, w, h) {
-  const fp = FOOTPRINTS[id];
-  if (!fp) return;
-  board.tiles.push({ id, x, y, w: Math.min(w || fp.w, board.cols), h: h || fp.h });
-  renderBoard(); renderBoardCardList(); saveBoard();
-}
-
-/*  The empty cell last pressed, or null. A panel added from the list goes
-    there if its footprint fits with that cell as its top-left corner; a wide
-    panel picked near the right edge is pulled left to stay on the grid. If it
-    still does not fit, it falls back to the first free slot. */
-let boardPick = null;
-function pickedSlot(w, h) {
-  if (!boardPick) return null;
-  const cw = Math.min(w, board.cols);
-  const x = Math.min(boardPick.x, board.cols - cw);
-  return overlaps(null, x, boardPick.y, cw, h) ? null : { x, y: boardPick.y };
-}
-/*  Hovering a card in the panel list shows where + would put it, using the
-    drag ghost. With a picked cell it outlines the footprint there, red if it
-    does not fit; with none it outlines the first free slot. */
-function previewFootprint(w, h) {
-  if (boardDrag) return;
-  const cw = Math.min(w, board.cols);
-  let x, y, bad = false;
-  if (boardPick) {
-    x = Math.min(boardPick.x, board.cols - cw); y = boardPick.y;
-    bad = overlaps(null, x, y, cw, h);
-  } else ({ x, y } = findFreeSlot(w, h));
-  const g = ghostEl();
-  g.hidden = false;
-  g.classList.toggle("invalid", bad);
-  g.classList.remove("swap");
-  g.style.gridColumn = (x + 1) + " / span " + cw;
-  g.style.gridRow = (y + 1) + " / span " + h;
-}
-function hideFootprint() {
-  if (!boardDrag) ghostEl().hidden = true;
-}
-function clearBoardPick() {
-  boardPick = null;
-  boardEl().querySelectorAll(".board-cell.picked").forEach(c => c.classList.remove("picked"));
-}
-
-function findFreeSlot(w, h) {
-  const cw = Math.min(w, board.cols);
-  for (let y = 0; y < 999; y++) {
-    for (let x = 0; x <= board.cols - cw; x++) {
-      if (!overlaps(null, x, y, cw, h)) return { x, y };
-    }
-  }
-  return { x: 0, y: 0 };
-}
-
-function moveTile(id, x, y) {
-  const t = board.tiles.find(k => k.id === id);
-  if (!t) return;
-  t.x = x; t.y = y;
-  renderBoard({ content: false }); saveBoard();
-}
-
-/* Two tiles of identical footprint exchange positions. Same size is the whole
-   condition: neither can then overlap anything the other did not, so the
-   exchange needs no repack and can never half-fail. */
-function swapTiles(idA, idB) {
-  const a = board.tiles.find(k => k.id === idA);
-  const b = board.tiles.find(k => k.id === idB);
-  if (!a || !b || a === b || a.w !== b.w || a.h !== b.h) return;
-  const x = a.x, y = a.y;
-  a.x = b.x; a.y = b.y;
-  b.x = x;   b.y = y;
-  renderBoard({ content: false }); saveBoard();
-}
-
-function removeTile(id) {
-  board.tiles = board.tiles.filter(t => t.id !== id);
-  // Park the panel rather than destroying it, so its scroll and typed text
-  // survive a trip off the board.
-  const panel = document.getElementById(id);
-  if (panel) {
-    const rm = panel.querySelector(".panel-head > .tile-remove");
-    if (rm) rm.remove();
-    //  A panel removed straight off a rail takes its dock furniture with it,
-    //  or it comes back to the board still wearing the undock button.
-    const pop = panel.querySelector(".panel-head > .dock-pop");
-    if (pop) pop.remove();
-    panel.classList.remove("is-docked");
-    el("panelStore").appendChild(panel);
-  }
-  renderBoard({ content: false }); renderBoardCardList(); saveBoard();
-}
-
-function resetBoard() {
-  board = JSON.parse(JSON.stringify(DEFAULT_BOARD));
-  renderBoard(); renderBoardCardList(); saveBoard();
-}
-
-/* ---------- drag: card -> board, and tile -> board ---------- */
-let boardDrag = null;
-
-function boardCellUnderPoint(clientX, clientY) {
-  const b = boardEl();
-  const r = b.getBoundingClientRect();
-  const gap = parseFloat(getComputedStyle(b).columnGap) || 14;
-  const cellW = (r.width - gap * (board.cols - 1)) / board.cols;
-  const cellH = board.rowUnit;
-  return { x: Math.floor((clientX - r.left) / (cellW + gap)),
-           y: Math.floor((clientY - r.top) / (cellH + gap)) };
-}
-
-function tileAtCell(x, y) {
-  return board.tiles.find(t => x >= t.x && x < t.x + t.w && y >= t.y && y < t.y + t.h) || null;
-}
-
-function updateGhost(clientX, clientY) {
-  if (!boardDrag) return;
-  const { x, y } = boardCellUnderPoint(clientX, clientY);
-
-  /*  Dragging one tile onto another of the same footprint swaps them, instead
-      of being refused as an overlap. Only ever offered for a tile already on
-      the board — a card from the flyout has nowhere to send the displaced tile
-      back to. Different sizes still refuse: an unequal exchange would have to
-      shove a third tile somewhere, and a drop should do exactly what its ghost
-      showed. */
-  const under = boardDrag.fromTile ? tileAtCell(x, y) : null;
-  const swap = under && under !== boardDrag.fromTile &&
-               under.w === boardDrag.w && under.h === boardDrag.h ? under : null;
-
-  const cx = swap ? swap.x : Math.max(0, Math.min(board.cols - boardDrag.w, x));
-  const cy = swap ? swap.y : Math.max(0, y);
-  const bad = !swap &&
-              (x < 0 || x > board.cols - boardDrag.w || y < 0 ||
-               overlaps(boardDrag.fromTile || null, cx, cy, boardDrag.w, boardDrag.h));
-  const g = ghostEl();
-  g.hidden = false;
-  g.classList.toggle("invalid", bad);
-  g.classList.toggle("swap", !!swap);
-  g.style.gridColumn = (cx + 1) + " / span " + boardDrag.w;
-  g.style.gridRow = (cy + 1) + " / span " + boardDrag.h;
-  // The ghost marks where the dragged tile lands; the outline marks the tile
-  // being sent the other way, so both halves of the exchange are visible.
-  boardEl().querySelectorAll(".board-tile.swap-target")
-    .forEach(n => n.classList.remove("swap-target"));
-  if (swap) {
-    const node = boardEl().querySelector('.board-tile[data-id="' + swap.id + '"]');
-    if (node) node.classList.add("swap-target");
-  }
-  boardDrag.valid = !bad; boardDrag.cx = cx; boardDrag.cy = cy;
-  boardDrag.swapWith = swap ? swap.id : null;
-}
-
-/*  DROP TARGETS FOR THE EDGES.
-
-    A plus sign at each edge of the window, and one on the end of every rail
-    that already has something in it. Drag a panel onto a plus and it docks
-    there; a rail's own plus is how a second panel joins it, so an edge can
-    hold as many as you like.
-
-    Only visible while you are dragging a panel. Four permanent crosses around
-    the window would be four things in the way of a page you are reading. */
-function dockTargets() {
-  let host = document.getElementById("dockTargets");
-  if (!host) {
-    host = document.createElement("div");
-    host.id = "dockTargets";
-    for (const side of DOCK_SIDES) {
-      const t = document.createElement("button");
-      t.type = "button";
-      t.className = "dock-target dock-target-" + side;
-      t.dataset.side = side;
-      t.textContent = "+";
-      t.title = "dock to the " + side;
-      wireDockTarget(t, side);
-      host.appendChild(t);
-    }
-    document.body.appendChild(host);
-  }
-  //  Clear of any rail already on that edge, so the plus for the bottom is
-  //  never hidden behind the bottom rail.
-  for (const t of host.children) {
-    const side = t.dataset.side;
-    const off = dockSizeOf(side) + 8;
-    if (side === "left" || side === "right") t.style[side] = off + "px";
-    else t.style[side] = off + "px";
-  }
-  return host;
-}
-
-/*  Both drags end here. The flyout uses HTML5 drag and drop and a tile already
-    on the board is moved with plain mouse events, so a target has to answer to
-    either one. */
-function wireDockTarget(node, side) {
-  const take = () => {
-    if (!boardDrag) return false;
-    const id = boardDrag.id;
-    const known = board.tiles.some(t => t.id === id);
-    //  Dragged in from the flyout: it has to be on the board before it can be
-    //  docked, and it keeps that cell for when it is undocked again.
-    if (!known) {
-      const fp = FOOTPRINTS[id] || { w: 1, h: 1 };
-      const slot = findFreeSlot(fp.w, fp.h);
-      addTile(id, slot.x, slot.y, fp.w, fp.h);
-    }
-    boardDrag = null;
-    setDock(id, side);
-    return true;
-  };
-  node.addEventListener("dragover", e => {
-    if (!boardDrag) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    node.classList.add("over");
-  });
-  node.addEventListener("dragleave", () => node.classList.remove("over"));
-  node.addEventListener("drop", e => {
-    e.preventDefault();
-    node.classList.remove("over");
-    if (take()) endBoardDrag(false);
-  });
-  //  The mouse drag: the pointer is down the whole way, so a plain mouseup on
-  //  the target is the drop.
-  node.addEventListener("mouseenter", () => { if (boardDrag) node.classList.add("over"); });
-  node.addEventListener("mouseleave", () => node.classList.remove("over"));
-  node.addEventListener("mouseup", () => {
-    node.classList.remove("over");
-    if (take()) endBoardDrag(false);
-  });
-}
-
-function showDockTargets(on) {
-  dockTargets().classList.toggle("live", !!on);
-  document.body.classList.toggle("panel-dragging", !!on);
-}
-
-function endBoardDrag(commit) {
-  showDockTargets(false);
-  if (boardDrag && commit && boardDrag.valid) {
-    if (boardDrag.swapWith) swapTiles(boardDrag.id, boardDrag.swapWith);
-    else if (boardDrag.fromTile) moveTile(boardDrag.id, boardDrag.cx, boardDrag.cy);
-    else addTile(boardDrag.id, boardDrag.cx, boardDrag.cy, boardDrag.w, boardDrag.h);
-  }
-  ghostEl().hidden = true;
-  document.querySelectorAll(".board-card.dragging, .board-tile.dragging, .board-tile.swap-target")
-    .forEach(n => n.classList.remove("dragging", "swap-target"));
-  boardDrag = null;
 }
 
 /* --------------------------------------------------------------------------
@@ -25135,10 +22568,8 @@ function ago(then) {
 function showSaved() {
   const box = el("saveState");
   if (!box) return;
+  //  Only whether and when it was saved — not where the pile came from.
   const parts = [];
-
-  if (currentFile) parts.push(currentFile.split("/").pop());
-  else if (folderName) parts.push(folderName);
 
   if (!lastSaveOk) {
     box.className = "save-state bad";
@@ -25321,6 +22752,21 @@ state.model.view = buildView(state.model);
 
 loadFootprints();
 loadBoard();
+/*  ONCE: a board saved before the top of the page became the Project panel
+    would otherwise open with no search and no save or export anywhere. So it
+    gets the panel across the top, with everything else moved down a row, the
+    first time only — after that, where it lives is up to you. */
+try {
+  const MOVED = "brick-by-brick:projectpanel:v1";
+  if (!localStorage.getItem(MOVED)) {
+    if (!board.tiles.some(t => t.id === "project")) {
+      for (const t of board.tiles) t.y += 1;
+      board.tiles.unshift({ id: "project", x: 0, y: 0, w: Math.min(2, board.cols), h: 1 });
+      saveBoard();
+    }
+    localStorage.setItem(MOVED, "1");
+  }
+} catch (e) { /* storage blocked: the default board already has it */ }
 el("boardCols").value = board.cols;
 el("boardRowUnit").value = board.rowUnit;
 renderBoard();
@@ -25330,93 +22776,59 @@ booted = true;
 // Hosted piles and gazetteer, if this page is served rather than opened from disk.
 loadHostedGazetteer().then(loadHostedBricks);
 
-/*  Top-bar search.
 
-    Writes the same state.filter.text the Filter panel's own box writes, so the
-    two are one search with two ways in rather than two searches. Kept in sync
-    on both sides: this one is not a panel, so refreshAll() never redraws it,
-    and the panel's box is redrawn constantly — each therefore updates the
-    other, skipping whichever currently has focus so neither fights your typing. */
-const topSearch = el("topsearch");
-const topSearchInput = el("topsearchInput");
-
-const topSearchBar = el("topsearchBar");
-
-/*  One way in, one way out, and closing clears.
-
-    A search bar left open with nothing in it is clutter; one left SHUT with
-    something in it is worse, because the board is filtered and the reason is
-    off-screen. So closing empties the box, which is the only way those two
-    can never disagree. */
-const closeSearch = () => {
-  topSearchBar.classList.remove("open");
-  if (state.filter.text) setFilter(f => { f.text = ""; });
-  topSearchInput.blur();
-};
-el("topsearchBtn").onclick = () => {
-  if (topSearchBar.classList.contains("open")) { closeSearch(); return; }
-  topSearchBar.classList.add("open");
-  topSearchInput.focus();
-  topSearchInput.select();
-};
-el("topsearchClose").onclick = closeSearch;
-
-topSearchInput.addEventListener("input", () => {
-  setFilter(f => { f.text = topSearchInput.value; });
-});
-topSearchInput.addEventListener("keydown", e => {
-  if (e.key === "Escape") { topSearchInput.value = ""; closeSearch(); }
-});
-/*  Closed on blur only when it has nothing to show. It was closing the old
-    inline box; the bar is what closes now, and an empty one going away when
-    you click elsewhere is tidiness rather than a decision being undone. */
-topSearchInput.addEventListener("blur", () => {
-  if (!topSearchInput.value) topSearchBar.classList.remove("open");
-});
 
 /* ---------- flyout + board controls ---------- */
 /* ---------- header: autosave, save, download ---------- */
-/*  Focus mode, remembered. A view preference that resets on every reload is a
-    view preference nobody keeps using. */
-{
-  const box = el("spotlight");
-  let on = false;
-  try { on = localStorage.getItem(FOCUS_KEY) === "1"; } catch (e) { on = false; }
-  const apply = () => {
-    document.body.classList.toggle("spotlight", on);
-    box.checked = on;
-    //  Something has to be lit the moment it comes on, or every panel is dark
-    //  until the pointer moves.
-    if (on) markActivePanel(null);
-  };
-  box.addEventListener("change", () => {
-    on = box.checked;
-    try { localStorage.setItem(FOCUS_KEY, on ? "1" : "0"); } catch (e) { /* unavailable */ }
-    apply();
-  });
-  apply();
-}
 
-el("autoSave").checked = AUTOSAVE;
 showSaved();
-el("autoSave").addEventListener("change", e => {
-  AUTOSAVE = e.target.checked;
-  saveAutosave();
-  // Switching it back on commits whatever is pending, rather than waiting for
-  // the next keystroke to notice.
-  if (AUTOSAVE && dirty) { dirty = false; writePile(); }
+
+/*  THE PROJECT PANEL'S CONTROLS, wired each time the panel is built — at
+    start-up, when it is added from 🧰, and again after ↻ — because each build
+    is a fresh copy of the template with nothing attached. Called through the
+    board's wireBody. */
+function wireProject(body) {
+  const q = s => body.querySelector(s);
+
+  //  Search: writes the same state.filter.text the Filter panel's box writes,
+  //  so the two are one search with two ways in.
+  const inp = q("#topsearchInput");
+  inp.addEventListener("input", () => setFilter(f => { f.text = inp.value; }));
+  inp.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    inp.value = "";
+    if (state.filter.text) setFilter(f => { f.text = ""; });
+    inp.blur();
+  });
+
+  const auto = q("#autoSave");
+  auto.checked = AUTOSAVE;
+  auto.addEventListener("change", e => {
+    AUTOSAVE = e.target.checked;
+    saveAutosave();
+    // Switching it back on commits whatever is pending, rather than waiting for
+    // the next keystroke to notice.
+    if (AUTOSAVE && dirty) { dirty = false; writePile(); }
+    showSaved();
+  });
+  q("#quickSave").addEventListener("click", () => {
+    clearTimeout(saveTimer);
+    dirty = false;
+    writePile();
+  });
+  q("#quickDownload").addEventListener("click", () => {
+    const name = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
+    downloadText(state.text, name, "text/plain");
+    stampExport(name);
+  });
+  q("#quickClear").addEventListener("click", clearAll);
+
+  //  Focus mode is wired by the board on the document; the box only has to
+  //  show what is already on.
+  q("#spotlight").checked = document.body.classList.contains("spotlight");
   showSaved();
-});
-el("quickSave").addEventListener("click", () => {
-  clearTimeout(saveTimer);
-  dirty = false;
-  writePile();
-});
-el("quickDownload").addEventListener("click", () => {
-  const name = "bricks-" + new Date().toISOString().slice(0, 10) + ".txt";
-  downloadText(state.text, name, "text/plain");
-  stampExport(name);
-});
+  syncSearchInputs();
+}
 
 /*  Clear all — back to a blank project.
 
@@ -25494,81 +22906,10 @@ function clearAll() {
   location.reload();
 }
 
-el("quickClear").addEventListener("click", clearAll);
 
-//  Opening from the tab has no cell behind it, and closing forgets any cell picked.
-el("boardFlyoutTab").addEventListener("click", () => {
-  clearBoardPick();
-  el("boardFlyoutWrap").classList.toggle("open");
-});
-el("boardFlyoutClose").addEventListener("click", () => {
-  clearBoardPick();
-  el("boardFlyoutWrap").classList.remove("open");
-});
-el("boardSearch").addEventListener("input", renderBoardCardList);
-el("boardReset").addEventListener("click", resetBoard);
-
-el("boardCols").addEventListener("change", e => {
-  const cols = Math.max(1, Math.min(12, Math.round(Number(e.target.value)) || 4));
-  e.target.value = cols;
-  if (cols !== board.cols) { board.cols = cols; repackForCols(cols); renderBoard({ content: false }); saveBoard(); }
-});
-el("boardRowUnit").addEventListener("change", e => {
-  const px = Math.max(80, Math.min(600, Math.round(Number(e.target.value)) || 220));
-  e.target.value = px;
-  board.rowUnit = px;
-  renderBoard({ content: false }); saveBoard();
-});
-
-/* ---------- drag wiring ---------- */
-el("boardCardList").addEventListener("dragstart", e => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") { e.preventDefault(); return; }
-  const card = e.target.closest(".board-card[draggable]");
-  if (!card) return;
-  const fp = FOOTPRINTS[card.dataset.id];
-  if (!fp) return;
-  card.classList.add("dragging");
-  boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
-  showDockTargets(true);
-  e.dataTransfer.effectAllowed = "copy";
-  // Firefox needs data set to fire subsequent drag events at all.
-  e.dataTransfer.setData("text/plain", card.dataset.id);
-});
-el("boardCardList").addEventListener("dragend", () => endBoardDrag(false));
-
-boardEl().addEventListener("dragover", e => {
-  if (!boardDrag) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = boardDrag.fromTile ? "move" : "copy";
-  updateGhost(e.clientX, e.clientY);
-});
-boardEl().addEventListener("drop", e => {
-  if (!boardDrag) return;
-  e.preventDefault();
-  endBoardDrag(true);
-});
-
-// Repositioning a tile already on the board — grabbed by its ✥ handle only,
-// so the rest of the header (and anything under it) stays clickable.
-boardEl().addEventListener("mousedown", e => {
-  const head = e.target.closest(".drag-handle");
-  const tile = e.target.closest(".board-tile");
-  if (!head || !tile) return;
-  const t = board.tiles.find(k => k.id === tile.dataset.id);
-  if (!t) return;
-  tile.classList.add("dragging");
-  boardDrag = { id: t.id, w: t.w, h: t.h, fromTile: t, valid: false };
-  showDockTargets(true);
-  const onMove = ev => updateGhost(ev.clientX, ev.clientY);
-  const onUp = ev => {
-    updateGhost(ev.clientX, ev.clientY);
-    endBoardDrag(true);
-    window.removeEventListener("mousemove", onMove);
-    window.removeEventListener("mouseup", onUp);
-  };
-  window.addEventListener("mousemove", onMove);
-  window.addEventListener("mouseup", onUp);
-});
+//  The board's own controls — the 🧰 tab, the panel list, dragging panels,
+//  the focus switch — are wired in board/board.js.
+wireBoard();
 </script>
 </body>
 </html>

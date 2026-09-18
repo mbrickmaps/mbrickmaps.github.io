@@ -1,0 +1,822 @@
+/* ==========================================================================
+   BOARD — the grid, its panels, docks, covers, minimap and panel list
+   --------------------------------------------------------------------------
+   Taken out of Brick by Brick with board.js. Colours, radii and sizes come
+   from the page's own custom properties (--panel, --border, --accent2,
+   --panel-radius, --close-size, --go, --stop …), so the board takes on the
+   page's theme. Linked BEFORE the page's own <style>, so a page can override
+   any of it by writing the same selector again.
+   -------------------------------------------------------------------------- */
+
+  /* ---------- THE BOARD ----------
+     A coordinate space, not a queue. Cells and tiles are BOTH explicitly
+     placed, so neither can push the other around via auto-flow. */
+  /*  A margin down both sides, the width of the flyout's tab, so the board is
+      not flush against the window. Panels have a cartouche that sits proud of
+      their top left corner and a close button on their top right, and at the
+      window edge both had nowhere to be. */
+  #board {
+    display: grid; gap: var(--panel-gap); position: relative;
+    grid-template-columns: repeat(var(--board-cols, 4), minmax(0, 1fr));
+    grid-auto-rows: var(--board-row, 220px);
+    padding: 0 26px 40px;
+  }
+  /*  AN EMPTY CELL IS A HOLE, NOT A GAP.
+
+      It used to be transparent, so it took the board's own colour and read as
+      more board. Sunk instead: darker than whatever is behind it, with the
+      shadow falling from the top edge the way it does inside a recess. In the
+      Brick theme that makes the wall literal, a missing brick with the dark
+      of the cavity behind it, and it works the same in every other theme
+      because the colour is mixed from that theme's own board rather than
+      being a fixed grey. */
+  .board-cell {
+    border: 1px dashed var(--border-soft); border-radius: 6px; z-index: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--border-soft); font-size: 1.4rem; cursor: pointer; user-select: none;
+    background: color-mix(in srgb, #000 42%, var(--bg));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
+  }
+  .board-cell:hover {
+    border-color: var(--accent2); color: var(--accent2);
+    background: color-mix(in srgb, #000 28%, var(--bg));
+  }
+  /* The cell a panel added from the list will land in. */
+  .board-cell.picked {
+    border: 1px solid var(--accent2); color: var(--accent2);
+    background: color-mix(in srgb, var(--accent2) 14%, var(--bg));
+  }
+  .board-tile { position: relative; z-index: 1; min-width: 0; min-height: 0; display: flex; }
+  /* Raise a tile while its label is the thing being read, so a neighboring
+     tile's background cannot paint over the overhanging cartouche. */
+  .board-tile:hover { z-index: 3; }
+  /*  Scrolling belongs to the BODY, not the panel. With overflow:auto on the
+      panel, the half of the cartouche that hangs above the top border was
+      clipped away — an element cannot overflow a scroll container it lives
+      inside. The body scrolls; the panel stays visible so the label can sit
+      proud of the frame. */
+  /*  A docked panel is the same panel in a different frame, so it gets the
+      same rules. Without them its body had no height to be bounded by and a
+      long table simply hung out of the bottom of the rail and off the window.
+      The dock rules further down re-assert the flex along the rail. */
+  .board-tile > .panel, .dock > .panel {
+    flex: 1 1 auto; min-width: 0; overflow: visible;
+    display: flex; flex-direction: column;
+  }
+  .board-tile > .panel > .panel-body, .dock > .panel > .panel-body {
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .board-tile > .panel > .panel-body::-webkit-scrollbar,
+  .dock > .panel > .panel-body::-webkit-scrollbar { display: none; }
+  .board-tile.dragging { opacity: 0.4; }
+  /* The footprint a drop would occupy. Never placed until mouseup. */
+  #boardGhost {
+    z-index: 2; pointer-events: none; border-radius: 6px;
+    border: 2px dashed var(--accent2); background: rgba(51,255,51,0.10);
+  }
+  #boardGhost.invalid { border-color: #ff5555; background: rgba(255,85,85,0.12); }
+  /* A swap is still a drop preview, so it stays green like every other
+     structural affordance. Solid rather than dashed is what separates it from
+     an ordinary move — the shape carries the difference, not the hue. */
+  #boardGhost.swap { border-style: solid; background: rgba(51,255,51,0.16); }
+  #boardGhost[hidden] { display: none; }
+  .board-tile.swap-target > .panel { outline: 2px solid var(--accent2); outline-offset: -2px; }
+  .board-empty {
+    grid-column: 1 / -1; text-align: center; padding: 40px 10px;
+    opacity: 0.35; font-size: 0.85rem;
+  }
+  /* Grow/shrink a placed tile by a column or row. Only the legal buttons are
+     shown — a "+" never appears toward an occupied neighbor or past the edge. */
+  .tile-resize { position: absolute; display: flex; gap: 2px; z-index: 4; opacity: 0; transition: opacity 0.15s; }
+  .board-tile:hover .tile-resize { opacity: 1; }
+  .tile-resize button {
+    width: 18px; height: 18px; padding: 0; font-size: 0.8rem; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 3px; background: var(--field); color: var(--fg); cursor: pointer;
+  }
+  .tile-resize button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .tile-resize-w { right: -9px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  .tile-resize-h { bottom: -9px; left: 50%; transform: translateX(-50%); flex-direction: row; }
+  /*  Sits on the top-right corner rather than in the header row, centered on
+      the corner arc's own center of curvature — which is (radius, radius) in
+      from the corner, so the circle is offset half its width back from that
+      point. Derived from the variables, so changing the panel radius keeps it
+      centered without re-tuning any numbers. */
+  .tile-remove {
+    position: absolute; z-index: 3;
+    /* Less the border: absolute offsets are measured from the PADDING edge,
+       which is inside the border, while the corner arc lives on the border
+       box — without this the circle sits 1px off center in both axes. */
+    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    right: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    width: var(--close-size); height: var(--close-size); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; line-height: 1;
+    /*  Quiet by dimming the GLYPH, never the button. Fading the whole element
+        faded its fill with it, so the panel's corner and whatever sat under it
+        showed through the circle that is supposed to be masking them. The disc
+        is solid panel colour; only the cross is faint. */
+    color: color-mix(in srgb, var(--fg) 52%, transparent);
+  }
+  .tile-remove:hover { border-color: var(--bad); color: var(--bad); }
+  /* Keeps any header control from sliding under the overlaid circle. */
+  /*  THE HEADER IS ALWAYS REACHABLE.
+
+      It was not. The header and the body are both statically positioned, so
+      whichever comes later in the DOM wins — and the Promenade's canvas is
+      drawn over the top of its own title bar. ✕ survived because it is placed
+      absolutely with a key of its own; ⟳ and the cover toggle sat underneath
+      the street and could not be pressed at all. The reload button on the one
+      panel that has ever needed reloading.
+
+      Above the cover as well as the body, which is the rule the cover depends
+      on: you must always be able to take a cover off, move the tile or close
+      it without uncovering it first. */
+  .panel-head {
+    /*  Clear of BOTH discs, ↻ and ✕. Clearing only ✕ put ☰ under ↻. */
+    padding-right: calc(var(--close-size) * 2 + 4px);
+    position: relative; z-index: 7;
+    /*  Raised above the body so its controls stay pressable, but the empty
+        strip lets presses through to whatever the body has up there, such as
+        the Promenade's inputs. Only the controls themselves take the mouse. */
+    pointer-events: none;
+  }
+  .panel-head > * { pointer-events: auto; }
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel); border: var(--panel-border) solid var(--border);
+    border-radius: var(--panel-radius);
+    /* Extra top padding is the room the cartouche occupies where it straddles
+       the border; the label is pulled up into it rather than adding a row. */
+    padding: 14px 12px 12px; min-width: 0; position: relative;
+    /* Container query context: contents respond to the PANEL's width, not the
+       viewport's, so the same panel works at 1 cell and at 4. */
+    container-type: inline-size;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 6px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  /*  The title as a cartouche: lifted out of the flow and set ON the top
+      border, like a label on a map's neatline. It reclaims the line the header
+      used to spend on itself, and the panel's own background masks the border
+      behind it so the rule appears to break cleanly around the text. */
+  /*  max-width was reserving 90px for header controls that are no longer in
+      the row — the close button is an overlay now — which squeezed every
+      1-cell title to zero width. The title gets the room; only the drag
+      handle, badge and a small margin come out of it. */
+  /*  LINED UP WITH THE PANEL BODY, not floated in from the corner.
+
+      It sat at left:10 with 6 of its own padding, which put the cartouche box
+      ten pixels right of where the content underneath it starts — so every
+      panel had its title indented past its own contents by an amount nothing
+      else on the page shared.
+
+      Flush instead: the box edge lands on the body content edge, and the
+      header reads as belonging to the panel rather than hovering over it. The
+      handle still leads, because it is the thing you grab and it belongs at
+      the corner. */
+  .panel-head-lead {
+    position: absolute; top: -7px; left: 0; z-index: 2;
+    display: flex; align-items: center; gap: 4px; max-width: calc(100% - 34px);
+    background: var(--panel); padding: 0 5px; border-radius: 3px;
+  }
+  /* Without an explicit min-width a flex child may collapse entirely rather
+     than ellipsise; 3ch keeps at least a stub of the title visible. */
+  /*  A panel with its own header buttons (☰) gives the cartouche less room, so
+      a long title ellipsises instead of running over the button. */
+  .panel-head:has(> .panel-head-btn:not([hidden])) > .panel-head-lead {
+    max-width: calc(100% - var(--close-size) * 2 - 44px);
+  }
+  .panel-head-btn { position: relative; z-index: 3; }
+  .panel-head-lead h2 { min-width: 3ch; }
+  .panel-head-lead h2 { opacity: 0.75; }
+  /*  Reads as an annotation, not a control: no fill, and only fully legible on
+      hover. Sized off the badges beside it so the row keeps one baseline. It
+      outlives them when a tile narrows, being the one thing in the header you
+      cannot get to any other way. */
+  /*  A QUESTION MARK, NOT THE WORD.
+
+      "help" is four characters of a title bar that has room for about twelve,
+      and on a one-cell panel it was taking a third of the name. A ringed ? is
+      the same offer in one character, it is the mark everything else uses for
+      the same thing, and it stops competing with the title for the row.
+
+      Still a real link — it opens the panel's own write-up in a tab — so it
+      keeps a link's cursor and its focus ring. */
+  .panel-doc {
+    flex: 0 0 auto;
+    width: 13px; height: 13px; box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    font: 700 0.58rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted); text-decoration: none; opacity: 0.5;
+    border: 1px solid currentColor; border-radius: 50%;
+    margin-left: 2px; transition: opacity 0.12s, color 0.12s;
+  }
+  .panel-doc:hover, .panel-doc:focus-visible {
+    opacity: 1; color: var(--accent2); border-color: var(--accent2);
+  }
+  /*  With the title absolutely positioned it is no longer a flex item, so
+      space-between has nothing to push against and the controls collapse to
+      the left — directly under the cartouche. Pin them right instead, and hold
+      the row open so it does not lose its height entirely. */
+  .panel-head { min-height: 16px; justify-content: flex-end; flex-wrap: nowrap; }
+  .board-tile.dragging .panel-head { cursor: grabbing; }
+  .panel-head h2 {
+    margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 0.66rem; font-weight: 500; opacity: 0.55; line-height: 1.3;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  /* A four-way move glyph rather than the braille grip dots — it names the
+     action instead of implying only a texture to grab. */
+  .drag-handle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 17px; height: 17px; flex-shrink: 0;
+    border: 1px solid var(--border); border-radius: 3px;
+    /* cursor:move states the affordance; the glyph needs a touch more size
+       than the grip dots did to stay legible at this scale. */
+    background: var(--field); opacity: 0.35; cursor: move; font-size: 12px; line-height: 1;
+  }
+  .drag-handle:hover { opacity: 1; border-color: var(--accent2); }
+  /* ---------- flyout: the panel list ---------- */
+  #boardFlyoutWrap {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 300px; z-index: 60;
+    transform: translateX(100%); transition: transform 0.18s ease;
+  }
+  #boardFlyoutWrap.open { transform: none; }
+  @media (prefers-reduced-motion: reduce) { #boardFlyoutWrap { transition: none; } }
+  /*  THE VOID. The drawer is the empty slot the cartridges sit in, so it is
+      darker than anything on the board and shaded in from its edges, and the
+      cartridges read as solid things standing in it. */
+  #boardFlyout {
+    position: absolute; inset: 0;
+    background: color-mix(in srgb, #000 55%, var(--bg));
+    box-shadow: inset 10px 0 18px -8px rgba(0, 0, 0, 0.75),
+                inset 0 0 40px rgba(0, 0, 0, 0.45);
+    border-left: 1px solid color-mix(in srgb, #000 40%, var(--border));
+    padding: 10px; overflow-y: auto;
+  }
+  #boardFlyout h3 { margin: 0 0 8px; font-size: 0.85rem; }
+  #boardFlyout label { font-size: 0.72rem; display: flex; align-items: center; gap: 4px; }
+  /*  AS WIDE AS THE NUMBER, WITH THE NUMBER ACTUALLY IN IT.
+
+      These were cut to 3.4em and 2.6em so they stopped reserving room for
+      values neither could hold — and then the native spinner arrows took about
+      fifteen pixels of what was left, so "220" was drawn into twenty-six
+      pixels of box and clipped. A number box you cannot read the number in is
+      worse than a long one.
+
+      The arrows go instead of the width. They are a poor control at this size
+      anyway — a four-pixel hit target you have to aim at twice — and the box
+      still takes the up and down keys, a typed value and a scroll, which is
+      every way anybody actually changes one of these.
+
+      Padding trimmed to match: at seven pixels a side, a third of the box was
+      margin. */
+  #boardFlyout input[type=number],
+  .board-card .fp input[type=number] {
+    appearance: textfield; -moz-appearance: textfield;
+    padding: 3px 5px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  #boardFlyout input[type=number]::-webkit-outer-spin-button,
+  #boardFlyout input[type=number]::-webkit-inner-spin-button,
+  .board-card .fp input[type=number]::-webkit-outer-spin-button,
+  .board-card .fp input[type=number]::-webkit-inner-spin-button {
+    appearance: none; -webkit-appearance: none; margin: 0;
+  }
+  /*  Three digits for Row px, two for Columns, plus the padding. Centred, so a
+      one-digit value does not sit against the left wall of a box sized for
+      three. */
+  #boardFlyout input[type=number] { width: 4em; }
+  #boardFlyout #boardCols { width: 3em; }
+  #boardSearch { width: 100%; margin-bottom: 8px; }
+  /*  THE WAY TO EVERY PANEL THAT IS NOT OUT.
+
+      Lit like the search glass, for the same reason and in the same colour:
+      both are doors rather than switches, and a door on a page this full needs
+      to say so.
+
+      It goes RED when the board is empty. That is the one moment this tab is
+      not a convenience but the only useful thing on the page — there is
+      nothing to read, nothing to type into, and no way to put anything there
+      except through here. A slow pulse, because a still red light on an empty
+      page reads as an error rather than as an invitation. */
+  #boardFlyoutTab {
+    position: absolute; right: 100%; top: 50%; transform: translateY(-50%); z-index: 61;
+    padding: 8px 6px; font-size: 1.1rem; line-height: 1; border-radius: 6px 0 0 6px;
+    border-color: color-mix(in srgb, var(--go) 60%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 25%, transparent),
+                -3px 0 13px -2px color-mix(in srgb, var(--go) 50%, transparent);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  /*  It can be dragged up and down the edge; the cursor says so. */
+  #boardFlyoutTab { cursor: ns-resize; touch-action: none; }
+  #boardFlyoutTab.dragging { cursor: ns-resize; transition: none; }
+  /*  Glow off: no ring, no pulse, even when the board is empty. */
+  #boardFlyoutTab.quiet, #boardFlyoutTab.quiet:hover, #boardFlyoutTab.quiet.empty {
+    box-shadow: none; animation: none;
+    border-color: var(--border);
+  }
+  .tab-glow-dot {
+    position: absolute; top: 3px; left: 3px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--go); box-shadow: 0 0 4px var(--go);
+    cursor: pointer;
+  }
+  .tab-glow-dot:hover { transform: scale(1.4); }
+  #boardFlyoutTab.quiet .tab-glow-dot { background: var(--border); box-shadow: none; }
+  /*  On hover, a small ▲ above and ▼ below: it slides up and down. */
+  #boardFlyoutTab::before, #boardFlyoutTab::after {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 0.5rem; line-height: 1; color: var(--go);
+    opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
+  }
+  #boardFlyoutTab::before { content: "\25B2"; bottom: calc(100% + 3px); }
+  #boardFlyoutTab::after  { content: "\25BC"; top: calc(100% + 3px); }
+  #boardFlyoutTab:hover::before, #boardFlyoutTab:hover::after,
+  #boardFlyoutTab.dragging::before, #boardFlyoutTab.dragging::after { opacity: 0.85; }
+  #boardFlyoutTab:hover, #boardFlyoutTab:focus-visible {
+    border-color: var(--go); color: var(--go);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--go) 50%, transparent),
+                -4px 0 20px -1px color-mix(in srgb, var(--go) 70%, transparent);
+  }
+  /*  Nothing on the board: this is the only way forward, so it says so. */
+  #boardFlyoutTab.empty {
+    border-color: color-mix(in srgb, var(--stop) 70%, var(--border));
+    color: var(--stop);
+    animation: tabBeacon 2.2s ease-in-out infinite;
+  }
+  /*  Open, it has done its job and stops asking. */
+  #boardFlyoutWrap.open #boardFlyoutTab { animation: none; }
+  @media (prefers-reduced-motion: reduce) {
+    #boardFlyoutTab.empty { animation: none;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--stop) 55%, transparent),
+                  -4px 0 16px -1px color-mix(in srgb, var(--stop) 65%, transparent); }
+  }
+  /*  CARTRIDGES. Each panel is a thing you pick up and plug into the board:
+      a plastic shell, rounded across the top and square at the bottom where
+      it goes in, with a notch in the top edge, a paper label set into the
+      face, and grip ridges along the bottom. */
+  .board-card {
+    --shell: color-mix(in srgb, var(--fg) 9%, var(--panel));
+    position: relative;
+    display: flex; flex-direction: column;
+    margin-bottom: 10px; padding: 9px 8px 17px;
+    cursor: grab; font-size: 0.8rem;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, #fff 6%, var(--shell)) 0%, var(--shell) 30%,
+      color-mix(in srgb, #000 18%, var(--shell)) 100%);
+    border: 1px solid color-mix(in srgb, #000 45%, var(--shell));
+    border-radius: 11px 11px 3px 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+                0 3px 6px rgba(0, 0, 0, 0.55);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+  /*  The notch: a slot of void cut into the top edge. */
+  .board-card::before {
+    content: ""; position: absolute; top: -1px; left: 50%;
+    width: 34px; height: 4px; transform: translateX(-50%);
+    background: color-mix(in srgb, #000 55%, var(--bg));
+    border: 1px solid color-mix(in srgb, #000 45%, var(--shell)); border-top: 0;
+    border-radius: 0 0 3px 3px;
+  }
+  /*  Grip ridges along the bottom edge. */
+  .board-card::after {
+    content: ""; position: absolute; left: 22%; right: 22%; bottom: 5px; height: 6px;
+    background: repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.45) 0 2px, rgba(255, 255, 255, 0.08) 2px 3px, transparent 3px 6px);
+    border-radius: 1px; pointer-events: none;
+  }
+  .board-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+                0 6px 12px rgba(0, 0, 0, 0.6),
+                0 0 0 1px color-mix(in srgb, var(--accent2) 35%, transparent);
+  }
+  .board-card.dragging { opacity: 0.4; transform: none; }
+  /*  The label: paper set into the shell, with the name, size and blurb. */
+  .cart-label {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 6px 7px 7px;
+    background: color-mix(in srgb, var(--fg) 4%, var(--field));
+    border: 1px solid color-mix(in srgb, #000 35%, var(--shell));
+    border-radius: 3px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .board-card, .board-card:hover { transition: none; transform: none; }
+  }
+  .board-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .board-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board-card-desc { opacity: 0.55; font-size: 0.7rem; line-height: 1.35; margin-left: 28px; }
+  .cart-foot { display: flex; justify-content: flex-end; margin-top: 1px; }
+  .board-card .fp { opacity: 0.7; font-size: 0.72rem; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  /*  The panel's own width x height, in the drawer card. Same treatment: two
+      digits and no arrows, rather than one digit and two arrows. */
+  .board-card .fp input[type=number] { width: 30px; font-size: 0.7rem; padding: 1px 3px; }
+  .board-card .fp-add {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; flex-shrink: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: var(--field); color: var(--fg); opacity: 0.5; cursor: grab; padding: 0;
+  }
+  .board-card .fp-add:hover { opacity: 1; border-color: var(--accent2); }
+  .board-group-heading {
+    margin: 12px 0 4px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; opacity: 0.55;
+  }
+  .board-group-heading:first-child { margin-top: 0; }
+  /*  Nothing to list: said in the void, not printed on an empty cartridge. */
+  .board-card-empty { font-size: 0.75rem; opacity: 0.5; padding: 10px 2px; text-align: center; }
+  .panel-head-btn { order: 98; flex-shrink: 0; padding: 0 6px; font-size: 0.7rem; line-height: 1.4; }
+  .panel-head-btn.on { border-color: var(--accent2); color: var(--accent2); }
+  .panel-head-btn[hidden] { display: none; }
+  /* ---------- focus: one panel lit, the rest turned down ---------- */
+  /*  A LIGHTNESS SHIFT, NOT A TRANSPARENCY.
+
+      Fading a panel would let the board show through it, so a dimmed panel
+      would take the colour of whatever it is sitting on and stop looking like
+      a panel at all. `brightness` turns the whole thing down instead, the
+      picture, the inputs and the text with it, exactly as though that panel
+      were further from the lamp. In the Brick theme the unlit ones read as
+      bricks in shadow rather than as ghosts.
+
+      One filter on the panel rather than a rule per token, so a panel nobody
+      has themed still dims, and nothing has to be kept in step with the eight
+      colours. */
+  body.spotlight .panel { filter: brightness(0.46); transition: filter 0.18s ease; }
+  body.spotlight .panel.is-active { filter: none; }
+  @media (prefers-reduced-motion: reduce) { body.spotlight .panel { transition: none; } }
+  /* ---------- docks ---------- */
+  /*  A rail is fixed to an edge of the window and the page is padded out of
+      its way, so the board never has to know it exists. Above the board and
+      below the flyout, which is the only thing that should cover a dock. */
+  /*  The title is a cartouche sitting 7px ABOVE its panel's top border, so a
+      rail has to leave room for it or every docked panel is decapitated. Same
+      reason the gap down a vertical rail is wider than the one across a
+      horizontal one: stacked panels each need that clearance, side by side
+      ones share the rail's own top padding. */
+  .dock {
+    position: fixed; z-index: 50; display: flex; gap: 8px; padding: 13px 8px 8px;
+    background: var(--bg); border: 0 solid var(--border);
+    overflow: auto; align-items: stretch;
+  }
+  .dock-left, .dock-right { top: 0; bottom: 0; flex-direction: column; gap: 16px; }
+  .dock-top, .dock-bottom { left: 0; right: 0; flex-direction: row; }
+  .dock-left { left: 0; border-right-width: 1px; }
+  .dock-right { right: 0; border-left-width: 1px; }
+  .dock-top { top: 0; border-bottom-width: 1px; }
+  .dock-bottom { bottom: 0; border-top-width: 1px; }
+  /*  Panels share the rail equally along it and fill it across it, which is
+      what a split pane does and what two docked panels should do. */
+  /*  overflow stays VISIBLE, like a tile's: the body is what scrolls, and a
+      panel that clips itself cuts the title off its own top border. */
+  .dock > .panel { flex: 1 1 0; min-width: 120px; min-height: 0; margin: 0; }
+  /*  A wide table in a shallow rail scrolls sideways inside its own box rather
+      than stretching the panel past the edge of the window. */
+  .dock > .panel .table-wrap, .dock > .panel table { max-width: 100%; }
+  /*  The grab edge. Sits inside the rail on the side facing the page, four
+      pixels wide, and only shows itself under the pointer. */
+  .dock-grip { position: absolute; z-index: 1; background: transparent; }
+  .dock-grip:hover { background: var(--accent2); opacity: 0.5; }
+  /*  The one being carried, so an exchange reads as an exchange. */
+  .dock > .panel.dock-moving { opacity: 0.55; outline: 1px dashed var(--accent2); }
+  /*  Between two panels: divides the rail rather than resizing it. Invisible
+      until wanted, like the rail's own grip. */
+  .dock-split { flex: 0 0 7px; align-self: stretch; background: transparent; }
+  .dock-split:hover, .dock-split.live { background: var(--accent2); opacity: 0.45; }
+  .dock-top .dock-split, .dock-bottom .dock-split { cursor: col-resize; }
+  .dock-left .dock-split, .dock-right .dock-split { cursor: row-resize; }
+  .dock-left .dock-grip, .dock-right .dock-grip { top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
+  .dock-top .dock-grip, .dock-bottom .dock-grip { left: 0; right: 0; height: 5px; cursor: ns-resize; }
+  .dock-left .dock-grip { right: 0; }
+  .dock-right .dock-grip { left: 0; }
+  .dock-top .dock-grip { bottom: 0; }
+  .dock-bottom .dock-grip { top: 0; }
+  .dock-target {
+    position: fixed; display: none; place-items: center;
+    width: 34px; height: 34px; font-size: 1.1rem; line-height: 1;
+    border: 1px dashed var(--accent2); border-radius: 6px;
+    background: color-mix(in srgb, var(--accent2) 14%, var(--panel));
+    color: var(--accent2); cursor: copy; pointer-events: auto;
+  }
+  #dockTargets.live .dock-target { display: grid; }
+  .dock-target.over { background: var(--accent2); color: var(--bg); border-style: solid; }
+  .dock-target-top, .dock-target-bottom { left: 50%; margin-left: -17px; }
+  .dock-target-left, .dock-target-right { top: 50%; margin-top: -17px; }
+  /*  The plus on the end of a rail, which is how an edge takes a second panel.
+      Thin along the rail, full width across it. */
+  /*  The same hole as an empty board cell, since it is the same thing: a place
+      on the wall with no brick in it yet. */
+  .dock-slot {
+    flex: 0 0 22px; border: 1px dashed var(--border); border-radius: 4px;
+    background: color-mix(in srgb, #000 42%, var(--bg));
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
+    color: inherit; opacity: 0.5; cursor: copy;
+    font-size: 0.9rem; line-height: 1;
+  }
+  .dock-slot:hover, .dock-slot.over { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  body.panel-dragging .dock-slot { opacity: 0.8; border-color: var(--accent2); }
+  /*  ↩ UNDO THE DOCK: a disc like ↻ and ✕, one place further along, so a
+      docked panel's corner reads ↩ ↻ ✕. It was a faint ⊞ in the title row,
+      which looked like a layout icon rather than the way back.
+
+      Each means one thing: ↩ puts it back on the board, ↻ rebuilds it, ✕
+      takes it off the board altogether, exactly as ✕ does everywhere else.
+      Hiding the ✕ while docked made the Promenade look unremovable without
+      first undocking it. */
+  .dock-pop {
+    position: absolute; z-index: 3;
+    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    right: calc(var(--panel-radius) + var(--close-size) * 1.5 + 6px - var(--panel-border));
+    width: var(--close-size); height: var(--close-size); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; line-height: 1; cursor: pointer;
+    color: color-mix(in srgb, var(--fg) 52%, transparent);
+  }
+  .dock-pop:hover { border-color: var(--accent2); color: var(--accent2); }
+  /*  Room in the title row for the third disc. */
+  .panel.is-docked > .panel-head { padding-right: calc(var(--close-size) * 3 + 10px); }
+  .panel:not(.is-docked) .dock-pop { display: none; }
+  /* ---------- the minimap ---------- */
+  /*  Bottom right, clear of the 🧰 tab, which sits centred on the right edge.
+
+      SOLID UNTIL YOU HAVE USED IT. It opened at 0.42 and only came up to full
+      on hover, which is backwards for a thing whose whole job is to be findable
+      from across the page: a map you cannot read is not a way back, and you
+      cannot hover something you have not noticed.
+
+      So it starts solid and stays solid, and the fade only begins once you have
+      actually been on it and come off again. After that it holds for a beat and
+      goes quiet slowly, because it has done its job and you are looking
+      somewhere else. Going back onto it brings it up at once — dimming is
+      allowed to be leisurely, waking is not. */
+  #miniMap {
+    position: fixed; right: 10px; bottom: 10px; z-index: 55;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    border: 1px solid var(--border); border-radius: 5px; padding: 5px;
+    width: 104px; opacity: 1; transition: opacity 0.15s;
+    backdrop-filter: blur(2px);
+  }
+  /*  Set when the pointer leaves, cleared the moment it comes back. The delay
+      lives in the transition rather than in a timer, so moving away and
+      straight back cancels it without anything having to be cleaned up. */
+  #miniMap.dozing { opacity: 0.42; transition: opacity 1.4s ease-in 0.7s; }
+  #miniMap:hover { opacity: 1; transition: opacity 0.12s; }
+  #miniMap[hidden] { display: none; }
+  .mm-grid { display: grid; gap: 2px; width: 100%; }
+  .mm-cell {
+    border: 1px solid var(--border); border-radius: 2px; background: var(--field);
+    padding: 0; min-width: 0; min-height: 0; cursor: pointer;
+  }
+  .mm-cell:hover { border-color: var(--accent2); background: var(--tint); }
+  /*  The part of the board the window is over. Filled rather than outlined,
+      because at nine pixels across an outline is the whole block. */
+  .mm-cell.here { background: color-mix(in srgb, var(--accent2) 32%, var(--field));
+                  border-color: color-mix(in srgb, var(--accent2) 55%, var(--border)); }
+  /*  The block's name, beside the pointer rather than in a line under the map,
+      so your eye does not have to leave the block to read it. Up and to the
+      left of the cursor, because the map lives in the bottom-right corner and
+      anything placed right or below would run off the screen. */
+  #mmTip {
+    position: fixed; z-index: 70; pointer-events: none;
+    transform: translate(calc(-100% - 10px), calc(-100% - 6px));
+    font-size: 0.66rem; line-height: 1.2; white-space: nowrap;
+    padding: 3px 6px; border-radius: 3px;
+    background: var(--panel); color: var(--fg);
+    border: 1px solid var(--accent2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+  /*  Two seconds of "this one", for the end of a smooth scroll. */
+  .mm-ping { outline: 2px solid var(--accent2); outline-offset: -2px; }
+  /*  The pairing, both ways: the block under the pointer lights its panel, and
+      the panel under the pointer lights its block. Softer than the ping, which
+      has to be findable across a whole screen, and distinct from .here, which
+      is a fact about the scroll rather than about the pointer. */
+  .mm-cell.lit { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2) inset; }
+  .panel.mm-lit { outline: 1px solid var(--accent2); outline-offset: -1px; }
+  @media (prefers-reduced-motion: reduce) {
+    #miniMap, #miniMap.dozing, #miniMap:hover { transition: none; }
+  }
+  /*  A SHEET YOU PULL ACROSS A PANEL, AND THE TAB YOU PULL IT BY.
+
+      Over the body and nothing else, so the header stays reachable: you must
+      always be able to take the cover off, move the tile or close it without
+      first uncovering it.
+
+      It BLOCKS by being there. Not `pointer-events: none` with a guard
+      somewhere, not a flag the panel checks — an actual element over the
+      canvas that receives the press instead of the thing underneath. The panel
+      beneath does not know it exists and nothing about its state changes: a
+      Promenade under a cover goes on ticking, a map keeps its centre, a
+      half-typed brick stays half-typed.
+
+      Three elements. The SHADE is a clipped frame the size of the body — a
+      curtain leaves the window, it does not leave the house. The SHEET slides
+      inside it, translated rather than resized so the GPU does the work. The
+      TAB is a sibling of the shade, outside the clip, so it can stand proud of
+      the leading edge the way a real one does. */
+  .panel-shade {
+    position: absolute; z-index: 6; overflow: hidden;
+    border-radius: calc(var(--panel-radius) - 2px);
+    pointer-events: none;
+  }
+  .panel-cover {
+    position: absolute; inset: 0; pointer-events: auto;
+    border-radius: calc(var(--panel-radius) - 2px);
+    cursor: grab;
+    touch-action: none;
+    will-change: transform;
+  }
+  .panel-cover.sliding { cursor: grabbing; transition: none; }
+  .panel-cover:not(.sliding) { transition: transform 0.2s ease-out; }
+  /*  What it says while it is shut. Faint, because a cover is not a message,
+      and gone entirely on glass — you can see the panel through it, which says
+      the same thing better. */
+  .panel-cover > span {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    opacity: 0.22; white-space: nowrap; pointer-events: none;
+  }
+  .panel-cover[data-mat="frosted"] > span,
+  .panel-cover[data-mat="smoked"] > span { opacity: 0.3; }
+  /*  THREE MATERIALS, because what you want a cover to DO differs.
+
+      Frosted and smoked still show you the panel is alive under them, which is
+      what you want over something that moves. Card does not, which is
+      what you want when the point is to stop looking at it. */
+  /*  Glass. `backdrop-filter` blurs what is behind rather than painting over
+      it, so the street under it goes on moving as a smear of its own colours.
+      The hairline and the sheen are what stop it reading as a bug. */
+  .panel-cover[data-mat="frosted"] {
+    background: linear-gradient(150deg,
+      rgba(255,255,255,0.16), rgba(255,255,255,0.05) 42%, rgba(255,255,255,0.12));
+    backdrop-filter: blur(7px) saturate(0.85);
+    -webkit-backdrop-filter: blur(7px) saturate(0.85);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .panel-cover[data-mat="smoked"] {
+    background: linear-gradient(150deg,
+      rgba(10,8,14,0.62), rgba(10,8,14,0.44) 45%, rgba(10,8,14,0.6));
+    backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
+    -webkit-backdrop-filter: blur(3px) saturate(0.6) brightness(0.7);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .panel-cover[data-mat="card"] {
+    background:
+      repeating-linear-gradient(135deg,
+        rgba(255,255,255,0.035) 0 6px, rgba(255,255,255,0) 6px 12px),
+      var(--panel);
+    border: 1px solid var(--border);
+  }
+  /*  THE TAB.
+
+      A sibling of the shade rather than a child, so the clip that keeps the
+      sheet inside the panel does not also cut the handle off. It straddles the
+      leading edge: half on the sheet, half on whatever has been uncovered, so
+      there is always something to take hold of at either extreme.
+
+      Ridged, because a grip that is not ridged is a rectangle. */
+  .panel-tab {
+    position: absolute; z-index: 7; width: 17px; border-radius: 4px;
+    will-change: transform;
+    cursor: grab; touch-action: none;
+    background: linear-gradient(90deg, #9aa1aa, #6f747c 55%, #878e97);
+    border: 1px solid rgba(0,0,0,0.5);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35);
+    display: flex; flex-direction: column; align-items: center;
+    overflow: hidden;
+  }
+  /*  THE HANDLE TRAVELS WITH THE SHEET.
+
+      The sheet has always eased open and shut; the tab's position was written
+      straight into style.left, so it jumped to the end while the sheet was
+      still on its way. A handle that arrives before the thing it is attached
+      to reads as two objects rather than one.
+
+      Same duration and same curve as the sheet — and the same PROPERTY, which
+      is the part that actually matters. The tab moved on `left` while the
+      sheet moved on `transform`: one is laid out on the main thread and the
+      other is handed to the compositor, so even at identical timings the two
+      are stepped by different clocks and visibly drift apart. Matching the
+      numbers was not enough; they had to be the same kind of animation.
+
+      Both are called off while you are dragging — during a drag the position
+      is the pointer's, and easing toward the pointer is lag rather than
+      polish. */
+  .panel-tab:not(.sliding) { transition: transform 0.2s ease-out; }
+  .panel-tab.sliding { cursor: grabbing; transition: none; }
+  .panel-tab:hover { border-color: var(--accent2); }
+  @media (prefers-reduced-motion: reduce) {
+    .panel-cover:not(.sliding), .panel-tab:not(.sliding) { transition: none; }
+  }
+  /*  THE UPPER HALF IS THE GRIP. Ridged, because a handle that is not ridged
+      is a rectangle. Press it and the cover throws fully open or shut. */
+  .tab-grip {
+    flex: 1; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tab-grip::after {
+    content: ""; width: 5px; height: 60%; max-height: 26px; border-radius: 1px;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,0,0,0.4) 0 1px, rgba(255,255,255,0.22) 1px 3px);
+  }
+  /*  THE LOWER SECTION IS WHAT IT IS MADE OF.
+
+      A swatch of the material itself, so the answer to "which of the four am I
+      on" is the thing you press to change it — there is no label to read and
+      nothing to remember. Cut off by a groove so it reads as a separate part
+      of the handle rather than as the end of the ridges. */
+  .tab-mat {
+    flex: none; width: 100%; height: 17px;
+    border-top: 1px solid rgba(0,0,0,0.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+    cursor: pointer;
+  }
+  .tab-mat[data-mat="frosted"] {
+    background: linear-gradient(145deg, rgba(255,255,255,0.75), rgba(255,255,255,0.3));
+  }
+  .tab-mat[data-mat="smoked"] {
+    background: linear-gradient(145deg, #4a4550, #211d28);
+  }
+  .tab-mat[data-mat="card"] {
+    background:
+      repeating-linear-gradient(135deg,
+        rgba(255,255,255,0.12) 0 3px, rgba(255,255,255,0) 3px 6px),
+      #2a2233;
+  }
+  /*  BELOW THE TITLE LINE, on the side the cover comes from.
+
+      It was in the header beside ⟳ and ✕, which are both things you do TO the
+      panel — reload it, remove it. Covering is not one of those: it is a thing
+      you do to your view of it, it has a handle of its own down the left edge,
+      and it belongs with that rather than with the destructive pair.
+
+      So it sits under the title at the top left, where the sheet appears from.
+      Absolutely placed so it costs the header no width and the body no row,
+      and it carries the panel's own background so it reads over whatever is
+      underneath. */
+  /*  ON THE TITLE LINE, AFTER THE ?.
+
+      Below it, floating over the body's top-left corner, it read as a checkbox
+      somebody had left on the panel — a lone bordered square with nothing
+      beside it and no row to belong to.
+
+      In the cartouche it is plainly one of the marks that annotate the panel,
+      which is what it is: the badges say what this panel can do, the ? offers
+      to explain it, and this covers it. Last in that line because it is the
+      only one of the three you press.
+
+      Sized and weighted like the badges beside it rather than like a button,
+      so the title bar stays a line of marks instead of becoming a toolbar. */
+  .tile-cover {
+    flex: 0 0 auto;
+    width: 13px; height: 13px; box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.58rem; line-height: 1; padding: 0;
+    border: 1px solid transparent; background: none; color: inherit;
+    border-radius: 2px; cursor: pointer; opacity: 0.4;
+    margin-left: 1px;
+    transition: opacity 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .tile-cover:hover { opacity: 1; border-color: var(--accent2); color: var(--accent2); }
+  .tile-cover.on { opacity: 1; color: var(--accent); border-color: var(--accent); }
+  /*  THE SAME BUTTON AS ✕, WITH A DIFFERENT GLYPH.
+
+      It was a rounded rectangle with no fill beside a solid disc, so two
+      controls that sit together and do the same KIND of thing — act on this
+      panel — looked like they came from different parts of the page.
+
+      Same disc, same border, same size, same trick with the colour: the fill
+      is solid panel and only the glyph is faint, because fading the whole
+      element fades the fill with it and whatever is underneath shows through
+      the circle that is supposed to be masking it. Placed beside ✕ rather than
+      on the corner, since only one of them can have the corner. */
+  .tile-reload {
+    position: absolute; z-index: 3;
+    top: calc(var(--panel-radius) - var(--close-size) / 2 - var(--panel-border));
+    right: calc(var(--panel-radius) + var(--close-size) / 2 + 3px - var(--panel-border));
+    width: var(--close-size); height: var(--close-size); padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 1px solid var(--border); background: var(--panel);
+    font-size: 0.7rem; line-height: 1; cursor: pointer;
+    color: color-mix(in srgb, var(--fg) 52%, transparent);
+  }
+  .tile-reload:hover { border-color: var(--accent2); color: var(--accent2); }
+
+/*  The drop targets. Out of the way until a panel is moving, then a plus at
+    each edge of the window. */
+#dockTargets { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
+
+/*  Things you drag are never text to select. */
+.panel-head, .drag-handle, .panel-tab, .panel-cover, .tile-resize, .dock-grip, .dock-split,
+#boardFlyoutTab, .board-cell, #miniMap {
+  user-select: none; -webkit-user-select: none;
+}

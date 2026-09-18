@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board demo</title>
+<link rel="stylesheet" href="board.css">
+<style>
+  /*  The board takes its colours and sizes from these, so this block is the
+      whole of theming it. Brick by Brick's dark palette, as a starting point. */
+  :root {
+    --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333;
+    --field: #0d0d0d; --border-soft: #2b2b2b;
+    --accent: #ff5500; --accent2: #33ff33; --bad: #f44336;
+    --go: #34d17a; --stop: #f44336;
+    --tint: color-mix(in srgb, var(--accent2) 14%, var(--panel));
+    --panel-gap: 14px; --panel-radius: 6px; --close-size: 18px; --panel-border: 1px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 12px 16px 40px; background: var(--bg); color: var(--fg);
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 1rem; margin: 0 0 12px; font-weight: 600; }
+  h1 span { opacity: 0.5; font-weight: 400; margin-left: 8px; font-size: 0.8rem; }
+  h1 .back {
+    margin-left: 14px; font-size: 0.75rem; font-weight: 400;
+    color: var(--accent2); text-decoration: none; border-bottom: 1px dotted currentColor;
+  }
+  h1 .back:hover { border-bottom-style: solid; }
+  button, input, textarea {
+    background: var(--field); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 3px; padding: 3px 7px; font: inherit; font-size: 0.75rem;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent2); }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hint { opacity: 0.6; font-size: 0.75rem; }
+  textarea { width: 100%; height: calc(100% - 4px); resize: none; font-family: var(--mono); }
+  /*  One line, always: sized to the panel's width (a panel is a size
+      container, so cqi is a hundredth of it), up to 2.2rem. */
+  .big {
+    font-size: clamp(0.9rem, 13cqi, 2.2rem); white-space: nowrap;
+    font-variant-numeric: tabular-nums; font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+<h1>Board demo <span>board.js + board.css, no Brick by Brick</span>
+  <a class="back" href="../" title="the page this board was taken from">&larr; Brick by Brick</a></h1>
+
+<!-- The markup the board looks for. -->
+<div id="board"></div>
+<div id="boardFlyoutWrap">
+  <button type="button" id="boardFlyoutTab" title="show/hide the panel list">&#129520;</button>
+  <div id="boardFlyout">
+    <h3>Panels</h3>
+    <div class="row">
+      <label>Columns <input type="number" id="boardCols" min="1" max="12" step="1" value="3"></label>
+      <label>Row px <input type="number" id="boardRowUnit" min="80" max="600" step="10" value="200"></label>
+      <button type="button" id="boardFlyoutClose" title="hide the list">&times;</button>
+    </div>
+    <div class="row"><button type="button" id="boardReset" title="back to the starting board">reset board</button></div>
+    <input type="text" id="boardSearch" placeholder="search panels&hellip;" spellcheck="false">
+    <div id="boardCardList"></div>
+  </div>
+</div>
+<div id="panelStore" hidden></div>
+
+<!-- Its own storage prefix, so this page never touches Brick by Brick's. -->
+<script>window.BOARD_NS = "board-demo:";</script>
+<script src="board.js"></script>
+<script>
+/*  The panels. A panel is an id, a title, a size, and a render(body) that
+    draws into it — called whenever the board shows it. */
+registerPanel({
+  id: "about", title: "About", w: 1, h: 1,
+  help: "What this page is.",
+  render(body) {
+    body.innerHTML =
+      '<p class="hint">A blank board, running on board.js and board.css alone.</p>' +
+      '<p class="hint">Drag a panel by its ✥, resize from its edges, dock it to a side, ' +
+      'cover it with the ▤ in its title, reload it with ↻, or add more from 🧰.</p>';
+  },
+});
+
+//  Notes opens with how to use the board. Edit or clear it; it is yours.
+let notes = [
+  "HOW TO USE THE BOARD",
+  "",
+  "• Add a panel: open 🧰 on the right edge, then press + on a card or drag the card onto a cell. Click an empty cell first to choose where + puts it.",
+  "• Move: drag a panel by its ✥ (top left).",
+  "• Resize: hover a panel and use + or − on its right and bottom edges.",
+  "• Dock: drag a panel onto a + at a window edge. ↩ puts it back on the grid.",
+  "• Cover: press ▤ in the title. Drag the cover's tab to peek underneath; click the bottom of the tab to change its material.",
+  "• Reload: ↻ rebuilds a panel. Remove: ✕ takes it off the board.",
+  "• Grid: Columns and Row px in 🧰 set the board's size. reset board starts over.",
+  "• Minimap (bottom right): the whole board at a glance; click a block to jump to it.",
+  "• 🧰 tab: drag it up or down the edge. The dot on it turns the glow off.",
+  "",
+  "Everything is saved in this browser as you go, including this note.",
+  "",
+  "",
+  "HOW TO BUILD A PANEL",
+  "",
+  "A panel is one registerPanel() call, in a <script> after board.js and before startBoard():",
+  "",
+  "  let seconds = 0;",
+  "  registerPanel({",
+  "    id: \"stopwatch\",         // unique; also the key in saved layouts",
+  "    title: \"Stopwatch\",      // the title bar",
+  "    help: \"Counts seconds.\", // the card in 🧰",
+  "    w: 1, h: 1,              // starting size, in cells",
+  "    render(body) {           // draw into body, a <div>",
+  "      body.textContent = seconds + \"s\";",
+  "    },",
+  "  });",
+  "  setInterval(() => { seconds++; BOARD_HOOKS.refreshPanel(\"stopwatch\"); }, 1000);",
+  "",
+  "• render(body) runs every time the panel is shown, moved, docked or refreshed. Build what you need the first time, then update it: if body already holds your elements, change them rather than replacing them, or you lose whatever the user was typing or scrolling.",
+  "• Redraw it yourself with BOARD_HOOKS.refreshPanel(\"your-id\"). It does nothing while the panel is not on the board.",
+  "• Keep state in your own variables. To survive a reload, save it with localStorage under BOARD_NS + \"your-key\" (the Notes panel in this file does exactly that).",
+  "• Style with the page's colours so it follows the theme: var(--fg), var(--panel), var(--field), var(--border), var(--accent2), var(--bad), and var(--mono) for numbers. A panel is a size container, so cqi units scale text with its width.",
+  "• Markup instead of code: put it in <template id=\"tpl-stopwatch\"> and add tpl: \"tpl-stopwatch\". Its contents are copied into body once, when the panel is first built; render(body) then fills it in.",
+  "• Buttons in the title bar: headButtons: [{ act: \"menu\", label: \"☰\", title: \"…\" }], answered by the page's headAction in configureBoard().",
+  "• On the board from the start: add { id: \"stopwatch\", x: 0, y: 0, w: 1, h: 1 } to the tiles in setDefaultBoard(). Otherwise it waits in 🧰 until someone adds it.",
+  "• Page-wide behaviour (what refresh does, header buttons, title badges, help links, how 🧰 groups panels) is set once with configureBoard({ … }); every option is listed at BOARD_HOOKS near the top of board.js.",
+  "",
+  "",
+  "",
+  "CONNECTED OR NOT: THE SHARED STATE",
+  "",
+  "Every panel is independent unless you connect it. There are two ways to hold state:",
+  "",
+  "• Independent — the panel keeps its own variables and redraws only itself with BOARD_HOOKS.refreshPanel(\"id\"). Nothing else on the board sees it or cares. Clock and Notes work this way.",
+  "• Connected — keep the value in boardState, the one object every panel can read, and change it with setBoardState({ … }). That redraws every panel on the board, so each one that reads the value in its render() follows along. Counter and Mirror work this way:",
+  "",
+  "  setBoardState({ count: 0 });                                  // start",
+  "  // in Counter's render:",
+  "  button.onclick = () => setBoardState({ count: boardState.count + 1 });",
+  "  // in Mirror's render:",
+  "  body.textContent = boardState.count;",
+  "",
+  "Neither panel knows the other exists. Add a third that reads boardState.count and it joins in; remove one and the others carry on. Mix freely: a panel can read shared values and still keep private ones of its own.",
+  "",
+  "(Brick by Brick has its own central state — the pile, and the model built from it — so its panels are connected through that instead.)",
+  "",
+  "The Notes, Clock, Counter and Mirror panels in demo.html are working examples of all of this.",
+].join("\n");
+//  Kept in this browser, so what you write survives a reload.
+const NOTES_KEY = BOARD_NS + "notes:v1";
+try { const saved = localStorage.getItem(NOTES_KEY); if (saved !== null) notes = saved; } catch (e) { /* blocked */ }
+registerPanel({
+  id: "notes", title: "Notes", w: 2, h: 2,
+  help: "A text box that keeps what you type while the panel moves.",
+  render(body) {
+    let ta = body.querySelector("textarea");
+    if (!ta) {
+      ta = document.createElement("textarea");
+      ta.placeholder = "type here…";
+      ta.addEventListener("input", () => {
+        notes = ta.value;
+        try { localStorage.setItem(NOTES_KEY, notes); } catch (e) { /* blocked */ }
+      });
+      body.appendChild(ta);
+    }
+    if (ta.value !== notes) ta.value = notes;
+  },
+});
+
+//  INDEPENDENT: Clock keeps to itself and redraws only itself.
+registerPanel({
+  id: "clock", title: "Clock", w: 1, h: 1,
+  help: "Redrawn every second through refreshPanel().",
+  render(body) {
+    body.innerHTML = '<div class="big">' + new Date().toLocaleTimeString() + "</div>";
+  },
+});
+setInterval(() => BOARD_HOOKS.refreshPanel("clock"), 1000);
+
+/*  CONNECTED: Counter and Mirror share boardState.count. Counter writes it
+    with setBoardState(), which redraws every panel, so Mirror follows without
+    either panel knowing about the other. */
+setBoardState({ count: 0 });
+registerPanel({
+  id: "counter", title: "Counter", w: 1, h: 1,
+  help: "Writes a number to the shared state.",
+  render(body) {
+    body.innerHTML = '<div class="big">' + boardState.count + '</div><button type="button">+1</button>';
+    body.querySelector("button").onclick = () => setBoardState({ count: boardState.count + 1 });
+  },
+});
+
+registerPanel({
+  id: "mirror", title: "Mirror", w: 1, h: 1,
+  help: "Reads the shared number that Counter writes.",
+  render(body) {
+    body.innerHTML = '<p class="hint">Counter is at</p><div class="big">' + boardState.count + "</div>";
+  },
+});
+
+setDefaultBoard({
+  cols: 3, rowUnit: 200,
+  tiles: [
+    { id: "about",   x: 0, y: 0, w: 1, h: 1 },
+    { id: "notes",   x: 1, y: 0, w: 2, h: 2 },
+    { id: "clock",   x: 0, y: 1, w: 1, h: 1 },
+    { id: "counter", x: 0, y: 2, w: 1, h: 1 },
+    { id: "mirror",  x: 1, y: 2, w: 1, h: 1 },
+  ],
+});
+startBoard();
+</script>
+</body>
+</html>
