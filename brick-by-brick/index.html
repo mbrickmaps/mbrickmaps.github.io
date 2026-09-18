@@ -1587,8 +1587,12 @@
   /*  The switch stays: a toggle you press once and cannot press again is a
       button, not a toggle. It fades back to almost nothing so the scene keeps
       the corner, and comes up under the pointer. */
-  .pr-shell.pr-bare > :not(canvas):not(.pr-say):not(.pr-bare-btn) { display: none !important; }
-  .pr-shell.pr-bare .pr-bare-btn { top: 6px; right: 6px; opacity: 0.18; }
+  .pr-shell.pr-bare > :not(canvas):not(.pr-say):not(.pr-files) { display: none !important; }
+  /*  The toggle lives in the toolbar now, so the toolbar stays and everything
+      in it except the toggle goes. */
+  .pr-shell.pr-bare .pr-files > :not(.pr-viewbar),
+  .pr-shell.pr-bare .pr-viewbar > :not(.pr-bare-btn) { display: none !important; }
+  .pr-shell.pr-bare .pr-bare-btn { opacity: 0.18; }
   .pr-shell.pr-bare .pr-bare-btn:hover { opacity: 1; }
   .pr-shell.pr-bare { cursor: default; }
   .pr-say {
@@ -1711,7 +1715,13 @@
      taller actually gives the map the space. The panel body is the flex
      parent; min-height keeps it usable in a 1-row tile. */
   #viz-map .panel-body { display: flex; flex-direction: column; height: 100%; }
-  .map-shell { position: relative; flex: 1 1 auto; min-height: 200px; border-radius: 4px; overflow: hidden; }
+  /*  The ground under the canvas. A resized canvas is cleared before it is
+      redrawn, and with nothing behind it that moment showed the board through
+      the map — the flash you see while dragging the window edge. */
+  .map-shell {
+    position: relative; flex: 1 1 auto; min-height: 200px; border-radius: 4px; overflow: hidden;
+    background: color-mix(in srgb, #000 35%, var(--field));
+  }
   /* width/height, not inset: MapLibre adds .maplibregl-map to this same
      element and its own rules were collapsing it to height:0, which clipped
      the whole map away under .map-shell's overflow:hidden. Explicit
@@ -1988,40 +1998,36 @@
   .pr-shell:active { cursor: grabbing; }
   .pr-canvas { display: block; }
   .pr-note {
-    position: absolute; left: 8px; bottom: 6px; z-index: 2; margin: 0;
+    position: absolute; left: 8px; bottom: 34px; z-index: 2; margin: 0;
     font-size: 0.6rem; opacity: 0.45; pointer-events: none;
     text-shadow: 0 0 3px #0d1317, 0 0 2px #0d1317;
   }
-  /*  Clear of the panel's own close button, which owns the top-right corner.
-      At top: 6px the + sat directly beside the ×, so reaching for one risked
-      the other — and one of them removes the panel. */
-  .pr-zoom {
-    position: absolute; right: 6px; top: 28px; z-index: 2;
-    font-size: 0.62rem; padding: 1px 7px; min-width: 30px;
-  }
-  .pr-zoom { min-width: 24px; }
-  .pr-zoom-out { right: 34px; }
+  /*  The view buttons. They live in the toolbar (see .pr-viewbar). */
+  .pr-zoom { font-size: 0.62rem; padding: 1px 7px; min-width: 24px; }
   .pr-zoom:disabled { opacity: 0.3; cursor: default; }
   .pr-night { font-size: 0.72rem; padding: 1px 5px; }
   .pr-weather { width: 44px; accent-color: var(--accent2); }
   .pr-smoke { display: flex; gap: 3px; align-items: center; }
   .pr-smoke input[type="range"] { width: 44px; accent-color: var(--accent2); }
-  .pr-mode { right: 66px; min-width: 46px; }
-  .pr-drift { right: 120px; min-width: 26px; }
+  .pr-mode { min-width: 46px; }
+  .pr-drift { min-width: 26px; }
   .pr-drift.on { border-color: var(--accent2); color: var(--accent2); }
   /*  Left of the drift button, and lit while it is on, so it reads as the
       switch it is rather than as an action you fire. */
-  .pr-bare-btn { right: 152px; min-width: 26px; }
+  .pr-bare-btn { min-width: 26px; }
   .pr-bare-btn.on { border-color: var(--accent2); color: var(--accent2); }
   .pr-sort {
-    position: absolute; right: 152px; top: 28px; z-index: 2;
     font-size: 0.62rem; padding: 1px 4px;
   }
   .pr-sort[hidden] { display: none; }
   /* Appears only when a place is selected, so it never asks you to guess
      what it would color. */
+  /*  BOTTOM-LEFT, above the fps note. At the top-left the strip sat under
+      the panel's title and beside the scene's control row, so opening the
+      weather hid half of it and its ↺ × read as the panel's own ↻ ✕. The
+      bottom-left is the one edge nothing else claims. */
   .pr-tint {
-    position: absolute; left: 8px; top: 6px; z-index: 3;
+    position: absolute; left: 8px; bottom: 42px; z-index: 3;   /* clears the scene bar, 36px tall */
     display: flex; align-items: center; gap: 5px;
     background: rgba(0,0,0,0.6); border: 1px solid var(--border);
     border-radius: 4px; padding: 3px 6px;
@@ -2033,8 +2039,10 @@
       because a building near the right edge would push its own list off the
       screen. Capped and scrollable: a busy parish can name thirty people and
       the panel is not always tall. */
+  /*  Centred, so its × never sits under the panel's own ✕ in the corner. */
   .pr-door {
-    position: absolute; right: 8px; top: 8px; bottom: 8px; width: min(290px, 62%);
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 8px; bottom: 8px; width: min(290px, 62%);
     z-index: 4; display: flex; flex-direction: column;
     background: rgba(0,0,0,0.82); border: 1px solid var(--border);
     border-radius: 4px; overflow: hidden;
@@ -2093,7 +2101,6 @@
   .pr-sky-on { display: flex; align-items: center; gap: 3px;
                font-size: 0.62rem; opacity: 0.85; cursor: pointer; }
   .pr-sky-on input { margin: 0; cursor: pointer; }
-  .pr-scenery-btn { font-size: 0.72rem; }
   /*  Label above the slider, so three dials in a row read as three dials. */
   .pr-sky-dial { display: flex; flex-direction: column; gap: 1px; cursor: pointer; }
   .pr-sky-dial span { font-size: 0.52rem; opacity: 0.65; letter-spacing: 0.04em; }
@@ -2484,9 +2491,91 @@
     border-radius: 3px; background: none; cursor: pointer;
   }
   .pr-files {
-    position: absolute; right: 6px; bottom: 6px; z-index: 3; display: flex; gap: 4px;
+    position: absolute; left: 6px; right: 6px; bottom: 6px; z-index: 3;
+    display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px;
   }
-  .pr-files button, .pr-files .pr-doc {
+  /*  The view controls, first in the bar and pushed to its left end. They were
+      positioned absolutely when they floated at the top; in the bar they are
+      ordinary buttons. */
+  .pr-viewbar { display: flex; align-items: center; gap: 3px; }
+  .pr-zoomstack {
+    position: absolute; right: 6px; top: 70px; z-index: 3;   /* well clear of the panel's ✕ */
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .pr-zoomstack .pr-zoom { min-width: 22px; padding: 1px 0; line-height: 1.5; }
+  .pr-scene-btn.on { border-color: var(--accent2); color: var(--accent2); }
+  /*  The scene menu opens above the toolbar, where the dial strips open. */
+  .pr-menu {
+    position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 4;
+    display: flex; flex-direction: column; gap: 6px; padding: 6px;
+    background: rgba(0,0,0,0.85); border: 1px solid var(--border); border-radius: 4px;
+  }
+  .pr-menu[hidden] { display: none; }
+  /*  THE SCENE MENU AS A FORM. One label column, one control column, every
+      slider the same width, sections ruled off, the file actions in a footer.
+      Nothing floats beside anything else. */
+  .pr-menu { width: 232px; gap: 7px; padding: 10px 12px; overflow-y: auto; box-sizing: border-box; }
+  .pr-group { display: flex; flex-direction: column; gap: 7px; }
+  .pr-menu:not(.wide) .pr-group + .pr-group { border-top: 1px solid var(--border); padding-top: 7px; }
+  .pr-sec { font-size: 0.55rem; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.5; }
+  /*  Side by side, for a panel too short to stack them. */
+  .pr-menu.wide {
+    flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 8px 18px;
+    width: auto; max-width: calc(100% - 34px);   /* clear of the zoom stack on the right */
+  }
+  .pr-menu.wide .pr-group { width: 200px; }
+  .pr-menu.wide .pr-group + .pr-group { border-left: 1px solid var(--border); padding-left: 16px; }
+  .pr-menu.wide .pr-menu-foot { flex-basis: 100%; padding-top: 6px; }
+  .pr-menu.wide { padding: 7px 12px 6px; row-gap: 5px; }
+  .pr-menu.wide .pr-group, .pr-menu.wide .pr-form { gap: 4px 10px; }
+  .pr-form {
+    display: grid; grid-template-columns: 62px 1fr; align-items: center; gap: 6px 10px;
+  }
+  .pr-form > .pr-sky-piece { display: contents; }
+  .pr-form .pr-span { grid-column: 1 / -1; }
+  .pr-send { display: flex; gap: 3px; }
+  .pr-files .pr-send button { padding: 0 5px; font-size: 0.72rem; line-height: 1.45; }
+  .pr-files .pr-send button:disabled { opacity: 0.3; cursor: default; filter: grayscale(1); }
+  .pr-lbl { font-size: 0.62rem; opacity: 0.72; text-transform: capitalize; }
+  .pr-menu input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent2); }
+  .pr-menu input[type="color"] {
+    width: 30px; height: 16px; padding: 0; border: 1px solid var(--border);
+    border-radius: 3px; background: none; cursor: pointer;
+  }
+  .pr-menu .pr-form > button { justify-self: start; }
+  .pr-menu .pr-sky-on { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; opacity: 0.9; }
+  .pr-menu-foot {
+    display: flex; gap: 4px; border-top: 1px solid var(--border); padding-top: 8px;
+  }
+  .pr-menu-foot .pr-reset-all { margin-right: auto; }
+  /*  The sign menu: the place's name as its title, the star beside it. */
+  .pr-signmenu { width: 250px; }
+  .pr-sign-head { display: flex; align-items: center; gap: 6px; }
+  .pr-signmenu .pr-tint-name {
+    flex: 1 1 auto; font-size: 0.74rem; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pr-signmenu:not(.wide) .pr-group { border-top: 1px solid var(--border); padding-top: 7px; }
+  .pr-menu.wide .pr-sign-head { flex-basis: 100%; }
+  .pr-menu.wide .pr-sign-head .pr-tint-name { font-size: 0.66rem; }
+  .pr-signmenu.wide .pr-form { gap: 3px 10px; }
+  .pr-signmenu .pr-note-in { width: 100%; box-sizing: border-box; font-size: 0.62rem; padding: 2px 5px; }
+  /*  A column with no ribbon hides the swatch; its label goes with it. */
+  .pr-lbl:has(+ .pr-ribbon[hidden]) { display: none; }
+  .pr-files:has(> .pr-menu:not([hidden])) > .pr-note { visibility: hidden; }
+  /*  Anchored to the TOOLBAR rather than to the scene, so they sit directly
+      above it whether it is one row or three: the status line, and the dial
+      strips that open from its buttons. A strip, when open, covers the status
+      line; that is the right way round. */
+  .pr-files > .pr-note { position: absolute; left: 2px; bottom: calc(100% + 4px); }
+  .pr-files > .pr-tint { position: absolute; left: 0; bottom: calc(100% + 6px); top: auto; }
+  /*  The strip's ground is translucent, so hide the line under it rather than
+      let it read through. */
+  .pr-files:has(> .pr-tint:not([hidden])) > .pr-note { visibility: hidden; }
+  .pr-files .pr-viewbar .pr-zoom, .pr-files .pr-viewbar .pr-sort {
+    position: static; right: auto; top: auto;
+  }
+  .pr-files button {
     font-size: 0.6rem; padding: 1px 7px; line-height: 1.7;
   }
   /* Named on the bar rather than in a dialog the browser is free to suppress. */
@@ -2510,12 +2599,6 @@
   }
   .pr-bg button { border: 0; background: none; padding: 0 2px; opacity: 0.55; }
   .pr-bg button:hover { opacity: 1; }
-  /* A link, styled as one of the buttons beside it. */
-  .pr-doc {
-    border: 1px solid var(--border); border-radius: 3px; background: var(--field);
-    color: var(--fg); text-decoration: none;
-  }
-  .pr-doc:hover { border-color: var(--accent2); color: var(--accent2); }
   /* Sits under the pen, because that is all it searches. */
   .pr-find {
     position: absolute; z-index: 3; font-size: 0.6rem; padding: 2px 5px;
@@ -5170,13 +5253,14 @@ function saveSmoke() {
     thickness and how fast a puff gives up all live with the column. */
 const WEATHER_KEY = "brick-by-brick:weather:v1";
 const WEATHER_DEFAULT = { wind: 0.25 };
+const WIND_MAX = 3;                 // the wind dial runs -3 … 3
 let WEATHER = { ...WEATHER_DEFAULT };
 function loadWeather() {
   let raw;
   try { raw = JSON.parse(localStorage.getItem(WEATHER_KEY) || "null"); } catch (e) { return; }
   if (!raw) return;
   const w = +raw.wind;
-  if (w >= -1 && w <= 1) WEATHER.wind = w;
+  if (w >= -WIND_MAX && w <= WIND_MAX) WEATHER.wind = w;
 }
 function saveWeather() {
   try {
@@ -5188,7 +5272,10 @@ function saveWeather() {
 /*  How much a thing crossing the sky is helped or hindered. Dead with the wind
     is a third again; dead against it is a third slower. Nothing stops, because
     a bird pinned motionless in the air reads as a bug. */
-const windHelp = dir => 1 + WEATHER.wind * dir * 0.34;
+/*  Never below a crawl. The dial goes to ±WIND_MAX, and at 3 the old sum went
+    negative, so anything flying INTO the wind drifted backwards while still
+    facing forward. A strong headwind should nearly stop you, not reverse you. */
+const windHelp = dir => Math.max(0.15, 1 + WEATHER.wind * dir * 0.34);
 
 /*  THE KNOCK, MADE RATHER THAN FETCHED.
 
@@ -5559,7 +5646,7 @@ function applySidecar(text, host) {
   const sky = data.sky;
   if (sky && typeof sky === "object") {
     if (sky.weather && isFinite(sky.weather.wind)) {
-      WEATHER = { ...WEATHER, wind: Math.max(0, Math.min(1, Number(sky.weather.wind))) };
+      WEATHER = { ...WEATHER, wind: Math.max(-WIND_MAX, Math.min(WIND_MAX, Number(sky.weather.wind))) };
       saveWeather();
     }
     if (Array.isArray(sky.scenery)) {
@@ -6860,9 +6947,9 @@ const SCENERY = [
           specks at 0.2 and weather the size of the street at 5. A dial whose
           extremes both look sensible is a dial that was not worth adding. */
       { k: "count", tag: "number", tip: "how many clouds there are",
-        min: 0, max: 6, step: 0.1, def: 1 },
+        min: 0, max: 15, step: 0.1, def: 1 },
       { k: "size", tag: "size", tip: "how big they are",
-        min: 0.2, max: 5, step: 0.05, def: 1 },
+        min: 0.2, max: 10, step: 0.05, def: 1 },
       /*  FAR HAS TO MEAN FAR.
 
           This started as a multiplier on how much of the street's movement a
@@ -6884,7 +6971,7 @@ const SCENERY = [
         "travel with the buildings. At the middle of the dial they hold still " +
         "while the street goes past, the way the sun does. Past that they " +
         "cross the other way",
-        min: 0, max: 3, step: 0.05, def: 1 },
+        min: 0, max: 6, step: 0.05, def: 1 },
     ],
     /*  DEPTH, FROM ONE NUMBER.
 
@@ -7085,6 +7172,27 @@ function balloonScale(host, b) {
     Twelve people in a wicker basket is absurd, which is exactly why it was
     never noticed. The floor costs one `max`. */
 const balloonDrift = load => Math.max(0.08, 0.35 - load * 0.03);
+
+/*  THE BALLOON AND WHOEVER IS IN IT ARE SIZED TOGETHER, ALWAYS.
+
+    A passenger is counter-scaled against the balloon (the sprite is already
+    drawn at zoom, so inheriting the balloon's scale would draw them at zoom
+    squared). So any change to the balloon's scale has to be answered in the
+    passengers' scale in the same breath.
+
+    It was not. Dropping someone in snapped the balloon to its loaded size
+    directly, after boardRider had counter-scaled them against the hover-swollen
+    size — and because the balloon was then already the size the ticker wanted,
+    the ticker saw nothing to do and never corrected them. The passenger stayed
+    25% too big for good, which made the balloon look as if it had not grown. */
+function sizeBalloon(host, b) {
+  const bz = balloonScale(host, b);
+  b.node.scale.set(bz);
+  for (const r of b.riders) if (r.node && !r.node.destroyed) {
+    r.node.scale.set(Math.sign(r.node.scale.x || 1) / bz, 1 / bz);
+  }
+  return bz;
+}
 
 // Standing on the floor of the basket, in the middle of it. No lean: a
 // passenger in a basket is not being dragged through the air, they are riding.
@@ -7891,17 +7999,8 @@ function renderPromenadePixi(model, host) {
       'scene you are looking at">open\u2026</button>' +
       //  Beside the signpost controls in spirit: it is the unit every
       //  fingerpost on the street is written in.
-      '<button data-k="unit" title="miles or kilometres on the fingerposts">mi</button>' +
-      /*  The face and the size used to sit here. They are in the Theme panel
-          now, beside the eight colours: the swatches are how the page looks
-          and the lettering is how the street looks, which is one question
-          asked about two surfaces. Neither is in your pile and both survive
-          Clear all, which is the company they keep. */
-      // Beside the file controls, since the questions it answers are mostly
-      // "what file do I make, and what goes in it".
-      '<a class="pr-doc" href="doc/promenade.html" target="_blank" rel="noopener"' +
-      ' title="how to manage the promenade, and how to make its art">help</a>';
-    // README.md covers the whole project; this button is the Promenade's own page.
+      '<button data-k="unit" title="miles or kilometres on the fingerposts">mi</button>';
+    //  No help link: the panel's own (?) in its title goes to the same page.
     shell.appendChild(fileBar);
     /*  A SCENE IS A FILE, AND FILES NEED NAMES.
 
@@ -7925,11 +8024,12 @@ function renderPromenadePixi(model, host) {
                    "application/json");
     };
     const unitBtn = fileBar.querySelector('[data-k="unit"]');
-    unitBtn.textContent = DIST_UNIT;
+    const unitWord = () => DIST_UNIT === "mi" ? "miles" : "kilometres";
+    unitBtn.textContent = unitWord();
     unitBtn.onclick = () => {
       DIST_UNIT = DIST_UNIT === "mi" ? "km" : "mi";
       saveDistUnit();
-      unitBtn.textContent = DIST_UNIT;
+      unitBtn.textContent = unitWord();
       host._noTween = true;
       renderPromenadePixi(V(), host);       // every arm is written in it
     };
@@ -7942,21 +8042,130 @@ function renderPromenadePixi(model, host) {
         backdrop with no column to select: the tint bar appears when you click
         a place, and there is nothing to click for "the whole street". Two
         swatches and a way back. */
-    const bgBar = document.createElement("span");
-    bgBar.className = "pr-bg";
+    //  A label column and a control column, like every other row in the menu.
+    const bgBar = document.createElement("div");
+    bgBar.className = "pr-form";
     bgBar.innerHTML =
-      '<span class="pr-bg-cap">scene</span>' +
+      '<span class="pr-lbl">sky</span>' +
       '<input type="color" data-k="sky" title="the sky behind the whole street">' +
+      '<span class="pr-lbl">ground</span>' +
       '<input type="color" data-k="ground" title="the ground everybody stands on">' +
-      '<button data-k="night" class="pr-night" title="day or night — at night ' +
-        'the marked windows light up">\u2600</button>' +
+
       /*  The day's air, which every chimney on the street shares. */
-      '<input type="range" data-k="wind" min="-1" max="1" step="0.05" ' +
-        'class="pr-weather" title="wind \u2014 which way the smoke leans">' +
-      '<button data-k="scenery" class="pr-scenery-btn" title="the weather ' +
-        'behind the street">☁</button>' +
-      '<button data-k="reset" title="back to the street’s own colors">↺</button>';
-    fileBar.insertBefore(bgBar, groupBtn.nextSibling);
+      '<span class="pr-lbl">wind</span>' +
+      '<input type="range" data-k="wind" min="-' + WIND_MAX + '" max="' + WIND_MAX + '" step="0.05" ' +
+        'title="which way the smoke leans">' +
+      //  Pressed by the menu's one Reset button, not shown on its own.
+      '<button data-k="reset" hidden></button>';
+
+    /*  ONE ROW OF MAIN CONTROLS, AND THE SCENE BEHIND A MENU.
+
+        The bar is what you reach for while you work the street: how you are
+        looking at it (mode, sort, zoom, drift, hide) and + group. Everything
+        about the scene itself — sky and ground, day and night, wind, weather,
+        and saving or opening a scene — is set now and then, so it lives in
+        one menu off a single "scene" button instead of stretching the bar
+        across the whole panel. */
+    const viewBar = document.createElement("span");
+    viewBar.className = "pr-viewbar";
+    for (const b of [modeBtn, sortSel, driftBtn, bareBtn]) viewBar.appendChild(b);
+    fileBar.insertBefore(viewBar, fileBar.firstChild);
+    //  Zoom stands on its own, stacked in the top-right corner under the
+    //  panel's ✕, the way a map puts its + and −.
+    const zoomStack = document.createElement("span");
+    zoomStack.className = "pr-zoomstack";
+    zoomStack.append(zoom, zoomOut);
+    shell.appendChild(zoomStack);
+
+    const sceneBtn = document.createElement("button");
+    sceneBtn.className = "pr-scene-btn";
+    sceneBtn.textContent = "scene \u25BE";
+    sceneBtn.title = "sky and ground, day and night, weather, and saving or opening a scene";
+    const sceneMenu = document.createElement("div");
+    sceneMenu.className = "pr-menu";
+    sceneMenu.hidden = true;
+    /*  Sections, each a labelled form, then the file actions in a footer. The
+        clouds are built further down from SCENERY and dropped into their slot. */
+    const sec = text => { const h = document.createElement("div"); h.className = "pr-sec"; h.textContent = text; return h; };
+    const weatherSlot = document.createElement("div");
+    const unitForm = document.createElement("div");
+    unitForm.className = "pr-form";
+    unitForm.innerHTML = '<span class="pr-lbl">distances</span>';
+    unitForm.appendChild(fileBar.querySelector('[data-k="unit"]'));
+    const foot = document.createElement("div");
+    foot.className = "pr-menu-foot";
+    const resetAll = document.createElement("button");
+    resetAll.className = "pr-reset-all";
+    resetAll.textContent = "reset";
+    resetAll.title = "back to the street’s own colours and weather";
+    foot.append(resetAll, fileBar.querySelector('[data-k="load"]'), fileBar.querySelector('[data-k="save"]'));
+    const group = (...kids) => { const g = document.createElement("div"); g.className = "pr-group"; g.append(...kids); return g; };
+    /*  SEND UP. The balloon and the birds come on their own schedule, which is
+        the charm of them and a nuisance when you want one now — to put somebody
+        in the basket, or to see the sky with something in it. Each press asks
+        the ticker for one on its next frame. There is only ever one balloon
+        and one flock at a time, so a press while one is up does nothing. */
+    //  On the toolbar itself, one press each, not in the menu.
+    const sendUp = document.createElement("span");
+    sendUp.className = "pr-send";
+    sendUp.innerHTML =
+      '<button data-k="send-balloon" title="send up a balloon (one at a time)">\u{1F388}</button>' +
+      '<button data-k="send-birds" title="send up a flock of birds (one at a time)">\u{1F426}</button>';
+    //  Day and night beside them: another thing you flip while watching.
+    const nightQuick = document.createElement("button");
+    nightQuick.dataset.k = "night";
+    nightQuick.className = "pr-night";
+    nightQuick.textContent = "\u2600";
+    sendUp.insertBefore(nightQuick, sendUp.firstChild);
+    host._sendBalloonBtn = sendUp.querySelector('[data-k="send-balloon"]');
+    host._sendBirdsBtn = sendUp.querySelector('[data-k="send-birds"]');
+    host._sendBalloonBtn.onclick = () => { host._wantBalloon = true; host._sendBalloonBtn.disabled = true; };
+    host._sendBirdsBtn.onclick = () => { host._wantBirds = true; host._sendBirdsBtn.disabled = true; };
+    sceneMenu.append(group(sec("scene"), bgBar), group(sec("clouds"), weatherSlot),
+                     group(sec("signposts"), unitForm), foot);
+
+    /*  SHORT PANELS. The menu stacks to about 360px, and a one-row Promenade
+        has far less than that above its toolbar — it was cut off at the top.
+        So when it will not fit standing up, the sections go side by side, and
+        if even that is too tall it scrolls rather than disappearing. Measured
+        each time it opens, because the panel can be resized in between. */
+    const fitMenu = (m = sceneMenu) => {
+      m.classList.remove("wide");
+      m.style.maxHeight = "";
+      //  Above the toolbar, and below the panel's title, which sits over the
+      //  top of the scene.
+      const room = fileBar.offsetTop - 30;
+      if (m.offsetHeight > room) m.classList.add("wide");
+      m.style.maxHeight = Math.max(80, room) + "px";
+    };
+    host._fitMenu = fitMenu;
+    fileBar.appendChild(sendUp);
+    fileBar.appendChild(sceneBtn);
+    fileBar.appendChild(sceneMenu);
+
+    const shutMenu = () => { sceneMenu.hidden = true; sceneBtn.classList.remove("on"); };
+    sceneBtn.onclick = () => {
+      sceneMenu.hidden = !sceneMenu.hidden;
+      sceneBtn.classList.toggle("on", !sceneMenu.hidden);
+      if (!sceneMenu.hidden) fitMenu();
+    };
+    host._shutMenu = shutMenu;
+    //  Anything that opens something else, or hands you a file, is done with
+    //  the menu. The colour pickers and the wind slider are not: you are still
+    //  choosing.
+    sceneMenu.addEventListener("click", e => {
+      if (e.target.closest('[data-k="save"], [data-k="load"]')) shutMenu();
+    });
+    //  A press anywhere else puts it away.
+    document.addEventListener("pointerdown", e => {
+      if (sceneMenu.hidden || !sceneMenu.isConnected) return;
+      if (sceneMenu.contains(e.target) || sceneBtn.contains(e.target)) return;
+      shutMenu();
+    });
+
+    //  The status line rides on the toolbar too, so it sits just above it
+    //  however many rows the toolbar wraps to on a narrow panel.
+    fileBar.appendChild(note);
 
     /*  THE SCENERY BAR.
 
@@ -7969,25 +8178,32 @@ function renderPromenadePixi(model, host) {
         same kind of thing: a strip of dials for the thing you just asked
         about, dismissed with an ×. */
     const skyBar = document.createElement("div");
-    skyBar.className = "pr-tint pr-sky-bar";
-    skyBar.hidden = true;
+    skyBar.className = "pr-form pr-sky-bar";
     skyBar.innerHTML = SCENERY.map(piece =>
+      //  display: contents, so each piece's rows sit in the form's own grid.
       '<span class="pr-sky-piece" data-p="' + piece.id + '">' +
-        '<label class="pr-sky-on"><input type="checkbox" data-k="on">' +
+        '<label class="pr-sky-on pr-span"><input type="checkbox" data-k="on">' +
           (piece.label || piece.id) + '</label>' +
         /*  Each dial says what it is. Three identical sliders in a row with
             the answer only in a tooltip is a guessing game, and the tooltip
             does not exist at all on a touch screen. */
         sceneryDefs(piece).map(d =>
-          '<label class="pr-sky-dial" title="' + d.tip + '">' +
-            '<span>' + d.tag + '</span>' +
-            '<input type="range" data-k="' + d.k + '" min="' + d.min +
-            '" max="' + d.max + '" step="' + d.step + '">' +
-          '</label>').join("") +
+          //  Which way the dial moves them: distance is across, size is up and down.
+          '<span class="pr-lbl" title="' + d.tip + '">' + d.tag +
+            ({ distance: " \u2194", size: " \u2195" }[d.tag] || "") + '</span>' +
+          '<input type="range" data-k="' + d.k + '" min="' + d.min +
+            '" max="' + d.max + '" step="' + d.step + '" title="' + d.tip + '">').join("") +
       '</span>').join("") +
-      '<button data-k="reset" title="back to the street’s own weather">↺</button>' +
-      '<button data-k="close" title="done">×</button>';
-    shell.appendChild(skyBar);
+      //  Pressed by the menu's one Reset button, not shown on its own.
+      '<button data-k="reset" hidden></button>';
+    //  The weather is a row of the scene menu, between the colours and the
+    //  files — no separate ☁ button to find it behind.
+    weatherSlot.replaceWith(skyBar);
+    //  One reset for the whole menu: the colours of the hour on screen, and the weather.
+    resetAll.onclick = () => {
+      bgBar.querySelector('[data-k="reset"]').click();
+      skyBar.querySelector('[data-k="reset"]').click();
+    };
 
     const syncSkyBar = () => {
       for (const piece of SCENERY) {
@@ -8022,18 +8238,9 @@ function renderPromenadePixi(model, host) {
       host._noTween = true;
       renderPromenadePixi(V(), host);
     };
-    skyBar.querySelector('[data-k="close"]').onclick = () => { skyBar.hidden = true; };
-    /*  The two bars stand in the same place, so only one is ever up. Opening
-        this one lets the column go, which is what closes the other. */
-    host._skyBar = skyBar;
-    bgBar.querySelector('[data-k="scenery"]').onclick = () => {
-      skyBar.hidden = !skyBar.hidden;
-      if (skyBar.hidden) return;
-      host._focus = null;
-      host._focusKind = null;
-      applyFocus(host);
-      syncSkyBar();
-    };
+    //  Read the dials fresh each time the menu opens.
+    sceneBtn.addEventListener("click", () => { if (!sceneMenu.hidden) syncSkyBar(); });
+    syncSkyBar();
     /*  THROUGH THE DOOR.
 
         A door marked in a place's drawing is clickable, and what it opens is
@@ -8310,7 +8517,7 @@ function renderPromenadePixi(model, host) {
     windIn.addEventListener("input", writeWeather);
     syncWeather();
 
-    const nightBtn = bgBar.querySelector('[data-k="night"]');
+    const nightBtn = fileBar.querySelector('[data-k="night"]');   // on the toolbar
     const syncNight = () => {
       nightBtn.textContent = NIGHT ? "\u263e" : "\u2600";
       nightBtn.classList.toggle("on", NIGHT);
@@ -8383,66 +8590,77 @@ function renderPromenadePixi(model, host) {
         naming that place; click away and it goes. Two stops and a clear —
         which is the whole of what a backdrop needs. */
     const tintBar = document.createElement("div");
-    tintBar.className = "pr-tint";
+    /*  THE SIGN MENU. Same dress as the scene menu, because it is the same
+        kind of thing: settings for what you just picked, opened above the
+        toolbar. A labelled form in sections — the name and its signpost star
+        on top, then the backdrop, the two notes, the smoke — and reset and
+        done at the foot, where the scene menu keeps them.
+
+        Every control keeps its data-k, so the wiring below is unchanged. */
+    tintBar.className = "pr-menu pr-signmenu";
     tintBar.hidden = true;
     tintBar.innerHTML =
-      '<span class="pr-tint-name"></span>' +
-      /*  Worth signposting, or not. The notation says the same thing with a
-          `*` field on the place's brick; this is the same decision made by
-          pointing at the column instead of typing.
-
-          It writes to the sidecar rather than to the pile, because this panel
-          reads the pile and does not write it — a promenade that edited your
-          records because you clicked a star would be a promenade you could not
-          trust. Either source counts, so a starred brick and a starred column
-          mean the same thing to the fingerposts. */
-      '<button data-k="star" class="pr-star" title="put this place on the ' +
-        'fingerposts">☆</button>' +
-      '<input type="color" data-k="from" value="#1d2c38">' +
-      '<input type="color" data-k="to" value="#1a1f18">' +
-      '<input type="range" data-k="alpha" min="0" max="1" step="0.05" value="1" ' +
-        'title="how strongly it shows">' +
-      /*  The ribbon's own color, shown only for the columns that HAVE a
-          ribbon. A place has a signpost and there is nothing here to paint,
-          so the control goes away rather than sitting there doing nothing. */
-      '<input type="color" data-k="ribbon" class="pr-ribbon" ' +
-        'title="the color of this column\u2019s ribbon">' +
-      /*  RESET IS ↺, CLOSE IS ×.
-
-          They were the same button. The × threw the colours away, which is
-          not what an × means anywhere else on this panel or anywhere else at
-          all — every other × here shuts a thing, and the scene bar three
-          controls along already uses ↺ for exactly this reset. So somebody
-          finished choosing a colour, pressed the obvious button to put the
-          picker away, and lost the colour they had just chosen. */
-      '<button data-k="reset" title="no gradient for this place">↺</button>' +
-      /*  TWO BOXES, NOT ONE BOX AND A SWITCH.
-
-          A switch made them one note that could be in either place, so writing
-          the second thing you wanted to say overwrote the first. They are two
-          notes about two different questions — what this place is, and what
-          happened there — and the controls say so by being two. Stacked in the
-          order they appear on the street, so the top box is the top line. */
-      '<span class="pr-notes">' +
-        '<input type="text" data-k="above" class="pr-note-in" ' +
-          'maxlength="400" placeholder="over the roof\u2026" ' +
-          'title="shown above this column">' +
-        '<input type="text" data-k="below" class="pr-note-in" ' +
-          'maxlength="400" placeholder="on the ground\u2026" ' +
-          'title="shown below this column">' +
-      '</span>' +
-      /*  A column's own smoke, beside its notes: both are decisions about this
-          place rather than about the street. */
-      '<span class="pr-smoke">' +
-        '<input type="color" data-k="smokeink" title="the colour of this ' +
-          'place\u2019s smoke">' +
-        '<input type="range" data-k="smokethick" min="0" max="1" step="0.05" ' +
-          'title="how thick the smoke is">' +
-        '<input type="range" data-k="smokefade" min="0" max="1" step="0.05" ' +
-          'title="how fast it gives up. Low is a plume, high is a wisp">' +
-      '</span>' +
-      '<button data-k="close" title="done">×</button>';
-    shell.appendChild(tintBar);
+      '<div class="pr-sign-head">' +
+        '<span class="pr-tint-name"></span>' +
+        /*  Worth signposting, or not. The notation says the same thing with a
+            `*` field on the place's brick; this is the same decision made by
+            pointing at the column instead of typing. It writes to the sidecar
+            rather than to the pile: this panel reads the pile and never
+            writes it. */
+        '<button data-k="star" class="pr-star" title="put this place on the ' +
+          'fingerposts">☆</button>' +
+      '</div>' +
+      '<div class="pr-group">' +
+        '<div class="pr-sec">backdrop</div>' +
+        '<div class="pr-form">' +
+          '<span class="pr-lbl">top</span><input type="color" data-k="from" value="#1d2c38">' +
+          '<span class="pr-lbl">bottom</span><input type="color" data-k="to" value="#1a1f18">' +
+          '<span class="pr-lbl">strength</span>' +
+          '<input type="range" data-k="alpha" min="0" max="1" step="0.05" value="1" ' +
+            'title="how strongly it shows">' +
+          //  Only the columns that hang a ribbon; the label hides with it (CSS).
+          '<span class="pr-lbl">ribbon</span>' +
+          '<input type="color" data-k="ribbon" class="pr-ribbon" ' +
+            'title="the color of this column\u2019s ribbon">' +
+        '</div>' +
+      '</div>' +
+      /*  TWO BOXES, NOT ONE BOX AND A SWITCH: two notes about two questions —
+          what this place is, and what happened there — in the order they
+          appear on the street. */
+      '<div class="pr-group">' +
+        '<div class="pr-sec">notes</div>' +
+        '<div class="pr-form">' +
+          '<span class="pr-lbl">above</span>' +
+          '<input type="text" data-k="above" class="pr-note-in" ' +
+            'maxlength="400" placeholder="over the roof\u2026" ' +
+            'title="shown above this column">' +
+          '<span class="pr-lbl">below</span>' +
+          '<input type="text" data-k="below" class="pr-note-in" ' +
+            'maxlength="400" placeholder="on the ground\u2026" ' +
+            'title="shown below this column">' +
+        '</div>' +
+      '</div>' +
+      '<div class="pr-group">' +
+        '<div class="pr-sec">smoke</div>' +
+        '<div class="pr-form">' +
+          '<span class="pr-lbl">colour</span>' +
+          '<input type="color" data-k="smokeink" title="the colour of this ' +
+            'place\u2019s smoke">' +
+          '<span class="pr-lbl">thickness</span>' +
+          '<input type="range" data-k="smokethick" min="0" max="1" step="0.05" ' +
+            'title="how thick the smoke is">' +
+          '<span class="pr-lbl">fade</span>' +
+          '<input type="range" data-k="smokefade" min="0" max="1" step="0.05" ' +
+            'title="how fast it gives up. Low is a plume, high is a wisp">' +
+        '</div>' +
+      '</div>' +
+      /*  RESET AND DONE ARE DIFFERENT BUTTONS. They were once the same one, and
+          putting the picker away threw away the colour just chosen. */
+      '<div class="pr-menu-foot">' +
+        '<button data-k="reset" class="pr-reset-all" title="no gradient for this place">reset</button>' +
+        '<button data-k="close" title="put this away">done</button>' +
+      '</div>';
+    fileBar.appendChild(tintBar);  // pops up above the toolbar; see .pr-files > .pr-tint
     host._tintBar = tintBar;
 
     const readTint = () => {
@@ -8580,9 +8798,11 @@ function renderPromenadePixi(model, host) {
       // "" is the promenade, and a valid key — check the kind, not the slug.
       const slug = isCol ? host._focus : null;
       tintBar.hidden = !isCol || host._view === "grid";
-      //  Both bars stand in the same corner, so picking a column puts the
-      //  scenery one away rather than drawing one over the other.
-      if (!tintBar.hidden && host._skyBar) host._skyBar.hidden = true;
+      //  The column's dials open where the scene menu opens, so picking a
+      //  column puts the menu away rather than drawing one over the other.
+      if (!tintBar.hidden && host._shutMenu) host._shutMenu();
+      //  Same fitting as the scene menu, so a short panel does not cut it off.
+      if (!tintBar.hidden && host._fitMenu) host._fitMenu(tintBar);
       if (!isCol) return;
       const grp = slug ? groupNameOf(slug) : "The Promenade";
       const e = grp ? null : ((model2 || V()).entities || []).find(k => k.slug === slug);
@@ -9289,7 +9509,9 @@ function renderPromenadePixi(model, host) {
 
           Deliberately in the sky layer and never interactive: it is not a
           record, it cannot be clicked, and nothing depends on it. */
-      if (SKY && !host._balloon && Math.random() < 0.0004) {
+      //  Or on request, from the scene menu's "send up".
+      if (SKY && !host._balloon && (host._wantBalloon || Math.random() < 0.0004)) {
+        host._wantBalloon = false;
         const bal = new P.Container();
         const g = new P.Graphics();
         // A silk, drawn each time from the same bolt of cloth.
@@ -9511,15 +9733,8 @@ function renderPromenadePixi(model, host) {
           /*  Zoom can change between frames, and so can the load: a passenger
               climbing in swells it. Compared before assigning so a still scene
               is not rewriting a transform sixty times a second. */
-          const bz = balloonScale(host, b2);
-          if (b2.node.scale.x !== bz) {
-            b2.node.scale.set(bz);
-            for (const r of b2.riders) if (r.node && !r.node.destroyed) {
-              // Counter-scaled: the sprite inside is already drawn at zoom, so
-              // without this a passenger would render at zoom squared.
-              r.node.scale.set(Math.sign(r.node.scale.x || 1) / bz, 1 / bz);
-            }
-          }
+          let bz = balloonScale(host, b2);
+          if (b2.node.scale.x !== bz) bz = sizeBalloon(host, b2);
 
           if (load) {
             /*  CARRYING SOMEBODY: it turns at the edges instead of leaving.
@@ -9572,7 +9787,8 @@ function renderPromenadePixi(model, host) {
           A skein of three or four, flapping out of step with each other so
           they read as birds rather than a decal. Same rules: sky only, never
           interactive, gone when they leave the frame. */
-      if (SKY && !host._birds && Math.random() < 0.0016) {
+      if (SKY && !host._birds && (host._wantBirds || Math.random() < 0.0016)) {
+        host._wantBirds = false;
         const flock = new P.Container();
         const n = 3 + Math.floor(Math.random() * 3);
         const dir = Math.random() < 0.5 ? 1 : -1;
@@ -9623,6 +9839,15 @@ function renderPromenadePixi(model, host) {
           f.node.destroy({ children: true });
           host._birds = null;
         }
+      }
+
+      /*  🎈 and 🐦 go dead while theirs is up: there is only ever one of each,
+          so a press would do nothing, and a button that does nothing should
+          say so. Written only when it changes. */
+      for (const [btn, up] of [[host._sendBalloonBtn, host._balloon || host._wantBalloon],
+                               [host._sendBirdsBtn, host._birds || host._wantBirds]]) {
+        const off = !SKY || !!up;
+        if (btn && btn.disabled !== off) btn.disabled = off;
       }
 
       /*  NOTHING TO DRIFT ALONG IS NOT A REASON TO SHAKE.
@@ -12052,7 +12277,7 @@ function renderPromenadePixi(model, host) {
         host._lifted = null;
 
         if (t.kind === "balloon" && boardRider(host, me, P)) {
-          host._balloon.node.scale.set(balloonScale(host, host._balloon));   // it swelled to catch them; it has
+          sizeBalloon(host, host._balloon);   // it swelled to catch them; it has
         }
         else if (t.kind === "pen" || t.kind === "nowhere") {
           /*  The pen means you no longer know where they were — and that is now
@@ -17150,8 +17375,11 @@ function renderSpriteEditor(model, host) {
    page opened from file:// simply says the map needs a connection rather than
    failing silently.
    ========================================================================== */
-const MAPLIBRE_JS  = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
-const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+/*  6.10.0, which is ESM only — no UMD bundle to drop in with a script tag, so
+    it is imported as a module and hung on window for the rest of the page.
+    The white flash when you drag a window edge was a library bug (#4158). */
+const MAPLIBRE_JS  = "https://unpkg.com/maplibre-gl@6.10.0/dist/maplibre-gl.mjs";
+const MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@6.10.0/dist/maplibre-gl.css";
 const PMTILES_JS   = "https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js";
 const BASEMAP      = "pmtiles://https://tiles.mbricknell.com/basemap.pmtiles";
 const HILLSHADE    = "pmtiles://https://tiles.mbricknell.com/hs.pmtiles";
@@ -17175,6 +17403,52 @@ function loadOnce(url, isCss) {
     document.head.appendChild(el);
   });
   return loadOnce.cache[key];
+}
+
+/*  MapLibre 6 publishes a module and nothing else, so it is imported rather
+    than appended as a script, and put on `window` where every call site in
+    this file already looks for it. Cached like loadOnce: one import per page,
+    however many maps ask for it. */
+function loadMapLibre() {
+  if (!loadMapLibre.p) {
+    loadMapLibre.p = import(MAPLIBRE_JS).then(m => {
+      const lib = m.default || m;
+      window.maplibregl = lib;
+      return lib;
+    });
+  }
+  return loadMapLibre.p;
+}
+
+/*  KEEPING A MAP THE SIZE OF ITS BOX, FRAME BY FRAME.
+
+    A ResizeObserver does not report on every frame of a drag, so between its
+    ticks the drawing buffer is a frame or two behind its box. Left alone that
+    shows as bare ground down the leading edge; covered with a CSS stretch it
+    shows as the map appearing to zoom while you drag. Neither is what resizing
+    a map means — a wider map shows more ground at the same scale.
+
+    So the first tick starts a frame loop: match the buffer to the box, paint
+    it, and stop once the box has held still for a few frames. Returns the
+    function that starts it. Both maps on this page use it. */
+function trackMapSize(map, boxEl) {
+  let raf = 0, quiet = 0;
+  const step = () => {
+    const r = boxEl.getBoundingClientRect();
+    const cv = map.getCanvas();
+    const dpr = window.devicePixelRatio || 1;
+    const off = r.width && r.height &&
+      (Math.abs(cv.width / dpr - r.width) > 0.5 || Math.abs(cv.height / dpr - r.height) > 0.5);
+    if (off) {
+      quiet = 0;
+      map.resize();
+      //  In the same frame the size changed: the strip a grown canvas gains is
+      //  transparent until something paints it.
+      if (map.redraw) map.redraw();
+    } else if (++quiet > 4) { raf = 0; return; }
+    raf = requestAnimationFrame(step);
+  };
+  return () => { if (!raf) { quiet = 0; raf = requestAnimationFrame(step); } };
 }
 
 /*  The style is settings, and the settings are the style.
@@ -17784,7 +18058,7 @@ function renderMap(model, host) {
   // Always load pmtiles, not just when hosted -- the dropdown lets you TRY the
   // custom source from anywhere (e.g. picking "Your tiles" while opened from
   // file://), not only in whatever context happened to be guessed at start.
-  const toLoad = [loadOnce(MAPLIBRE_CSS, true), loadOnce(MAPLIBRE_JS), loadOnce(PMTILES_JS)];
+  const toLoad = [loadOnce(MAPLIBRE_CSS, true), loadMapLibre(), loadOnce(PMTILES_JS)];
 
   Promise.all(toLoad)
     .then(() => {
@@ -17811,7 +18085,8 @@ function renderMap(model, host) {
         // Default false clears the WebGL buffer right after each paint, which
         // is invisible to the eye but means any screenshot/screen-recording
         // tool grabs a blank frame even though the map is drawing correctly.
-        preserveDrawingBuffer: true,
+        // In v5 the WebGL options moved into canvasContextAttributes.
+        canvasContextAttributes: { preserveDrawingBuffer: true },
       });
       host._map = map;
       map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -18274,14 +18549,41 @@ function renderMap(model, host) {
           dropdown names. The dropdown grays out while overridden rather than
           vanishing, so it is clear the choice still exists and something is
           currently outranking it. */
+      /*  ONE STYLE AT A TIME, AND THE LAST ONE ASKED FOR WINS.
+
+          A style swap is a fetch, and calling setStyle again before the first
+          has landed drops the map into a half-built state: sources still
+          loading are abandoned mid-flight ("Failed to fetch") and a layer or
+          two from the incoming style never arrive. Easy to do without meaning
+          to — the sliders restyle, and so does every keystroke in the style
+          box behind its debounce.
+
+          So a swap already in flight is not interrupted. The newest request is
+          held and applied when it lands, and anything asked for in between is
+          simply overwritten: only the final state was ever wanted. */
+      let styleBusy = false, styleQueued = null;
       const applyStyle = ({ silent } = {}) => {
         const ov = overrideStyle();
         const proj = hostedStyle();
         if (!silent) note.hidden = true;
-        map.setStyle(ov || proj || (usingFallback ? DEMO_STYLE : basemapStyle()));
         sourceSel.disabled = !!ov;
         showAttrib();
+        const next = ov || proj || (usingFallback ? DEMO_STYLE : basemapStyle());
+        if (styleBusy) { styleQueued = next; return; }
+        styleBusy = true;
+        try { map.setStyle(next); } catch (e) { styleBusy = false; throw e; }
       };
+      //  Whatever was asked for while that one was loading goes on now.
+      map.on("style.load", () => {
+        styleBusy = false;
+        if (!styleQueued) return;
+        const next = styleQueued;
+        styleQueued = null;
+        styleBusy = true;
+        map.setStyle(next);
+      });
+      //  A style that never loads must not wedge the queue shut.
+      map.on("error", () => { styleBusy = false; });
       host._applyStyle = applyStyle;
 
       function setSource(mode, { silent } = {}) {
@@ -18329,9 +18631,28 @@ function renderMap(model, host) {
           kept the height it had at startup. The shell is the element that
           actually tracks the panel's box. */
       if (window.ResizeObserver) {
-        // A resized tile moves every mark relative to every other, so the
-        // vetting has to be redone — a resize is a re-layout, not a repaint.
-        const ro = new ResizeObserver(() => { map.resize(); requestAnimationFrame(declutter); });
+        /*  DO NOT RESIZE WHILE IT IS STILL CHANGING.
+
+            A dragged window edge reports on every frame, and every resize
+            clears the drawing buffer and asks for a render on the NEXT frame —
+            which the following resize clears again before it arrives. The map
+            is not flashing so much as never finishing: for the whole drag the
+            canvas is blank, and the panel shows through it.
+
+            So the drag gets a stretch of the last good frame, which costs
+            nothing and always has something on it, and the real resize happens
+            once, when the edge has been still for a moment. The label vetting
+            goes with it: a resized tile moves every mark relative to every
+            other, and re-deciding that per frame is work nobody sees. */
+        const keepSized = trackMapSize(map, host.querySelector(".map-shell"));
+        let settle = 0;
+        const ro = new ResizeObserver(() => {
+          //  trackMapSize does the resizing, frame by frame; this tick starts
+          //  it and books the label pass for when the dragging stops.
+          keepSized();
+          clearTimeout(settle);
+          settle = setTimeout(declutter, 160);
+        });
         ro.observe(host.querySelector(".map-shell"));
         ro.observe(host);
       }
@@ -19062,7 +19383,8 @@ function meBoot(body) {
     container: canvas,
     style: overrideStyle() || meStyleFor(ME_SOURCE),
     center: [-3.4, 56.4], zoom: 7,
-    attributionControl: false, preserveDrawingBuffer: true,
+    attributionControl: false,
+    canvasContextAttributes: { preserveDrawingBuffer: true },   // v5: moved in here
   });
   ME_MAP.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), "top-right");
   // Falls back for the same reason the viewer does: an unreachable basemap
@@ -19075,7 +19397,11 @@ function meBoot(body) {
   });
   ME_MAP.on("style.load", () => meDrawProject());
   ME_MAP.on("move", () => meDrawProject(true));
-  if (window.ResizeObserver) new ResizeObserver(() => ME_MAP.resize()).observe(shell);
+  //  Same frame-by-frame tracking as the viewer.
+  if (window.ResizeObserver) {
+    const keepSized = trackMapSize(ME_MAP, shell);
+    new ResizeObserver(keepSized).observe(shell);
+  }
   requestAnimationFrame(() => ME_MAP.resize());
 }
 
@@ -19159,7 +19485,7 @@ function meEntries(p) {
 function renderMapEditor(body) {
   // MapLibre comes from a CDN and only when a map is actually on the board.
   if (!ME_MAP) {
-    Promise.all([loadOnce(MAPLIBRE_CSS, true), loadOnce(MAPLIBRE_JS), loadOnce(PMTILES_JS)])
+    Promise.all([loadOnce(MAPLIBRE_CSS, true), loadMapLibre(), loadOnce(PMTILES_JS)])
       .then(() => {
         if (!window.__pmtilesReady && window.pmtiles) {
           window.maplibregl.addProtocol("pmtiles", new window.pmtiles.Protocol().tile);
