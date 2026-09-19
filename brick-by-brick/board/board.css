@@ -853,3 +853,122 @@
 .cover-pick [data-edge="right"] { right: 8px; top: 50%; transform: translateY(-50%); }
 .cover-pick [data-edge="top"] { top: 30px; left: 50%; transform: translateX(-50%); }
 .cover-pick [data-edge="bottom"] { bottom: 8px; left: 50%; transform: translateX(-50%); }
+
+/*  KINDS: placed copies (props). */
+.panel.inst-bare > .panel-head { opacity: 0; transition: opacity 0.15s; }
+.panel.inst-bare:hover > .panel-head, .panel.inst-bare:focus-within > .panel-head { opacity: 1; }
+.board-card.is-kind .fp-add { border-style: dashed; }
+/*  A copy's ⚙, in the panel's corner and BELOW the cover layer (z 6), so a
+    cover hides it with the rest of the prop. Faint until the panel is hovered. */
+.inst-gear {
+  position: absolute; right: 6px; bottom: 6px; z-index: 5;
+  width: 20px; height: 20px; padding: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; line-height: 1; cursor: pointer;
+  background: color-mix(in srgb, var(--panel) 80%, transparent); color: var(--fg);
+  border: 1px solid var(--border); opacity: 0.35; transition: opacity 0.12s;
+}
+.panel:hover > .inst-gear, .inst-gear:focus-visible, .inst-gear.on { opacity: 1; }
+.inst-gear:hover, .inst-gear.on { color: var(--accent2); border-color: var(--accent2); }
+/*  THE ⚙ DECK — beside the panel, never over it. */
+.panel.inst-editing { outline: 1px dashed var(--accent2); outline-offset: 3px; }
+.inst-deck {
+  position: fixed; z-index: 80; width: 244px; max-height: calc(100vh - 16px); overflow: auto;
+  padding: 8px 10px 10px; border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, #fff), var(--panel));
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+  font-size: 0.7rem; color: var(--fg);
+}
+.deck-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.deck-title { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; }
+.deck-head button, .deck-foot button { font-size: 0.64rem; padding: 1px 8px; }
+.deck-lbl { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+.inst-deck .deck-field[hidden] { display: none; }
+.deck-rest { display: flex; flex-direction: column; gap: 7px; }
+.deck-rest .deck-field { display: flex; flex-direction: column; gap: 3px; }
+.deck-rest input[type="text"] { width: 100%; box-sizing: border-box; font-size: 0.7rem; padding: 2px 5px; }
+.deck-color { display: flex; gap: 5px; align-items: center; }
+.deck-color input[type="color"] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }
+.deck-color input[type="color"].off { opacity: 0.35; }
+.deck-theme { font-size: 0.6rem; padding: 1px 6px; opacity: 0.6; }
+.deck-theme.on { opacity: 1; color: var(--accent2); border-color: var(--accent2); }
+
+/*  KEYS: a select as a row of pushbuttons, one lit. */
+.deck-keys { display: flex; flex-wrap: wrap; gap: 3px; }
+.deck-keys button {
+  font-size: 0.6rem; padding: 2px 6px; border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.deck-keys button.on {
+  color: var(--accent2); border-color: var(--accent2);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 0 6px color-mix(in srgb, var(--accent2) 35%, transparent);
+}
+
+/*  KNOBS: a 270° sweep, ticks round the outside, the setting as a lit arc. */
+.deck-knobs {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px 4px;
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
+}
+.deck-knobs .deck-field { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.deck-knob {
+  position: relative; width: 42px; height: 42px; cursor: ns-resize; touch-action: none;
+  border-radius: 50%; outline: none;
+}
+.deck-knob:focus-visible { box-shadow: 0 0 0 2px var(--accent2); }
+.knob-ring, .knob-arc { position: absolute; inset: 0; border-radius: 50%; }
+.knob-ring {
+  background: repeating-conic-gradient(from -135deg, var(--fg) 0 2deg, transparent 2deg 27deg);
+  opacity: 0.35;
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61% 69%, transparent 70%),
+                conic-gradient(from -136deg, #000 0 272deg, transparent 0);
+  -webkit-mask-composite: source-in;
+  mask: radial-gradient(circle, transparent 60%, #000 61% 69%, transparent 70%),
+        conic-gradient(from -136deg, #000 0 272deg, transparent 0);
+  mask-composite: intersect;
+}
+.knob-arc {
+  background: conic-gradient(from -135deg, var(--accent2) 0 calc(var(--p) * 270deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 64%, #000 65% 69%, transparent 70%);
+  mask: radial-gradient(circle, transparent 64%, #000 65% 69%, transparent 70%);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent2) 60%, transparent));
+}
+.knob-cap {
+  position: absolute; inset: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #5c6068, #26282c 70%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18);
+  transform: rotate(calc(-135deg + var(--p) * 270deg));
+}
+.knob-mark {
+  position: absolute; left: 50%; top: 3px; width: 2px; height: 8px; margin-left: -1px;
+  border-radius: 1px; background: var(--fg);
+}
+.deck-knob.turning .knob-mark, .deck-knob:hover .knob-mark { background: var(--accent2); }
+.knob-val { font: 0.62rem/1.2 var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+.deck-knobs .deck-lbl { font-size: 0.55rem; text-align: center; }
+
+/*  SWITCHES: a lever in a slot. */
+.deck-switches { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.deck-switches .deck-field { display: flex; align-items: center; gap: 6px; }
+.deck-switch { padding: 0; border: 0; background: none; cursor: pointer; }
+.sw-track {
+  display: block; position: relative; width: 30px; height: 16px; border-radius: 8px;
+  background: #1a1b1e; box-shadow: inset 0 1px 3px rgba(0,0,0,0.8), 0 0 0 1px var(--border);
+}
+.sw-lever {
+  position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d9dde3, #7b8089);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.6); transition: transform 0.12s ease-out;
+}
+.deck-switch[aria-checked="true"] .sw-track { background: color-mix(in srgb, var(--accent2) 45%, #111); }
+.deck-switch[aria-checked="true"] .sw-lever { transform: translateX(14px); }
+.deck-foot { display: flex; justify-content: flex-start; margin-top: 10px; }
+.deck-more { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 6px; }
+.deck-more > summary { cursor: pointer; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; list-style: none; }
+.deck-more > summary::before { content: "\25B8  "; }
+.deck-more[open] > summary::before { content: "\25BE  "; }
+.deck-more > summary:hover { opacity: 1; }
+.deck-more > .deck-rest { margin-top: 7px; }
+.deck-more .deck-switch + .deck-lbl, .deck-more .is-switch { display: flex; align-items: center; gap: 6px; }
+.deck-more .is-switch { flex-direction: row !important; }
+@media (prefers-reduced-motion: reduce) { .sw-lever { transition: none; } }

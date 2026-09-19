@@ -1,0 +1,288 @@
+/*  PROPS — the look of the props in props.js. Pairs with it. */
+
+/*  A prop fills the whole panel, under the title bar, rather than sitting in
+    the padded body: a surface with a margin round it is a picture of a
+    surface. The body stops being the positioning box so the prop can reach
+    the panel's own edges; the title bar stays on top. */
+.panel-body:has(> .prop) { position: static; }
+.prop {
+  position: absolute; inset: 0; overflow: hidden;
+  border-radius: calc(var(--panel-radius, 6px) - 1px);
+}
+
+/* ---------- signal light ---------- */
+.prop-light {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+/*  How lit the lamp is, animated on the panel by props.js. Registered so it
+    fades smoothly for pulse and breathe rather than jumping. */
+@property --lit { syntax: "<number>"; inherits: true; initial-value: 1; }
+.prop-light {
+  --c: var(--light-c, var(--accent2)); --glow: var(--light-glow, 0.6);
+  --power: var(--light-power, 1);
+}
+/*  THE LAMP, in layers that all share its shape. A shape is a corner radius
+    (round, square, pill, panel) or a clip path (the rest); every layer but
+    the halo takes both, so the bezel, the face and the light always match. */
+.pl-lamp {
+  position: relative; height: var(--size, 45%); aspect-ratio: var(--ar, 1); max-width: 86%;
+  container-type: size;              /* the lettering sizes to the lamp */
+  --radius: 50%; --clip: none; --ar: 1;
+}
+.pl-lamp[data-shape="square"]   { --radius: 14%; }
+.pl-lamp[data-shape="pill"]     { --radius: 999px; --ar: 2.1; }
+.pl-lamp[data-shape="panel"]    { --radius: 9%; --ar: 1.7; }
+.pl-lamp[data-shape="triangle"] { --radius: 0; --ar: 1.12; --clip: polygon(50% 2%, 99% 97%, 1% 97%); }
+.pl-lamp[data-shape="diamond"]  { --radius: 0; --clip: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.pl-lamp[data-shape="hex"]      { --radius: 0; --ar: 1.15; --clip: polygon(25% 1%, 75% 1%, 100% 50%, 75% 99%, 25% 99%, 0 50%); }
+.pl-lamp[data-shape="octagon"]  { --radius: 0; --clip: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%); }
+.pl-lamp[data-shape="coin"]     { --radius: 14% / 9%; --ar: 0.62; }
+.pl-lamp[data-shape="star"]     { --radius: 0; --clip: polygon(50% 0, 61.5% 35%, 98% 35%, 68.5% 57%, 79.5% 92%, 50% 71%, 20.5% 92%, 31.5% 57%, 2% 35%, 38.5% 35%); }
+.pl-bezel, .pl-face, .pl-lit, .pl-lens, .pl-gloss {
+  position: absolute; border-radius: var(--radius); clip-path: var(--clip);
+}
+.pl-bezel {
+  inset: 0;
+  background: linear-gradient(160deg, #4a4d52, #1c1d20 55%, #2c2e32);
+}
+/*  Off: the lamp's own color, mostly dark. Inset from the bezel by a share of
+    its size, so the rim stays in proportion on every shape. */
+.pl-face, .pl-lit, .pl-lens, .pl-gloss { inset: 7%; }
+.pl-lamp[data-shape="triangle"] :is(.pl-face, .pl-lit, .pl-lens, .pl-gloss) { inset: 11% 12% 6%; }
+.pl-lamp[data-shape="star"] :is(.pl-face, .pl-lit, .pl-lens, .pl-gloss) { inset: 9%; }
+/*  OFF: you can see into the lamp. The bulb is a darker spot in the middle,
+    the reflector round it catches a little of the lens color, and the rim
+    falls away into shadow. */
+.pl-face {
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--c) 22%, #2a2a2a) 0 5%,
+      color-mix(in srgb, var(--c) 8%, #0d0d0d) 8% 18%,
+      color-mix(in srgb, var(--c) 20%, #1c1c1c) 34%,
+      color-mix(in srgb, var(--c) 12%, #0e0e0e) 62%, #060606 100%);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.85), inset 0 -1px 2px rgba(255,255,255,0.05);
+}
+/*  On: as bright as --lit says. Intensity dims it below 1 and overdrives it
+    above, washing toward white. */
+.pl-lit {
+  opacity: calc(var(--lit, 1) * min(1, var(--power)));
+  filter: brightness(max(1, var(--power))) saturate(calc(2 - max(1, var(--power))));
+  /*  ON: a white-hot core where the bulb is, the color at full strength
+      round it, and the light dying away toward the rim, where the lens is
+      thickest and the reflector ends. */
+  background: var(--lit-img);
+  box-shadow: inset 0 0 calc(6px + 10px * var(--glow)) color-mix(in srgb, var(--c) 50%, #fff);
+}
+/*  THE LIGHT AND THE LENS ARE IMAGES THE LAMP OWNS, so every layer that
+    shows the light draws the same one: the lit face, and the letters of a
+    cut-out plate, which are holes looking at that same lit lens.
+      --lit-img   the light itself: the bulb's hot spot and its falloff
+      --lens-img  the texture of what it shines through, laid over the light
+    Drawn in the lamp's own units (cqmin), so a pattern scales with the lamp. */
+.pl-lamp {
+  --lit-img: radial-gradient(circle at 50% 50%, #fff 0 3%, color-mix(in srgb, var(--c) 25%, #fff) 9%,
+    color-mix(in srgb, var(--c) 70%, #fff) 18%, var(--c) 38%,
+    color-mix(in srgb, var(--c) 80%, #000) 72%, color-mix(in srgb, var(--c) 45%, #000) 100%);
+  --lens-img: none;
+}
+.pl-lamp[data-lens="fresnel"] {
+  --lens-img: repeating-radial-gradient(circle at 50% 50%,
+    rgba(255,255,255,0.32) 0 0.9cqmin, rgba(0,0,0,0.4) 0.9cqmin 2.6cqmin, rgba(255,255,255,0.1) 2.6cqmin 3.6cqmin);
+}
+.pl-lamp[data-lens="prism"] {
+  --lens-img:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 0.8cqmin, rgba(0,0,0,0.24) 0.8cqmin 1.6cqmin),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.22) 0 0.8cqmin, rgba(0,0,0,0.24) 0.8cqmin 1.6cqmin);
+}
+.pl-lamp[data-lens="frosted"] {
+  --lens-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/*  LED DOTS: no diffuser. The light is a grid of bare emitters, each with
+    its own hot centre, and a faint haze between them. */
+.pl-lamp[data-lens="led"] {
+  --lit-img:
+    radial-gradient(circle, #fff 0 10%, color-mix(in srgb, var(--c) 40%, #fff) 16%, var(--c) 30%, transparent 44%) 0 0 / 11cqmin 11cqmin,
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--c) 45%, transparent), color-mix(in srgb, var(--c) 18%, transparent) 70%);
+}
+.pl-lamp[data-lens="arcade"] {
+  --lit-img: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--c) 35%, #fff) 0%,
+    color-mix(in srgb, var(--c) 80%, #fff) 22%, var(--c) 50%, color-mix(in srgb, var(--c) 70%, #000) 100%);
+}
+/*  THE LENS LAYER, over the light and the face both, so its texture shows lit
+    and unlit. Overlay blending lets it shape the light under it rather than
+    paint over it. */
+.pl-lens { pointer-events: none; mix-blend-mode: overlay; background: var(--lens-img); }
+.pl-lamp[data-lens="frosted"] .pl-lens { mix-blend-mode: soft-light; opacity: 0.9; }
+/*  LED DOTS: no diffuser. The light is a grid of bare emitters, each with
+    its own hot centre, and a faint haze between them where they light the
+    inside of the housing. Unlit, you still see the dots. */
+.pl-lamp[data-lens="led"] .pl-face {
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--c) 30%, #333) 0 28%, transparent 34%) 0 0 / 11cqmin 11cqmin,
+    #070707;
+}
+.pl-lamp[data-lens="led"] .pl-lit {
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+/*  THE GLASS: a curved highlight across the top and a thin bright edge, the
+    same lit or unlit, because it is a reflection of the room, not the bulb. */
+.pl-gloss {
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 42% at 38% 16%, rgba(255,255,255,0.34), rgba(255,255,255,0.06) 60%, transparent 72%),
+    radial-gradient(ellipse 90% 30% at 60% 104%, rgba(255,255,255,0.1), transparent 70%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.25);
+}
+/*  GRIME, on the glass and so over everything, the mask included.
+      .pl-grime  blotchy dirt, multiplied in: it darkens and browns the light
+      .pl-dust   specks, a fingerprint smudge and fine scratches catching
+                 the light
+    Both fade in with the Grime knob, and the lamp's color dulls a little as
+    it gets dirtier. The dirt is shifted per copy (--dirt-x/y) so no two
+    lights are dirty the same way. */
+.pl-grime, .pl-dust {
+  position: absolute; inset: 7%; pointer-events: none;
+  border-radius: var(--radius); clip-path: var(--clip);
+}
+.pl-lamp[data-lens="arcade"] :is(.pl-grime, .pl-dust) { inset: 15%; }
+.pl-grime {
+  mix-blend-mode: multiply; opacity: var(--grime, 0);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.028' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36  0 0 0 0 0.29  0 0 0 0 0.2  0 0 0 -2.2 1.35'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23f)'/%3E%3C/svg%3E") var(--dirt-x, 0) var(--dirt-y, 0) / 70cqmin 70cqmin;
+}
+.pl-dust {
+  opacity: calc(0.25 + 0.75 * var(--grime, 0));
+  background:
+    radial-gradient(ellipse 34% 22% at 32% 64%, rgba(255,255,255,calc(0.14 * var(--grime, 0))), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M12 40 Q80 22 150 58' stroke-width='0.6' stroke-opacity='0.5'/%3E%3Cpath d='M40 160 L170 118' stroke-width='0.5' stroke-opacity='0.4'/%3E%3Cpath d='M120 10 Q138 80 110 190' stroke-width='0.45' stroke-opacity='0.35'/%3E%3Cpath d='M5 110 L60 96' stroke-width='0.7' stroke-opacity='0.45'/%3E%3Cpath d='M150 150 Q170 170 196 160' stroke-width='0.5' stroke-opacity='0.4'/%3E%3Cpath d='M70 70 L92 64' stroke-width='0.8' stroke-opacity='0.5'/%3E%3C/svg%3E") var(--dirt-y, 0) var(--dirt-x, 0) / 90cqmin 90cqmin,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.85  0 0 0 0 0.82  0 0 0 0 0.76  0 0 0 14 -12.6'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E") var(--dirt-x, 0) var(--dirt-y, 0) / 55cqmin 55cqmin;
+}
+.pl-lamp:has(.pl-grime) { filter: saturate(calc(1 - 0.35 * var(--grime, 0))); }
+
+/*  The light thrown onto the panel round the lamp. Its own layer, outside
+    the lamp's shape (a clip would cut it off), growing with Glow from nothing
+    to about three lamps wide, and blinking with the lamp. */
+.pl-halo {
+  position: absolute; pointer-events: none; border-radius: 50%;
+  inset: calc(-15% - 110% * var(--glow));
+  opacity: calc(var(--lit, 1) * min(1, var(--power)) * var(--glow));
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--c) 60%, transparent), color-mix(in srgb, var(--c) 18%, transparent) 55%, transparent);
+}
+
+/*  THE LETTERING. Set to the lamp's height (Text size is a share of it),
+    bold, capitals, wrapping onto more lines if it has to. */
+.pl-text {
+  position: absolute; inset: 7%; display: flex; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden; pointer-events: none;
+  font: 800 calc(var(--tsize, 32) * 1cqh)/0.95 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.04em; text-transform: uppercase; overflow-wrap: anywhere;
+}
+.pl-lamp[data-shape="triangle"] .pl-text { inset: 38% 20% 8%; }
+/*  CUT OUT: a black mask laid over the whole lamp, with the letters cut out
+    of it. The mask is black with white letters, MULTIPLIED over the lamp:
+    black times anything is black, so the plate blocks everything, and white
+    times the lamp is the lamp, so through each letter you see exactly what
+    is behind it: its hot spot, its lens texture, its shine, lit or unlit,
+    blinking as it blinks. The lamp is isolated so the multiply reaches the
+    lamp only, never the panel behind it. */
+.pl-lamp { isolation: isolate; }
+.pl-lamp[data-lettering="cutout"] .pl-text {
+  inset: 7%; z-index: 2;
+  border-radius: var(--radius); clip-path: var(--clip);
+  background: #000; color: #fff;
+  mix-blend-mode: multiply;
+  text-shadow: none;
+}
+.pl-lamp[data-shape="triangle"][data-lettering="cutout"] .pl-text { inset: 11% 12% 6%; padding-top: 28%; }
+.pl-lamp[data-lens="arcade"][data-lettering="cutout"] .pl-text { inset: 15%; }
+.pl-lamp[data-shape="coin"][data-lettering="cutout"] .pl-text { align-items: flex-end; padding-bottom: 12%; }
+/*  Dirt is on the glass in front of the mask. */
+.pl-grime, .pl-dust { z-index: 3; }
+.pl-lamp[data-lettering="cutout"] .pl-halo { display: none; }
+/*  INVERTED: the face is lit and the letters are dark material on it, with
+    a thin highlight under each so they read as raised. */
+.pl-lamp[data-lettering="inverted"] .pl-text {
+  color: rgba(8, 8, 10, 0.88);
+  text-shadow: 0 1px 0 color-mix(in srgb, #fff 25%, transparent);
+}
+.pl-label {
+  font: 600 0.62rem/1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.7;
+}
+
+/* ---------- material ---------- */
+.pm-ink {
+  position: absolute; inset: 0;
+  mask-repeat: repeat; -webkit-mask-repeat: repeat;
+}
+
+/*  LIGHT THROUGH A COVER. Frosted glass lights up round the lamp, in its
+    color and in step with it; smoked glass lets less through; card is opaque
+    and lets none. Painted on the glass itself, and held over the lamp while
+    the glass slides (--shx/--shy come from board.js). */
+.panel.has-light > .panel-shade > .panel-cover::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  translate: var(--shx, 0px) var(--shy, 0px);
+  background: radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--light-c) 75%, transparent) 0,
+    color-mix(in srgb, var(--light-c) 28%, transparent) 30%, transparent 68%);
+  opacity: calc(var(--lit, 1) * min(1, var(--light-power, 1)) * (0.3 + 0.7 * var(--light-glow, 0.6)));
+  mix-blend-mode: screen;
+}
+.panel.has-light > .panel-shade > .panel-cover[data-mat="smoked"]::after {
+  opacity: calc(var(--lit, 1) * min(1, var(--light-power, 1)) * 0.45 * (0.3 + 0.7 * var(--light-glow, 0.6)));
+}
+.panel.has-light > .panel-shade > .panel-cover[data-mat="card"]::after { display: none; }
+.panel.has-light.light-masked > .panel-shade > .panel-cover::after {
+  opacity: calc(var(--lit, 1) * min(1, var(--light-power, 1)) * 0.18);
+}
+
+/*  ARCADE PLASTIC. A coin-op button: a dome of thick colored plastic in a
+    collar of the same plastic, with a black gap between. Unlike a lamp it
+    is colored even when it is off, because you are looking at the plastic,
+    not the bulb; lit, the whole dome fills with light, brightest just above
+    the middle, darker where the plastic curves away, and a hard shine sits
+    on top. */
+.pl-lamp[data-lens="arcade"] .pl-bezel {
+  background:
+    radial-gradient(circle closest-side at 50% 50%, #050505 0 76%, transparent 77%),
+    radial-gradient(circle at 40% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 40%, color-mix(in srgb, var(--c) 55%, #000) 100%);
+}
+.pl-lamp[data-lens="arcade"]:not([data-shape="round"]) .pl-bezel {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 60%, #fff), color-mix(in srgb, var(--c) 55%, #000));
+}
+.pl-lamp[data-lens="arcade"] :is(.pl-face, .pl-lit, .pl-lens, .pl-gloss) { inset: 15%; }
+.pl-lamp[data-lens="arcade"] .pl-face {
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--c) 55%, #333) 0%,
+    color-mix(in srgb, var(--c) 45%, #111) 55%, color-mix(in srgb, var(--c) 30%, #000) 100%);
+  box-shadow: inset 0 -4px 7px rgba(0,0,0,0.55), inset 0 3px 5px rgba(255,255,255,0.12);
+}
+.pl-lamp[data-lens="arcade"] .pl-lit {
+  box-shadow: inset 0 -5px 9px color-mix(in srgb, var(--c) 40%, #000), inset 0 3px 6px rgba(255,255,255,0.35);
+}
+.pl-lamp[data-lens="arcade"] .pl-lens { display: none; }
+.pl-lamp[data-lens="arcade"] .pl-gloss {
+  background:
+    radial-gradient(ellipse 58% 30% at 46% 20%, rgba(255,255,255,0.75), rgba(255,255,255,0.15) 55%, transparent 70%),
+    radial-gradient(ellipse 50% 14% at 50% 90%, rgba(255,255,255,0.22), transparent 70%);
+}
+
+/*  THE COIN SLOT: the backlit insert on a coin door. A slot for the coin in
+    the top half, what it takes molded into the plastic below. */
+.pl-slot {
+  position: absolute; left: 50%; top: 14%; width: 9%; height: 36%; margin-left: -4.5%; z-index: 1;
+  border-radius: 999px; background: linear-gradient(90deg, #000, #1a1a1a 50%, #000);
+  box-shadow: 0 0 0 1.5cqmin color-mix(in srgb, var(--c) 30%, #111), inset 0 1px 3px rgba(0,0,0,0.9);
+}
+.pl-lamp[data-shape="coin"] .pl-text {
+  inset: 58% 8% 9%; white-space: nowrap;
+
+}
+/*  MOLDED: the letters are the plastic itself, raised, so they are the lamp's
+    color with a light edge above and a shadow below, lit when it is lit. */
+.pl-lamp[data-lettering="embossed"] .pl-text {
+  color: color-mix(in srgb, var(--c) 70%, #000);
+  text-shadow: 0 -1px 0 color-mix(in srgb, var(--c) 30%, #fff), 0 1px 1px rgba(0,0,0,0.6);
+  z-index: 1;
+}
+

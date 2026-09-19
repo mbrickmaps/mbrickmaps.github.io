@@ -35,6 +35,438 @@ function registerPanel(cfg) {
   return cfg.id;
 }
 
+/*  KINDS: PANELS YOU CAN PLACE MORE THAN ONCE.
+
+    A registered panel is one thing with one id, so it is on the board once or
+    not at all. A kind is a recipe instead: every time you add it, the board
+    makes a new copy (an instance) with its own id and its own settings, so
+    the same kind can be on the board five times, five different ways.
+
+      registerKind({
+        kind: "light", title: "Signal light", help: "…", w: 1, h: 1,
+        group: "Props",                      // its heading in 🧰
+        settings: [                          // the ⚙ form, drawn by the board
+          { key: "color", label: "Color", type: "color", default: "theme", theme: "--accent2" },
+          { key: "speed", label: "Speed", type: "range", min: 0.2, max: 4, step: 0.1, default: 1 },
+          { key: "pattern", label: "Pattern", type: "select", options: ["blink", "pulse"], default: "blink" },
+          { key: "text", label: "Text", type: "text", default: "",
+            when: s => s.pattern === "morse" },  // shown only when it applies
+          { key: "on", label: "On", type: "check", text: "switched on", default: true },
+        ],
+        render(body, s, id) { … },           // s: this copy's settings
+        forget(id) { … },                    // optional: the copy was deleted
+      });
+
+    render() runs when the copy is first drawn and again whenever its settings
+    change, never on an ordinary board refresh, so a copy can build once and
+    animate. Every copy also gets a Name and a "title bar" switch.
+
+    Removing a copy from the board deletes it and its settings. The copies are
+    saved under BOARD_NS + "instances:v1". */
+const KINDS = new Map();                 // kind -> cfg
+const INSTANCES = new Map();             // instance id -> { kind, s }
+const INSTANCE_KEY = BOARD_NS + "instances:v1";
+const KIND_PREFIX = "kind:";             // a kind's card in 🧰, not a panel
+
+/*  Old names for a kind, so renaming one never drops the copies people have
+    already placed: registerKind({ kind: "new", aliases: ["old"], … }). */
+const KIND_ALIASES = new Map();
+function registerKind(cfg) {
+  KINDS.set(cfg.kind, cfg);
+  for (const a of cfg.aliases || []) KIND_ALIASES.set(a, cfg.kind);
+  FOOTPRINTS[KIND_PREFIX + cfg.kind] = {
+    name: cfg.title, desc: cfg.help || "", w: cfg.w || 1, h: cfg.h || 1,
+    group: cfg.group || "Props", isKind: true, kind: cfg.kind,
+  };
+  return cfg.kind;
+}
+function kindDefaults(k) {
+  const s = { _name: "", _bare: false };
+  for (const f of k.settings || []) s[f.key] = f.default;
+  return s;
+}
+function registerInstance(id, kind, settings) {
+  if (!KINDS.has(kind) && KIND_ALIASES.has(kind)) kind = KIND_ALIASES.get(kind);
+  const k = KINDS.get(kind);
+  if (!k) return null;
+  INSTANCES.set(id, { kind, s: Object.assign(kindDefaults(k), settings || {}) });
+  const fp = FOOTPRINTS[KIND_PREFIX + kind];
+  registerPanel({
+    id, title: k.title, help: k.help, w: fp.w, h: fp.h,
+    roles: [],                           // no W/F/R badge: a prop does not touch state
+    render(body) { renderInstance(id, body); },
+  });
+  FOOTPRINTS[id].instance = true;
+  return id;
+}
+function newInstance(kind) {
+  const id = "prop-" + kind + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  if (!registerInstance(id, kind)) return null;
+  saveInstances();
+  return id;
+}
+function saveInstances() {
+  try {
+    if (!INSTANCES.size) localStorage.removeItem(INSTANCE_KEY);
+    else localStorage.setItem(INSTANCE_KEY, JSON.stringify([...INSTANCES.entries()]));
+  } catch (e) { /* unavailable */ }
+}
+let instancesLoaded = false;
+function loadInstances() {
+  if (instancesLoaded) return;
+  instancesLoaded = true;
+  let raw;
+  try { raw = JSON.parse(localStorage.getItem(INSTANCE_KEY) || "null"); } catch (e) { return; }
+  if (!Array.isArray(raw)) return;
+  for (const [id, v] of raw) {
+    if (typeof id === "string" && v && typeof v.kind === "string" && v.s && typeof v.s === "object") {
+      registerInstance(id, v.kind, v.s);
+    }
+  }
+}
+//  Gone for good: its settings, its panel, and any cover it had.
+function forgetInstance(id) {
+  if (!INSTANCES.has(id)) return;
+  //  A kind that keeps things of its own (a game's position) clears them.
+  const kd = KINDS.get(INSTANCES.get(id).kind);
+  if (kd && kd.forget) { try { kd.forget(id); } catch (e) { /* its problem, not the board's */ } }
+  INSTANCES.delete(id);
+  panels.delete(id);
+  delete FOOTPRINTS[id];
+  const node = PANEL_NODES.get(id) || document.getElementById(id);
+  if (node) node.remove();
+  PANEL_NODES.delete(id);
+  if (OPEN_DECK && OPEN_DECK.id === id) closeInstanceDeck();
+  if (COVERS.delete(id)) saveCovers();
+  if (COVER_PREFS.delete(id)) {
+    try { localStorage.setItem(COVER_PREF_KEY, JSON.stringify([...COVER_PREFS.entries()])); } catch (e) { /* unavailable */ }
+  }
+  saveInstances();
+}
+//  Copies that are no longer on the board (after a reset, or a saved board
+//  that lost them) are deleted rather than left behind unseen.
+function pruneInstances() {
+  for (const id of [...INSTANCES.keys()]) if (!isOnBoard(id)) forgetInstance(id);
+}
+
+/*  Drawn only when the settings change. Brick by Brick refreshes every panel
+    on each keystroke, and rebuilding a blinking light that often would restart
+    its blink on every letter typed. */
+function renderInstance(id, body, force) {
+  const inst = INSTANCES.get(id), k = inst && KINDS.get(inst.kind);
+  if (!k) return;
+  const panel = body.closest(".panel");
+  if (panel) {
+    panel.classList.add("is-instance");
+    /*  THE ⚙ IS PART OF THE PROP, NOT THE TITLE BAR. It sits in the panel's
+        bottom-right corner, under anything laid over the panel, so a cover
+        hides a prop's settings along with the prop. The title bar stays above
+        covers, which is right for ↻ and ✕ and wrong for this. */
+    if (!panel.querySelector(":scope > .inst-gear")) {
+      const g = document.createElement("button");
+      g.type = "button";
+      g.className = "inst-gear";
+      g.textContent = "\u2699";
+      g.title = "settings for this " + k.title.toLowerCase();
+      g.addEventListener("pointerdown", e => e.stopPropagation());
+      g.addEventListener("click", e => { e.stopPropagation(); toggleInstanceSettings(id); });
+      panel.appendChild(g);
+    }
+    panel.classList.toggle("inst-bare", !!inst.s._bare);
+    const h2 = panel.querySelector(".panel-head h2");
+    if (h2) h2.textContent = inst.s._name || k.title;
+  }
+  const sig = JSON.stringify(inst.s);
+  if (!force && body._instSig === sig) return;
+  body._instSig = sig;
+  k.render(body, inst.s, id);
+}
+
+/*  THE ⚙ DECK: a copy's settings as a control panel of its own.
+
+    It opens BESIDE the panel, never over it, so you watch the prop change as
+    you turn things: to the right if there is room, else to the left, else
+    underneath. It follows the panel if the page scrolls.
+
+    The controls are built for turning, not typing, in the spirit of HUI (one
+    control, one setting):
+      range   a KNOB. Drag up or right to turn it up, down or left to turn it
+              down (Shift for fine), scroll the wheel, or use the arrow keys.
+              Double-click puts it back to where the kind starts.
+      check   a SWITCH that flips.
+      select  a row of KEYS, one lit.
+      color   a swatch, plus "theme" where the kind allows it.
+      text    a text box.
+
+    ⚙ again, "done", Esc, or a press anywhere outside the deck and the panel
+    puts it away. One deck at a time. */
+let OPEN_DECK = null;     // { id, deck, panel, off }
+
+function closeInstanceDeck() {
+  if (!OPEN_DECK) return;
+  const { deck, panel, off } = OPEN_DECK;
+  OPEN_DECK = null;
+  off();
+  deck.remove();
+  panel.classList.remove("inst-editing");
+  const btn = panel.querySelector(":scope > .inst-gear");
+  if (btn) btn.classList.remove("on");
+}
+
+function toggleInstanceSettings(id) {
+  if (OPEN_DECK && OPEN_DECK.id === id) { closeInstanceDeck(); return; }
+  closeInstanceDeck();
+  const panel = document.getElementById(id);
+  const inst = INSTANCES.get(id), k = inst && KINDS.get(inst.kind);
+  if (!panel || !k) return;
+  const body = panel.querySelector(".panel-body");
+  const btn = panel.querySelector(":scope > .inst-gear");
+  if (btn) btn.classList.add("on");
+  panel.classList.add("inst-editing");
+
+  const all = [
+    ...(k.settings || []),
+    //  Every copy has these, and they are rarely what you came for, so they
+    //  wait under "more" (as does any setting a kind marks `more: true`).
+    { key: "_name", label: "Name", type: "text", placeholder: k.title, more: true },
+    { key: "_bare", label: "Hide title bar", type: "check", more: true },
+  ];
+  //  Knobs gather in one row, the way they would on a real panel; everything
+  //  else keeps the kind's order above them, and the switches sit below.
+  const main = all.filter(f => !f.more), extra = all.filter(f => f.more);
+  const knobs = main.filter(f => f.type === "range");
+  const checks = main.filter(f => f.type === "check");
+  const rest = main.filter(f => f.type !== "range" && f.type !== "check");
+
+  const deck = document.createElement("div");
+  deck.className = "inst-deck";
+  deck.setAttribute("role", "dialog");
+  deck.setAttribute("aria-label", "settings for " + (inst.s._name || k.title));
+
+  const at = f => ' data-key="' + bEsc(f.key) + '"';
+  const wrap = (f, inner, cls) =>
+    '<div class="deck-field ' + (cls || "") + '" data-row="' + bEsc(f.key) + '">' + inner + "</div>";
+  const lbl = f => '<span class="deck-lbl">' + bEsc(f.label) + "</span>";
+  const fmt = (f, v) => {
+    const st = f.step || 1;
+    const dp = st >= 1 ? 0 : Math.min(3, String(st).split(".")[1].length);
+    return Number(v).toFixed(dp);
+  };
+
+  const htmlFor = f => {
+    const v = inst.s[f.key];
+    if (f.type === "range") {
+      const p = (v - f.min) / (f.max - f.min);
+      return wrap(f,
+        '<div class="deck-knob" tabindex="0" role="slider"' + at(f) +
+          ' aria-label="' + bEsc(f.label) + '" aria-valuemin="' + f.min + '" aria-valuemax="' + f.max +
+          '" aria-valuenow="' + v + '" title="drag, scroll or use the arrow keys; double-click to reset"' +
+          ' style="--p:' + p + '">' +
+          '<i class="knob-ring"></i><i class="knob-arc"></i>' +
+          '<i class="knob-cap"><i class="knob-mark"></i></i>' +
+        "</div>" +
+        '<span class="knob-val">' + fmt(f, v) + "</span>" + lbl(f), "is-knob");
+    }
+    if (f.type === "check") {
+      return wrap(f,
+        '<button type="button" class="deck-switch" role="switch" aria-checked="' + !!v + '"' + at(f) + ">" +
+          '<i class="sw-track"><i class="sw-lever"></i></i></button>' + lbl(f), "is-switch");
+    }
+    if (f.type === "select") {
+      return wrap(f, lbl(f) + '<div class="deck-keys" role="radiogroup">' + f.options.map(o => {
+        const [val, txt] = Array.isArray(o) ? o : [o, o];
+        return '<button type="button" role="radio" aria-checked="' + (val === v) + '"' + at(f) +
+          ' data-val="' + bEsc(val) + '"' + (val === v ? ' class="on"' : "") + ">" + bEsc(txt) + "</button>";
+      }).join("") + "</div>", "is-keys");
+    }
+    if (f.type === "color") {
+      const theme = v === "theme";
+      return wrap(f, lbl(f) + '<span class="deck-color">' +
+        '<input type="color"' + at(f) + ' value="' + bEsc(theme ? themeColor(f.theme) : v) + '"' +
+          (theme ? ' class="off"' : "") + ">" +
+        (f.theme ? '<button type="button" class="deck-theme' + (theme ? " on" : "") + '"' + at(f) +
+          ' title="follow the page theme">theme</button>' : "") + "</span>", "is-color");
+    }
+    return wrap(f, lbl(f) + '<input type="text"' + at(f) + ' value="' + bEsc(v == null ? "" : v) + '"' +
+      (f.placeholder ? ' placeholder="' + bEsc(f.placeholder) + '"' : "") +
+      (f.max ? ' maxlength="' + f.max + '"' : "") + ' spellcheck="false">', "is-text");
+  };
+
+  deck.innerHTML =
+    '<div class="deck-head"><span class="deck-title">' + bEsc(k.title) + "</span>" +
+      '<button type="button" data-act="done" title="put the settings away (Esc)">done</button></div>' +
+    '<div class="deck-rest">' + rest.map(htmlFor).join("") + "</div>" +
+    (knobs.length ? '<div class="deck-knobs">' + knobs.map(htmlFor).join("") + "</div>" : "") +
+    (checks.length ? '<div class="deck-switches">' + checks.map(htmlFor).join("") + "</div>" : "") +
+    '<details class="deck-more"><summary>more</summary><div class="deck-rest">' +
+      extra.map(htmlFor).join("") + "</div>" +
+      '<div class="deck-foot"><button type="button" data-act="reset" title="back to how this kind starts">reset</button></div>' +
+    "</details>";
+  document.body.appendChild(deck);
+
+  const showWhen = () => {
+    for (const f of all) {
+      if (!f.when) continue;
+      const r = deck.querySelector('[data-row="' + f.key + '"]');
+      if (r) r.hidden = !f.when(inst.s);
+    }
+  };
+  const apply = () => {
+    saveInstances(); renderInstance(id, body); showWhen();
+    const t = deck.querySelector(".deck-title");
+    if (t) t.textContent = k.title;
+  };
+  const setKnob = (el, f, v) => {
+    const st = f.step || 1;
+    v = Math.min(f.max, Math.max(f.min, Math.round((v - f.min) / st) * st + f.min));
+    v = Number(v.toFixed(6));
+    if (v === inst.s[f.key]) return;
+    inst.s[f.key] = v;
+    el.style.setProperty("--p", (v - f.min) / (f.max - f.min));
+    el.setAttribute("aria-valuenow", v);
+    el.parentElement.querySelector(".knob-val").textContent = fmt(f, v);
+    apply();
+  };
+
+  /* ---- knobs ---- */
+  for (const el of deck.querySelectorAll(".deck-knob")) {
+    const f = all.find(x => x.key === el.dataset.key);
+    const span = f.max - f.min;
+    el.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      el.focus();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add("turning");
+      const x0 = e.clientX, y0 = e.clientY, v0 = inst.s[f.key];
+      const move = ev => {
+        //  Up and right both turn it up: about 160px of travel for the whole
+        //  sweep, a tenth of that speed with Shift held.
+        const d = (ev.clientX - x0) - (ev.clientY - y0);
+        setKnob(el, f, v0 + d / 160 * span * (ev.shiftKey ? 0.1 : 1));
+      };
+      const up = () => {
+        el.classList.remove("turning");
+        el.removeEventListener("pointermove", move);
+        el.removeEventListener("pointerup", up);
+        el.removeEventListener("pointercancel", up);
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+      el.addEventListener("pointercancel", up);
+    });
+    el.addEventListener("wheel", e => {
+      e.preventDefault();
+      setKnob(el, f, inst.s[f.key] + (e.deltaY < 0 ? 1 : -1) * (f.step || 1) * (e.shiftKey ? 1 : 2));
+    }, { passive: false });
+    el.addEventListener("keydown", e => {
+      const st = f.step || 1;
+      const by = { ArrowUp: st, ArrowRight: st, ArrowDown: -st, ArrowLeft: -st,
+                   PageUp: st * 10, PageDown: -st * 10 }[e.key];
+      if (by !== undefined) { e.preventDefault(); setKnob(el, f, inst.s[f.key] + by); }
+      else if (e.key === "Home") { e.preventDefault(); setKnob(el, f, f.min); }
+      else if (e.key === "End") { e.preventDefault(); setKnob(el, f, f.max); }
+    });
+    el.addEventListener("dblclick", () => setKnob(el, f, f.default));
+  }
+
+  /* ---- text and color ---- */
+  deck.addEventListener("input", e => {
+    const t = e.target, key = t.dataset && t.dataset.key;
+    if (!key || t.classList.contains("deck-knob")) return;
+    inst.s[key] = t.value;
+    if (t.type === "color") {
+      t.classList.remove("off");
+      const tb = deck.querySelector('.deck-theme[data-key="' + key + '"]');
+      if (tb) tb.classList.remove("on");
+    }
+    apply();
+  });
+
+  /* ---- keys, switches, theme, done, reset ---- */
+  deck.addEventListener("click", e => {
+    const key = e.target.closest(".deck-keys button");
+    if (key) {
+      inst.s[key.dataset.key] = key.dataset.val;
+      for (const b of key.parentElement.children) {
+        const on = b === key;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-checked", on);
+      }
+      apply();
+      return;
+    }
+    const sw = e.target.closest(".deck-switch");
+    if (sw) {
+      const on = !inst.s[sw.dataset.key];
+      inst.s[sw.dataset.key] = on;
+      sw.setAttribute("aria-checked", on);
+      apply();
+      return;
+    }
+    const tb = e.target.closest(".deck-theme");
+    if (tb) {
+      const k2 = tb.dataset.key;
+      const swatch = deck.querySelector('input[type="color"][data-key="' + k2 + '"]');
+      if (inst.s[k2] === "theme") { inst.s[k2] = swatch.value; tb.classList.remove("on"); swatch.classList.remove("off"); }
+      else { inst.s[k2] = "theme"; tb.classList.add("on"); swatch.classList.add("off"); }
+      apply();
+      return;
+    }
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "done") { closeInstanceDeck(); return; }
+    if (b.dataset.act === "reset") {
+      inst.s = Object.assign(kindDefaults(k), { _name: inst.s._name, _bare: inst.s._bare });
+      apply();
+      closeInstanceDeck();
+      toggleInstanceSettings(id);   // drawn again, showing the defaults
+    }
+  });
+
+  /* ---- where it sits ---- */
+  const place = () => {
+    if (!panel.isConnected) { closeInstanceDeck(); return; }
+    const r = panel.getBoundingClientRect();
+    const W = deck.offsetWidth, H = deck.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    let left, top;
+    if (r.right + 10 + W <= vw - 8) { left = r.right + 10; top = r.top; }
+    else if (r.left - 10 - W >= 8) { left = r.left - 10 - W; top = r.top; }
+    else { left = r.left; top = r.bottom + 10; }
+    left = Math.max(8, Math.min(vw - W - 8, left));
+    top = Math.max(8, Math.min(vh - H - 8, top));
+    deck.style.left = Math.round(left) + "px";
+    deck.style.top = Math.round(top) + "px";
+  };
+  const onKey = e => { if (e.key === "Escape") closeInstanceDeck(); };
+  const onDown = e => {
+    if (deck.contains(e.target) || panel.contains(e.target)) return;
+    closeInstanceDeck();
+  };
+  const ro = new ResizeObserver(place);
+  ro.observe(panel);
+  ro.observe(deck);
+  window.addEventListener("scroll", place, true);
+  window.addEventListener("resize", place);
+  document.addEventListener("keydown", onKey);
+  document.addEventListener("pointerdown", onDown, true);
+  OPEN_DECK = { id, deck, panel, off() {
+    ro.disconnect();
+    window.removeEventListener("scroll", place, true);
+    window.removeEventListener("resize", place);
+    document.removeEventListener("keydown", onKey);
+    document.removeEventListener("pointerdown", onDown, true);
+  } };
+  showWhen();
+  place();
+}
+//  A theme variable as a hex, for the swatch to show while "theme" is on.
+function themeColor(v) {
+  if (!v) return "#888888";
+  const c = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  return /^#[0-9a-f]{6}$/i.test(c) ? c : "#888888";
+}
+
 /*  WHAT THE PAGE TELLS THE BOARD.
 
     Everything the board needs from the page it sits in, and a do-nothing
@@ -124,6 +556,7 @@ const boardEl = () => bEl("board");
 const ghostEl = () => bEl("boardGhost");
 
 function loadBoard() {
+  loadInstances();          // the copies are panels, and must exist before their tiles
   let raw;
   try { raw = JSON.parse(localStorage.getItem(BOARD_KEY) || "null"); } catch (e) { raw = null; }
   if (!raw || typeof raw !== "object") return;
@@ -150,6 +583,7 @@ function loadBoard() {
     tiles.push(keep);
   }
   board = { cols, rowUnit, tiles };
+  pruneInstances();
 }
 
 function saveBoard() {
@@ -283,7 +717,9 @@ function buildPanel(def) {
   // Header buttons sit outside .panel-body, so the body-scoped wiring below
   // cannot see them; route them through the same action handler.
   head.querySelectorAll(".panel-head-btn").forEach(btn => {
-    btn.onclick = () => BOARD_HOOKS.headAction(def, btn.dataset.act, btn, body);
+    btn.onclick = () => def.headAction
+      ? def.headAction(btn.dataset.act, btn, body)
+      : BOARD_HOOKS.headAction(def, btn.dataset.act, btn, body);
   });
 
   wirePanelBody(def, body);
@@ -623,6 +1059,15 @@ const coverMove = (d, px) =>
   (coverHoriz(d) ? "translateX(" : "translateY(") + Math.round(coverSign(d) * px) + "px)";
 //  How far the sheet can travel: across for a side cover, down for a top one.
 const coverSpan = (d, box) => (coverHoriz(d) ? box.width : box.height);
+/*  How far the sheet has moved, handed to its own CSS as --shx / --shy, so
+    something painted ON the glass can stay put over the panel while the glass
+    slides (a light glowing through a frosted cover is under the lamp, not
+    wherever the sheet has been pushed to). */
+function coverOffset(el, d, px) {
+  const v = -Math.round(coverSign(d) * px) + "px";
+  el.style.setProperty("--shx", coverHoriz(d) ? v : "0px");
+  el.style.setProperty("--shy", coverHoriz(d) ? "0px" : v);
+}
 
 function coverBox(panel) {
   /*  ALL OF IT, including the strip behind the title bar.
@@ -675,6 +1120,7 @@ function placeCover(panel, id) {
   const sheet = shade.firstElementChild;
   if (sheet) {
     sheet.style.transform = coverMove(d, x);
+    coverOffset(sheet, d, x);
     sheet.dataset.mat = st.m;
   }
   //  The swatch on the handle IS the current material, so what you press to
@@ -712,6 +1158,7 @@ function placeCover(panel, id) {
 
 function addCover(panel, id) {
   if (coverOf(panel)) { placeCover(panel, id); return; }
+  if (OPEN_DECK && OPEN_DECK.panel === panel) closeInstanceDeck();
   const body = panel.querySelector(".panel-body");
   if (!body) return;
 
@@ -787,6 +1234,7 @@ function addCover(panel, id) {
     moved = true;
     const x = Math.max(0, Math.min(w, from + dx));
     cv.style.transform = coverMove(dir, x);
+    coverOffset(cv, dir, x);
     //  The same sum the settle uses, so letting go does not shift it.
     tab.style.transform = coverMove(dir, tabShift(x, w));
   };
@@ -1629,7 +2077,10 @@ function renderBoard(opts) {
 function renderBoardCardList() {
   const list = bEl("boardCardList");
   const q = bEl("boardSearch").value.trim().toLowerCase();
-  const available = Object.keys(FOOTPRINTS).filter(id => !isOnBoard(id));
+  //  Copies never get a card of their own; their kind's card makes more.
+  const available = Object.keys(FOOTPRINTS).filter(id =>
+    !FOOTPRINTS[id].instance && !FOOTPRINTS[id].isKind && !isOnBoard(id));
+  const kindIds = Object.keys(FOOTPRINTS).filter(id => FOOTPRINTS[id].isKind);
   list.innerHTML = "";
   let shown = 0;
 
@@ -1637,8 +2088,14 @@ function renderBoardCardList() {
   // than by the ad-hoc labels the list used before.
   //  Grouped when the page says how (Brick by Brick groups by role); one
   //  plain list otherwise.
-  for (const group of (BOARD_HOOKS.groups() || [{ role: null, title: "" }])) {
-    const ids = available.filter(id => group.role === null || (FOOTPRINTS[id].role || "read") === group.role);
+  //  Kinds after the page's own groups, under their own headings, and always
+  //  there: adding one makes another copy, so it never runs out.
+  const kindGroups = [...new Set(kindIds.map(id => FOOTPRINTS[id].group))]
+    .map(g => ({ kindGroup: g, title: g }));
+  for (const group of [...(BOARD_HOOKS.groups() || [{ role: null, title: "" }]), ...kindGroups]) {
+    const ids = group.kindGroup
+      ? kindIds.filter(id => FOOTPRINTS[id].group === group.kindGroup)
+      : available.filter(id => group.role === null || (FOOTPRINTS[id].role || "read") === group.role);
     const visible = q ? ids.filter(id => FOOTPRINTS[id].name.toLowerCase().includes(q)) : ids;
     if (!visible.length) continue;
     if (group.title) {
@@ -1651,13 +2108,13 @@ function renderBoardCardList() {
     for (const id of visible) {
       const fp = FOOTPRINTS[id];
       const card = document.createElement("div");
-      card.className = "board-card";
+      card.className = "board-card" + (fp.isKind ? " is-kind" : "");
       card.draggable = true;
       card.dataset.id = id;
       card.innerHTML =
         '<div class="cart-label">' +
         '<div class="board-card-row">' +
-          '<button type="button" class="fp-add" title="add to board">+</button>' +
+          '<button type="button" class="fp-add" title="' + (fp.isKind ? "add another to the board" : "add to board") + '">+</button>' +
           '<span class="board-card-name">' + bEsc(fp.name) +
             (fp.wip ? ' <span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
           "</span>" +
@@ -1707,9 +2164,14 @@ function renderBoardCardList() {
 
 function addTile(id, x, y, w, h) {
   const fp = FOOTPRINTS[id];
-  if (!fp) return;
+  if (!fp) return null;
+  if (fp.isKind) {
+    id = newInstance(fp.kind);
+    if (!id) return null;
+  }
   board.tiles.push({ id, x, y, w: Math.min(w || fp.w, board.cols), h: h || fp.h });
   renderBoard(); renderBoardCardList(); saveBoard();
+  return id;
 }
 
 /*  The empty cell last pressed, or null. A panel added from the list goes
@@ -1794,11 +2256,13 @@ function removeTile(id) {
     panel.classList.remove("is-docked");
     bEl("panelStore").appendChild(panel);
   }
+  forgetInstance(id);        // a copy is deleted, not parked
   renderBoard({ content: false }); renderBoardCardList(); saveBoard();
 }
 
 function resetBoard() {
   board = JSON.parse(JSON.stringify(DEFAULT_BOARD));
+  pruneInstances();
   renderBoard(); renderBoardCardList(); saveBoard();
 }
 
@@ -1903,13 +2367,14 @@ function wireDockTarget(node, side) {
     const known = board.tiles.some(t => t.id === id);
     //  Dragged in from the flyout: it has to be on the board before it can be
     //  docked, and it keeps that cell for when it is undocked again.
+    let placed = id;
     if (!known) {
       const fp = FOOTPRINTS[id] || { w: 1, h: 1 };
       const slot = findFreeSlot(fp.w, fp.h);
-      addTile(id, slot.x, slot.y, fp.w, fp.h);
+      placed = addTile(id, slot.x, slot.y, fp.w, fp.h) || id;
     }
     boardDrag = null;
-    setDock(id, side);
+    setDock(placed, side);
     return true;
   };
   node.addEventListener("dragover", e => {

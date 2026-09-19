@@ -219,6 +219,63 @@ It creates the rest itself: the drop outline, the edge docks, the dock drop targ
 
 `demo.html` defines a full set to copy. `board.css` is linked before the page's own styles, so the page can override any board rule by writing the same selector again.
 
+### Props: panels you can place many times
+
+A registered panel is on the board once or not at all. A **kind** is a recipe instead: each time someone adds it from 🧰, the board makes a new copy with its own id and its own settings. Removing a copy deletes it.
+
+`props.js` and `props.css` add two kinds, under **Props** in 🧰:
+
+- **Signal light:** a lamp that is steady, blinks, pulses, breathes, beats like a heart, flickers or spells Morse. It comes in ten shapes: round, square, pill, panel, triangle, diamond, hex, octagon, star and a coin slot (a backlit coin-door insert with a slot and a molded "25¢"). A **Lens** sets what the light shines through: arcade plastic (a colored dome in a collar, colored even when off), fresnel rings, prism, frosted, bare LED dots, or clear. Each lamp has a hot spot where the bulb is and a glass shine on top. **Face text** is *cut out* of a dark plate (crisp letters showing the lamp through them, with no glow past their edges), *inverted* (dark letters on the lit face), or *molded* into the plastic. You can also set its color, speed, size, intensity, glow, **grime** (dirt, dust, a fingerprint smudge and scratches on the glass, different on every copy) and a label.
+- **Material:** a surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines. You can set the line and ground colors, the scale and the strength.
+
+Each copy has a **⚙** in its bottom-right corner, under any cover, so covering a prop puts its settings out of reach too. It opens a **deck** beside the panel, never over it, so you watch the prop change as you adjust it:
+
+- **Knobs** for numbers. Drag up or right to turn them up (Shift for fine steps), or scroll, or use the arrow keys. Double-click resets a knob.
+- **Keys** for choices, **switches** for on/off, swatches for colors, and boxes for text.
+- Every copy also has a **Name** and a switch that hides its title bar until you hover.
+
+A frosted or smoked cover over a signal light glows with it, in step; card blocks the light. Colors marked **theme** follow the page's variables, so they change with the Theme panel. Load after `board.js`:
+
+```html
+<link rel="stylesheet" href="props.css">
+<script src="props.js"></script>
+```
+
+### Fidgets: small games
+
+`fidgets.js` and `fidgets.css` add games, under **Fidgets** in 🧰. They're kinds too, so you can place several, each set up its own way. Each one remembers where you were in it.
+
+- **Toggle Grid:** press a light and it flips along with its neighbours. Turn them all off. The ⚙ sets:
+  - **Shape:** square, round, diamond or hex. Hex cells sit in a honeycomb and flip the six that touch.
+  - **Flips:** plus (the classic), corners, all eight, or the whole row and column.
+  - **Look:** arcade buttons (coin-op domes of colored plastic in black sockets), backlit buttons (light diffusing through plastic, fading out like a cooling bulb), CRT phosphor (a dark screen with scanlines, bloom and an afterglow), or flat.
+  - **Wrap edges**, grid size (3–10 each way), how scrambled a new puzzle is, and the lit and unlit colors.
+  - **Random play:** it presses lights by itself at a speed you set (0.5–10 presses a second), with each press flashing. When it happens to clear a puzzle it deals a new one. You can still press lights while it runs, but no best score is kept.
+  - Every puzzle is made by scrambling a solved board, so it can always be solved. **new** deals another. It counts your moves and keeps your best.
+
+```html
+<link rel="stylesheet" href="fidgets.css">
+<script src="fidgets.js"></script>
+```
+
+To make a kind of your own, call `registerKind()` before the board loads:
+
+```js
+registerKind({
+  kind: "clockface", title: "Clock face", help: "…", w: 1, h: 1, group: "Props",
+  settings: [
+    { key: "color", label: "Color", type: "color", default: "theme", theme: "--accent2" },
+    { key: "speed", label: "Speed", type: "range", min: 0.2, max: 4, step: 0.1, default: 1 },
+    { key: "style", label: "Style", type: "select", options: ["plain", "roman"], default: "plain" },
+    { key: "text",  label: "Text",  type: "text", default: "", when: s => s.style === "roman" },
+    { key: "on",    label: "On",    type: "check", text: "switched on", default: true },
+  ],
+  render(body, s) { /* draw with this copy's settings s */ },
+});
+```
+
+`render(body, s)` runs when a copy is first drawn and whenever its settings change, never on an ordinary refresh. That lets an animation keep running while the page updates around it. `when` shows a setting only while it applies.
+
 ### The Theme panel
 
 `theme.js` and `theme.css` add a panel for changing those colors: seven built-in themes, a swatch for each of eight variables (`--bg`, `--panel`, `--field`, `--fg`, `--border`, `--accent`, `--accent2`, `--draft`), saving your own under a name, **Export** and **Import…** to move saved themes between browsers or pages as a `themes.json` file, and a **Cursor** row that makes the text cursor in every text box a thin bar, a block, or an underscore. It writes the variables onto `<html>`, so the whole page follows. Load it after `board.js`:
@@ -248,6 +305,8 @@ Everything is saved in `localStorage`, under the prefix in `window.BOARD_NS` (de
 | `covers:v2`, `coverprefs:v1` | Which panels are covered, how far open, which way they open, and in what material. |
 | `focusmode:v1` | Whether focus mode is on. |
 | `toolboxpos:v1`, `toolboxglow:v1` | Where the 🧰 tab sits and whether it glows. |
+| `instances:v1` | Every placed copy of a kind, with its settings. |
+| `fidget:<id>` | Where each fidget is in its game. Deleted with the fidget. |
 | `theme:v1`, `themes:v1`, `caret:v1` | The theme in use, the ones you saved, and the text cursor shape (only with `theme.js`). |
 
 ---
