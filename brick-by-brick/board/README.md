@@ -164,7 +164,7 @@ setDefaultBoard({
 | Move | Drag by the **✥** in the title bar. Dropping onto a panel the same size swaps the two. |
 | Resize | Hover a panel, then **+** / **−** on its right and bottom edges. |
 | Dock | Drag a panel onto a **+** at a window edge. Docked panels share the edge, can be reordered, and the edge can be dragged wider or narrower. **↩** puts one back on the grid. |
-| Cover | **▤** in the title bar lays a cover over the panel. It blocks the mouse without changing anything underneath. Drag its tab to peek. Click the bottom of the tab to change the material (frosted, smoked, card). |
+| Cover | **▤** in the title bar shows an arrow on each edge; pick one and the cover slides in from that edge, the way the arrow points (the left edge's → is lit by default, and pressing **▤** again takes the lit one). It blocks the mouse without changing anything underneath. Drag its tab to peek. Click the bottom of the tab to change the material (frosted, smoked, card). |
 | Rebuild | **↻** builds the panel again from nothing. |
 | Remove | **✕**. The panel is parked, not destroyed, so it comes back from 🧰 as it was. |
 | Grid | **Columns** (1–12) and **Row px** (80–600) in 🧰. **reset board** returns to the default layout. |
@@ -205,7 +205,7 @@ It creates the rest itself: the drop outline, the edge docks, the dock drop targ
 
 ## Theming
 
-`board.css` takes its colours and sizes from CSS variables the page defines on `:root`:
+`board.css` takes its colors and sizes from CSS variables the page defines on `:root`:
 
 | Variable | Used for |
 |---|---|
@@ -219,6 +219,22 @@ It creates the rest itself: the drop outline, the edge docks, the dock drop targ
 
 `demo.html` defines a full set to copy. `board.css` is linked before the page's own styles, so the page can override any board rule by writing the same selector again.
 
+### The Theme panel
+
+`theme.js` and `theme.css` add a panel for changing those colors: seven built-in themes, a swatch for each of eight variables (`--bg`, `--panel`, `--field`, `--fg`, `--border`, `--accent`, `--accent2`, `--draft`), saving your own under a name, **Export** and **Import…** to move saved themes between browsers or pages as a `themes.json` file, and a **Cursor** row that makes the text cursor in every text box a thin bar, a block, or an underscore. It writes the variables onto `<html>`, so the whole page follows. Load it after `board.js`:
+
+```html
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js"></script>
+<script>
+  loadSavedThemes(); loadTheme(); applyTheme();   // put back the last choice
+  registerPanel({ id: "theme", title: "Theme", w: 1, h: 2,
+                  render(body) { renderTheme(body); } });
+</script>
+```
+
+Brick by Brick and `demo.html` both use it.
+
 ---
 
 ## Storage
@@ -229,9 +245,10 @@ Everything is saved in `localStorage`, under the prefix in `window.BOARD_NS` (de
 |---|---|
 | `board:v2` | The layout: columns, row height, every tile and its dock. |
 | `footprints:v2` | Panel sizes people have changed in the list. |
-| `covers:v2`, `coverprefs:v1` | Which panels are covered, how far open, and in what material. |
+| `covers:v2`, `coverprefs:v1` | Which panels are covered, how far open, which way they open, and in what material. |
 | `focusmode:v1` | Whether focus mode is on. |
 | `toolboxpos:v1`, `toolboxglow:v1` | Where the 🧰 tab sits and whether it glows. |
+| `theme:v1`, `themes:v1`, `caret:v1` | The theme in use, the ones you saved, and the text cursor shape (only with `theme.js`). |
 
 ---
 

@@ -487,7 +487,14 @@ const COVER_KEY = BOARD_NS + "covers:v2";
     last because that is the rarer want. */
 const COVER_MATS = ["frosted", "smoked", "card"];
 const COVER_MAT_DEFAULT = "frosted";
-let COVERS = new Map();                 // id -> { x: 0..0.9, m: material }
+/*  WHICH WAY IT OPENS, named by the direction the sheet slides to open:
+    lr drags left to right, rl right to left, tb top to bottom, bt bottom to
+    top. Left to right is the default and what every cover did before there
+    was a choice, so an older store reads as lr. */
+const COVER_DIRS = ["lr", "rl", "tb", "bt"];
+const COVER_DIR_DEFAULT = "lr";
+const okDir = d => (COVER_DIRS.includes(d) ? d : COVER_DIR_DEFAULT);
+let COVERS = new Map();                 // id -> { x: 0..1, m: material, d: side }
 
 /*  WHAT A PANEL'S COVER IS LIKE, WHETHER IT HAS ONE ON OR NOT.
 
@@ -506,10 +513,11 @@ let COVER_PREFS = new Map();            // id -> { x, m }, kept when uncovered
 function coverPref(id) {
   const p = COVER_PREFS.get(id);
   return { x: p && isFinite(p.x) ? p.x : 0,
-           m: p && COVER_MATS.includes(p.m) ? p.m : COVER_MAT_DEFAULT };
+           m: p && COVER_MATS.includes(p.m) ? p.m : COVER_MAT_DEFAULT,
+           d: okDir(p && p.d) };
 }
 function rememberCover(id, st) {
-  COVER_PREFS.set(id, { x: st.x, m: st.m });
+  COVER_PREFS.set(id, { x: st.x, m: st.m, d: okDir(st.d) });
   try {
     if (!COVER_PREFS.size) localStorage.removeItem(COVER_PREF_KEY);
     else localStorage.setItem(COVER_PREF_KEY, JSON.stringify([...COVER_PREFS.entries()]));
@@ -522,7 +530,8 @@ function loadCoverPrefs() {
     for (const [id, v] of JSON.parse(raw)) {
       const x = Number(v && v.x);
       COVER_PREFS.set(id, { x: isFinite(x) && x >= 0 && x <= 1 ? x : 0,
-                            m: COVER_MATS.includes(v && v.m) ? v.m : COVER_MAT_DEFAULT });
+                            m: COVER_MATS.includes(v && v.m) ? v.m : COVER_MAT_DEFAULT,
+                            d: COVER_DIRS.includes(v && v.d) ? v.d : undefined });
     }
   } catch (e) { /* unavailable, or a store somebody hand-edited */ }
 }
@@ -535,7 +544,7 @@ function loadCovers() {
         const x = Number(v && v.x);
         //  1 is a legal position now — fully aside, still on the panel.
         if (!isFinite(x) || x < 0 || x > 1) continue;
-        COVERS.set(id, { x, m: COVER_MATS.includes(v.m) ? v.m : COVER_MAT_DEFAULT });
+        COVERS.set(id, { x, m: COVER_MATS.includes(v.m) ? v.m : COVER_MAT_DEFAULT, d: okDir(v.d) });
       }
       return;
     }
@@ -545,7 +554,7 @@ function loadCovers() {
     if (!old) return;
     for (const [id, v] of JSON.parse(old)) {
       const x = Number(v);
-      if (isFinite(x) && x >= 0 && x <= 1) COVERS.set(id, { x, m: COVER_MAT_DEFAULT });
+      if (isFinite(x) && x >= 0 && x <= 1) COVERS.set(id, { x, m: COVER_MAT_DEFAULT, d: COVER_DIR_DEFAULT });
     }
   } catch (e) { /* unavailable, or a store somebody hand-edited */ }
 }
@@ -606,6 +615,15 @@ function tabShift(x, width) {  // width is unused: see below
   return Math.round(x);
 }
 
+/*  THE ONE PLACE THAT KNOWS WHAT A SIDE MEANS. The sheet and the tab both
+    move by this, so they cannot disagree about which way is open. */
+const coverHoriz = d => d === "lr" || d === "rl";
+const coverSign = d => (d === "lr" || d === "tb" ? 1 : -1);
+const coverMove = (d, px) =>
+  (coverHoriz(d) ? "translateX(" : "translateY(") + Math.round(coverSign(d) * px) + "px)";
+//  How far the sheet can travel: across for a side cover, down for a top one.
+const coverSpan = (d, box) => (coverHoriz(d) ? box.width : box.height);
+
 function coverBox(panel) {
   /*  ALL OF IT, including the strip behind the title bar.
 
@@ -652,10 +670,11 @@ function placeCover(panel, id) {
   shade.style.width = br.width + "px";
   shade.style.height = br.height + "px";
   const st = coverAt(id);
-  const x = Math.round(st.x * br.width);
+  const d = okDir(st.d);
+  const x = Math.round(st.x * coverSpan(d, br));
   const sheet = shade.firstElementChild;
   if (sheet) {
-    sheet.style.transform = "translateX(" + x + "px)";
+    sheet.style.transform = coverMove(d, x);
     sheet.dataset.mat = st.m;
   }
   //  The swatch on the handle IS the current material, so what you press to
@@ -670,13 +689,24 @@ function placeCover(panel, id) {
         Held inside the panel at both ends. Fully open, the sheet's leading
         edge is the panel's own right edge, and a tab centred on it would hang
         half over the tile next door with nothing to pull it back by. */
-    const TH = Math.max(34, Math.min(72, br.height * 0.28));
-    //  Half a tab left of the shade, so travelling the sheet's full distance
-    //  leaves it straddling the leading edge the whole way across.
-    tab.style.left = Math.round(ox - TAB_W / 2) + "px";
-    tab.style.top = Math.round(oy + (br.height - TH) / 2) + "px";
-    tab.style.height = Math.round(TH) + "px";
-    tab.style.transform = "translateX(" + tabShift(x, br.width) + "px)";
+    //  Its length follows the edge it sits on: the height for a side cover,
+    //  the width for a top or bottom one.
+    const TH = Math.max(34, Math.min(72, (coverHoriz(d) ? br.height : br.width) * 0.28));
+    tab.dataset.dir = d;
+    //  Half a tab outside the edge the sheet opens from, so travelling the
+    //  sheet's full distance leaves it straddling that edge the whole way.
+    if (coverHoriz(d)) {
+      tab.style.width = TAB_W + "px";
+      tab.style.height = Math.round(TH) + "px";
+      tab.style.left = Math.round(ox + (d === "lr" ? 0 : br.width) - TAB_W / 2) + "px";
+      tab.style.top = Math.round(oy + (br.height - TH) / 2) + "px";
+    } else {
+      tab.style.width = Math.round(TH) + "px";
+      tab.style.height = TAB_W + "px";
+      tab.style.left = Math.round(ox + (br.width - TH) / 2) + "px";
+      tab.style.top = Math.round(oy + (d === "tb" ? 0 : br.height) - TAB_W / 2) + "px";
+    }
+    tab.style.transform = coverMove(d, tabShift(x, br.width));
   }
 }
 
@@ -716,7 +746,9 @@ function addCover(panel, id) {
       Pointer capture, so the sheet keeps following the hand when the pointer
       leaves the panel, which it will: sliding a cover aside is a gesture that
       ends outside the tile it started in. */
-  let from = 0, grabbed = 0, w = 1, moved = false, live = null, onSwatch = false;
+  let from = 0, grabbed = 0, w = 1, moved = false, live = null, onSwatch = false, dir = COVER_DIR_DEFAULT;
+  //  How far the pointer has gone in the direction that opens this cover.
+  const along = e => (coverHoriz(dir) ? e.clientX : e.clientY);
   const start = (el, e) => {
     if (e.button !== 0) return;
     /*  WHERE THE PRESS LANDED, recorded now.
@@ -732,9 +764,10 @@ function addCover(panel, id) {
         on. pointerdown runs before the capture is taken, so its target is the
         real one. */
     onSwatch = !!(e.target && e.target.closest && e.target.closest(".tab-mat"));
-    w = Math.max(1, coverBox(panel).width);
+    dir = okDir(coverAt(id).d);
+    w = Math.max(1, coverSpan(dir, coverBox(panel)));
     from = coverAt(id).x * w;
-    grabbed = e.clientX;
+    grabbed = along(e);
     moved = false;
     live = el;
     /*  BOTH of them, whichever one was grabbed. Dragging the sheet used to
@@ -749,13 +782,13 @@ function addCover(panel, id) {
   };
   const move = e => {
     if (!live) return;
-    const dx = e.clientX - grabbed;
+    const dx = (along(e) - grabbed) * coverSign(dir);
     if (!moved && Math.abs(dx) < 3) return;
     moved = true;
     const x = Math.max(0, Math.min(w, from + dx));
-    cv.style.transform = "translateX(" + Math.round(x) + "px)";
+    cv.style.transform = coverMove(dir, x);
     //  The same sum the settle uses, so letting go does not shift it.
-    tab.style.transform = "translateX(" + tabShift(x, coverBox(panel).width) + "px)";
+    tab.style.transform = coverMove(dir, tabShift(x, w));
   };
   const letGo = e => {
     if (!live) return;
@@ -801,8 +834,10 @@ function addCover(panel, id) {
               Measured off the reload button rather than written down, so it
               follows if those controls are ever resized or one is added. */
           const box = coverBox(panel);
-          const w = Math.max(1, box.width);
-          const rl = panel.querySelector(".tile-reload");
+          const w = Math.max(1, coverSpan(dir, box));
+          //  Only left to right parks under the corner controls; the other
+          //  sides leave a strip two handles wide.
+          const rl = dir === "lr" && panel.querySelector(".tile-reload");
           const pr = panel.getBoundingClientRect();
           const corner = rl
             ? Math.max(0, pr.right - rl.getBoundingClientRect().left) + 6
@@ -813,7 +848,7 @@ function addCover(panel, id) {
       }
       return;
     }
-    setCoverX(panel, id, Math.max(0, Math.min(w, from + (e.clientX - grabbed))) / w);
+    setCoverX(panel, id, Math.max(0, Math.min(w, from + (along(e) - grabbed) * coverSign(dir))) / w);
   };
   for (const el of [cv, tab]) {
     el.addEventListener("pointerdown", e => start(el, e));
@@ -825,8 +860,8 @@ function addCover(panel, id) {
   const cycleMat = () => {
     const st = coverAt(id);
     const next = COVER_MATS[(COVER_MATS.indexOf(st.m) + 1) % COVER_MATS.length];
-    COVERS.set(id, { x: st.x, m: next });
-    rememberCover(id, { x: st.x, m: next });
+    COVERS.set(id, { x: st.x, m: next, d: okDir(st.d) });
+    rememberCover(id, { x: st.x, m: next, d: st.d });
     saveCovers();
     placeCover(panel, id);
   };
@@ -873,8 +908,8 @@ function addCover(panel, id) {
 function setCoverX(panel, id, f) {
   const st = coverAt(id);
   const x = Math.max(0, Math.min(1, f));
-  COVERS.set(id, { x, m: st.m });
-  rememberCover(id, { x, m: st.m });
+  COVERS.set(id, { x, m: st.m, d: okDir(st.d) });
+  rememberCover(id, { x, m: st.m, d: st.d });
   placeCover(panel, id);
   saveCovers();
   syncCoverBtn(panel, id);
@@ -895,7 +930,68 @@ function syncCoverBtn(panel, id) {
   const on = COVERS.has(id);
   b.classList.toggle("on", on);
   b.title = on ? "take the cover off"
-               : "cover this panel \u2014 then press its tab to peek, or drag it";
+               : "cover this panel \u2014 pick the side it opens from (press again for the lit one)";
+}
+
+/*  CHOOSING THE SIDE.
+
+    ▤ on an uncovered panel puts an arrow on each edge. The cover comes IN
+    from the edge you pick, travelling the way its arrow points, so it is
+    fastened to that edge and its tab is on the far side. (The stored side
+    names the way it slides OPEN, which is the opposite way: the → on the left
+    edge is "rl".) The one this panel used last is lit, left to right until you
+    choose another, so a second press of ▤ takes it without aiming. Esc, or a
+    click anywhere else on the panel, puts the arrows away and changes nothing.
+    Taking a cover off never asks. */
+const COVER_EDGES = [
+  { edge: "left",   glyph: "\u2192", d: "rl", title: "cover it from the left" },
+  { edge: "right",  glyph: "\u2190", d: "lr", title: "cover it from the right" },
+  { edge: "top",    glyph: "\u2193", d: "bt", title: "cover it from the top" },
+  { edge: "bottom", glyph: "\u2191", d: "tb", title: "cover it from the bottom" },
+];
+//  The lit arrow: the side last chosen, or left to right for a panel that
+//  has never been given one.
+const pickDefault = id => {
+  const p = COVER_PREFS.get(id);
+  return p && COVER_DIRS.includes(p.d) ? p.d : "rl";
+};
+function pickerOf(panel) { return panel.querySelector(":scope > .cover-pick"); }
+function closeCoverPicker(panel) {
+  const p = pickerOf(panel);
+  if (!p) return;
+  if (p.__esc) document.removeEventListener("keydown", p.__esc, true);
+  p.remove();
+}
+function coverWith(panel, id, d) {
+  closeCoverPicker(panel);
+  const st = coverPref(id);
+  COVERS.set(id, { x: st.x, m: st.m, d: okDir(d) });
+  rememberCover(id, COVERS.get(id));
+  removeCover(panel, id);         // a new side means a new tab, placed fresh
+  addCover(panel, id);
+  saveCovers();
+  syncCoverBtn(panel, id);
+}
+function openCoverPicker(panel, id) {
+  const last = pickDefault(id);
+  const p = document.createElement("div");
+  p.className = "cover-pick";
+  p.innerHTML = COVER_EDGES.map(k =>
+    '<button type="button" data-edge="' + k.edge + '" data-d="' + k.d + '"' +
+    (k.d === last ? ' class="on"' : "") +
+    ' title="' + k.title + '">' + k.glyph + "</button>").join("");
+  p.addEventListener("pointerdown", e => e.stopPropagation());   // never a tile drag
+  p.addEventListener("click", e => {
+    e.stopPropagation();
+    const b = e.target.closest("button[data-d]");
+    if (b) coverWith(panel, id, b.dataset.d);
+    else closeCoverPicker(panel);
+  });
+  p.__esc = e => { if (e.key === "Escape") { e.stopPropagation(); closeCoverPicker(panel); } };
+  document.addEventListener("keydown", p.__esc, true);
+  panel.appendChild(p);
+  const on = p.querySelector("button.on");
+  if (on) on.focus({ preventScroll: true });
 }
 
 function ensureCoverButton(panel, id) {
@@ -907,16 +1003,19 @@ function ensureCoverButton(panel, id) {
     b.addEventListener("click", e => {
       e.stopPropagation();
       if (COVERS.has(id)) {
+        closeCoverPicker(panel);
         //  Put away as it stands, so it comes back the same.
         rememberCover(id, COVERS.get(id));
         COVERS.delete(id);
         removeCover(panel, id);
+        saveCovers();
+        syncCoverBtn(panel, id);
+      } else if (pickerOf(panel)) {
+        //  Second press: the lit side, which is the last one used.
+        coverWith(panel, id, pickDefault(id));
       } else {
-        COVERS.set(id, coverPref(id));
-        addCover(panel, id);
+        openCoverPicker(panel, id);
       }
-      saveCovers();
-      syncCoverBtn(panel, id);
     });
     /*  Last in the cartouche, after the ?. Appended to the lead rather than to
         the header, so it travels with the title: the cartouche is what moves

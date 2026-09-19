@@ -7,6 +7,7 @@
 <title>Brick by Brick</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧱</text></svg>">
 <link rel="stylesheet" href="board/board.css">
+<link rel="stylesheet" href="board/theme.css">
 <style>
   /* Palette and board grammar deliberately match collage/index.html (v2). */
   :root {
@@ -1227,40 +1228,6 @@
   .me-field input[type="text"], .me-field select { width: 100%; font-size: 0.66rem; }
   .me-url { width: 100%; font-size: 0.63rem; margin: 2px 0 4px; }
 
-  /* ---------- theme ---------- */
-  .th-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
-  .th-presets button { display: flex; align-items: center; gap: 5px; }
-  /* Each preset shows its own ground and both accents — you pick a theme by
-     looking at it, not by reading its name. */
-  .th-chip {
-    display: inline-flex; gap: 2px; align-items: center; justify-content: center;
-    width: 22px; height: 13px; border: 1px solid; border-radius: 2px;
-  }
-  .th-chip i { width: 4px; height: 4px; border-radius: 50%; }
-  /* A saved theme and its × read as one control, so they sit flush. */
-  .th-item { display: inline-flex; }
-  .th-item > button[data-theme] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-  .th-del {
-    border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0;
-    padding: 0 5px; opacity: 0.5; font-size: 0.8rem; line-height: 1;
-  }
-  .th-del:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
-  .th-presets input[type="text"] { min-width: 0; }
-  /* One column: each swatch now carries a line of explanation, and two
-     columns of that is a wall of text in a one-cell tile. */
-  .th-rows { display: flex; flex-direction: column; gap: 3px; }
-  .th-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; }
-  .th-label { min-width: 0; display: flex; align-items: baseline; gap: 6px; }
-  .th-label b { font-weight: normal; font-size: 0.72rem; opacity: 0.85; }
-  .th-label em {
-    font-style: normal; font-size: 0.6rem; opacity: 0.42;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .th-row input[type="color"] {
-    width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
-    border-radius: 3px; background: none; cursor: pointer;
-  }
-
   /* ---------- map style ---------- */
   #mapstyle .panel-body { display: flex; flex-direction: column; }
   .ms-rows { display: flex; flex-direction: column; gap: 3px; }
@@ -1451,35 +1418,6 @@
       Both classes, because `.pr-tint input[type="range"]` further down has the
       same specificity and would otherwise win on source order alone. */
   .pr-tint.pr-sky-bar input[type="range"] { width: 78px; }
-  /*  HOW THE STREET IS LETTERED, in the panel that holds how the page is
-      coloured. A row of its own under the swatches, captioned, because it is a
-      different kind of thing from a colour and should not read as a ninth
-      one. */
-  /*  A ROW PER KIND: name, face, size.
-
-      A grid rather than three flex rows, so the three faces line up under one
-      another and the three numbers do too — read down a column and you are
-      comparing the same thing three times, which is the question these are
-      here to answer. The middle column takes whatever is left. */
-  .th-sign { display: grid; gap: 4px; }
-  .th-sign-cap {
-    font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
-    opacity: 0.6;
-  }
-  .th-sign-rows { display: grid; gap: 4px; }
-  .th-sign-row {
-    display: grid; grid-template-columns: 4.2em minmax(0, 1fr) 3.6em;
-    align-items: center; gap: 6px;
-  }
-  .th-sign-row > span { font-size: 0.66rem; opacity: 0.62; }
-  .th-sign-row select, .th-sign-row input[type="number"] {
-    min-width: 0; width: 100%;
-    font-size: 0.7rem; padding: 2px 4px; border-radius: 3px;
-    border: 1px solid var(--border); background: var(--field); color: inherit;
-  }
-  .th-sign-row select:focus, .th-sign-row input[type="number"]:focus {
-    border-color: var(--accent2); outline: none;
-  }
 
   /*  A BIG ROUND BUTTON.
 
@@ -1647,7 +1585,7 @@
   /*  THE SCENE MENU AS A FORM. One label column, one control column, every
       slider the same width, sections ruled off, the file actions in a footer.
       Nothing floats beside anything else. */
-  .pr-menu { width: 232px; gap: 7px; padding: 10px 12px; overflow-y: auto; box-sizing: border-box; }
+  .pr-menu { width: 280px; gap: 7px; padding: 10px 12px; overflow-y: auto; box-sizing: border-box; }
   .pr-group { display: flex; flex-direction: column; gap: 7px; }
   .pr-menu:not(.wide) .pr-group + .pr-group { border-top: 1px solid var(--border); padding-top: 7px; }
   .pr-sec { font-size: 0.55rem; letter-spacing: 0.09em; text-transform: uppercase; opacity: 0.5; }
@@ -1657,6 +1595,8 @@
     width: auto; max-width: calc(100% - 34px);   /* clear of the zoom stack on the right */
   }
   .pr-menu.wide .pr-group { width: 200px; }
+  /*  The lettering column holds a font name and a size per row: more room. */
+  .pr-menu.wide .pr-group:has(.pr-letters) { width: 270px; }
   .pr-menu.wide .pr-group + .pr-group { border-left: 1px solid var(--border); padding-left: 16px; }
   .pr-menu.wide .pr-menu-foot { flex-basis: 100%; padding-top: 6px; }
   .pr-menu.wide { padding: 7px 12px 6px; row-gap: 5px; }
@@ -1666,6 +1606,51 @@
   }
   .pr-form > .pr-sky-piece { display: contents; }
   .pr-form .pr-span { grid-column: 1 / -1; }
+  /*  Lettering: face and size on one line, the size a narrow number box. */
+  .pr-letter { display: flex; gap: 4px; min-width: 0; }
+  /*  The font button shows the font's name in the font itself. */
+  .pr-letter .pr-fontbtn {
+    flex: 1 1 auto; min-width: 0; text-align: left;
+    font-size: 0.72rem; padding: 1px 6px; line-height: 1.5;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .pr-letter .pr-fontbtn.on { border-color: var(--accent2); }
+  .pr-fontlist {
+    grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px;
+    background: var(--field); border: 1px solid var(--border); border-radius: 4px; padding: 5px;
+  }
+  .pr-fontsearch { font-size: 0.66rem; padding: 3px 6px; }
+  .pr-fontopts { max-height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+  /*  flex: none, or the list squeezes its rows to fit its height instead of
+      scrolling, and tall faces (script, Playwrite) draw over each other. */
+  .pr-fontopt {
+    flex: none;
+    text-align: left; border: 0; background: none; color: inherit;
+    padding: 4px 6px; font-size: 0.9rem; line-height: 1.6; border-radius: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+  }
+  .pr-fontopt:hover { background: var(--tint); }
+  /*  Remove, on the right of an added font; shown on hover of its row. */
+  .pr-fontopt { position: relative; padding-right: 22px; }
+  .pr-fontdel {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    font: 0.8rem/1 system-ui, sans-serif; opacity: 0; padding: 2px 4px; border-radius: 3px;
+  }
+  .pr-fontopt:hover .pr-fontdel { opacity: 0.7; }
+  .pr-fontdel:hover { opacity: 1 !important; color: var(--bad); background: var(--panel); }
+  .pr-fontopt.on { color: var(--accent2); }
+  .pr-fontopt.busy { opacity: 0.5; }
+  .pr-fontopt.bad { color: var(--bad); }
+  .pr-fonthead {
+    flex: none;
+    font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0.5; padding: 5px 6px 1px;
+  }
+  .pr-fontnote { flex: none; font-size: 0.6rem; opacity: 0.55; padding: 3px 6px; }
+  .pr-letter input[type="number"] {
+    width: 4.2em; font-size: 0.62rem; padding: 1px 3px; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
   .pr-send { display: flex; gap: 3px; }
   .pr-files .pr-send button { padding: 0 5px; font-size: 0.72rem; line-height: 1.45; }
   .pr-files .pr-send button:disabled { opacity: 0.3; cursor: default; filter: grayscale(1); }
@@ -1693,6 +1678,12 @@
   .pr-menu.wide .pr-sign-head .pr-tint-name { font-size: 0.66rem; }
   .pr-signmenu.wide .pr-form { gap: 3px 10px; }
   .pr-signmenu .pr-note-in { width: 100%; box-sizing: border-box; font-size: 0.62rem; padding: 2px 5px; }
+  .pr-note-row { display: flex; gap: 4px; min-width: 0; align-items: center; }
+  .pr-note-row .pr-note-in { flex: 1 1 auto; min-width: 0; }
+  .pr-note-row input[type="color"] { flex: none; }
+  .pr-note-row input[type="color"].off { opacity: 0.35; }
+  .pr-inkauto { flex: none; font-size: 0.56rem; padding: 1px 4px; line-height: 1.4; opacity: 0.6; }
+  .pr-inkauto.on { opacity: 1; color: var(--accent2); border-color: var(--accent2); }
   /*  A column with no ribbon hides the swatch; its label goes with it. */
   .pr-lbl:has(+ .pr-ribbon[hidden]) { display: none; }
   .pr-files:has(> .pr-menu:not([hidden])) > .pr-note { visibility: hidden; }
@@ -2016,29 +2007,6 @@
   </div>
 </template>
 
-<template id="tpl-theme">
-  <div class="th-presets" data-el="presets"></div>
-  <div class="ms-rows th-rows" data-el="rows"></div>
-  <!-- The lettering painted into the Promenade. It lived in that panel's own
-       bar on the argument that it only affects one panel — but so does nothing
-       else here: the eight swatches are how the PAGE looks and these two are
-       how the STREET looks, and both are the same question. They also keep the
-       same company: neither is in your pile, and both survive Clear all. -->
-  <div class="th-sign">
-    <span class="th-sign-cap">sign lettering</span>
-    <!-- A row per kind — face and size together, because they are one
-         decision about one kind of lettering. Built by renderTheme from
-         SIGN_KINDS so the list and the controls cannot drift apart. -->
-    <div class="th-sign-rows" data-el="signrows"></div>
-  </div>
-  <div class="row ms-bar">
-    <input type="text" data-el="name" placeholder="save as…" spellcheck="false">
-    <button data-act="save" title="keep these colors under a name">Save</button>
-    <button data-act="reset" title="back to Night, the theme this page ships with">Reset</button>
-  </div>
-  <p class="hint" data-el="msg"></p>
-</template>
-
 <template id="tpl-mapstyle">
   <div class="ms-rows" data-el="rows"></div>
   <!-- Outside the fold: it explains why the controls above are grayed, so it
@@ -2144,6 +2112,7 @@
 
 <script>window.BOARD_NS = "brick-by-brick:";</script>
 <script src="board/board.js"></script>
+<script src="board/theme.js"></script>
 <script>
 "use strict";
 /* ==========================================================================
@@ -2839,8 +2808,7 @@ const AUTOSAVE_KEY = "brick-by-brick:autosave:v1";
 //  BOARD_KEY and FOOTPRINT_KEY come from board/board.js (same keys as ever).
 const GAZETTEER_KEY = "brick-by-brick:gazetteer:v1";
 const MAPSOURCE_KEY = "brick-by-brick:mapsource:v1";
-const THEME_KEY = "brick-by-brick:theme:v1";     // the one in use
-const THEMES_KEY = "brick-by-brick:themes:v1";   // the ones you saved
+//  THEME_KEY and THEMES_KEY come from board/theme.js (same keys as ever).
 const MAPPROJECT_KEY = "brick-by-brick:mapproject:v1";    // an Atlas project file
 const TILEKEY_KEY = "brick-by-brick:tilekey:v1";          // MapTiler & friends
 const STYLEURL_KEY = "brick-by-brick:styleurl:v1";        // a hosted basemap style
@@ -3241,8 +3209,8 @@ definePanel({ role: "read", id: "mapeditor", title: "Map Editor", tpl: "tpl-mape
   help: "Draw context onto the map — points, shapes, arrows, notes — and it writes an Atlas project file. Needs the Map Viewer on the board to click into.",
   render(body) { renderMapEditor(body); } });
 
-definePanel({ role: "read", id: "theme", title: "Theme", tpl: "tpl-theme", w: 1, h: 2,
-  help: "Four themes, or your own. Eight colors drive the whole page; the basemap keeps its own, in Map Style.",
+definePanel({ role: "read", id: "theme", title: "Theme", w: 1, h: 2,
+  help: "Built-in themes, or your own. Eight colors drive the whole page; the basemap keeps its own, in Map Style.",
   render(body) { renderTheme(body); } });
 
 /*  Badged read: it changes how the map is drawn and nothing about the pile.
@@ -3462,7 +3430,7 @@ Brick.viz.register("story", {
   emoji: "🎬", label: "Story Maker", w: 2, h: 2,
   description: "Save the street as a scene, then play your scenes in an order " +
     "you choose. A scene is the whole arrangement: who stands where, the " +
-    "column colours and notes, the hour, the weather, the zoom and where you " +
+    "column colors and notes, the hour, the weather, the zoom and where you " +
     "were standing. Give each one a caption and a length, and the Promenade " +
     "plays through them with its controls hidden.",
   render: (model, el) => renderStory(model, el),
@@ -4305,6 +4273,17 @@ const NOTE_KEY = "brick-by-brick:colnote:v1";
 const NOTE_MAX = 400;
 const COL_NOTE = new Map();          // slug -> { above: string, below: string }
 const noteOf = slug => COL_NOTE.get(slug) || { above: "", below: "" };
+//  Each side has its own ink, because the one over the roof is read against
+//  the sky and the one below against the ground.
+const NOTE_INK = "#bfae92";
+const okInk = c => (c === "auto" || (typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)) ? c : undefined);
+//  The stored choice: a hex, "auto", or the default.
+const noteInk = (note, at) => (note && okInk(note[at === "below" ? "bc" : "ac"])) || NOTE_INK;
+/*  AUTO: light type on a dark ground, dark type on a light one. Decided by
+    the colour actually behind the note when it is drawn, so it follows the
+    sky, the ground, the hour and the column's backdrop. */
+const NOTE_INK_LIGHT = 0xece6d8, NOTE_INK_DARK = 0x1c1914;
+const inkFor = bgInt => (lumOf(bgInt) > 0.5 ? NOTE_INK_DARK : NOTE_INK_LIGHT);
 function loadColNotes() {
   let raw;
   try { raw = JSON.parse(localStorage.getItem(NOTE_KEY) || "null"); } catch (e) { return; }
@@ -4325,7 +4304,8 @@ function loadColNotes() {
     //  Where you dragged it, alongside what it says.
     if (above || below) {
       COL_NOTE.set(slug, { above, below,
-        ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by") });
+        ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by"),
+        ac: okInk(v.ac), bc: okInk(v.bc) });
     }
   }
 }
@@ -4730,7 +4710,8 @@ function applySidecar(text, host) {
       const num = k => (typeof v[k] === "number" && isFinite(v[k]) ? v[k] : 0);
       if (above || below) {
         COL_NOTE.set(slug, { above, below,
-          ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by") });
+          ax: num("ax"), ay: num("ay"), bx: num("bx"), by: num("by"),
+          ac: okInk(v.ac), bc: okInk(v.bc) });
       }
     }
     saveColNotes();
@@ -7225,7 +7206,7 @@ function renderPromenadePixi(model, host) {
     const resetAll = document.createElement("button");
     resetAll.className = "pr-reset-all";
     resetAll.textContent = "reset";
-    resetAll.title = "back to the street’s own colours and weather";
+    resetAll.title = "back to the street’s own colors and weather";
     foot.append(resetAll, fileBar.querySelector('[data-k="load"]'), fileBar.querySelector('[data-k="save"]'));
     const group = (...kids) => { const g = document.createElement("div"); g.className = "pr-group"; g.append(...kids); return g; };
     /*  SEND UP. The balloon and the birds come on their own schedule, which is
@@ -7249,8 +7230,14 @@ function renderPromenadePixi(model, host) {
     host._sendBirdsBtn = sendUp.querySelector('[data-k="send-birds"]');
     host._sendBalloonBtn.onclick = () => { host._wantBalloon = true; host._sendBalloonBtn.disabled = true; };
     host._sendBirdsBtn.onclick = () => { host._wantBirds = true; host._sendBirdsBtn.disabled = true; };
+    //  The lettering on the signs: face and size for each kind.
+    const letterForm = document.createElement("div");
+    letterForm.className = "pr-form pr-letters";
+    const showLetters = buildSignControls(letterForm);
+    //  Another Promenade may have changed them; read them fresh on opening.
+    sceneBtn.addEventListener("click", () => { showLetters(); });
     sceneMenu.append(group(sec("scene"), bgBar), group(sec("clouds"), weatherSlot),
-                     group(sec("signposts"), unitForm), foot);
+                     group(sec("signposts"), unitForm, letterForm), foot);
 
     /*  SHORT PANELS. The menu stacks to about 360px, and a one-row Promenade
         has far less than that above its toolbar — it was cut off at the top.
@@ -7402,9 +7389,11 @@ function renderPromenadePixi(model, host) {
     doorView.hidden = true;
     shell.appendChild(doorView);
     host._doorView = doorView;
-    const closeDoor = () => { doorView.hidden = true; };
+    const closeDoor = () => { doorView.hidden = true; host._doorSlug = null; };
 
     host._openDoor = slug => {
+      //  Remembered, so the room can be recounted while it is open.
+      host._doorSlug = slug;
       const m = V() || {};
       const byId = new Map((m.entities || []).map(e => [e.slug, e]));
       const here = byId.get(slug);
@@ -7759,20 +7748,30 @@ function renderPromenadePixi(model, host) {
         '<div class="pr-sec">notes</div>' +
         '<div class="pr-form">' +
           '<span class="pr-lbl">above</span>' +
-          '<input type="text" data-k="above" class="pr-note-in" ' +
-            'maxlength="400" placeholder="over the roof\u2026" ' +
-            'title="shown above this column">' +
+          '<span class="pr-note-row">' +
+            '<input type="text" data-k="above" class="pr-note-in" ' +
+              'maxlength="400" placeholder="over the roof\u2026" ' +
+              'title="shown above this column">' +
+            '<input type="color" data-k="aboveink" title="color of the text above">' +
+            '<button type="button" data-k="aboveauto" class="pr-inkauto" ' +
+              'title="pick light or dark text to stand out from what is behind it">auto</button>' +
+          '</span>' +
           '<span class="pr-lbl">below</span>' +
-          '<input type="text" data-k="below" class="pr-note-in" ' +
-            'maxlength="400" placeholder="on the ground\u2026" ' +
-            'title="shown below this column">' +
+          '<span class="pr-note-row">' +
+            '<input type="text" data-k="below" class="pr-note-in" ' +
+              'maxlength="400" placeholder="on the ground\u2026" ' +
+              'title="shown below this column">' +
+            '<input type="color" data-k="belowink" title="color of the text below">' +
+            '<button type="button" data-k="belowauto" class="pr-inkauto" ' +
+              'title="pick light or dark text to stand out from what is behind it">auto</button>' +
+          '</span>' +
         '</div>' +
       '</div>' +
       '<div class="pr-group">' +
         '<div class="pr-sec">smoke</div>' +
         '<div class="pr-form">' +
-          '<span class="pr-lbl">colour</span>' +
-          '<input type="color" data-k="smokeink" title="the colour of this ' +
+          '<span class="pr-lbl">color</span>' +
+          '<input type="color" data-k="smokeink" title="the color of this ' +
             'place\u2019s smoke">' +
           '<span class="pr-lbl">thickness</span>' +
           '<input type="range" data-k="smokethick" min="0" max="1" step="0.05" ' +
@@ -7892,7 +7891,8 @@ function renderPromenadePixi(model, host) {
       if (slug === null) return;
       const above = aboveIn.value.trim(), below = belowIn.value.trim();
       //  Nothing on either side is no note at all, not an empty one.
-      if (!above && !below) COL_NOTE.delete(slug);
+      const had = COL_NOTE.get(slug);
+      if (!above && !below && !(had && (had.ac || had.bc))) COL_NOTE.delete(slug);
       else {
         //  Merged, not replaced: what it says and where you put it are two
         //  facts, and typing is only about one of them.
@@ -7905,6 +7905,31 @@ function renderPromenadePixi(model, host) {
     };
     aboveIn.addEventListener("input", writeNote);
     belowIn.addEventListener("input", writeNote);
+
+    //  The ink is kept even before there is text, so picking a colour first
+    //  and typing second works in either order.
+    const aboveInk = tintBar.querySelector('[data-k="aboveink"]');
+    const belowInk = tintBar.querySelector('[data-k="belowink"]');
+    const writeInk = (at, value) => {
+      const slug = host._focusKind === "column" ? host._focus : null;
+      if (slug === null) return;
+      const was = COL_NOTE.get(slug) || { above: "", below: "" };
+      COL_NOTE.set(slug, { ...was, [at === "below" ? "bc" : "ac"]: value });
+      saveColNotes();
+      host._noTween = true;
+      renderPromenadePixi(V(), host);
+    };
+    //  Picking a color is choosing one, so it turns auto off for that side.
+    aboveInk.addEventListener("input", () => writeInk("above", aboveInk.value));
+    belowInk.addEventListener("input", () => writeInk("below", belowInk.value));
+    for (const [at, sw] of [["above", aboveInk], ["below", belowInk]]) {
+      tintBar.querySelector('[data-k="' + at + 'auto"]').addEventListener("click", () => {
+        const slug = host._focusKind === "column" ? host._focus : null;
+        if (slug === null) return;
+        const on = noteInk(COL_NOTE.get(slug), at) === "auto";
+        writeInk(at, on ? sw.value : "auto");   // off: back to the swatch's color
+      });
+    }
 
     /*  Letting the column go is what hides this bar — it appears because
         something is selected, so it leaves the same way. Nothing is changed
@@ -7966,6 +7991,11 @@ function renderPromenadePixi(model, host) {
       for (const at of ["above", "below"]) {
         const box = tintBar.querySelector('[data-k="' + at + '"]');
         if (document.activeElement !== box) box.value = n[at] || "";
+        const ink = tintBar.querySelector('[data-k="' + at + 'ink"]');
+        const chosen = noteInk(n, at), auto = chosen === "auto";
+        if (document.activeElement !== ink && !auto) ink.value = chosen;
+        ink.classList.toggle("off", auto);
+        tintBar.querySelector('[data-k="' + at + 'auto"]').classList.toggle("on", auto);
       }
     };
 
@@ -8152,6 +8182,14 @@ function renderPromenadePixi(model, host) {
           localStorage.removeItem(PINNED_KEY);
         }
       } catch (e) { /* private mode */ }
+      /*  AN OPEN DOOR RECOUNTS THE ROOM.
+
+          The interior is worked out when the door opens, from where everyone
+          stood at that moment. Drag somebody into this place — or out of it —
+          with the door still open and the "visiting" list kept the old answer.
+          Every change of placement comes through here, so this is where the
+          open room is rebuilt from the placements as they are now. */
+      if (host._doorSlug && host._doorView && !host._doorView.hidden) host._openDoor(host._doorSlug);
     };
 
     /*  The holding pen: everyone no record places.
@@ -9150,12 +9188,27 @@ function renderPromenadePixi(model, host) {
     host._lifted = null;
   }
 
-  /*  The balloon lives in the world now, so a rebuild takes it down with
-      everything else — and the ticker would go on steering a node whose
-      transform has already been destroyed, which is the crash. It is landed
-      first, which is the one piece of tidying that also puts any passenger
-      safely back on the street. */
-  if (host._balloon) landBalloon(host, true);
+  /*  THE BALLOON RIDES THROUGH A REBUILD.
+
+      It lives in the world, so a rebuild used to land it — the ticker would
+      otherwise go on steering a node whose transform had been destroyed, which
+      was the crash. But every placement is a rebuild, so dropping somebody
+      into a new place took the balloon down mid-flight, with whoever was in
+      the basket, and the sky started over.
+
+      So it is lifted OUT of the world before the world is cleared — alive, not
+      destroyed, still host._balloon, so the ticker is steering a real node the
+      whole time — and put back once the new world is built, where the
+      passengers are re-seated from host._aloft below. Only a view with no sky
+      (the grid) still lands it. */
+  let keptBalloon = null;
+  if (host._balloon) {
+    if (GRID || !host._balloon.node || host._balloon.node.destroyed) landBalloon(host, true);
+    else {
+      keptBalloon = host._balloon.node;
+      if (keptBalloon.parent) keptBalloon.parent.removeChild(keptBalloon);
+    }
+  }
 
   world.removeChildren();
   host._walkers = [];
@@ -10087,7 +10140,8 @@ function renderPromenadePixi(model, host) {
           note set large would overlap its own second line. */
       const n = new P.Text(text, {
         fontFamily: signFont("note"),
-        fontSize: signSize("note") * Z, fill: 0xbfae92,
+        fontSize: signSize("note") * Z,
+        fill: noteInk(note, at) === "auto" ? NOTE_INK_LIGHT : noteInk(note, at),
         align: "center", wordWrap: true, wordWrapWidth: room,
         lineHeight: Math.round(signSize("note") * 1.3) * Z,
       });
@@ -10128,6 +10182,23 @@ function renderPromenadePixi(model, host) {
       const dy = (at === "below" ? note.by : note.ay) || 0;
       n.x = c.x;
       n.y = home() + dy * Z;
+      /*  What is behind it. Below is ground. Above is sky, with this column's
+          backdrop laid over it at the height the note sits at, the same ramp
+          and strength the gradient sprite is drawn with. */
+      const bgAt = () => {
+        if (at === "below") return sceneGround();
+        let bg = sceneSky();
+        const tint = COLUMN_TINT.get(c.slug);
+        if (tint) {
+          const mid = at === "below" ? n.y + n.height / 2 : n.y - n.height / 2;
+          const t = Math.max(0, Math.min(1, mid / (H() * GROUND)));
+          const col = mixInt(hexInt(tint.from), hexInt(tint.to), t);
+          bg = mixInt(bg, col, tint.alpha === undefined ? 1 : tint.alpha);
+        }
+        return bg;
+      };
+      const setInk = () => { if (noteInk(note, at) === "auto") n.style.fill = inkFor(bgAt()); };
+      setInk();
 
       n.eventMode = "static";
       n.cursor = "ns-resize";      // says which way it goes before you try it
@@ -10167,6 +10238,7 @@ function renderPromenadePixi(model, host) {
         if (!cur) return;
         if (at === "below") cur.by = ry; else cur.ay = ry;
         saveColNotes();
+        setInk();                       // a backdrop ramp can change under it
       };
       n.on("pointerup", letGo);
       n.on("pointerupoutside", letGo);
@@ -10179,6 +10251,7 @@ function renderPromenadePixi(model, host) {
         if (at === "below") cur.by = 0; else cur.ay = 0;
         saveColNotes();
         n.y = home();
+        setInk();
       });
       signLayer.addChild(n);
     }
@@ -11679,6 +11752,13 @@ function renderPromenadePixi(model, host) {
       Cleared if the balloon has gone in the meantime: they are already on the
       ground where they belong, and holding the set would strand them in the
       sky for the next balloon along. */
+  //  Back into the new world, at the depth it is always given: under the signs.
+  if (keptBalloon && host._balloon && host._balloon.node === keptBalloon && !keptBalloon.destroyed) {
+    const signAt = host._signLayer && host._signLayer.parent === world
+      ? world.getChildIndex(host._signLayer) : world.children.length;
+    world.addChildAt(keptBalloon, signAt);
+  }
+
   if (host._aloft.size) {
     if (!host._balloon) host._aloft.clear();
     else {
@@ -14027,7 +14107,7 @@ function renderSpriteEditor(model, host) {
   const backGround = mk("ground", "the ground the place stands on");
   const backReset = el("button", null, backWrap);
   backReset.type = "button"; backReset.textContent = "\u21ba";
-  backReset.title = "back to the street's own colours";
+  backReset.title = "back to the street's own colors";
   backReset.onclick = () => {
     bg = { ...BG_DEFAULT };
     backOne.value = bg.one; backSky.value = bg.sky; backGround.value = bg.ground;
@@ -14063,7 +14143,7 @@ function renderSpriteEditor(model, host) {
   const gridIn = el("input", null, gridWrap);
   gridIn.type = "color"; gridIn.value = gridBg;
   gridIn.title = "the squares behind the drawing \u2014 go pale when you are "
-               + "painting dark colours and cannot tell them apart";
+               + "painting dark colors and cannot tell them apart";
   const saveGridBg = () => {
     try { localStorage.setItem(GRIDBG_KEY, gridBg); } catch (e) { /* unavailable */ }
   };
@@ -16579,6 +16659,241 @@ function trackMapSize(map, boxEl) {
   return () => { if (!raf) { quiet = 0; raf = requestAnimationFrame(step); } };
 }
 
+/*  THE STREET'S LETTERING: a face and a size for each kind of sign.
+
+    Built into the Promenade's scene menu, which is where the street's look is
+    set. A row per kind — the face and the size together, because they are one
+    decision about one kind of lettering — built from SIGN_KINDS, so a fourth
+    kind is one entry in that list.
+
+    Live on `input` and `change`: the point is to hold the arrow key and
+    watch the street settle. The size drives the layout as well as the
+    lettering (a fingerpost reserves street from the longest name it has to
+    print), so every step is a rebuild of every Promenade on the page.
+
+    Right-click either control to put that one back, which is the erase
+    everywhere else in this project. */
+function buildSignControls(into) {
+  const restreet = () => {
+    for (const p of document.querySelectorAll(".panel-body")) {
+      if (!p._signs) continue;
+      p._noTween = true;
+      renderPromenadePixi(V(), p);
+    }
+  };
+
+  into.innerHTML = SIGN_KINDS.map(k =>
+    '<span class="pr-lbl" title="' + esc(k.hint) + '">' + esc(k.label) + "</span>" +
+    '<span class="pr-letter" title="' + esc(k.hint) + '">' +
+      '<button type="button" class="pr-fontbtn" data-kind="' + k.key + '"></button>' +
+      '<input type="number" step="0.5" min="' + SIGN_SIZE_MIN +
+      '" max="' + SIGN_SIZE_MAX + '" data-kind="' + k.key + '" title="size">' +
+    "</span>").join("");
+
+  const sizeBoxes = [...into.querySelectorAll("input[data-kind]")];
+  const fontBtns = [...into.querySelectorAll(".pr-fontbtn")];
+  //  Each button says the font's real name, set in that font.
+  const showSigns = () => {
+    for (const b of sizeBoxes) if (document.activeElement !== b) b.value = String(signSize(b.dataset.kind));
+    for (const f of fontBtns) {
+      const stack = SIGN_FONT[f.dataset.kind];
+      f.textContent = fontNameOf(stack);
+      f.style.fontFamily = stack;
+      f.title = stack + " — right-click for the default";
+    }
+  };
+  showSigns();
+
+  const takeSize = (b, snapBack) => {
+    if (!snapBack && b.value.trim() === "") return;
+    setSignSize(b.dataset.kind, b.value);
+    saveSignSize();
+    restreet();
+    if (snapBack) showSigns();
+  };
+  into.addEventListener("input", e => {
+    const b = e.target.closest("input[data-kind]");
+    if (b) takeSize(b, false);
+  });
+  //  On the way out, so a box left empty or out of range shows what is
+  //  actually in force rather than what was typed at it.
+  into.addEventListener("change", e => {
+    const b = e.target.closest("input[data-kind]");
+    if (b) takeSize(b, true);
+  });
+  into.addEventListener("contextmenu", e => {
+    const t = e.target.closest("[data-kind]");
+    if (!t) return;
+    e.preventDefault();
+    if (t.classList.contains("pr-fontbtn")) setSignFont(t.dataset.kind, SIGN_FONT_DEFAULT);
+    else setSignSize(t.dataset.kind, SIGN_SIZE_DEFAULT[t.dataset.kind]);
+    saveSignFont(); saveSignSize();
+    restreet();
+    showSigns();
+  });
+
+  /*  THE FONT LIST, EVERY NAME SET IN ITS OWN FACE.
+
+      A native <select> cannot show that: on a Mac the browser hands the menu
+      to the system, which draws every option in the system font. So this is
+      a list of its own, opened under the row it belongs to.
+
+      Unsearched, it offers the presets, your own font if you have one, and a
+      few Google fonts that suit signage. Type and it searches this computer's
+      fonts (Chrome asks once) and every family on Google Fonts, by the name
+      Google actually serves it under — "Playwrite BE WAL Guides", not the
+      longer name on the website, which the font service does not answer to. */
+  let open = null;                       // { kind, box }
+  const shut = () => {
+    if (!open) return;
+    open.box.remove();
+    into.querySelector('.pr-fontbtn[data-kind="' + open.kind + '"]').classList.remove("on");
+    open = null;
+  };
+
+  const use = async (kind, pick, row) => {
+    if (pick.google) {
+      row.classList.add("busy");
+      const ok = await loadGoogleFont(pick.google);
+      row.classList.remove("busy");
+      if (!ok) { row.classList.add("bad"); row.title = "Google Fonts did not send it — check the connection"; return; }
+      rememberGoogleFont(pick.google);
+      setSignFont(kind, "'" + pick.google + "', " + (pick.generic || "sans-serif"));
+    } else {
+      setSignFont(kind, pick.stack);
+    }
+    saveSignFont();
+    restreet();
+    showSigns();
+    shut();
+  };
+
+  const openFor = btn => {
+    const kind = btn.dataset.kind;
+    if (open && open.kind === kind) { shut(); return; }
+    shut();
+    const box = document.createElement("div");
+    box.className = "pr-fontlist";
+    box.innerHTML =
+      '<input type="text" class="pr-fontsearch" spellcheck="false" ' +
+        'placeholder="search fonts — this computer or Google">' +
+      '<div class="pr-fontopts"></div>';
+    btn.closest(".pr-letter").after(box);
+    btn.classList.add("on");
+    open = { kind, box };
+    const search = box.querySelector(".pr-fontsearch");
+    const opts = box.querySelector(".pr-fontopts");
+    const cur = SIGN_FONT[kind];
+
+    const head = text => { const d = document.createElement("div"); d.className = "pr-fonthead"; d.textContent = text; opts.appendChild(d); };
+    const note = text => { const d = document.createElement("div"); d.className = "pr-fontnote"; d.textContent = text; opts.appendChild(d); };
+    const row = (label, family, pick, isOn) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pr-fontopt" + (isOn ? " on" : "");
+      b.textContent = label;
+      b.style.fontFamily = family;
+      b.title = pick.google ? label + " — Google Fonts" : (pick.stack || label);
+      b.onclick = () => use(kind, pick, b);
+      opts.appendChild(b);
+      return b;
+    };
+    const googleRow = f => {
+      const b = row(f.family, "sans-serif", { google: f.family, generic: f.generic }, cur.startsWith("'" + f.family + "'"));
+      //  Previewed in its own face: just the letters of its name, a few KB.
+      previewGoogleFont(f.family).then(alias => { if (alias && b.isConnected) b.style.fontFamily = "'" + alias + "', sans-serif"; });
+    };
+
+    let token = 0;
+    const draw = async () => {
+      const q = search.value.trim().toLowerCase();
+      const mine = ++token;
+      opts.replaceChildren();
+      if (!q) {
+        head("presets");
+        for (const f of SIGN_FACES) row(fontNameOf(f.stack), f.stack, { stack: f.stack }, f.stack === cur);
+        /*  YOUR FONTS: every Google font you added, and any other face a sign
+            is set in that is not a preset. Each can be removed: it is
+            forgotten (a Google font is no longer fetched on the next visit)
+            and any sign still set in it goes back to the default. */
+        const presetStacks = new Set(SIGN_FACES.map(f => f.stack));
+        const yours = new Map();              // name -> stack
+        for (const g of GFONTS) yours.set(g, null);
+        for (const k of SIGN_KINDS) {
+          const st = SIGN_FONT[k.key];
+          if (presetStacks.has(st)) continue;
+          const nm = fontNameOf(st);
+          if (!yours.get(nm)) yours.set(nm, st);
+        }
+        if (yours.size) {
+          head("your fonts");
+          for (const [nm, st] of yours) {
+            const isG = GFONTS.has(nm);
+            const b = isG ? (googleRow({ family: nm }), opts.lastElementChild)
+                          : row(nm, st, { stack: st }, st === cur);
+            if (st && st === cur) b.classList.add("on");
+            const x = document.createElement("span");
+            x.className = "pr-fontdel";
+            x.textContent = "×";
+            x.title = "remove " + nm;
+            x.onclick = e => {
+              e.stopPropagation();
+              if (isG) forgetGoogleFont(nm);
+              for (const k of SIGN_KINDS) {
+                if (fontNameOf(SIGN_FONT[k.key]) === nm && !presetStacks.has(SIGN_FONT[k.key])) {
+                  setSignFont(k.key, SIGN_FONT_DEFAULT);
+                }
+              }
+              saveSignFont();
+              restreet();
+              showSigns();
+              draw();
+            };
+            b.appendChild(x);
+          }
+        }
+        head("suggested from Google Fonts");
+        for (const fam of GOOGLE_SIGN_FONTS) googleRow({ family: fam });
+        note("type to search every Google font and this computer's fonts");
+        return;
+      }
+      const [local, google] = await Promise.all([localFontNames(), googleFontList()]);
+      if (mine !== token) return;                      // a newer search has started
+      const localHits = local.filter(n => n.toLowerCase().includes(q)).slice(0, 25);
+      const googleHits = google.filter(f => f.family.toLowerCase().includes(q)).slice(0, 25);
+      if (localHits.length) {
+        head("this computer");
+        for (const n of localHits) row(n, "'" + n + "', sans-serif", { stack: "'" + n + "', sans-serif" }, cur.startsWith("'" + n + "'"));
+      }
+      if (googleHits.length) {
+        head("Google Fonts");
+        for (const f of googleHits) googleRow(f);
+      }
+      if (!localHits.length && !googleHits.length) {
+        note(google.length ? "no font called “" + search.value.trim() + "” here or on Google Fonts"
+                           : "Google's list did not load — check the connection");
+      }
+    };
+    let timer = 0;
+    search.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(draw, 160); });
+    search.addEventListener("keydown", e => {
+      if (e.key === "Escape") { e.preventDefault(); shut(); btn.focus(); }
+      else if (e.key === "Enter") {
+        e.preventDefault();
+        const first = opts.querySelector(".pr-fontopt");
+        if (first) first.click();
+      }
+    });
+    draw();
+    search.focus();
+  };
+  into.addEventListener("click", e => {
+    const btn = e.target.closest(".pr-fontbtn");
+    if (btn) openFor(btn);
+  });
+  return () => { shut(); showSigns(); };
+}
+
 /*  The style is settings, and the settings are the style.
 
     Each row is one layer of the basemap: its color, whether it draws, and how
@@ -17813,376 +18128,7 @@ function updateMapCount(host, shown, model) {
     : "No place bricks carry coordinates yet.";
 }
 
-/* --------------------------------------------------------------------------
-   THEMES
-   --------------------------------------------------------------------------
-   Eight colors and a light/dark flag. Everything else on the page is written
-   in terms of these, and the "on" washes are mixed from --accent/--accent2 at
-   render time, so a theme never has to name a tint and never has one drift out
-   of step with the color it belongs to.
-
-   `color-scheme` is not decoration: without it the browser paints native
-   controls — checkboxes, sliders, scrollbars, the color picker itself — for
-   the wrong side, which is what made the Brick Builder fields white.
-
-   Not covered here: the basemap. Its colors are cartography, not chrome, and
-   they live in the Map Style panel where they belong.
-   -------------------------------------------------------------------------- */
-/*  Each token says what it paints, in the words of the thing on screen rather
-    than the word in the stylesheet — "Behind the panels" is checkable by
-    looking, "--bg" is not. */
-const THEME_TOKENS = [
-  { key: "bg",      label: "Board",    hint: "behind the panels" },
-  { key: "panel",   label: "Panels",   hint: "the tiles themselves" },
-  { key: "field",   label: "Inputs",   hint: "text boxes, lists, buttons" },
-  { key: "fg",      label: "Text",     hint: "every word on the page" },
-  { key: "border",  label: "Edges",    hint: "panel outlines and rules" },
-  { key: "accent",  label: "Verified", hint: "+ bricks, confirmed markers" },
-  { key: "accent2", label: "Active",   hint: "hover, focus, what is switched on" },
-  { key: "draft",   label: "Draft",    hint: "− bricks, unconfirmed things" },
-];
-
-const THEMES = [
-  { id: "night", name: "Night", scheme: "dark", tokens: {
-      bg: "#111111", panel: "#1a1a1a", field: "#0d0d0d", fg: "#eeeeee",
-      border: "#333333", accent: "#ff5500", accent2: "#33ff33", draft: "#7a8a99" } },
-  { id: "blueprint", name: "Blueprint", scheme: "dark", tokens: {
-      bg: "#0a1c33", panel: "#102844", field: "#08172a", fg: "#dce9fb",
-      border: "#1e3d66", accent: "#ffb703", accent2: "#7fdbff", draft: "#6f8bb0" } },
-  // Dark, but warm rather than blue — the tobacco-and-lamplight end of an old
-  // map room. Easier on the eye than Night for a long session.
-  { id: "vellum", name: "Vellum", scheme: "dark", tokens: {
-      bg: "#171310", panel: "#211b16", field: "#120e0b", fg: "#e8ddcb",
-      border: "#3a2f25", accent: "#e07b39", accent2: "#c9a227", draft: "#8c7c66" } },
-  // Near-black with a green cast: a phosphor terminal, which is where this
-  // notation's ancestors were actually typed.
-  { id: "phosphor", name: "Phosphor", scheme: "dark", tokens: {
-      bg: "#0a0f0b", panel: "#111a13", field: "#070c08", fg: "#cfe8d4",
-      border: "#23342a", accent: "#ff7a1a", accent2: "#3ddc72", draft: "#6f8d7a" } },
-  // Cold and low-contrast, the quietest of the set — for when even Night's
-  // pure black feels like a hole in the screen.
-  { id: "slate", name: "Slate", scheme: "dark", tokens: {
-      bg: "#14181d", panel: "#1c2229", field: "#0f1317", fg: "#dbe2ea",
-      border: "#2c353f", accent: "#f0883e", accent2: "#58c8b0", draft: "#7d8a99" } },
-  // Deep aubergine — the same value range as Night, a different temperature.
-  { id: "plum", name: "Plum", scheme: "dark", tokens: {
-      bg: "#150f1a", panel: "#1f1727", field: "#100b14", fg: "#e6dcf0",
-      border: "#332844", accent: "#ff6b9d", accent2: "#a78bfa", draft: "#8b7fa0" } },
-  /*  THE PAGE AS A WALL.
-
-      The panels are the bricks and the board behind them is the mortar, which
-      makes the edges the pointing: a panel outline is the joint between two
-      bricks, so `border` is the lightest thing in the theme rather than the
-      quietest. It is the one theme here where the token names describe a real
-      object.
-
-      Sooted London mortar rather than fresh lime, because a page of light grey
-      behind red panels is a page you cannot read a header on: `fg` is one
-      colour for every word, including the ones sitting on the board itself.
-      Dark mortar keeps both legible and keeps the set consistently dark.
-
-      Verified is a yellow stock brick and Active a weathered copper, neither
-      of which an orange wall can swallow. */
-  { id: "brick", name: "Brick", scheme: "dark", tokens: {
-      bg: "#33302c", panel: "#7d3a28", field: "#5a2a1d", fg: "#f7ece6",
-      border: "#a89c8c", accent: "#f0b429", accent2: "#57cfbe", draft: "#c9b6a8" } },
-];
-
-/*  Themes you have saved. Kept apart from the built-in four: those are code
-    and improve when the code does, these are yours and must never be rewritten
-    by a later version of this page. */
-let SAVED_THEMES = [];
-
-let THEME_ID = "night";
-let THEME = Object.assign({}, THEMES[0].tokens);
-
-// Saved themes answer to the same lookup as the built-in ones, so everything
-// downstream — applying, marking the active one, restoring on load — is
-// written once and does not care where a theme came from.
-function themeById(id) {
-  return THEMES.find(t => t.id === id) || SAVED_THEMES.find(t => t.id === id) || null;
-}
-
-function loadSavedThemes() {
-  let raw;
-  try { raw = JSON.parse(localStorage.getItem(THEMES_KEY) || "null"); } catch (e) { return; }
-  if (!Array.isArray(raw)) return;
-  SAVED_THEMES = raw
-    .filter(t => t && t.name && t.tokens && !THEMES.some(b => b.id === t.id))
-    .map(t => {
-      const tokens = Object.assign({}, THEMES[0].tokens);
-      for (const k of THEME_TOKENS) {
-        if (/^#[0-9a-f]{6}$/i.test(t.tokens[k.key])) tokens[k.key] = t.tokens[k.key];
-      }
-      return { id: String(t.id), name: String(t.name), saved: true,
-               scheme: isLight(tokens.bg) ? "light" : "dark", tokens };
-    });
-}
-function saveSavedThemes() {
-  try { localStorage.setItem(THEMES_KEY, JSON.stringify(SAVED_THEMES)); }
-  catch (e) { /* unavailable */ }
-}
-
-/*  Written as inline properties on <html>, which outrank the :root block in
-    the stylesheet. That keeps the stylesheet as the honest default — open the
-    file with an empty localStorage and you get Night, exactly as written. */
-function applyTheme() {
-  const root = document.documentElement;
-  for (const t of THEME_TOKENS) root.style.setProperty("--" + t.key, THEME[t.key]);
-  const preset = themeById(THEME_ID);
-  root.style.colorScheme = preset ? preset.scheme : (isLight(THEME.bg) ? "light" : "dark");
-}
-
-// Perceived lightness, so a custom ground picks its own light/dark side rather
-// than making you tell it. sRGB luma is close enough for a yes/no.
-function isLight(hex) {
-  const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
-  if (!m) return false;
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 140;
-}
-
-function saveTheme() {
-  try { localStorage.setItem(THEME_KEY, JSON.stringify({ id: THEME_ID, tokens: THEME })); }
-  catch (e) { /* unavailable */ }
-}
-function loadTheme() {
-  let raw;
-  try { raw = JSON.parse(localStorage.getItem(THEME_KEY) || "null"); } catch (e) { return; }
-  if (!raw || typeof raw !== "object") return;
-  const preset = themeById(raw.id);
-  // A named preset is re-read from the code, not from storage: editing a
-  // preset here should reach anyone who picked it, rather than being frozen at
-  // whatever it looked like the day they chose it.
-  if (preset && raw.id !== "custom") {
-    THEME_ID = preset.id;
-    THEME = Object.assign({}, preset.tokens);
-    return;
-  }
-  if (raw.tokens && typeof raw.tokens === "object") {
-    THEME_ID = "custom";
-    for (const t of THEME_TOKENS) {
-      const v = raw.tokens[t.key];
-      if (/^#[0-9a-f]{6}$/i.test(v)) THEME[t.key] = v;
-    }
-  }
-}
-
-function renderTheme(body) {
-  const presets = body.querySelector('[data-el="presets"]');
-  const rows = body.querySelector('[data-el="rows"]');
-  const msg = body.querySelector('[data-el="msg"]');
-
-  const name = body.querySelector('[data-el="name"]');
-
-  const chip = t =>
-    '<span class="th-chip" style="background:' + t.tokens.bg +
-      ';border-color:' + t.tokens.border + '">' +
-      '<i style="background:' + t.tokens.accent + '"></i>' +
-      '<i style="background:' + t.tokens.accent2 + '"></i>' +
-    "</span>";
-
-  // Saved themes sit in the same strip as the built-in ones, and carry a ×
-  // because they are the only ones you can delete.
-  const renderPresets = () => {
-    presets.innerHTML =
-      THEMES.map(t => '<button data-theme="' + t.id + '">' + chip(t) + esc(t.name) + "</button>").join("") +
-      SAVED_THEMES.map(t =>
-        '<span class="th-item">' +
-          '<button data-theme="' + esc(t.id) + '">' + chip(t) + esc(t.name) + "</button>" +
-          '<button class="th-del" data-del="' + esc(t.id) + '">&times;</button>' +
-        "</span>").join("");
-  };
-
-  const paint = () => {
-    presets.querySelectorAll("button[data-theme]").forEach(b => {
-      b.classList.toggle("on", b.dataset.theme === THEME_ID);
-    });
-    rows.querySelectorAll('input[type="color"]').forEach(i => { i.value = THEME[i.dataset.k]; });
-    const cur = themeById(THEME_ID);
-    msg.textContent = cur
-      ? cur.name + " — edit any swatch to make it yours."
-      : "Unsaved — give it a name to keep it.";
-  };
-
-  /*  THE STREET'S LETTERING, WITH THE PAGE'S COLOURS.
-
-      Both are "how it looks" rather than "what it says", both are stored
-      outside the pile, and both survive Clear all. Changing either asks the
-      Promenade to redraw — if it is on the board. If it is not, the new
-      setting is simply waiting for it, which is what every other stored
-      preference here does.
-
-      The size drives the layout as well as the lettering, since a fingerpost
-      reserves street from the longest name it has to print. So it is a full
-      rebuild per step rather than a restyle, and it is live on `input` because
-      the point of it is holding the arrow key down and watching. */
-  const signRowsIn = body.querySelector('[data-el="signrows"]');
-  const restreet = () => {
-    for (const p of document.querySelectorAll(".panel-body")) {
-      if (!p._signs) continue;
-      p._noTween = true;
-      renderPromenadePixi(V(), p);
-    }
-  };
-
-  if (body._wired) { renderPresets(); paint(); return; }
-  body._wired = true;
-
-  /*  A ROW PER KIND: the face and the size together.
-
-      They are one decision about one kind of lettering, and splitting them
-      into a picker and a row of three numbers meant reading two controls to
-      answer one question. Built from SIGN_KINDS rather than written out three
-      times, so a fourth kind is one entry in that list.
-
-      Live on `input` and `change`, because the point of these is to hold the
-      arrow key and watch the street settle. A full rebuild per step rather
-      than a restyle — the street's own layout does not read either of these,
-      deliberately, so a rebuild is the cheapest correct thing rather than a
-      necessary one.
-
-      Right-click either control to put that one back, which is the erase
-      everywhere else in this project. */
-  const faceOptions = stack =>
-    SIGN_FACES.map(f =>
-      '<option value="' + esc(f.stack) + '"' +
-      (f.stack === stack ? " selected" : "") + ">" + esc(f.name) + "</option>").join("") +
-    //  A stack from a v1 store, or one somebody hand-edited in, has no option
-    //  of its own. Kept rather than silently changed to the default.
-    (SIGN_FACES.some(f => f.stack === stack) ? ""
-      : '<option value="' + esc(stack) + '" selected>your own</option>');
-
-  signRowsIn.innerHTML = SIGN_KINDS.map(k =>
-    '<div class="th-sign-row" title="' + esc(k.hint) + '">' +
-      "<span>" + esc(k.label) + "</span>" +
-      '<select data-kind="' + k.key + '">' + faceOptions(SIGN_FONT[k.key]) + "</select>" +
-      '<input type="number" step="0.5" min="' + SIGN_SIZE_MIN +
-      '" max="' + SIGN_SIZE_MAX + '" data-kind="' + k.key + '">' +
-    "</div>").join("");
-
-  const sizeBoxes = [...signRowsIn.querySelectorAll("input[data-kind]")];
-  const faceBoxes = [...signRowsIn.querySelectorAll("select[data-kind]")];
-  const showSigns = () => {
-    for (const b of sizeBoxes) b.value = String(signSize(b.dataset.kind));
-    for (const f of faceBoxes) f.value = SIGN_FONT[f.dataset.kind];
-  };
-  showSigns();
-
-  const takeSize = (b, snapBack) => {
-    if (!snapBack && b.value.trim() === "") return;
-    setSignSize(b.dataset.kind, b.value);
-    saveSignSize();
-    restreet();
-    if (snapBack) showSigns();
-  };
-
-  signRowsIn.addEventListener("input", e => {
-    const b = e.target.closest("input[data-kind]");
-    if (b) takeSize(b, false);
-  });
-  //  On the way out, so a box left empty or out of range shows what is
-  //  actually in force rather than what was typed at it.
-  signRowsIn.addEventListener("change", e => {
-    const b = e.target.closest("input[data-kind]");
-    if (b) { takeSize(b, true); return; }
-    const f = e.target.closest("select[data-kind]");
-    if (!f) return;
-    setSignFont(f.dataset.kind, f.value);
-    saveSignFont();
-    restreet();
-  });
-  signRowsIn.addEventListener("contextmenu", e => {
-    const t = e.target.closest("[data-kind]");
-    if (!t) return;
-    e.preventDefault();
-    if (t.tagName === "SELECT") setSignFont(t.dataset.kind, SIGN_FONT_DEFAULT);
-    else setSignSize(t.dataset.kind, SIGN_SIZE_DEFAULT[t.dataset.kind]);
-    saveSignFont(); saveSignSize();
-    restreet();
-    showSigns();
-  });
-
-  renderPresets();
-
-  rows.innerHTML = THEME_TOKENS.map(t =>
-    '<div class="th-row">' +
-      '<input type="color" data-k="' + t.key + '" value="' + THEME[t.key] + '">' +
-      '<span class="th-label"><b>' + esc(t.label) + "</b>" +
-        '<em>' + esc(t.hint) + "</em></span>" +
-    "</div>").join("");
-
-  presets.addEventListener("click", e => {
-    const del = e.target.closest("button[data-del]");
-    if (del) {
-      SAVED_THEMES = SAVED_THEMES.filter(t => t.id !== del.dataset.del);
-      saveSavedThemes();
-      // Deleting the theme you are wearing leaves the colors on screen
-      // untouched — they simply stop having a name. Nothing should change
-      // appearance because you tidied a list.
-      if (THEME_ID === del.dataset.del) { THEME_ID = "custom"; saveTheme(); }
-      renderPresets(); paint();
-      return;
-    }
-    const b = e.target.closest("button[data-theme]");
-    if (!b) return;
-    const preset = themeById(b.dataset.theme);
-    if (!preset) return;
-    THEME_ID = preset.id;
-    THEME = Object.assign({}, preset.tokens);
-    applyTheme(); saveTheme(); paint();
-  });
-
-  // Editing any swatch makes it yours — the preset it started from is a
-  // starting point, not a thing you have to leave first.
-  rows.addEventListener("input", e => {
-    const i = e.target.closest('input[type="color"]');
-    if (!i) return;
-    THEME[i.dataset.k] = i.value;
-    THEME_ID = "custom";
-    applyTheme(); saveTheme(); paint();
-  });
-
-  const doSave = () => {
-    const label = name.value.trim();
-    if (!label) { msg.textContent = "Give it a name first."; name.focus(); return; }
-    if (THEMES.some(t => t.name.toLowerCase() === label.toLowerCase())) {
-      msg.textContent = "“" + label + "” is one of the built-in four — pick another name.";
-      return;
-    }
-    /*  Saving the same name twice updates that theme rather than making a
-        second one with the same label, the same rule the Gazetteer's Add row
-        follows. A list where two rows read alike and behave differently is
-        worse than no list. */
-    const existing = SAVED_THEMES.find(t => t.name.toLowerCase() === label.toLowerCase());
-    const tokens = Object.assign({}, THEME);
-    if (existing) {
-      existing.tokens = tokens;
-      existing.scheme = isLight(tokens.bg) ? "light" : "dark";
-      THEME_ID = existing.id;
-    } else {
-      const id = "saved-" + Date.now().toString(36);
-      SAVED_THEMES.push({ id, name: label, saved: true,
-                          scheme: isLight(tokens.bg) ? "light" : "dark", tokens });
-      THEME_ID = id;
-    }
-    saveSavedThemes(); saveTheme();
-    name.value = "";
-    renderPresets(); paint();
-  };
-
-  body.querySelector('button[data-act="save"]').onclick = doSave;
-  name.addEventListener("keydown", e => { if (e.key === "Enter") doSave(); });
-
-  body.querySelector('button[data-act="reset"]').onclick = () => {
-    THEME_ID = "night";
-    THEME = Object.assign({}, THEMES[0].tokens);
-    applyTheme(); saveTheme(); paint();
-  };
-
-  paint();
-}
+/*  THEMES live in board/theme.js, shared with the board demo. */
 
 /* --------------------------------------------------------------------------
    MAP EDITOR — authoring a project file by clicking the map
@@ -19180,17 +19126,170 @@ configureBoard({
 const SIGN_FONT_KEY = "brick-by-brick:signfont:v1";
 const SIGN_FONT_DEFAULT = "ui-monospace, Menlo, monospace";
 
-/*  Named by what the lettering IS on a street, not by the typeface, since the
-    typeface that actually answers depends on the machine. Every stack ends in
-    a family the browser is obliged to have. */
+/*  The choices, as font stacks. Each ends in a family the browser is obliged
+    to have, so none can render as squares. */
 const SIGN_FACES = [
-  { name: "fascia",    stack: SIGN_FONT_DEFAULT },
-  { name: "nameplate", stack: "Georgia, 'Times New Roman', serif" },
-  { name: "grotesque", stack: "'Helvetica Neue', Arial, sans-serif" },
-  { name: "narrow",    stack: "'Arial Narrow', 'Liberation Sans Narrow', sans-serif" },
-  { name: "block",     stack: "'Arial Black', Impact, sans-serif" },
-  { name: "painted",   stack: "'Brush Script MT', 'Snell Roundhand', cursive" },
+  { stack: SIGN_FONT_DEFAULT },
+  { stack: "Georgia, 'Times New Roman', serif" },
+  { stack: "'Helvetica Neue', Arial, sans-serif" },
+  { stack: "'Arial Narrow', 'Liberation Sans Narrow', sans-serif" },
+  { stack: "'Arial Black', Impact, sans-serif" },
+  { stack: "'Brush Script MT', 'Snell Roundhand', cursive" },
 ];
+
+/*  THE REAL NAME OF THE FONT YOU WILL GET.
+
+    A stack is a list of wishes, and which one is granted depends on what this
+    machine has installed. So the name shown is the first family in the stack
+    that is actually here — found by measuring: text set in "Family, generic"
+    comes out a different width from the generic alone only if the family is
+    installed. The generic keywords at the end are always there, and are named
+    as what they are. Measured once per family. */
+const FONT_GENERIC_NAMES = {
+  "ui-monospace": "System monospace", "ui-serif": "System serif",
+  "ui-sans-serif": "System sans-serif", "system-ui": "System UI",
+  monospace: "Monospace", serif: "Serif", "sans-serif": "Sans-serif", cursive: "Cursive",
+};
+const FONT_HERE = new Map();
+function fontInstalled(family) {
+  if (FONT_HERE.has(family)) return FONT_HERE.get(family);
+  const ctx = (fontInstalled.cv ||= document.createElement("canvas")).getContext("2d");
+  const sample = "mmmmmmmmmmlliiWW@#0123";
+  let here = false;
+  for (const base of ["monospace", "serif", "sans-serif"]) {
+    ctx.font = "72px " + base;
+    const w0 = ctx.measureText(sample).width;
+    ctx.font = '72px "' + family + '", ' + base;
+    if (ctx.measureText(sample).width !== w0) { here = true; break; }
+  }
+  FONT_HERE.set(family, here);
+  return here;
+}
+function fontNameOf(stack) {
+  for (const raw of String(stack).split(",")) {
+    const fam = raw.trim().replace(/^['"]|['"]$/g, "");
+    if (!fam) continue;
+    if (FONT_GENERIC_NAMES[fam]) return FONT_GENERIC_NAMES[fam];
+    //  A Google font you chose is named even before it has finished loading.
+    if (GFONTS.has(fam) || fontInstalled(fam)) return fam;
+  }
+  return String(stack);
+}
+
+/*  GOOGLE FONTS, BY NAME.
+
+    Any family on fonts.google.com can be used for the lettering: its
+    stylesheet is added to the page, and it counts as found once the browser
+    has actually loaded a face for it. A name Google does not have fails the
+    stylesheet request, and is refused.
+
+    The families you chose are remembered and loaded again on the next visit.
+    The street is drawn on a canvas, which cannot wait for a font on its own,
+    so each one redraws the Promenade when it arrives. */
+const GFONT_KEY = "brick-by-brick:gfonts:v1";
+let GFONTS = new Set();
+try { GFONTS = new Set(JSON.parse(localStorage.getItem(GFONT_KEY) || "[]")); } catch (e) { GFONTS = new Set(); }
+const GFONT_LOADING = new Map();
+function loadGoogleFont(name) {
+  if (GFONT_LOADING.has(name)) return GFONT_LOADING.get(name);
+  const p = new Promise(resolve => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=" +
+      encodeURIComponent(name).replace(/%20/g, "+") + "&display=swap";
+    link.onload = () => {
+      document.fonts.load('16px "' + name + '"').then(faces => {
+        FONT_HERE.delete(name);
+        resolve(faces.length > 0);
+      }, () => resolve(false));
+    };
+    link.onerror = () => { link.remove(); resolve(false); };
+    document.head.appendChild(link);
+  });
+  GFONT_LOADING.set(name, p);
+  p.then(ok => { if (!ok) GFONT_LOADING.delete(name); });
+  return p;
+}
+function rememberGoogleFont(name) {
+  GFONTS.add(name);
+  try { localStorage.setItem(GFONT_KEY, JSON.stringify([...GFONTS])); } catch (e) { /* blocked */ }
+}
+function forgetGoogleFont(name) {
+  GFONTS.delete(name);
+  try { localStorage.setItem(GFONT_KEY, JSON.stringify([...GFONTS])); } catch (e) { /* blocked */ }
+}
+//  Back from last time: load each, and redraw the street as each arrives.
+for (const name of GFONTS) {
+  loadGoogleFont(name).then(ok => {
+    if (!ok) return;
+    for (const p of document.querySelectorAll(".panel-body")) {
+      if (!p._signs) continue;
+      p._noTween = true;
+      renderPromenadePixi(V(), p);
+    }
+  });
+}
+
+/*  Suggestions for the "other font…" box: this computer's own fonts when the
+    browser will list them (Chrome asks once), and a few Google fonts that
+    suit period signage. Anything else can simply be typed. */
+const GOOGLE_SIGN_FONTS = [
+  "Rye", "Special Elite", "IM Fell English", "Old Standard TT", "Libre Baskerville",
+  "Playfair Display", "Cinzel", "Abril Fatface", "Bebas Neue", "Oswald",
+  "Josefin Sans", "Courier Prime", "Pinyon Script", "UnifrakturMaguntia",
+];
+/*  EVERY GOOGLE FONT, BY THE NAME GOOGLE SERVES IT UNDER.
+
+    Google's own list is closed to other sites. Fontsource publishes the same
+    catalogue openly, once, and it is kept for the rest of the visit. Each
+    family carries its category, which becomes the fallback: a handwriting
+    face falls back to cursive rather than to a sans. */
+let GOOGLE_FONT_LIST = null;
+async function googleFontList() {
+  if (GOOGLE_FONT_LIST) return GOOGLE_FONT_LIST;
+  try {
+    const r = await fetch("https://api.fontsource.org/v1/fonts");
+    const all = await r.json();
+    const generic = { serif: "serif", "sans-serif": "sans-serif", monospace: "monospace",
+                      handwriting: "cursive", display: "sans-serif" };
+    GOOGLE_FONT_LIST = all.filter(f => f.type === "google")
+      .map(f => ({ family: f.family, generic: generic[f.category] || "sans-serif" }))
+      .sort((a, b) => a.family.localeCompare(b.family));
+  } catch (e) { return []; }                        // try again next time
+  return GOOGLE_FONT_LIST;
+}
+
+/*  A preview of a Google font costs only the letters of its own name: the
+    service can send just those glyphs. Registered under a different name, so
+    the partial face can never stand in for the real one once you choose it. */
+const GFONT_PREVIEW = new Map();
+function previewGoogleFont(family) {
+  if (GFONT_PREVIEW.has(family)) return GFONT_PREVIEW.get(family);
+  const alias = "pv " + family;
+  const p = fetch("https://fonts.googleapis.com/css2?family=" +
+      encodeURIComponent(family).replace(/%20/g, "+") + "&text=" + encodeURIComponent(family))
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(css => {
+      const st = document.createElement("style");
+      st.textContent = css.split("font-family: '" + family + "'").join("font-family: '" + alias + "'");
+      document.head.appendChild(st);
+      return document.fonts.load("16px '" + alias + "'", family).then(() => alias);
+    })
+    .catch(() => null);
+  GFONT_PREVIEW.set(family, p);
+  return p;
+}
+
+let LOCAL_FONT_NAMES = null;
+async function localFontNames() {
+  if (LOCAL_FONT_NAMES) return LOCAL_FONT_NAMES;
+  if (typeof window.queryLocalFonts !== "function") return (LOCAL_FONT_NAMES = []);
+  try {
+    const fonts = await window.queryLocalFonts();
+    LOCAL_FONT_NAMES = [...new Set(fonts.map(f => f.family))].sort((x, y) => x.localeCompare(y));
+  } catch (e) { LOCAL_FONT_NAMES = []; }
+  return LOCAL_FONT_NAMES;
+}
 /*  A FACE PER KIND, for the same reason as a size per kind.
 
     I argued the face should be shared — that three typefaces on one street is

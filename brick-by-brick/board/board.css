@@ -711,6 +711,18 @@
       Both are called off while you are dragging — during a drag the position
       is the pointer's, and easing toward the pointer is lag rather than
       polish. */
+  /*  A top or bottom cover's tab lies on its side: grip and swatch in a row,
+      the ridges running the other way. */
+  .panel-tab[data-dir="tb"], .panel-tab[data-dir="bt"] { flex-direction: row; }
+  .panel-tab[data-dir="tb"] .tab-grip, .panel-tab[data-dir="bt"] .tab-grip { height: 100%; width: auto; }
+  .panel-tab[data-dir="tb"] .tab-grip::after, .panel-tab[data-dir="bt"] .tab-grip::after {
+    width: 60%; max-width: 26px; height: 5px; max-height: none;
+    background: repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.4) 0 1px, rgba(255,255,255,0.22) 1px 3px);
+  }
+  .panel-tab[data-dir="tb"] .tab-mat, .panel-tab[data-dir="bt"] .tab-mat {
+    width: 17px; height: 100%; border-top: 0; border-left: 1px solid rgba(0,0,0,0.55);
+  }
   .panel-tab:not(.sliding) { transition: transform 0.2s ease-out; }
   .panel-tab.sliding { cursor: grabbing; transition: none; }
   .panel-tab:hover { border-color: var(--accent2); }
@@ -820,3 +832,24 @@
 #boardFlyoutTab, .board-cell, #miniMap {
   user-select: none; -webkit-user-select: none;
 }
+
+/*  THE SIDE CHOOSER: an arrow on each edge of the panel, shown after ▤. */
+.cover-pick {
+  position: absolute; inset: 0; z-index: 9;
+  border-radius: calc(var(--panel-radius) - 2px);
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+}
+.cover-pick button {
+  position: absolute; width: 30px; height: 30px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; line-height: 1; cursor: pointer;
+  background: var(--panel); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.cover-pick button:hover, .cover-pick button:focus-visible { border-color: var(--accent2); color: var(--accent2); outline: none; }
+.cover-pick button.on { border-color: var(--accent2); color: var(--accent2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent2) 35%, transparent); }
+.cover-pick [data-edge="left"] { left: 8px; top: 50%; transform: translateY(-50%); }
+.cover-pick [data-edge="right"] { right: 8px; top: 50%; transform: translateY(-50%); }
+.cover-pick [data-edge="top"] { top: 30px; left: 50%; transform: translateX(-50%); }
+.cover-pick [data-edge="bottom"] { bottom: 8px; left: 50%; transform: translateX(-50%); }

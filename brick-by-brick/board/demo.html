@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Board demo</title>
 <link rel="stylesheet" href="board.css">
+<link rel="stylesheet" href="theme.css">
 <style>
   /*  The board takes its colours and sizes from these, so this block is the
       whole of theming it. Brick by Brick's dark palette, as a starting point. */
   :root {
     --bg: #111; --fg: #eee; --panel: #1a1a1a; --border: #333;
     --field: #0d0d0d; --border-soft: #2b2b2b;
-    --accent: #ff5500; --accent2: #33ff33; --bad: #f44336;
+    --accent: #ff5500; --accent2: #33ff33; --draft: #7a8a99; --bad: #f44336;
     --go: #34d17a; --stop: #f44336;
     --tint: color-mix(in srgb, var(--accent2) 14%, var(--panel));
     --panel-gap: 14px; --panel-radius: 6px; --close-size: 18px; --panel-border: 1px;
@@ -71,6 +72,7 @@
 <!-- Its own storage prefix, so this page never touches Brick by Brick's. -->
 <script>window.BOARD_NS = "board-demo:";</script>
 <script src="board.js"></script>
+<script src="theme.js"></script>
 <script>
 /*  The panels. A panel is an id, a title, a size, and a render(body) that
     draws into it — called whenever the board shows it. */
@@ -93,7 +95,7 @@ let notes = [
   "• Move: drag a panel by its ✥ (top left).",
   "• Resize: hover a panel and use + or − on its right and bottom edges.",
   "• Dock: drag a panel onto a + at a window edge. ↩ puts it back on the grid.",
-  "• Cover: press ▤ in the title. Drag the cover's tab to peek underneath; click the bottom of the tab to change its material.",
+  "• Cover: press ▤ in the title, then pick the edge the cover comes in from (▤ again takes the lit one, from the left by default). Drag the cover's tab to peek underneath; click the bottom of the tab to change its material.",
   "• Reload: ↻ rebuilds a panel. Remove: ✕ takes it off the board.",
   "• Grid: Columns and Row px in 🧰 set the board's size. reset board starts over.",
   "• Minimap (bottom right): the whole board at a glance; click a block to jump to it.",
@@ -121,7 +123,7 @@ let notes = [
   "• render(body) runs every time the panel is shown, moved, docked or refreshed. Build what you need the first time, then update it: if body already holds your elements, change them rather than replacing them, or you lose whatever the user was typing or scrolling.",
   "• Redraw it yourself with BOARD_HOOKS.refreshPanel(\"your-id\"). It does nothing while the panel is not on the board.",
   "• Keep state in your own variables. To survive a reload, save it with localStorage under BOARD_NS + \"your-key\" (the Notes panel in this file does exactly that).",
-  "• Style with the page's colours so it follows the theme: var(--fg), var(--panel), var(--field), var(--border), var(--accent2), var(--bad), and var(--mono) for numbers. A panel is a size container, so cqi units scale text with its width.",
+  "• Style with the page's colors so it follows the theme: var(--fg), var(--panel), var(--field), var(--border), var(--accent2), var(--bad), and var(--mono) for numbers. A panel is a size container, so cqi units scale text with its width.",
   "• Markup instead of code: put it in <template id=\"tpl-stopwatch\"> and add tpl: \"tpl-stopwatch\". Its contents are copied into body once, when the panel is first built; render(body) then fills it in.",
   "• Buttons in the title bar: headButtons: [{ act: \"menu\", label: \"☰\", title: \"…\" }], answered by the page's headAction in configureBoard().",
   "• On the board from the start: add { id: \"stopwatch\", x: 0, y: 0, w: 1, h: 1 } to the tiles in setDefaultBoard(). Otherwise it waits in 🧰 until someone adds it.",
@@ -147,6 +149,11 @@ let notes = [
   "(Brick by Brick has its own central state — the pile, and the model built from it — so its panels are connected through that instead.)",
   "",
   "The Notes, Clock, Counter and Mirror panels in demo.html are working examples of all of this.",
+  "",
+  "",
+  "THEME",
+  "",
+  "The Theme panel comes from theme.js and theme.css. Load them after board.js, then call loadSavedThemes(); loadTheme(); applyTheme(); and register a panel whose render is renderTheme(body). It sets --bg, --panel, --field, --fg, --border, --accent, --accent2 and --draft, so any panel styled with those follows the theme.",
 ].join("\n");
 //  Kept in this browser, so what you write survives a reload.
 const NOTES_KEY = BOARD_NS + "notes:v1";
@@ -200,6 +207,15 @@ registerPanel({
   },
 });
 
+//  THEME: from theme.js. It recolours the whole page through the CSS
+//  variables above, and remembers your choice and your saved themes.
+loadSavedThemes(); loadTheme(); applyTheme();
+registerPanel({
+  id: "theme", title: "Theme", w: 1, h: 2,
+  help: "Pick a theme or make your own. Eight colors drive the whole page.",
+  render(body) { renderTheme(body); },
+});
+
 setDefaultBoard({
   cols: 3, rowUnit: 200,
   tiles: [
@@ -208,6 +224,7 @@ setDefaultBoard({
     { id: "clock",   x: 0, y: 1, w: 1, h: 1 },
     { id: "counter", x: 0, y: 2, w: 1, h: 1 },
     { id: "mirror",  x: 1, y: 2, w: 1, h: 1 },
+    { id: "theme",   x: 2, y: 2, w: 1, h: 2 },
   ],
 });
 startBoard();
