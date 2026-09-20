@@ -31,51 +31,25 @@
 }
 .tg-cell:hover { filter: brightness(1.25); }
 /*  The light just pressed flashes white for a moment. */
-.tg-cell.pressed { animation: tg-press 0.35s ease-out; }
+.tg-cell.pressed { animation: tg-press 0.14s ease-out; }
 @keyframes tg-press { 0% { filter: brightness(2.2); } 100% { filter: none; } }
 .tg-cell:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
 .tg-cell.lit {
   background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--on) 45%, #fff), var(--on) 55%);
   box-shadow: 0 0 10px color-mix(in srgb, var(--on) 60%, transparent), inset 0 -2px 3px rgba(0,0,0,0.25);
 }
-/*  The shapes. Clipped ones lose their outer shadow, so they glow with a
-    drop-shadow on the grid instead. */
-.fg-tg[data-shape="round"] .tg-cell { border-radius: 50%; }
-.fg-tg[data-shape="diamond"] .tg-cell { border-radius: 0; clip-path: polygon(50% 2%, 98% 50%, 50% 98%, 2% 50%); }
+/*  Two shapes: square cells, or hex cells in a honeycomb. A clipped cell
+    loses its outer shadow, so the honeycomb glows with a drop-shadow on the
+    grid instead. */
 .fg-tg[data-shape="hex"] .tg-grid { column-gap: 0; row-gap: 0; }
 .fg-tg[data-shape="hex"] .tg-cell {
   aspect-ratio: 1 / 1.1547; border-radius: 0;
   clip-path: polygon(50% 3%, 96% 26%, 96% 74%, 50% 97%, 4% 74%, 4% 26%);
 }
-.fg-tg[data-shape="diamond"] .tg-grid, .fg-tg[data-shape="hex"] .tg-grid {
+.fg-tg[data-shape="hex"] .tg-grid {
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--on) 35%, transparent));
 }
-/*  LOOKS. Each one says how light gets from inside the cell to your eye.
-
-    BACKLIT BUTTONS: a lamp behind translucent plastic. Off, the plastic still
-    shows a hint of its color; on, the light pools in the middle and fades to
-    the rim, and spills a little onto the panel round it. It switches on fast
-    and fades out slower, the way a bulb cools. */
-.fg-tg[data-look="button"] .tg-cell {
-  background:
-    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--on) 14%, transparent), transparent 70%),
-    color-mix(in srgb, var(--off) 70%, #000);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -2px 4px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.6);
-  transition: background 0.35s ease-out, box-shadow 0.35s ease-out;
-}
-.fg-tg[data-look="button"] .tg-cell.lit {
-  background:
-    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--on) 25%, #fff) 0%,
-      var(--on) 38%, color-mix(in srgb, var(--on) 60%, #000) 100%);
-  box-shadow:
-    inset 0 0 6px 1px color-mix(in srgb, #fff 45%, transparent),
-    inset 0 -3px 5px color-mix(in srgb, var(--on) 40%, #000),
-    0 0 8px 1px color-mix(in srgb, var(--on) 70%, transparent),
-    0 0 22px 4px color-mix(in srgb, var(--on) 35%, transparent);
-  transition: background 0.05s, box-shadow 0.05s;
-}
-
-/*  CRT PHOSPHOR: the board is a dark glass screen. A lit cell is phosphor,
+/*  THE SCREEN. The one look there is: a dark glass face. A lit cell is phosphor,
     brightest at its core, blooming into its neighbours; scanlines run across
     the whole screen, and a light that goes off leaves an afterglow. */
 .fg-tg[data-look="crt"] .fg-stage {
@@ -92,44 +66,15 @@
 .fg-tg[data-look="crt"] .tg-cell {
   background: color-mix(in srgb, var(--on) 7%, #070908);
   box-shadow: none;
-  transition: background 0.7s ease-out, box-shadow 0.7s ease-out;
+  /*  Off the instant it is off: no afterglow trailing behind your presses. */
+  transition: none;
 }
 .fg-tg[data-look="crt"] .tg-cell.lit {
   background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--on) 35%, #fff) 0%,
     var(--on) 45%, color-mix(in srgb, var(--on) 70%, #000) 100%);
   box-shadow: 0 0 5px color-mix(in srgb, var(--on) 70%, transparent);
-  transition: background 0.03s, box-shadow 0.03s;
+  transition: none;
 }
-
-/*  ARCADE BUTTONS: each cell a coin-op button, a dome of colored plastic in
-    a black socket. Colored even when off, since you see the plastic, not the
-    bulb; lit, it fills with light and throws a glow into the socket. */
-.fg-tg[data-look="arcade"] .tg-cell {
-  position: relative; border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--on) 50%, #333),
-    color-mix(in srgb, var(--on) 38%, #111) 55%, color-mix(in srgb, var(--on) 25%, #000) 100%);
-  box-shadow: 0 0 0 2px #050505, 0 0 0 3px #2a2a2a,
-    inset 0 -3px 5px rgba(0,0,0,0.55), inset 0 2px 3px rgba(255,255,255,0.12);
-  transition: background 0.3s ease-out, box-shadow 0.3s ease-out;
-}
-.fg-tg[data-look="arcade"] .tg-cell::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; clip-path: inherit; pointer-events: none;
-  background: radial-gradient(ellipse 58% 30% at 46% 22%, rgba(255,255,255,0.7), rgba(255,255,255,0.12) 55%, transparent 70%);
-}
-.fg-tg[data-look="arcade"] .tg-cell.lit {
-  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--on) 35%, #fff) 0%,
-    color-mix(in srgb, var(--on) 80%, #fff) 24%, var(--on) 52%, color-mix(in srgb, var(--on) 70%, #000) 100%);
-  box-shadow: 0 0 0 2px #050505, 0 0 0 3px color-mix(in srgb, var(--on) 45%, #222),
-    0 0 12px 2px color-mix(in srgb, var(--on) 55%, transparent),
-    inset 0 -4px 6px color-mix(in srgb, var(--on) 40%, #000), inset 0 2px 4px rgba(255,255,255,0.35);
-  transition: background 0.05s, box-shadow 0.05s;
-}
-.fg-tg[data-look="arcade"] .tg-cell:active { transform: translateY(1px) scale(0.97); }
-.fg-tg[data-look="arcade"][data-shape="square"] .tg-cell { border-radius: 16%; }
-
-/*  FLAT: just the two colors. */
-.fg-tg[data-look="flat"] .tg-cell { background: var(--off); box-shadow: none; transition: none; }
-.fg-tg[data-look="flat"] .tg-cell.lit { background: var(--on); box-shadow: none; }
 
 /*  Solved: the board breathes once in the lit color. */
 .fidget.won .tg-grid { animation: tg-won 1.2s ease-out 1; }

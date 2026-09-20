@@ -461,11 +461,27 @@
       reason the gap down a vertical rail is wider than the one across a
       horizontal one: stacked panels each need that clearance, side by side
       ones share the rail's own top padding. */
+  /*  THE PAGE KEEPS ROOM FOR ITS SCROLLBAR, ALWAYS.
+
+      A rail's thickness is added to the body's padding, so growing one can
+      make the page just tall enough to need a scrollbar. The scrollbar then
+      takes width from the page, the board re-lays out narrower and gets
+      taller or shorter, and the scrollbar goes away again — on, off, on, off,
+      which is the flashing you see while dragging a rail. Holding the gutter
+      open costs a few pixels and ends the loop. */
+  html { scrollbar-gutter: stable; }
   .dock {
     position: fixed; z-index: 50; display: flex; gap: 8px; padding: 13px 8px 8px;
     background: var(--bg); border: 0 solid var(--border);
-    overflow: auto; align-items: stretch;
+    align-items: stretch;
   }
+  /*  A RAIL SCROLLS ALONG ITSELF ONLY.
+      With `overflow: auto` on both axes, the scrollbar a long panel puts
+      along the rail eats into the other axis, which brings up a second
+      scrollbar, which shrinks the first one's room again: the same flicker in
+      miniature. A rail scrolls the way it runs, and never across. */
+  .dock-left, .dock-right { overflow-y: auto; overflow-x: hidden; }
+  .dock-top, .dock-bottom { overflow-x: auto; overflow-y: hidden; }
   .dock-left, .dock-right { top: 0; bottom: 0; flex-direction: column; gap: 16px; }
   .dock-top, .dock-bottom { left: 0; right: 0; flex-direction: row; }
   .dock-left { left: 0; border-right-width: 1px; }
@@ -477,6 +493,14 @@
   /*  overflow stays VISIBLE, like a tile's: the body is what scrolls, and a
       panel that clips itself cuts the title off its own top border. */
   .dock > .panel { flex: 1 1 0; min-width: 120px; min-height: 0; margin: 0; }
+  /*  A FLOOR, AND THE RAIL SCROLLS PAST IT.
+      Three panels in a rail on a short window were sharing it down to nothing:
+      ninety pixels each, headers running into their own covers and bodies cut
+      off, and the rail could not scroll because its panels kept shrinking to
+      fit it. Below this they stop shrinking, so the rail overflows and scrolls
+      like any other list. */
+  .dock-left > .panel, .dock-right > .panel { min-height: 150px; }
+  .dock-top > .panel, .dock-bottom > .panel { min-width: 150px; }
   /*  A wide table in a shallow rail scrolls sideways inside its own box rather
       than stretching the panel past the edge of the window. */
   .dock > .panel .table-wrap, .dock > .panel table { max-width: 100%; }
@@ -636,16 +660,6 @@
   }
   .panel-cover.sliding { cursor: grabbing; transition: none; }
   .panel-cover:not(.sliding) { transition: transform 0.2s ease-out; }
-  /*  What it says while it is shut. Faint, because a cover is not a message,
-      and gone entirely on glass — you can see the panel through it, which says
-      the same thing better. */
-  .panel-cover > span {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
-    opacity: 0.22; white-space: nowrap; pointer-events: none;
-  }
-  .panel-cover[data-mat="frosted"] > span,
-  .panel-cover[data-mat="smoked"] > span { opacity: 0.3; }
   /*  THREE MATERIALS, because what you want a cover to DO differs.
 
       Frosted and smoked still show you the panel is alive under them, which is
@@ -963,12 +977,4 @@
 .deck-switch[aria-checked="true"] .sw-track { background: color-mix(in srgb, var(--accent2) 45%, #111); }
 .deck-switch[aria-checked="true"] .sw-lever { transform: translateX(14px); }
 .deck-foot { display: flex; justify-content: flex-start; margin-top: 10px; }
-.deck-more { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 6px; }
-.deck-more > summary { cursor: pointer; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; list-style: none; }
-.deck-more > summary::before { content: "\25B8  "; }
-.deck-more[open] > summary::before { content: "\25BE  "; }
-.deck-more > summary:hover { opacity: 1; }
-.deck-more > .deck-rest { margin-top: 7px; }
-.deck-more .deck-switch + .deck-lbl, .deck-more .is-switch { display: flex; align-items: center; gap: 6px; }
-.deck-more .is-switch { flex-direction: row !important; }
 @media (prefers-reduced-motion: reduce) { .sw-lever { transition: none; } }

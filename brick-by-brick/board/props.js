@@ -122,12 +122,12 @@ registerKind({
     { key: "face", label: "Words", type: "text", default: "", max: 24 },
     { key: "lettering", label: "Lettering", type: "select", default: "cutout",
       options: [["cutout", "cut out"], "inverted"], when: s => !!s.face },
-    { key: "speed", label: "Speed", type: "range", min: 0.2, max: 4, step: 0.1, default: 1,
+    { key: "speed", label: "Speed", type: "range", min: 0.2, max: 12, step: 0.1, default: 1,
       when: s => s.pattern !== "steady" },
-    { key: "size", label: "Size", type: "range", min: 15, max: 90, step: 1, default: 45 },
+    { key: "size", label: "Size", type: "range", min: 15, max: 100, step: 1, default: 45 },
     //  Past 1 it is overdriven: brighter than full, washing toward white. The
     //  glow round it follows.
-    { key: "power", label: "Bright", type: "range", min: 0.1, max: 1.6, step: 0.05, default: 1 },
+    { key: "power", label: "Bright", type: "range", min: 0.1, max: 3, step: 0.05, default: 1 },
     { key: "grime", label: "Grime", type: "range", min: 0, max: 1, step: 0.05, default: 0 },
   ],
   render(body, s, id) {
@@ -226,13 +226,27 @@ registerKind({
       options: ["brick", "grid", "blueprint", "dots", "stripes", "paper", "contours"] },
     { key: "ink", label: "Lines", type: "color", default: "theme", theme: "--border" },
     { key: "ground", label: "Ground", type: "color", default: "theme", theme: "--panel" },
-    { key: "scale", label: "Scale", type: "range", min: 0.5, max: 3, step: 0.1, default: 1 },
+    { key: "scale", label: "Scale", type: "range", min: 0.5, max: 8, step: 0.1, default: 1 },
     { key: "strength", label: "Strength", type: "range", min: 0.1, max: 1, step: 0.05, default: 0.8 },
+    //  Words on the wall: painted on, or cut into it.
+    { key: "words", label: "Words", type: "text", default: "", max: 24 },
+    { key: "lettering", label: "Lettering", type: "select", default: "painted",
+      options: ["painted", "engraved"], when: s => !!s.words },
   ],
   render(body, s) {
     const m = PROP_MATERIALS[s.pattern] || PROP_MATERIALS.grid;
-    body.innerHTML = '<div class="prop prop-material"><i class="pm-ink"></i></div>';
+    const words = String(s.words || "").trim();
+    const lines = words ? words.split(/\s+/) : [];
+    body.innerHTML = '<div class="prop prop-material"><i class="pm-ink"></i>' +
+      (words ? '<span class="pm-text" data-lettering="' + bEsc(s.lettering || "painted") + '">' +
+        lines.map(w => "<span>" + bEsc(w) + "</span>").join("") + "</span>" : "") + "</div>";
     const root = body.firstElementChild, ink = root.firstElementChild;
+    //  The words fill the panel: their size is whichever fits, across or down.
+    if (words) {
+      const longest = Math.max(...lines.map(w => [...w].length));
+      root.style.setProperty("--chars", String(longest));
+      root.style.setProperty("--lines", String(lines.length));
+    }
     root.style.background = propColor(s.ground, "--panel");
     ink.style.background = propColor(s.ink, "--border");
     ink.style.opacity = String(s.strength);

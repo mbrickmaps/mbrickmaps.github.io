@@ -211,6 +211,28 @@
 }
 
 /* ---------- material ---------- */
+/*  WORDS ON THE MATERIAL, a word to a line, as big as the panel allows:
+    limited by its height for the number of lines, and by its width for the
+    longest word (monospaced capitals run about 0.64 of their size wide).
+      painted   ink on the surface, a little worn, the texture showing through
+      engraved  cut into it, dark with a lit edge below where the light
+                catches the far side of the groove */
+.pm-text {
+  position: absolute; inset: 7%; z-index: 1; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden;
+  font-family: var(--mono, ui-monospace, monospace); font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.02;
+  font-size: min(calc(86cqh / var(--lines, 1)), calc(86cqw / (0.64 * var(--chars, 4))));
+}
+.pm-text[data-lettering="painted"] {
+  color: color-mix(in srgb, var(--pm-word, #efe7d8) 88%, transparent);
+  mix-blend-mode: hard-light; opacity: 0.85;
+}
+.pm-text[data-lettering="engraved"] {
+  color: rgba(0,0,0,0.55);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.22), 0 -1px 1px rgba(0,0,0,0.35);
+}
 .pm-ink {
   position: absolute; inset: 0;
   mask-repeat: repeat; -webkit-mask-repeat: repeat;

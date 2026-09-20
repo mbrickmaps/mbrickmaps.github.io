@@ -225,10 +225,10 @@ A registered panel is on the board once or not at all. A **kind** is a recipe in
 
 `props.js` and `props.css` add two kinds, under **Props** in 🧰:
 
-- **Signal light:** a lamp that is steady, blinks, pulses, breathes, beats like a heart, flickers or spells Morse. It comes in ten shapes: round, square, pill, panel, triangle, diamond, hex, octagon, star and a coin slot (a backlit coin-door insert with a slot and a molded "25¢"). A **Lens** sets what the light shines through: arcade plastic (a colored dome in a collar, colored even when off), fresnel rings, prism, frosted, bare LED dots, or clear. Each lamp has a hot spot where the bulb is and a glass shine on top. **Face text** is *cut out* of a dark plate (crisp letters showing the lamp through them, with no glow past their edges), *inverted* (dark letters on the lit face), or *molded* into the plastic. You can also set its color, speed, size, intensity, glow, **grime** (dirt, dust, a fingerprint smudge and scratches on the glass, different on every copy) and a label.
-- **Material:** a surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines. You can set the line and ground colors, the scale and the strength.
+- **Signal light:** a lamp that is steady, blinks, pulses, breathes, beats like a heart, flickers or spells Morse. It comes in six shapes: round, square, pill, triangle, octagon and a coin slot (a backlit coin-door insert with a slot and a molded "25¢"). A **Lens** sets what the light shines through: arcade plastic (a colored dome in a collar, colored even when off), fresnel rings, frosted, or bare LED dots. Each lamp has a hot spot where the bulb is and a glass shine on top. **Words** on the face are *cut out* — a black plate over the whole lamp with the letters cut through it, so each letter shows the lamp behind it and the plate gives off nothing — or *inverted*, dark letters on the lit face. They size themselves to the lamp. You can also set its color, speed, size, brightness (the glow follows it) and **grime**: dirt, dust, a fingerprint smudge and scratches on the glass, different on every copy.
+- **Material:** a surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines. You can set the line and ground colors, the scale, the strength, and **words** on it, painted on or engraved into it, sized to fill the panel.
 
-Each copy has a **⚙** in its bottom-right corner, under any cover, so covering a prop puts its settings out of reach too. It opens a **deck** beside the panel, never over it, so you watch the prop change as you adjust it:
+Each copy has a **⚙** in its bottom-right corner, under any cover, so covering a prop puts its settings out of reach too. It opens a **deck** beside the panel, never over it, so you watch the prop change as you adjust it. Every copy also has a Name and a switch that hides its title bar:
 
 - **Knobs** for numbers. Drag up or right to turn them up (Shift for fine steps), or scroll, or use the arrow keys. Double-click resets a knob.
 - **Keys** for choices, **switches** for on/off, swatches for colors, and boxes for text.
@@ -245,11 +245,10 @@ A frosted or smoked cover over a signal light glows with it, in step; card block
 
 `fidgets.js` and `fidgets.css` add games, under **Fidgets** in 🧰. They're kinds too, so you can place several, each set up its own way. Each one remembers where you were in it.
 
-- **Toggle Grid:** press a light and it flips along with its neighbours. Turn them all off. The ⚙ sets:
-  - **Shape:** square, round, diamond or hex. Hex cells sit in a honeycomb and flip the six that touch.
+- **Toggle Grid:** press a light and it flips along with its neighbours. Turn them all off. It is drawn as a CRT phosphor screen: dark glass, scanlines, bloom, and an afterglow when a light goes out. The ⚙ sets:
+  - **Shape:** square or hex. Hex cells sit in a honeycomb and flip the six that touch.
   - **Flips:** plus (the classic), corners, all eight, or the whole row and column.
-  - **Look:** arcade buttons (coin-op domes of colored plastic in black sockets), backlit buttons (light diffusing through plastic, fading out like a cooling bulb), CRT phosphor (a dark screen with scanlines, bloom and an afterglow), or flat.
-  - **Wrap edges**, grid size (3–10 each way), how scrambled a new puzzle is, and the lit and unlit colors.
+  - **Wrap edges**, grid size (3–10 each way) and the lit color. How scrambled a new puzzle is follows the grid size.
   - **Random play:** it presses lights by itself at a speed you set (0.5–10 presses a second), with each press flashing. When it happens to clear a puzzle it deals a new one. You can still press lights while it runs, but no best score is kept.
   - Every puzzle is made by scrambling a solved board, so it can always be solved. **new** deals another. It counts your moves and keeps your best.
 

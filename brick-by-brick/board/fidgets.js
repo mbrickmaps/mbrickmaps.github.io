@@ -75,25 +75,21 @@ function tgScramble(s) {
 
 registerKind({
   kind: "togglegrid", aliases: ["lightsout"], title: "Toggle Grid", group: "Fidgets", w: 1, h: 1,
-  help: "Press a light to flip it and its neighbours; turn them all off. Choose the grid, the cell shape and which neighbours flip.",
+  help: "Press a light to flip it and its neighbours; turn them all off, on a phosphor screen. Choose the grid, the cell shape and which neighbours flip.",
   settings: [
     { key: "shape", label: "Shape", type: "select", default: "square",
-      options: ["square", "round", "diamond", "hex"] },
+      options: ["square", "hex"] },
     { key: "pattern", label: "Flips", type: "select", default: "plus",
       options: [["plus", "+ plus"], ["x", "× corners"], ["box", "▦ all eight"], ["line", "row & column"]] },
-    //  How a light looks when it is on: backlit plastic, a phosphor screen,
-    //  or plain.
-    { key: "look", label: "Look", type: "select", default: "button",
-      options: ["arcade", ["crt", "CRT"], "flat"] },
     { key: "on", label: "Color", type: "color", default: "theme", theme: "--accent2" },
-    { key: "cols", label: "Columns", type: "range", min: 3, max: 10, step: 1, default: 5 },
-    { key: "rows", label: "Rows", type: "range", min: 3, max: 10, step: 1, default: 5 },
+    { key: "cols", label: "Columns", type: "range", min: 3, max: 20, step: 1, default: 5 },
+    { key: "rows", label: "Rows", type: "range", min: 3, max: 20, step: 1, default: 5 },
     { key: "wrap", label: "Wrap edges", type: "check", default: false },
     //  RANDOM PLAY: it presses lights by itself, and deals a new puzzle when
     //  it happens to clear one. Something to watch rather than play; you can
     //  still press lights while it runs, but no best score is kept.
     { key: "auto", label: "Random play", type: "check", default: false },
-    { key: "rate", label: "Presses/s", type: "range", min: 0.5, max: 10, step: 0.5, default: 2,
+    { key: "rate", label: "Presses/s", type: "range", min: 0.5, max: 25, step: 0.5, default: 2,
       when: s => s.auto },
   ],
 
@@ -114,7 +110,8 @@ registerKind({
 
     const hex = s.shape === "hex";
     body.innerHTML =
-      '<div class="prop fidget fg-tg" data-shape="' + bEsc(s.shape) + '" data-look="' + bEsc(s.look || "button") + '">' +
+      //  One look: a phosphor screen. Lights on a dark glass face.
+      '<div class="prop fidget fg-tg" data-shape="' + bEsc(s.shape) + '" data-look="crt">' +
         '<div class="fg-stage"><div class="tg-grid" role="grid" aria-label="toggle grid"></div></div>' +
         '<div class="fg-bar"><span class="fg-moves"></span>' +
           '<button type="button" class="fg-new" title="deal a new puzzle">new</button></div>' +

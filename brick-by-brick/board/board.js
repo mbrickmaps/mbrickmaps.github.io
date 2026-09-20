@@ -225,18 +225,15 @@ function toggleInstanceSettings(id) {
   panel.classList.add("inst-editing");
 
   const all = [
+    { key: "_name", label: "Name", type: "text", placeholder: k.title },
     ...(k.settings || []),
-    //  Every copy has these, and they are rarely what you came for, so they
-    //  wait under "more" (as does any setting a kind marks `more: true`).
-    { key: "_name", label: "Name", type: "text", placeholder: k.title, more: true },
-    { key: "_bare", label: "Hide title bar", type: "check", more: true },
+    { key: "_bare", label: "Hide title bar", type: "check" },
   ];
   //  Knobs gather in one row, the way they would on a real panel; everything
   //  else keeps the kind's order above them, and the switches sit below.
-  const main = all.filter(f => !f.more), extra = all.filter(f => f.more);
-  const knobs = main.filter(f => f.type === "range");
-  const checks = main.filter(f => f.type === "check");
-  const rest = main.filter(f => f.type !== "range" && f.type !== "check");
+  const knobs = all.filter(f => f.type === "range");
+  const checks = all.filter(f => f.type === "check");
+  const rest = all.filter(f => f.type !== "range" && f.type !== "check");
 
   const deck = document.createElement("div");
   deck.className = "inst-deck";
@@ -298,10 +295,7 @@ function toggleInstanceSettings(id) {
     '<div class="deck-rest">' + rest.map(htmlFor).join("") + "</div>" +
     (knobs.length ? '<div class="deck-knobs">' + knobs.map(htmlFor).join("") + "</div>" : "") +
     (checks.length ? '<div class="deck-switches">' + checks.map(htmlFor).join("") + "</div>" : "") +
-    '<details class="deck-more"><summary>more</summary><div class="deck-rest">' +
-      extra.map(htmlFor).join("") + "</div>" +
-      '<div class="deck-foot"><button type="button" data-act="reset" title="back to how this kind starts">reset</button></div>' +
-    "</details>";
+    '<div class="deck-foot"><button type="button" data-act="reset" title="back to how this kind starts">reset</button></div>';
   document.body.appendChild(deck);
 
   const showWhen = () => {
@@ -1166,9 +1160,6 @@ function addCover(panel, id) {
   shade.className = "panel-shade";
   const cv = document.createElement("div");
   cv.className = "panel-cover";
-  const tag = document.createElement("span");
-  tag.textContent = "covered";
-  cv.appendChild(tag);
   shade.appendChild(cv);
   panel.appendChild(shade);
 
