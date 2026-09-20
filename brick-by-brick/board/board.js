@@ -284,6 +284,13 @@ function toggleInstanceSettings(id) {
         (f.theme ? '<button type="button" class="deck-theme' + (theme ? " on" : "") + '"' + at(f) +
           ' title="follow the page theme">theme</button>' : "") + "</span>", "is-color");
     }
+    if (f.type === "font") {
+      const name = v ? (BOARD_FONT_PRESETS.find(p => p.family === v) || {}).label || v : "the page's own";
+      return wrap(f, lbl(f) +
+        '<button type="button" class="deck-fontbtn"' + at(f) +
+          ' title="pick a font" style="font-family:' + bEsc(boardFontCss(v)) + '">' +
+          bEsc(name) + "</button>", "is-font");
+    }
     return wrap(f, lbl(f) + '<input type="text"' + at(f) + ' value="' + bEsc(v == null ? "" : v) + '"' +
       (f.placeholder ? ' placeholder="' + bEsc(f.placeholder) + '"' : "") +
       (f.max ? ' maxlength="' + f.max + '"' : "") + ' spellcheck="false">', "is-text");
@@ -376,6 +383,25 @@ function toggleInstanceSettings(id) {
     }
     apply();
   });
+
+  /*  A font field opens the picker (fonts.js) under its button: search, the
+      fonts on this computer, and all of Google Fonts, each name drawn in its
+      own face. */
+  for (const btn of deck.querySelectorAll(".deck-fontbtn")) {
+    btn.addEventListener("click", () => {
+      const open = btn.parentElement.querySelector(":scope > .fontpick");
+      if (open) { open.remove(); return; }
+      if (typeof boardFontPicker !== "function") return;   // fonts.js not loaded
+      boardFontPicker(btn.parentElement, inst.s[btn.dataset.key], family => {
+        inst.s[btn.dataset.key] = family;
+        btn.style.fontFamily = boardFontCss(family);
+        btn.textContent = family
+          ? ((BOARD_FONT_PRESETS.find(p => p.family === family) || {}).label || family)
+          : "the page's own";
+        apply();
+      });
+    });
+  }
 
   /* ---- keys, switches, theme, done, reset ---- */
   deck.addEventListener("click", e => {

@@ -120,6 +120,7 @@ registerKind({
       options: ["steady", "blink", "pulse", "flicker", "morse"] },
     { key: "text", label: "Morse", type: "text", default: "SOS", max: 40, when: s => s.pattern === "morse" },
     { key: "face", label: "Words", type: "text", default: "", max: 24 },
+    { key: "facefont", label: "Font", type: "font", default: "", when: s => !!s.face },
     { key: "lettering", label: "Lettering", type: "select", default: "cutout",
       options: [["cutout", "cut out"], "inverted"], when: s => !!s.face },
     { key: "speed", label: "Speed", type: "range", min: 0.2, max: 12, step: 0.1, default: 1,
@@ -156,6 +157,8 @@ registerKind({
     //  Every copy is dirty in its own way: the same dirt, shifted by an
     //  amount taken from the copy's id.
     const lamp = body.querySelector(".pl-lamp");
+    const faceEl = lamp.querySelector(".pl-text");
+    if (faceEl && s.facefont) faceEl.style.fontFamily = boardFontCss(s.facefont);
     lamp.style.setProperty("--grime", String(s.grime || 0));
     let h = 0;
     for (const ch of String(id || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -197,8 +200,6 @@ const propSvgMask = (w, h, inner) =>
   'url("data:image/svg+xml,' + encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' + inner + "</svg>") + '")';
 const PROP_MATERIALS = {
-  brick: { size: [48, 24], mask: propSvgMask(48, 24,
-    '<path d="M0 0.75H48M0 12.75H48M0.75 0V12M24.75 12V24" stroke="#fff" stroke-width="1.5" fill="none"/>') },
   grid: { size: [20, 20], mask: propSvgMask(20, 20,
     '<path d="M0 0.5H20M0.5 0V20" stroke="#fff" stroke-width="1" fill="none"/>') },
   blueprint: { size: [100, 100], mask: propSvgMask(100, 100,
@@ -218,45 +219,533 @@ const PROP_MATERIALS = {
     "repeating-radial-gradient(circle at 78% 72%, #000 0 1px, transparent 1.5px 17px)" },
 };
 
+/*  THE BRICKS THEMSELVES, one by one.
+
+    A wall is not one colour: bricks come out of the kiln lighter and darker,
+    redder and greyer, and that mottle is most of what makes brickwork read as
+    brickwork. So the ground under a brick pattern is not a flat colour but a
+    tile of actual bricks, each filled a little off the colour you chose, laid
+    in whichever bond is set. Four courses' worth, so the eye does not catch
+    the repeat.
+
+    The mortar lines are drawn over it exactly as before. */
+/*  EVERY BOND AS ONE THING: where each brick sits in a tile that repeats.
+    The mortar is then the bricks' own edges, drawn from this same list, so
+    the joints cannot land anywhere but on a joint.
+
+    A brick is 24 long and 12 high; laid on its end (a header) it shows 12.
+    A brick that runs off the left of a tile is given its other half on the
+    right, so the wall carries on across the repeat.
+
+      running   stretchers, every course half a brick over — the common wall
+      stack     every joint above the one below, no lap at all
+      header    all headers, lapped by half a header
+      english   a course of stretchers, a course of headers, turn about, the
+                headers centred on the joints above them (a quarter-brick lap)
+      flemish   stretcher, header, stretcher, header along every course, each
+                course moved half a repeat so a header sits over a stretcher
+      basket    pairs laid square to each other, turn and turn about  */
+const PROP_BONDS = {
+  //  [tile width, tile height, [x, y, w, h] for each brick]
+  running: [48, 24, [
+    [0, 0, 24, 12], [24, 0, 24, 12],
+    [-12, 12, 24, 12], [12, 12, 24, 12], [36, 12, 24, 12]]],
+  stack: [24, 24, [[0, 0, 24, 12], [0, 12, 24, 12]]],
+  header: [24, 24, [
+    [0, 0, 12, 12], [12, 0, 12, 12],
+    [-6, 12, 12, 12], [6, 12, 12, 12], [18, 12, 12, 12]]],
+  english: [48, 24, [
+    [0, 0, 24, 12], [24, 0, 24, 12],
+    [-6, 12, 12, 12], [6, 12, 12, 12], [18, 12, 12, 12], [30, 12, 12, 12], [42, 12, 12, 12]]],
+  flemish: [72, 24, [
+    [0, 0, 24, 12], [24, 0, 12, 12], [36, 0, 24, 12], [60, 0, 12, 12],
+    [-18, 12, 24, 12], [6, 12, 12, 12], [18, 12, 24, 12], [42, 12, 12, 12], [54, 12, 24, 12]]],
+  basket: [24, 24, [
+    [0, 0, 12, 6], [0, 6, 12, 6], [12, 0, 6, 12], [18, 0, 6, 12],
+    [0, 12, 6, 12], [6, 12, 6, 12], [12, 12, 12, 6], [12, 18, 12, 6]]],
+};
+//  A colour as numbers, so bricks can be mixed around it.
+function propRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return [128, 110, 100];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+const propHex = rgb => "#" + rgb.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+//  A fixed shuffle: the same wall every time, not a new one on every render.
+function propNoise(i) { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
+
+/*  THE MORTAR, which is not a drawn line.
+
+    Every brick's outline in the joint's thickness — but a joint is a trowel
+    of sand and lime, not a ruled line: it is thicker here and thinner there,
+    paler in places, and gone altogether where it has been weathered or
+    pointed badly. So each brick's joint takes its own width and its own
+    strength, and the whole lot is then cut by a grain, so nothing in it is
+    solid. Seeded per panel, so it is this wall's mortar and not the same
+    mortar everywhere.  */
+const PROP_MORTAR_GRAIN = propSvgMask(90, 90,
+  "<filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' seed='5' stitchTiles='stitch'/>" +
+  "<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.5 -0.25'/></filter>" +
+  "<rect width='90' height='90' filter='url(#m)'/>");
+function propBondMask(bond, seed) {
+  const [w, h, bricks] = PROP_BONDS[bond] || PROP_BONDS.running;
+  const rects = bricks.map(([x, y, bw, bh], i) => {
+    const n1 = propNoise((seed || 0) + i * 17), n2 = propNoise((seed || 0) + i * 17 + 61);
+    const j = 0.8 + n1 * 1.1;                     // this joint's thickness
+    const a = 0.45 + n2 * 0.55;                   // and how much of it is left
+    return "<rect x='" + x + "' y='" + y + "' width='" + bw + "' height='" + bh +
+      "' stroke-width='" + j.toFixed(2) + "' stroke-opacity='" + a.toFixed(2) + "'/>";
+  }).join("");
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h + "'>" +
+    "<g fill='none' stroke='#fff'>" + rects + "</g></svg>";
+  return { size: [w, h], mask: 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")' };
+}
+
+/*  THE WALL ITSELF: the same bricks, each filled a little off the colour you
+    chose — lighter or darker, warmer or cooler.
+
+    TWO LAYERS, FOR TWO REASONS. The colours must not visibly repeat, so they
+    are drawn over a big field — dozens of tiles across, which at any ordinary
+    size is wider and taller than the panel, so no brick you can see has a
+    twin. The shading down each brick is the same on every brick, so it is a
+    single tile laid over the top and costs nothing however big the wall is.
+
+    A BRICK THAT CROSSES A SEAM IS STILL ONE BRICK: bonds carry a brick that
+    runs off the left of the tile and its other half on the right, and both
+    halves take the colour of the brick they belong to.  */
+/*  Tiles across and down in the field. Courses are short, so it takes a lot
+    of them down the wall: this covers about 600 x 1000 pixels at the default
+    scale, which is bigger than a panel. */
+const PROP_FIELD = [13, 42];
+function propBrickGround(bond, ground, mix, seed) {
+  const [w, h, bricks] = PROP_BONDS[bond] || PROP_BONDS.running;
+  const base = propRgb(ground);
+  const [cols, rows] = PROP_FIELD;
+  const own = bricks.map(([x, y, bw, bh], i) => {
+    if (x >= 0) return { i, shift: 0 };
+    const j = bricks.findIndex(([x2, y2, w2, h2]) => y2 === y && w2 === bw && h2 === bh && x2 === x + w);
+    return j < 0 ? { i, shift: 0 } : { i: j, shift: -1 };
+  });
+  const wrapCol = n => ((n % cols) + cols) % cols;
+  let out = "";
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
+      bricks.forEach(([x, y, bw, bh], bi) => {
+        //  The same brick gets the same number wherever it is drawn.
+        const k = seed + own[bi].i * 131 + wrapCol(tx + own[bi].shift) * 1777 + ty * 5701;
+        const n1 = propNoise(k), n2 = propNoise(k + 97);
+        const light = (n1 - 0.5) * 2 * mix * 60;          // lighter or darker
+        const warm = (n2 - 0.5) * 2 * mix * 26;           // redder or greyer
+        const c = propHex([base[0] + light + warm, base[1] + light - warm * 0.4, base[2] + light - warm]);
+        out += "<rect x='" + (x + tx * w) + "' y='" + (y + ty * h) + "' width='" + bw +
+          "' height='" + bh + "' fill='" + c + "'/>";
+      });
+    }
+  }
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + w * cols + "' height='" + h * rows +
+    "'><rect width='100%' height='100%' fill='" + propHex(base) + "'/>" + out + "</svg>";
+  return { url: 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")', tiles: [cols, rows] };
+}
+/*  A slow stain across the wall: weathering, damp, soot — a few big soft
+    blotches that fall wherever they fall, at a size that has nothing to do
+    with the bricks, so the eye stops finding the repeat in them. */
+const PROP_STAIN = propSvgMask(220, 220,
+  "<filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='3' seed='11' stitchTiles='stitch'/>" +
+  "<feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.09  0 0 0 0 0.08  0 0 0 0.42 -0.06'/></filter>" +
+  "<rect width='220' height='220' filter='url(#s)'/>");
+
+/*  The face of a brick is not flat: a lit top edge and a shaded foot. One
+    tile's worth, laid over the colours. */
+function propBrickShade(bond) {
+  const [w, h, bricks] = PROP_BONDS[bond] || PROP_BONDS.running;
+  let out = "";
+  for (const [x, y, bw, bh] of bricks) {
+    out += "<rect x='" + x + "' y='" + y + "' width='" + bw + "' height='1' fill='#fff' opacity='0.10'/>";
+    out += "<rect x='" + x + "' y='" + (y + bh - 1.2) + "' width='" + bw + "' height='1.2' fill='#000' opacity='0.16'/>";
+  }
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h + "'>" + out + "</svg>";
+  return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+}
+
 registerKind({
   kind: "material", title: "Material", group: "Props", w: 1, h: 1,
   help: "A surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines.",
   settings: [
     { key: "pattern", label: "Pattern", type: "select", default: "grid",
       options: ["brick", "grid", "blueprint", "dots", "stripes", "paper", "contours"] },
+    //  Which way the bricks are laid, when they are bricks.
+    { key: "bond", label: "Bond", type: "select", default: "running",
+      options: ["running", "stack", "header", "english", "flemish", ["basket", "basketweave"]],
+      when: s => s.pattern === "brick" },
+    //  How much the bricks differ from one another.
+    { key: "mix", label: "Mixed", type: "range", min: 0, max: 1, step: 0.05, default: 0.4,
+      when: s => s.pattern === "brick" },
     { key: "ink", label: "Lines", type: "color", default: "theme", theme: "--border" },
     { key: "ground", label: "Ground", type: "color", default: "theme", theme: "--panel" },
     { key: "scale", label: "Scale", type: "range", min: 0.5, max: 8, step: 0.1, default: 1 },
     { key: "strength", label: "Strength", type: "range", min: 0.1, max: 1, step: 0.05, default: 0.8 },
     //  Words on the wall: painted on, or cut into it.
     { key: "words", label: "Words", type: "text", default: "", max: 24 },
-    { key: "lettering", label: "Lettering", type: "select", default: "painted",
-      options: ["painted", "engraved"], when: s => !!s.words },
+    //  Any font on this computer, typed or picked from the list the browser
+    //  hands over; empty means the page's own monospace.
+    { key: "font", label: "Font", type: "font", default: "", when: s => !!s.words },
+    { key: "wordink", label: "Word color", type: "color", default: "theme", theme: "--fg",
+      when: s => !!s.words },
+    { key: "tsize", label: "Text size", type: "range", min: 4, max: 40, step: 1, default: 12,
+      when: s => !!s.words },
+    //  The can in the corner: what comes out of it, and how wide.
+    //  The can's colour and nozzle are chosen on the panel, beside the can
+    //  itself — not in here, where you cannot see what they do.
+    { key: "paint", label: "Paint", type: "color", default: "#ff2e88" },
   ],
-  render(body, s) {
-    const m = PROP_MATERIALS[s.pattern] || PROP_MATERIALS.grid;
+  //  The paint goes with the panel.
+  forget(id) { try { localStorage.removeItem(BOARD_NS + "paint:" + id); } catch (e) { /* unavailable */ } },
+  render(body, s, id) {
+    //  This copy's own number, taken from its id: the same wall every time
+    //  you come back to it, a different one from the panel beside it.
+    let seed = 0;
+    for (const ch of String(id || "")) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    seed %= 100000;
+    //  Brickwork draws its own mortar from the bond; everything else has a
+    //  pattern of its own.
+    const m = s.pattern === "brick" ? propBondMask(s.bond || "running", seed)
+      : PROP_MATERIALS[s.pattern] || PROP_MATERIALS.grid;
     const words = String(s.words || "").trim();
     const lines = words ? words.split(/\s+/) : [];
     body.innerHTML = '<div class="prop prop-material"><i class="pm-ink"></i>' +
-      (words ? '<span class="pm-text" data-lettering="' + bEsc(s.lettering || "painted") + '">' +
+      '<canvas class="pm-paint"></canvas>' +
+      //  The wall's own relief, over the paint: see below.
+      '<i class="pm-relief"></i>' +
+      //  A ring showing how wide the can is set to spray.
+      '<i class="pm-ring"></i>' +
+      /*  A CAN OF PAINT LEANING AGAINST THE WALL, drawn rather than a button
+          with a picture on it: body, label, neck, cap and nozzle, wearing
+          whatever colour it is loaded with. Press it to pick it up — it
+          tilts, and the nozzle puffs — and press it again to put it down. */
+      //  The colours you can load, shown beside the can once it is in your
+      //  hand: picking paint should not mean going into the settings.
+      //  Nozzles: how wide the can sprays, shown as what they spray, in a row
+      //  along the bottom of the wall beside the can.
+      '<div class="pm-nozzles">' +
+        //  From a fine line to a wide cone.
+        [2, 6, 16, 40].map(n =>
+          '<button type="button" class="pm-nozzle" data-brush="' + n +
+            '" title="' + n + ' wide"><i style="width:' + Math.round(4 + n / 5) +
+            "px;height:" + Math.round(4 + n / 5) + 'px"></i></button>').join("") +
+      "</div>" +
+      '<div class="pm-colors">' +
+        ["#ff2e88", "#39ff88", "#ffd400", "#3aa0ff", "#ff5c1a", "#ffffff", "#111111"]
+          .map(col => '<button type="button" class="pm-swatch" data-col="' + col +
+            '" title="' + col + '" style="background:' + col + '"></button>').join("") +
+      "</div>" +
+      '<button type="button" class="pm-can" title="spray paint: press to pick up the can, ' +
+        'drag on the wall to spray, right-click to wipe it off">' +
+        '<svg viewBox="0 0 40 78" aria-hidden="true">' +
+          '<ellipse class="can-shadow" cx="21" cy="74" rx="13" ry="3.4"/>' +
+          '<rect class="can-body" x="8" y="20" width="24" height="52" rx="4"/>' +
+          '<rect class="can-shade" x="25" y="20" width="7" height="52" rx="3"/>' +
+          '<rect class="can-shine" x="11" y="24" width="3.4" height="44" rx="1.7"/>' +
+          '<rect class="can-label" x="8" y="38" width="24" height="15"/>' +
+          '<rect class="can-neck" x="15" y="13" width="10" height="7"/>' +
+          '<rect class="can-cap" x="13" y="6" width="14" height="8" rx="2"/>' +
+          '<rect class="can-nozzle" x="17" y="2" width="6" height="4" rx="1.4"/>' +
+          '<g class="can-puff">' +
+            '<circle cx="31" cy="5" r="2.6"/><circle cx="35.5" cy="9" r="1.8"/>' +
+            '<circle cx="34" cy="1.6" r="1.4"/>' +
+          "</g>" +
+        "</svg></button>" +
+      (words ? '<span class="pm-text">' +
         lines.map(w => "<span>" + bEsc(w) + "</span>").join("") + "</span>" : "") + "</div>";
     const root = body.firstElementChild, ink = root.firstElementChild;
-    //  The words fill the panel: their size is whichever fits, across or down.
+    //  The size you set, as a share of the panel's shorter side.
     if (words) {
-      const longest = Math.max(...lines.map(w => [...w].length));
-      root.style.setProperty("--chars", String(longest));
-      root.style.setProperty("--lines", String(lines.length));
+      root.style.setProperty("--tsize", String(s.tsize == null ? 12 : s.tsize));
+      const t = root.querySelector(".pm-text");
+      //  Painted words are the color you pick; carved ones take the ground's
+      //  color, because a groove is the material itself in shadow.
+      root.style.setProperty("--pm-word", propColor(s.wordink || "theme", "--fg"));
+      //  Whatever family you named, with the page's monospace behind it.
+      t.style.fontFamily = s.font ? boardFontCss(s.font) : "";
     }
-    root.style.background = propColor(s.ground, "--panel");
     ink.style.background = propColor(s.ink, "--border");
     ink.style.opacity = String(s.strength);
-    ink.style.maskImage = ink.style.webkitMaskImage = m.mask;
+    /*  The grain goes over the joints, cutting them up: mask layers, kept
+        where BOTH are solid. Brickwork only; a grid or a blueprint is drawn,
+        not laid. */
+    if (s.pattern === "brick") {
+      ink.style.maskImage = ink.style.webkitMaskImage = m.mask + ", " + PROP_MORTAR_GRAIN;
+      ink.style.maskComposite = "intersect";
+      ink.style.webkitMaskComposite = "source-in";
+    } else {
+      ink.style.maskImage = ink.style.webkitMaskImage = m.mask;
+      ink.style.maskComposite = ink.style.webkitMaskComposite = "";
+    }
+    /*  PAINT TAKES THE SURFACE IT IS SPRAYED ON. Laid over the wall as a flat
+        colour it looks like a sticker: the joints and the lip of every brick
+        have to read through it, because paint sits in them rather than
+        filling them. So the same mortar mask, and the same shading down each
+        brick, are drawn AGAIN above the paint and multiplied into it — over
+        bare wall they change nothing to speak of, and over paint they put the
+        wall's relief back. */
+    const relief = body.querySelector(".pm-relief");
+    relief.style.maskImage = relief.style.webkitMaskImage = m.mask;
+    /*  THE MORTAR AND THE BRICKS ARE ONE WALL, so one sum sizes both. The
+        mortar tile is rounded to whole pixels first, and the brick tile is
+        then exactly twice it — rounding the two separately let them drift
+        apart, and the lines stopped landing on the joints. */
+    let tile = null;
     if (m.size) {
-      const sz = Math.round(m.size[0] * s.scale) + "px " + Math.round(m.size[1] * s.scale) + "px";
-      ink.style.maskSize = ink.style.webkitMaskSize = sz;
+      tile = [Math.max(2, Math.round(m.size[0] * s.scale)), Math.max(2, Math.round(m.size[1] * s.scale))];
+      ink.style.maskSize = ink.style.webkitMaskSize = tile[0] + "px " + tile[1] + "px";
     } else {
       //  Gradient rings scale by zooming the whole mask.
       ink.style.maskSize = ink.style.webkitMaskSize = (100 * s.scale) + "% " + (100 * s.scale) + "%";
     }
+    if (tile) {
+      relief.style.maskSize = relief.style.webkitMaskSize = tile[0] + "px " + tile[1] + "px";
+      //  The grain tile is its own size, and repeats over the joints.
+      if (s.pattern === "brick") {
+        ink.style.maskSize = ink.style.webkitMaskSize =
+          tile[0] + "px " + tile[1] + "px, " + Math.round(tile[0] * 1.7) + "px " + Math.round(tile[1] * 2.3) + "px";
+      }
+      relief.style.backgroundSize = tile[0] + "px " + tile[1] + "px";
+    }
+    //  Brickwork: a tile of individually coloured bricks under the mortar,
+    //  laid on the mortar's own grid. Anything else: the flat ground.
+    if (s.pattern === "brick" && tile && (s.mix == null ? 0.4 : s.mix) > 0) {
+      const hex = s.ground === "theme" || !s.ground
+        ? getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#8a6a58"
+        : s.ground;
+      const bondName = s.bond || "running";
+      const field = propBrickGround(bondName, hex, s.mix == null ? 0.4 : s.mix, seed);
+      //  Shading on top, one tile; colours underneath, a field of them.
+      /*  Three layers: the shading on each brick (one tile), a slow stain
+          over the whole wall, which breaks up whatever repeat is left, and
+          the bricks' own colours underneath. */
+      relief.style.backgroundImage = propBrickShade(bondName);
+      root.style.background =
+        propBrickShade(bondName) + " 0 0 / " + tile[0] + "px " + tile[1] + "px repeat, " +
+        PROP_STAIN + " 0 0 / " + Math.round(tile[0] * 7.3) + "px " + Math.round(tile[1] * 11.7) + "px repeat, " +
+        field.url + " 0 0 / " + (tile[0] * field.tiles[0]) + "px " + (tile[1] * field.tiles[1]) + "px repeat";
+    } else {
+      root.style.background = propColor(s.ground, "--panel");
+    }
+
+    /*  SPRAY PAINT.
+
+        The can in the bottom left picks itself up when you press it; then
+        dragging over the wall sprays, right-click wipes it off, and pressing
+        the can again puts it down so you can use the panel normally. What you
+        spray is kept beside the panel's settings (it is not a setting: a
+        setting is a decision, this is a drawing) and comes back with it.
+
+        A stroke is where the pointer went, as fractions of the panel, so it
+        stays on the same bricks when the panel is resized. The speckle is
+        worked out from the stroke's own number rather than at random, so
+        redrawing it gives the same spray rather than a new one. */
+    const canvas = body.querySelector(".pm-paint");
+    const can = body.querySelector(".pm-can");
+    //  The can shows what it is loaded with.
+    can.style.setProperty("--pm-paint", s.paint || "#ff2e88");
+    const key = BOARD_NS + "paint:" + id;
+    let strokes = [];
+    try { strokes = JSON.parse(localStorage.getItem(key) || "[]") || []; } catch (e) { strokes = []; }
+    const save = () => {
+      try {
+        if (strokes.length) localStorage.setItem(key, JSON.stringify(strokes));
+        else localStorage.removeItem(key);
+      } catch (e) { /* unavailable */ }
+    };
+    const ctx = canvas.getContext("2d");
+    /*  WHAT A CAN DOES. It sprays while the button is held, whether your hand
+        is moving or not, so paint BUILDS where you linger: every pass lays
+        more on, the colour goes from a haze to solid, and if you hold it too
+        long in one place it runs down the wall. The cone is dense in the
+        middle and speckled at the edge.
+
+        A stroke is what the can did: where it went, in fractions of the panel
+        so it keeps its place when the panel is resized, and where it ran. The
+        speckle comes from the stroke's own number rather than from chance, so
+        drawing it again gives the same paint. */
+    const spray = (st, from) => {
+      const W = canvas.width, H = canvas.height;
+      const dpr = W / Math.max(1, canvas.getBoundingClientRect().width || W);
+      const r = st.r * Math.min(W, H);
+      /*  WHAT COMES OUT OF A CAN IS A MIST, not a row of dots. Each stamp is
+          two things: a soft cone, densest at the middle and fading to nothing
+          at the edge, and a scatter of specks over it, thinning outward, so
+          the edge breaks up into grain the way real paint does. Overlapping
+          stamps build: a slow pass goes solid, a quick one leaves a haze. */
+      const cone = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      cone.addColorStop(0, st.c);
+      cone.addColorStop(0.45, st.c);
+      cone.addColorStop(1, "transparent");
+      const speck = Math.max(1, Math.round(dpr));       // one device pixel
+      for (let i = from; i < st.p.length; i += 2) {
+        const x = st.p[i] * W, y = st.p[i + 1] * H;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.globalAlpha = 0.085;
+        ctx.fillStyle = cone;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, 6.3);
+        ctx.fill();
+        //  The grain: specks thrown wide of the cone, fewer the further out.
+        ctx.fillStyle = st.c;
+        const n = Math.round(18 + r * 1.8);
+        for (let d = 0; d < n; d++) {
+          const n1 = propNoise(st.k + i * 37 + d), n2 = propNoise(st.k + i * 37 + d + 911);
+          const a = n1 * Math.PI * 2;
+          //  Pushed toward the rim, and a few stray drops beyond it.
+          const t = 0.35 + 0.85 * n2 * n2;
+          ctx.globalAlpha = 0.34 * (1 - t) + 0.05;
+          ctx.fillRect(Math.cos(a) * r * t, Math.sin(a) * r * t, speck, speck);
+        }
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    };
+    const paintStroke = st => spray(st, 0);
+    const redraw = () => {
+      //  Measured off the box it is drawn in. A canvas keeps its own 300 x 150
+      //  until it is told otherwise, and a wall painted at that size and then
+      //  stretched over the panel is a smear.
+      const r = canvas.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return;       // not laid out yet
+      const dpr = window.devicePixelRatio || 1;
+      const w2 = Math.round(r.width * dpr), h2 = Math.round(r.height * dpr);
+      if (canvas.width !== w2 || canvas.height !== h2) { canvas.width = w2; canvas.height = h2; }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const st of strokes) paintStroke(st);
+    };
+    redraw();
+    requestAnimationFrame(redraw);                   // once the panel has a box
+    if (body._paintRo) body._paintRo.disconnect();
+    body._paintRo = new ResizeObserver(redraw);
+    body._paintRo.observe(canvas);
+
+    let armed = false, live = null, at = null, timer = null;
+    const colors = body.querySelector(".pm-colors");
+    const nozzles = body.querySelector(".pm-nozzles");
+    /*  THE RING: what the can will cover, before you press. It follows the
+        pointer while the can is in your hand, and flashes in the middle of
+        the wall when you change nozzle, so picking a size shows you the size. */
+    const ring = body.querySelector(".pm-ring");
+    let ringTimer = null;
+    const ringAt = (px, py) => {
+      const r = canvas.getBoundingClientRect();
+      const d = (s.brush == null ? 14 : s.brush) / 200 * Math.min(r.width, r.height) * 2;
+      ring.style.width = ring.style.height = Math.round(d) + "px";
+      ring.style.left = Math.round(px) + "px";
+      ring.style.top = Math.round(py) + "px";
+    };
+    const flashRing = () => {
+      const r = canvas.getBoundingClientRect();
+      ringAt(r.width / 2, r.height / 2);
+      ring.classList.add("on");
+      clearTimeout(ringTimer);
+      ringTimer = setTimeout(() => ring.classList.remove("on"), 900);
+    };
+    /*  THE CAN STAYS IN YOUR HAND. Changing a setting draws the panel again,
+        and putting the can down every time you turned the brush knob made the
+        knob look broken: you turned it, sprayed, and nothing came out. */
+    const arm = on => {
+      armed = on;
+      body._canArmed = on;
+      can.classList.toggle("on", on);
+      colors.classList.toggle("on", on);
+      nozzles.classList.toggle("on", on);
+      canvas.classList.toggle("armed", on);
+      if (!on) { ring.classList.remove("on"); clearTimeout(ringTimer); }
+    };
+    if (body._canArmed) arm(true);
+    can.addEventListener("click", e => { e.stopPropagation(); arm(!armed); });
+    //  Loading a different colour: the can wears it, and the next stroke uses
+    //  it. What is already on the wall keeps the colour it was sprayed in.
+    const markPicked = () => {
+      colors.querySelectorAll(".pm-swatch").forEach(b =>
+        b.classList.toggle("on", b.dataset.col.toLowerCase() === String(s.paint || "").toLowerCase()));
+      nozzles.querySelectorAll(".pm-nozzle").forEach(b =>
+        b.classList.toggle("on", Number(b.dataset.brush) === Number(s.brush == null ? 14 : s.brush)));
+    };
+    markPicked();
+    nozzles.addEventListener("click", e => {
+      const noz = e.target.closest(".pm-nozzle");
+      if (!noz) return;
+      e.stopPropagation();
+      s.brush = Number(noz.dataset.brush);
+      saveInstances();
+      markPicked();
+      arm(true);
+      flashRing();
+    });
+    colors.addEventListener("click", e => {
+      const sw = e.target.closest(".pm-swatch");
+      if (!sw) return;
+      e.stopPropagation();
+      s.paint = sw.dataset.col;
+      saveInstances();
+      can.style.setProperty("--pm-paint", s.paint);
+      markPicked();
+      arm(true);
+    });
+    const wipe = e => { e.preventDefault(); strokes = []; save(); redraw(); };
+    can.addEventListener("contextmenu", wipe);
+    canvas.addEventListener("contextmenu", wipe);
+
+    const puff = () => {
+      if (!live || !at) return;
+      const from = live.p.length;
+      live.p.push(at[0], at[1]);
+      spray(live, from);
+      //  Holding still builds the paint up, and that is all it does: no runs
+      //  down the wall.
+      //  Enough is enough: a panel is not a canvas to fill with a million dots.
+      if (live.p.length > 4000) stop();
+    };
+    const stop = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (live) { live = null; at = null; save(); }
+    };
+    canvas.addEventListener("pointerdown", e => {
+      if (!armed || e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      canvas.setPointerCapture(e.pointerId);
+      const r = canvas.getBoundingClientRect();
+      at = [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+      live = { c: s.paint || "#ff2e88", r: (s.brush || 14) / 200, k: Math.floor(Math.random() * 99999),
+               p: [at[0], at[1]] };
+      strokes.push(live);
+      spray(live, 0);
+      timer = setInterval(puff, 45);                 // it keeps spraying
+    });
+    //  The ring tracks the pointer whenever the can is in your hand.
+    canvas.addEventListener("pointerenter", () => { if (armed) ring.classList.add("on"); });
+    canvas.addEventListener("pointerleave", () => { if (!live) ring.classList.remove("on"); });
+    canvas.addEventListener("pointermove", e => {
+      if (armed) {
+        const r = canvas.getBoundingClientRect();
+        ringAt(e.clientX - r.left, e.clientY - r.top);
+        ring.classList.add("on");
+      }
+      if (!live) return;
+      const r = canvas.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      /*  A hand moves faster than the pointer reports, so the gap between one
+          report and the next is filled in: a can leaves a line, not a row of
+          dots. */
+      const from = live.p.length;
+      const px = live.p[from - 2], py = live.p[from - 1];
+      const dx = x - px, dy = y - py;
+      const step = Math.max(live.r / 3, 0.004);
+      const n = Math.min(60, Math.ceil(Math.hypot(dx, dy) / step));
+      for (let i = 1; i < n; i++) live.p.push(px + dx * i / n, py + dy * i / n);
+      live.p.push(x, y);
+      spray(live, from);
+      at = [x, y];
+    });
+    canvas.addEventListener("pointerup", stop);
+    canvas.addEventListener("pointercancel", stop);
   },
 });

@@ -3,18 +3,10 @@
 
 .fidget {
   display: flex; flex-direction: column;
-  padding: 28px 8px 6px;            /* the title bar above, the move count below */
+  padding: 28px 8px 8px;            /* clear of the title bar above */
 }
 /*  The play area is a size container, so the board can fit it both ways. */
 .fg-stage { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
-.fg-bar {
-  flex: none; display: flex; align-items: center; gap: 8px; height: 22px;
-  padding-right: 26px;              /* clear of the ⚙ in the corner */
-  font: 0.62rem/1 var(--mono, ui-monospace, monospace); font-variant-numeric: tabular-nums;
-}
-.fg-moves { flex: 1; opacity: 0.65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fg-new { font-size: 0.6rem; padding: 1px 7px; }
-.fidget.won .fg-moves { opacity: 1; color: var(--accent2); }
 
 /* ---------- toggle grid ---------- */
 .tg-grid {

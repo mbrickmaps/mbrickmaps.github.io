@@ -211,28 +211,112 @@
 }
 
 /* ---------- material ---------- */
-/*  WORDS ON THE MATERIAL, a word to a line, as big as the panel allows:
-    limited by its height for the number of lines, and by its width for the
-    longest word (monospaced capitals run about 0.64 of their size wide).
-      painted   ink on the surface, a little worn, the texture showing through
-      engraved  cut into it, dark with a lit edge below where the light
-                catches the far side of the groove */
+/*  WORDS ON THE MATERIAL, a word to a line, at the size, colour and face
+    you set. */
 .pm-text {
   position: absolute; inset: 7%; z-index: 1; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; overflow: hidden;
-  font-family: var(--mono, ui-monospace, monospace); font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.02;
-  font-size: min(calc(86cqh / var(--lines, 1)), calc(86cqw / (0.64 * var(--chars, 4))));
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.05;
+  font-size: calc(var(--tsize, 12) * 1cqmin);
 }
-.pm-text[data-lettering="painted"] {
-  color: color-mix(in srgb, var(--pm-word, #efe7d8) 88%, transparent);
-  mix-blend-mode: hard-light; opacity: 0.85;
+.pm-text { color: var(--pm-word, #efe7d8); opacity: 0.92; }
+
+/*  SPRAY PAINT: a layer over the wall, and the can in the corner that lets
+    you reach it. The canvas ignores the mouse until the can is picked up, so
+    a panel you are not painting still behaves like a panel. */
+/*  Width and height in so many words: a canvas is a replaced element, so
+    inset alone leaves it at its own 300 by 150 and the paint comes out
+    stretched across the wall. */
+.pm-paint { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+.pm-paint.armed { pointer-events: auto; cursor: crosshair; touch-action: none; }
+/*  THE COLOURS, in a rack beside the can. They are only there while the can
+    is in your hand, because that is the only time they mean anything. */
+.pm-colors {
+  position: absolute; left: 8px; bottom: 58px; z-index: 3;
+  display: flex; flex-direction: column; gap: 4px;
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
 }
-.pm-text[data-lettering="engraved"] {
-  color: rgba(0,0,0,0.55);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.22), 0 -1px 1px rgba(0,0,0,0.35);
+.pm-colors.on { opacity: 1; transform: none; pointer-events: auto; }
+.pm-swatch {
+  width: 18px; height: 18px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.6);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
+.pm-swatch:hover { transform: scale(1.15); }
+/*  The nozzles: a row along the bottom of the wall, beside the can, each a
+    dot the size of what it sprays. */
+.pm-nozzles {
+  position: absolute; left: 38px; bottom: 8px; z-index: 3;
+  display: flex; flex-direction: row; gap: 4px;
+  opacity: 0; transform: translateY(4px); pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.pm-nozzles.on { opacity: 1; transform: none; pointer-events: auto; }
+.pm-nozzle {
+  width: 18px; height: 18px; padding: 0; border-radius: 4px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  border: 1px solid var(--border);
+}
+.pm-nozzle i { display: block; border-radius: 50%; background: var(--fg); opacity: 0.65; }
+.pm-nozzle:hover i { opacity: 1; }
+.pm-nozzle.on { border-color: var(--accent2); }
+.pm-nozzle.on i { background: var(--accent2); opacity: 1; }
+.pm-swatch.on { box-shadow: 0 0 0 2px var(--fg), 0 1px 3px rgba(0,0,0,0.5); }
+@media (prefers-reduced-motion: reduce) { .pm-colors, .pm-nozzles { transition: none; } }
+
+/*  THE CAN, standing against the wall in the corner. No button around it:
+    the can IS the control. Picked up, it tilts and the nozzle puffs. */
+.pm-can {
+  position: absolute; left: 8px; bottom: 6px; z-index: 3;
+  width: 26px; height: 50px; padding: 0; border: 0; background: none;
+  cursor: pointer; opacity: 0.75;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.55));
+  transition: transform 0.15s ease-out, opacity 0.15s;
+  transform-origin: 50% 92%;
+}
+.panel:hover > .panel-body .pm-can { opacity: 1; }
+.pm-can:hover { transform: translateY(-1px) rotate(-4deg); }
+.pm-can.on { opacity: 1; transform: translateY(-2px) rotate(-16deg); }
+.pm-can svg { width: 100%; height: 100%; display: block; }
+.can-shadow { fill: rgba(0,0,0,0.4); }
+.can-body { fill: var(--pm-paint, #ff2e88); }
+.can-shade { fill: rgba(0,0,0,0.28); }
+.can-shine { fill: rgba(255,255,255,0.35); }
+.can-label { fill: rgba(255,255,255,0.82); }
+.can-neck { fill: #6f7278; }
+.can-cap { fill: #c9ccd2; }
+.can-nozzle { fill: #4c4f55; }
+/*  The puff only exists while the can is in your hand. */
+.can-puff { fill: var(--pm-paint, #ff2e88); opacity: 0; transition: opacity 0.15s; }
+.pm-can.on .can-puff { opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) {
+  .pm-can, .can-puff { transition: none; }
+}
+
+/*  The ring that shows how wide the can sprays: centred on the pointer, the
+    width of the cone, and gone as soon as the can is put down. */
+.pm-ring {
+  position: absolute; z-index: 4; pointer-events: none;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.35);
+  opacity: 0; transition: opacity 0.12s;
+}
+.pm-ring.on { opacity: 0.9; }
+
+/*  The wall's relief, over the paint: the mortar joints multiplied back in,
+    so a sprayed wall still has its joints. Over bare wall it is barely there;
+    over paint it is the difference between paint and a sticker. */
+.pm-relief {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.55);
+  mix-blend-mode: multiply;
+  mask-repeat: repeat; -webkit-mask-repeat: repeat;
+}
+
 .pm-ink {
   position: absolute; inset: 0;
   mask-repeat: repeat; -webkit-mask-repeat: repeat;

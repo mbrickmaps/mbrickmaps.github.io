@@ -902,6 +902,33 @@
 .deck-rest { display: flex; flex-direction: column; gap: 7px; }
 .deck-rest .deck-field { display: flex; flex-direction: column; gap: 3px; }
 .deck-rest input[type="text"] { width: 100%; box-sizing: border-box; font-size: 0.7rem; padding: 2px 5px; }
+/*  A FONT FIELD: a button wearing the face it names, and the picker that
+    opens under it. */
+.deck-field.is-font { position: relative; }
+.deck-fontbtn {
+  width: 100%; text-align: left; font-size: 0.74rem; padding: 3px 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fontpick {
+  position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin-top: 3px;
+  background: var(--panel); border: 1px solid var(--accent2); border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.6); padding: 5px;
+}
+.fontpick-q { width: 100%; box-sizing: border-box; font-size: 0.7rem; padding: 2px 5px; margin-bottom: 4px; }
+.fontpick-list { max-height: 210px; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
+.fontpick-sec {
+  font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.45;
+  margin: 5px 0 2px;
+}
+.fontrow {
+  flex: none; text-align: left; border: 0; background: none; color: var(--fg);
+  font-size: 0.8rem; line-height: 1.5; padding: 1px 5px; border-radius: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.fontrow:hover { background: var(--field); }
+.fontrow.on { color: var(--accent2); }
+.fontpick-local { width: 100%; font-size: 0.62rem; padding: 2px; margin-top: 4px; }
+.fontpick-none { font-size: 0.66rem; opacity: 0.5; padding: 4px; }
 .deck-color { display: flex; gap: 5px; align-items: center; }
 .deck-color input[type="color"] { width: 34px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; }
 .deck-color input[type="color"].off { opacity: 0.35; }

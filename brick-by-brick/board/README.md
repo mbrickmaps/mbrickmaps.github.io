@@ -226,7 +226,7 @@ A registered panel is on the board once or not at all. A **kind** is a recipe in
 `props.js` and `props.css` add two kinds, under **Props** in 🧰:
 
 - **Signal light:** a lamp that is steady, blinks, pulses, breathes, beats like a heart, flickers or spells Morse. It comes in six shapes: round, square, pill, triangle, octagon and a coin slot (a backlit coin-door insert with a slot and a molded "25¢"). A **Lens** sets what the light shines through: arcade plastic (a colored dome in a collar, colored even when off), fresnel rings, frosted, or bare LED dots. Each lamp has a hot spot where the bulb is and a glass shine on top. **Words** on the face are *cut out* — a black plate over the whole lamp with the letters cut through it, so each letter shows the lamp behind it and the plate gives off nothing — or *inverted*, dark letters on the lit face. They size themselves to the lamp. You can also set its color, speed, size, brightness (the glow follows it) and **grime**: dirt, dust, a fingerprint smudge and scratches on the glass, different on every copy.
-- **Material:** a surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines. You can set the line and ground colors, the scale, the strength, and **words** on it, painted on or engraved into it, sized to fill the panel.
+- **Material:** a surface to fill a gap: brick, grid, blueprint, dots, stripes, paper or contour lines. A spray can stands in the bottom-left corner: press it to pick it up, drag on the wall to spray (holding still builds the paint up and makes it run), right-click to wipe it off, and press the can again to put it down. Its color and brush size are in the ⚙, and what you spray is saved with the panel. Brick has a **bond** (running, stack, header, English, Flemish or basketweave) and a **mixed** knob that tints each brick a little off the ground color, the way a real wall comes out of the kiln. You can set the line and ground colors, the scale, the strength, and **words** on it: painted on or engraved into it, in any font — the picker searches the fonts on this computer and the whole of Google Fonts, each name drawn in its own face — at a size and color you set.
 
 Each copy has a **⚙** in its bottom-right corner, under any cover, so covering a prop puts its settings out of reach too. It opens a **deck** beside the panel, never over it, so you watch the prop change as you adjust it. Every copy also has a Name and a switch that hides its title bar:
 
@@ -248,9 +248,9 @@ A frosted or smoked cover over a signal light glows with it, in step; card block
 - **Toggle Grid:** press a light and it flips along with its neighbours. Turn them all off. It is drawn as a CRT phosphor screen: dark glass, scanlines, bloom, and an afterglow when a light goes out. The ⚙ sets:
   - **Shape:** square or hex. Hex cells sit in a honeycomb and flip the six that touch.
   - **Flips:** plus (the classic), corners, all eight, or the whole row and column.
-  - **Wrap edges**, grid size (3–10 each way) and the lit color. How scrambled a new puzzle is follows the grid size.
+  - Grid size (3–20 each way) and the lit color. How scrambled a new puzzle is follows the grid size.
   - **Random play:** it presses lights by itself at a speed you set (0.5–10 presses a second), with each press flashing. When it happens to clear a puzzle it deals a new one. You can still press lights while it runs, but no best score is kept.
-  - Every puzzle is made by scrambling a solved board, so it can always be solved. **new** deals another. It counts your moves and keeps your best.
+  - Every puzzle is made by scrambling a solved board, so it can always be solved. Clear one and it deals another by itself.
 
 ```html
 <link rel="stylesheet" href="fidgets.css">
@@ -274,6 +274,10 @@ registerKind({
 ```
 
 `render(body, s)` runs when a copy is first drawn and whenever its settings change, never on an ordinary refresh. That lets an animation keep running while the page updates around it. `when` shows a setting only while it applies.
+
+### Fonts
+
+`fonts.js` adds the **font** field type to the ⚙ deck: a button wearing the face it names, and a picker holding a few presets, the fonts installed on this computer (Chrome asks permission the first time) and all of Google Fonts, searchable, with every name drawn in its own face. Google previews cost only the letters of the name; choosing one loads it properly and remembers it under `BOARD_NS + "fonts:v1"` so it is there next visit. Load it after `board.js`, and give a setting `{ type: "font" }`.
 
 ### The Theme panel
 

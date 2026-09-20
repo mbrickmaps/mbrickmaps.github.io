@@ -27,8 +27,10 @@ const TG_HEX_ODD  = [[-1, 0], [1, 0], [0, -1], [1, -1], [0, 1], [1, 1]];
 
 function tgFlips(s, c, r) {
   const cols = s.cols, rows = s.rows, out = [[c, r]];
+  //  A neighbour past the edge is not there — unless the edges are joined
+  //  up, when it comes back on the far side.
   const add = (x, y) => {
-    if (s.wrap) { x = (x + cols) % cols; y = (y + rows) % rows; }
+    if (s.wrap) { x = ((x % cols) + cols) % cols; y = ((y % rows) + rows) % rows; }
     if (x >= 0 && x < cols && y >= 0 && y < rows && !(x === c && y === r)) out.push([x, y]);
   };
   if (s.pattern === "line") {
@@ -40,7 +42,8 @@ function tgFlips(s, c, r) {
       : TG_PATTERNS[s.pattern] || TG_PATTERNS.plus;
     for (const [dx, dy] of offs) add(c + dx, r + dy);
   }
-  //  Wrapping on a small grid can reach the same light twice; it flips once.
+  //  "row & column", and wrapping on a small grid, can name the same light
+  //  twice; it flips once.
   const seen = new Set();
   return out.filter(([x, y]) => { const k = x + "," + y; if (seen.has(k)) return false; seen.add(k); return true; });
 }
@@ -84,7 +87,6 @@ registerKind({
     { key: "on", label: "Color", type: "color", default: "theme", theme: "--accent2" },
     { key: "cols", label: "Columns", type: "range", min: 3, max: 20, step: 1, default: 5 },
     { key: "rows", label: "Rows", type: "range", min: 3, max: 20, step: 1, default: 5 },
-    { key: "wrap", label: "Wrap edges", type: "check", default: false },
     //  RANDOM PLAY: it presses lights by itself, and deals a new puzzle when
     //  it happens to clear one. Something to watch rather than play; you can
     //  still press lights while it runs, but no best score is kept.
@@ -95,6 +97,7 @@ registerKind({
 
   render(body, s, id) {
     if (body._tgTimer) { clearInterval(body._tgTimer); body._tgTimer = null; }
+    if (body._tgNext) { clearTimeout(body._tgNext); body._tgNext = null; }
     //  The position survives a settings change that leaves the puzzle the same
     //  (a color); a new grid, shape or pattern deals a new one.
     let saved = null;
@@ -113,8 +116,6 @@ registerKind({
       //  One look: a phosphor screen. Lights on a dark glass face.
       '<div class="prop fidget fg-tg" data-shape="' + bEsc(s.shape) + '" data-look="crt">' +
         '<div class="fg-stage"><div class="tg-grid" role="grid" aria-label="toggle grid"></div></div>' +
-        '<div class="fg-bar"><span class="fg-moves"></span>' +
-          '<button type="button" class="fg-new" title="deal a new puzzle">new</button></div>' +
       "</div>";
     const root = body.firstElementChild;
     root.style.setProperty("--on", s.on === "theme" ? "var(--accent2)" : s.on);
@@ -144,16 +145,13 @@ registerKind({
         cells.push(b);
       }
     }
-    const moves = root.querySelector(".fg-moves");
+    //  No score, no counter: the board is the whole of it.
     const paint = won => {
       cells.forEach((b, i) => {
         b.classList.toggle("lit", g.lit[i]);
         b.setAttribute("aria-pressed", g.lit[i]);
       });
       root.classList.toggle("won", !!won);
-      moves.textContent = won
-        ? "cleared in " + g.moves + (g.best ? " · best " + g.best : "")
-        : g.moves + (g.moves === 1 ? " move" : " moves") + (s.auto ? " · random" : g.best ? " · best " + g.best : "");
     };
     paint(!g.lit.some(Boolean));
 
@@ -172,6 +170,15 @@ registerKind({
       //  The pressed light flashes, so you can follow random play.
       const hit = cells[r * s.cols + c];
       hit.classList.remove("pressed"); void hit.offsetWidth; hit.classList.add("pressed");
+      /*  CLEARED: it deals another by itself after a moment. There is no
+          button to press; finishing one puzzle is what starts the next. */
+      if (won && !s.auto) {
+        clearTimeout(body._tgNext);
+        body._tgNext = setTimeout(() => {
+          if (!body.isConnected) return;
+          g.lit = tgScramble(s); g.moves = 0; save(); paint(false);
+        }, 1600);
+      }
       return won;
     };
     grid.addEventListener("click", e => {
@@ -194,12 +201,7 @@ registerKind({
         if (won) rest = Math.max(1, Math.round(1.5 * s.rate));  // a moment to see it, then deal again
       }, 1000 / Math.max(0.5, s.rate));
     }
-    root.querySelector(".fg-new").addEventListener("click", () => {
-      g.lit = tgScramble(s);
-      g.moves = 0;
-      save();
-      paint(false);
-    });
+
   },
 
   forget(id) { try { localStorage.removeItem(TG_KEY(id)); } catch (e) { /* unavailable */ } },
