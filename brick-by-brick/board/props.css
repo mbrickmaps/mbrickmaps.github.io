@@ -14,6 +14,39 @@
 .prop-light {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
 }
+/*  A RACK OF LAMPS. One by one it is a lamp; any more and they share the
+    panel evenly, all lit together off the same --lit. */
+.pl-rack {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--across, 1), 1fr);
+  grid-template-rows: repeat(var(--down, 1), 1fr);
+  gap: 2%;
+}
+/*  Each lamp gets a cell of its own to be measured against, so a lamp in a
+    rack of ten is sized off its own share of the panel rather than off the
+    whole of it — otherwise the row overflows and the lamps sit on top of one
+    another. */
+.pl-cell {
+  position: relative; min-width: 0; min-height: 0;
+  container-type: size;
+  display: flex; align-items: center; justify-content: center; gap: 4cqmin;
+}
+/*  LABELS, one to a lamp, on whichever side the rack is set to. Engraved
+    lettering on a panel beside its lamp: small, spaced, and quiet enough
+    that the lamp is still the thing you look at. */
+.pl-tag {
+  flex: 0 1 auto; min-width: 0;
+  font: 600 clamp(6px, 13cqmin, 13px)/1.1 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fg); opacity: 0.62;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pl-rack[data-labels="below"] .pl-cell { flex-direction: column; }
+.pl-rack[data-labels="above"] .pl-cell { flex-direction: column-reverse; }
+.pl-rack[data-labels="left"] .pl-cell { flex-direction: row-reverse; }
+.pl-rack[data-labels="right"] .pl-cell { flex-direction: row; }
+.pl-rack[data-labels="left"] .pl-tag, .pl-rack[data-labels="right"] .pl-tag { text-align: left; }
 /*  How lit the lamp is, animated on the panel by props.js. Registered so it
     fades smoothly for pulse and breathe rather than jumping. */
 @property --lit { syntax: "<number>"; inherits: true; initial-value: 1; }
@@ -25,7 +58,9 @@
     (round, square, pill, panel) or a clip path (the rest); every layer but
     the halo takes both, so the bezel, the face and the light always match. */
 .pl-lamp {
-  position: relative; height: var(--size, 45%); aspect-ratio: var(--ar, 1); max-width: 86%;
+  position: relative; aspect-ratio: var(--ar, 1);
+  /*  A share of the smaller side of its cell, so it always fits. */
+  height: calc(var(--size, 45) * 1cqmin); max-width: 96cqw; max-height: 96cqh;
   container-type: size;              /* the lettering sizes to the lamp */
   --radius: 50%; --clip: none; --ar: 1;
 }
@@ -103,10 +138,6 @@
     radial-gradient(circle, #fff 0 10%, color-mix(in srgb, var(--c) 40%, #fff) 16%, var(--c) 30%, transparent 44%) 0 0 / 11cqmin 11cqmin,
     radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--c) 45%, transparent), color-mix(in srgb, var(--c) 18%, transparent) 70%);
 }
-.pl-lamp[data-lens="arcade"] {
-  --lit-img: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--c) 35%, #fff) 0%,
-    color-mix(in srgb, var(--c) 80%, #fff) 22%, var(--c) 50%, color-mix(in srgb, var(--c) 70%, #000) 100%);
-}
 /*  THE LENS LAYER, over the light and the face both, so its texture shows lit
     and unlit. Overlay blending lets it shape the light under it rather than
     paint over it. */
@@ -144,7 +175,6 @@
   position: absolute; inset: 7%; pointer-events: none;
   border-radius: var(--radius); clip-path: var(--clip);
 }
-.pl-lamp[data-lens="arcade"] :is(.pl-grime, .pl-dust) { inset: 15%; }
 .pl-grime {
   mix-blend-mode: multiply; opacity: var(--grime, 0);
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.028' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36  0 0 0 0 0.29  0 0 0 0 0.2  0 0 0 -2.2 1.35'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23f)'/%3E%3C/svg%3E") var(--dirt-x, 0) var(--dirt-y, 0) / 70cqmin 70cqmin;
@@ -158,15 +188,25 @@
 }
 .pl-lamp:has(.pl-grime) { filter: saturate(calc(1 - 0.35 * var(--grime, 0))); }
 
-/*  The light thrown onto the panel round the lamp. Its own layer, outside
-    the lamp's shape (a clip would cut it off), growing with Glow from nothing
-    to about three lamps wide, and blinking with the lamp. */
+/*  THE LIGHT THROWN ONTO THE PANEL — a blurred copy of the lamp itself, not
+    a circle drawn at its middle. A pill glows like a pill, a triangle like a
+    triangle, a rack of lamps like a rack. The inner element carries the
+    lamp's shape; the blur is on its parent, so the light spreads past the
+    edges the clip would otherwise cut off.
+
+    Reach is how far it carries: the blur, in the lamp's own units, so the
+    glow scales with the lamp rather than with the panel. It stays as bright
+    as the lamp is — reach moves the light, it does not fade it. */
 .pl-halo {
-  position: absolute; pointer-events: none; border-radius: 50%;
-  inset: calc(-15% - 110% * var(--glow));
-  opacity: calc(var(--lit, 1) * min(1, var(--power)) * var(--glow));
-  background: radial-gradient(closest-side,
-    color-mix(in srgb, var(--c) 60%, transparent), color-mix(in srgb, var(--c) 18%, transparent) 55%, transparent);
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  mix-blend-mode: screen;
+  filter: blur(calc(1.5cqmin + 26cqmin * var(--glow)));
+  opacity: calc(var(--lit, 1) * min(1, var(--power)) * min(1, var(--glow) * 12) * 0.85);
+}
+.pl-halo > i {
+  position: absolute; inset: 7%;
+  border-radius: var(--radius); clip-path: var(--clip);
+  background: var(--c);
 }
 
 /*  THE LETTERING. Set to the lamp's height (Text size is a share of it),
@@ -194,7 +234,6 @@
   text-shadow: none;
 }
 .pl-lamp[data-shape="triangle"][data-lettering="cutout"] .pl-text { inset: 11% 12% 6%; padding-top: 28%; }
-.pl-lamp[data-lens="arcade"][data-lettering="cutout"] .pl-text { inset: 15%; }
 .pl-lamp[data-shape="coin"][data-lettering="cutout"] .pl-text { align-items: flex-end; padding-bottom: 12%; }
 /*  Dirt is on the glass in front of the mask. */
 .pl-grime, .pl-dust { z-index: 3; }
@@ -228,7 +267,12 @@
 /*  Width and height in so many words: a canvas is a replaced element, so
     inset alone leaves it at its own 300 by 150 and the paint comes out
     stretched across the wall. */
-.pm-paint { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+/*  Paint on a wall is never quite as bright as it is in the can: it sinks
+    into the surface and the wall takes some of it back. */
+.pm-paint {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2;
+  pointer-events: none; opacity: 0.88;
+}
 .pm-paint.armed { pointer-events: auto; cursor: crosshair; touch-action: none; }
 /*  THE COLOURS, in a rack beside the can. They are only there while the can
     is in your hand, because that is the only time they mean anything. */
@@ -307,12 +351,12 @@
 }
 .pm-ring.on { opacity: 0.9; }
 
-/*  The wall's relief, over the paint: the mortar joints multiplied back in,
-    so a sprayed wall still has its joints. Over bare wall it is barely there;
-    over paint it is the difference between paint and a sticker. */
+/*  The joints, over the paint and barely there: a wall you have sprayed is
+    still a wall. Multiplied in, so it darkens the paint a little along the
+    joints and leaves bare brick alone. */
 .pm-relief {
   position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background-color: rgba(0, 0, 0, 0.55);
+  background-color: rgba(0, 0, 0, 0.22);
   mix-blend-mode: multiply;
   mask-repeat: repeat; -webkit-mask-repeat: repeat;
 }
@@ -341,36 +385,6 @@
 .panel.has-light > .panel-shade > .panel-cover[data-mat="card"]::after { display: none; }
 .panel.has-light.light-masked > .panel-shade > .panel-cover::after {
   opacity: calc(var(--lit, 1) * min(1, var(--light-power, 1)) * 0.18);
-}
-
-/*  ARCADE PLASTIC. A coin-op button: a dome of thick colored plastic in a
-    collar of the same plastic, with a black gap between. Unlike a lamp it
-    is colored even when it is off, because you are looking at the plastic,
-    not the bulb; lit, the whole dome fills with light, brightest just above
-    the middle, darker where the plastic curves away, and a hard shine sits
-    on top. */
-.pl-lamp[data-lens="arcade"] .pl-bezel {
-  background:
-    radial-gradient(circle closest-side at 50% 50%, #050505 0 76%, transparent 77%),
-    radial-gradient(circle at 40% 30%, color-mix(in srgb, var(--c) 55%, #fff), var(--c) 40%, color-mix(in srgb, var(--c) 55%, #000) 100%);
-}
-.pl-lamp[data-lens="arcade"]:not([data-shape="round"]) .pl-bezel {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 60%, #fff), color-mix(in srgb, var(--c) 55%, #000));
-}
-.pl-lamp[data-lens="arcade"] :is(.pl-face, .pl-lit, .pl-lens, .pl-gloss) { inset: 15%; }
-.pl-lamp[data-lens="arcade"] .pl-face {
-  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--c) 55%, #333) 0%,
-    color-mix(in srgb, var(--c) 45%, #111) 55%, color-mix(in srgb, var(--c) 30%, #000) 100%);
-  box-shadow: inset 0 -4px 7px rgba(0,0,0,0.55), inset 0 3px 5px rgba(255,255,255,0.12);
-}
-.pl-lamp[data-lens="arcade"] .pl-lit {
-  box-shadow: inset 0 -5px 9px color-mix(in srgb, var(--c) 40%, #000), inset 0 3px 6px rgba(255,255,255,0.35);
-}
-.pl-lamp[data-lens="arcade"] .pl-lens { display: none; }
-.pl-lamp[data-lens="arcade"] .pl-gloss {
-  background:
-    radial-gradient(ellipse 58% 30% at 46% 20%, rgba(255,255,255,0.75), rgba(255,255,255,0.15) 55%, transparent 70%),
-    radial-gradient(ellipse 50% 14% at 50% 90%, rgba(255,255,255,0.22), transparent 70%);
 }
 
 /*  THE COIN SLOT: the backlit insert on a coin door. A slot for the coin in

@@ -67,7 +67,9 @@ function propLightFrames(s) {
   };
   switch (s.pattern) {
     case "steady": return null;
-    case "pulse": return { frames: [{ opacity: 0.15 }, { opacity: 1 }, { opacity: 0.15 }], ms: period * 2, easing: "ease-in-out" };
+    //  One round per beat, the same as blink: at Speed 1 that is a second up
+    //  and down, not two.
+    case "pulse": return { frames: [{ opacity: 0.15 }, { opacity: 1 }, { opacity: 0.15 }], ms: period, easing: "ease-in-out" };
     case "breathe": return { frames: [{ opacity: PROP_OFF }, { opacity: 1, offset: 0.4 }, { opacity: 1, offset: 0.55 }, { opacity: PROP_OFF }], ms: period * 4, easing: "ease-in-out" };
     case "heartbeat": return {
       frames: [
@@ -89,14 +91,10 @@ function propLightFrames(s) {
     height) at which the words fit its face: on one line if that is bigger,
     otherwise a word to a line. Monospaced capitals are about 0.64 of their
     size wide, spacing included. */
-const PROP_AR = { pill: 2.1, panel: 1.7, triangle: 1.12, hex: 1.15, coin: 0.62 };
-function propFitText(text, shape) {
+function propFitText(text) {
   if (!text) return 30;
-  const ar = PROP_AR[shape] || 1;
-  //  The share of the lamp the words may use: the face, or less where the
-  //  shape narrows (a triangle's point, the coin's strip under the slot).
-  const box = shape === "coin" ? [0.84, 0.3] : shape === "triangle" ? [0.56, 0.46] : [0.82, 0.8];
-  const W = ar * 100 * box[0], H = 100 * box[1];
+  //  The share of the round face the words may use.
+  const W = 100 * 0.82, H = 100 * 0.8;
   const chars = s => [...s].length;
   const words = String(text).trim().split(/\s+/);
   const oneLine = Math.min(W / (0.64 * chars(text)), H * 0.72);
@@ -107,14 +105,12 @@ function propFitText(text, shape) {
 registerKind({
   kind: "light", title: "Signal light", group: "Props", w: 1, h: 1,
   help: "A lamp that blinks, pulses, flickers or spells Morse, with words cut into its face if you like.",
-  //  KEPT SHORT ON PURPOSE: what it looks like, what it says, how it moves.
-  //  Everything else follows from those (the glow from the brightness, the
-  //  size of the words from the lamp they are on).
+  //  KEPT SHORT ON PURPOSE: what it looks like, what it says, how it moves,
+  //  and how far its light carries. (The size of the words follows from the
+  //  lamp they are on.)
   settings: [
-    { key: "shape", label: "Shape", type: "select", default: "round",
-      options: ["round", "square", "pill", "triangle", "octagon", ["coin", "coin slot"]] },
     { key: "lens", label: "Lens", type: "select", default: "fresnel",
-      options: ["arcade", "fresnel", "frosted", ["led", "LED"]] },
+      options: ["fresnel", "frosted", ["led", "LED"]] },
     { key: "color", label: "Color", type: "color", default: "theme", theme: "--accent2" },
     { key: "pattern", label: "Pattern", type: "select", default: "blink",
       options: ["steady", "blink", "pulse", "flicker", "morse"] },
@@ -125,45 +121,79 @@ registerKind({
       options: [["cutout", "cut out"], "inverted"], when: s => !!s.face },
     { key: "speed", label: "Speed", type: "range", min: 0.2, max: 12, step: 0.1, default: 1,
       when: s => s.pattern !== "steady" },
+    //  ONE LAMP, OR A RACK OF THEM: a row of indicators, a grid of
+    //  annunciators, a strip over a door — the same lamp, lit together.
+    /*  LABELS, one per lamp. Typed as a list — PWR, RDY, FAULT — and handed
+        out along the rack in order; run out and the rest go unlabelled. */
+    { key: "labels", label: "Labels", type: "text", default: "", max: 160 },
+    { key: "labelat", label: "Labels at", type: "select", default: "below",
+      options: [["below", "below"], ["left", "left"], ["right", "right"], ["above", "above"]],
+      when: s => !!s.labels },
+    { key: "across", label: "Across", type: "range", min: 1, max: 10, step: 1, default: 1 },
+    { key: "down", label: "Down", type: "range", min: 1, max: 8, step: 1, default: 1 },
     { key: "size", label: "Size", type: "range", min: 15, max: 100, step: 1, default: 45 },
     //  Past 1 it is overdriven: brighter than full, washing toward white. The
     //  glow round it follows.
-    { key: "power", label: "Bright", type: "range", min: 0.1, max: 3, step: 0.05, default: 1 },
+    { key: "power", label: "Intensity", type: "range", min: 0.1, max: 3, step: 0.05, default: 1 },
+    //  How far the light carries into the panel around the lamp.
+    { key: "glow", label: "Reach", type: "range", min: 0, max: 1, step: 0.05, default: 0.45 },
     { key: "grime", label: "Grime", type: "range", min: 0, max: 1, step: 0.05, default: 0 },
   ],
   render(body, s, id) {
     if (body._propAnim) { body._propAnim.cancel(); body._propAnim = null; }
+    if (body._lampAnims) { for (const a of body._lampAnims) a.cancel(); body._lampAnims = null; }
     //  Back to front: the light thrown round it, the bezel, the unlit face,
     //  the lit face, then any lettering.
-    //  A coin slot says what it takes unless you say otherwise, and its
-    //  lettering is molded into the plastic.
-    const coin = s.shape === "coin";
-    const words = s.face || (coin ? "25\u00a2" : "");
-    const lettering = s.face ? (s.lettering || "cutout") : coin ? "embossed" : "";
-    const face = words ? '<span class="pl-text">' + bEsc(words) + "</span>" : "";
+    const words = s.face || "";
+    const lettering = s.face ? (s.lettering || "cutout") : "";
+    const across = Math.max(1, Math.round(s.across || 1)), down = Math.max(1, Math.round(s.down || 1));
+    //  One label per lamp, in the order they were typed.
+    const given = String(s.labels || "").split(",").map(t => t.trim());
+    const tags = Array.from({ length: across * down }, (_, i) => given[i] || "");
+    //  Words belong on a lamp, not on forty of them.
+    const one = across * down === 1;
+    const face = words && one ? '<span class="pl-text">' + bEsc(words) + "</span>" : "";
+    const lamp =
+      '<div class="pl-lamp" data-lens="' + bEsc(s.lens === "arcade" || !s.lens ? "fresnel" : s.lens) + '"' +
+        (face && lettering ? ' data-lettering="' + bEsc(lettering) + '"' : "") + ">" +
+        //  The halo is a blurred copy of THIS lamp, so the light comes off its
+        //  shape rather than out of a circle at its middle.
+        '<i class="pl-halo"><i></i></i><i class="pl-bezel"></i><i class="pl-face"></i>' +
+        '<i class="pl-lit"></i>' + face + '<i class="pl-lens"></i><i class="pl-gloss"></i>' +
+        (s.grime > 0 ? '<i class="pl-grime"></i><i class="pl-dust"></i>' : "") +
+      "</div>";
     body.innerHTML =
       '<div class="prop prop-light">' +
-        '<div class="pl-lamp" data-shape="' + bEsc(s.shape || "round") + '" data-lens="' + bEsc(s.lens || "fresnel") + '"' +
-          (lettering ? ' data-lettering="' + bEsc(lettering) + '"' : "") + ">" +
-          '<i class="pl-halo"></i><i class="pl-bezel"></i><i class="pl-face"></i>' +
-          (coin ? '<i class="pl-slot"></i>' : "") +
-          '<i class="pl-lit"></i>' + face + '<i class="pl-lens"></i><i class="pl-gloss"></i>' +
-          (s.grime > 0 ? '<i class="pl-grime"></i><i class="pl-dust"></i>' : "") +
+        '<div class="pl-rack" data-labels="' + bEsc(s.labelat || "below") + '">' +
+          tags.map(t => '<i class="pl-cell">' + lamp +
+            (t ? '<span class="pl-tag">' + bEsc(t) + "</span>" : "") + "</i>").join("") +
         "</div>" +
-        (s.label ? '<span class="pl-label">' + bEsc(s.label) + "</span>" : "") +
       "</div>";
-    body.firstElementChild.style.setProperty("--size", s.size + "%");
-    body.firstElementChild.style.setProperty("--tsize", String(propFitText(words, s.shape)));
-    //  Every copy is dirty in its own way: the same dirt, shifted by an
-    //  amount taken from the copy's id.
-    const lamp = body.querySelector(".pl-lamp");
-    const faceEl = lamp.querySelector(".pl-text");
+    body.firstElementChild.style.setProperty("--across", String(across));
+    body.firstElementChild.style.setProperty("--down", String(down));
+    body.firstElementChild.style.setProperty("--size", String(s.size));
+    body.firstElementChild.style.setProperty("--tsize", String(propFitText(words)));
+    const faceEl = body.querySelector(".pl-text");
     if (faceEl && s.facefont) faceEl.style.fontFamily = boardFontCss(s.facefont);
-    lamp.style.setProperty("--grime", String(s.grime || 0));
+    //  Every copy is dirty in its own way — and every lamp in a rack in its
+    //  own way again, so a row of them does not read as one lamp repeated.
     let h = 0;
     for (const ch of String(id || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    lamp.style.setProperty("--dirt-x", (h % 97) + "cqmin");
-    lamp.style.setProperty("--dirt-y", ((h >> 8) % 89) + "cqmin");
+    const lampEls = [...body.querySelectorAll(".pl-lamp")];
+    lampEls.forEach((el, i) => {
+      el.style.setProperty("--grime", String(s.grime || 0));
+      el.style.setProperty("--dirt-x", ((h + i * 37) % 97) + "cqmin");
+      el.style.setProperty("--dirt-y", (((h >> 8) + i * 53) % 89) + "cqmin");
+      /*  NO TWO LAMPS BURN THE SAME, and no two racks either. A rack is a
+          rack of separate bulbs — some newer, some tired, none of them
+          matched — so each takes a share of the Intensity setting at random,
+          drawn afresh rather than fixed to the lamp's place: a rack that
+          comes back identical is a pattern, and this is not meant to be one. */
+      if (lampEls.length > 1) {
+        const base = s.power == null ? 1 : s.power;
+        el.style.setProperty("--power", String(base * (0.55 + Math.random() * 0.75)));
+      }
+    });
     /*  ON THE PANEL, not just the lamp: how lit it is right now (--lit), its
         color and its glow. A frosted or smoked cover over the panel reads the
         same three, so the glass glows with the lamp and in step with it. */
@@ -174,17 +204,37 @@ registerKind({
     panel.classList.toggle("light-masked", lettering === "cutout");
     panel.style.setProperty("--light-c", propColor(s.color, "--accent2"));
     //  The glow follows the brightness; it is not a setting of its own.
-    panel.style.setProperty("--light-glow", String(Math.min(1, 0.15 + 0.55 * (s.power == null ? 1 : s.power))));
+    panel.style.setProperty("--light-glow", String(s.glow == null ? 0.6 : s.glow));
     panel.style.setProperty("--light-power", String(s.power == null ? 1 : s.power));
     panel.style.setProperty("--lit", "1");
     const f = propLightFrames(s);
     //  With reduced motion asked for, a light is simply on.
     if (f && !PROP_REDUCED()) {
-      body._propAnim = panel.animate(f.frames.map(k => {
+      const frames = f.frames.map(k => {
         const o = { "--lit": String(k.opacity) };
         if (k.offset !== undefined) o.offset = k.offset;
         return o;
-      }), { duration: f.ms, iterations: Infinity, easing: f.easing });
+      });
+      const opts = { duration: f.ms, iterations: Infinity, easing: f.easing };
+      /*  THE PANEL keeps the beat, because a cover over it reads --lit from
+          here and has to glow with something. */
+      body._propAnim = panel.animate(frames, opts);
+      /*  EACH LAMP IN A RACK RUNS ON ITS OWN. Real indicator lamps are not
+          wired to one switch: they wink out of step. Every lamp gets a
+          standing start of its own, taken from its place in the rack and
+          this copy's number, so the rack is never in lockstep and never
+          different from one visit to the next. */
+      const lamps = [...body.querySelectorAll(".pl-lamp")];
+      if (lamps.length > 1) {
+        body._lampAnims = lamps.map((el, i) => {
+          const a = el.animate(frames, Object.assign({ delay: -Math.random() * f.ms }, opts));
+          /*  Its own speed as well as its own start, both at random: offsets
+              alone still read as one pattern shifted along the rack, with
+              every lamp coming round again at the same moment. */
+          a.playbackRate = 0.55 + Math.random() * 1.2;
+          return a;
+        });
+      }
     }
   },
 });
@@ -245,6 +295,13 @@ const PROP_MATERIALS = {
       flemish   stretcher, header, stretcher, header along every course, each
                 course moved half a repeat so a header sits over a stretcher
       basket    pairs laid square to each other, turn and turn about  */
+/*  A grain for the joints seen THROUGH paint. Paint fills a joint unevenly:
+    it bridges some of it, sinks into the rest, and what you see afterwards is
+    a broken line rather than a drawn one. */
+const PROP_RELIEF_GRAIN = propSvgMask(120, 120,
+  "<filter id='rg'><feTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='3' seed='23' stitchTiles='stitch'/>" +
+  "<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.1 -0.55'/></filter>" +
+  "<rect width='120' height='120' filter='url(#rg)'/>");
 const PROP_BONDS = {
   //  [tile width, tile height, [x, y, w, h] for each brick]
   running: [48, 24, [
@@ -275,30 +332,17 @@ const propHex = rgb => "#" + rgb.map(v => Math.max(0, Math.min(255, Math.round(v
 //  A fixed shuffle: the same wall every time, not a new one on every render.
 function propNoise(i) { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
 
-/*  THE MORTAR, which is not a drawn line.
-
-    Every brick's outline in the joint's thickness — but a joint is a trowel
-    of sand and lime, not a ruled line: it is thicker here and thinner there,
-    paler in places, and gone altogether where it has been weathered or
-    pointed badly. So each brick's joint takes its own width and its own
-    strength, and the whole lot is then cut by a grain, so nothing in it is
-    solid. Seeded per panel, so it is this wall's mortar and not the same
-    mortar everywhere.  */
-const PROP_MORTAR_GRAIN = propSvgMask(90, 90,
-  "<filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' seed='5' stitchTiles='stitch'/>" +
-  "<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.5 -0.25'/></filter>" +
-  "<rect width='90' height='90' filter='url(#m)'/>");
-function propBondMask(bond, seed) {
+/*  The mortar: every brick drawn as its outline, in the joint's thickness.
+    Only the joints are painted and everything else is left clear, because
+    this is a mask — the ink shows where the mask is solid. Two bricks share
+    an edge, and so share the line between them. */
+function propBondMask(bond) {
   const [w, h, bricks] = PROP_BONDS[bond] || PROP_BONDS.running;
-  const rects = bricks.map(([x, y, bw, bh], i) => {
-    const n1 = propNoise((seed || 0) + i * 17), n2 = propNoise((seed || 0) + i * 17 + 61);
-    const j = 0.8 + n1 * 1.1;                     // this joint's thickness
-    const a = 0.45 + n2 * 0.55;                   // and how much of it is left
-    return "<rect x='" + x + "' y='" + y + "' width='" + bw + "' height='" + bh +
-      "' stroke-width='" + j.toFixed(2) + "' stroke-opacity='" + a.toFixed(2) + "'/>";
-  }).join("");
+  const j = 1.3;                                  // the joint, in brick units
+  const rects = bricks.map(([x, y, bw, bh]) =>
+    "<rect x='" + x + "' y='" + y + "' width='" + bw + "' height='" + bh + "'/>").join("");
   const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='" + w + "' height='" + h + "'>" +
-    "<g fill='none' stroke='#fff'>" + rects + "</g></svg>";
+    "<g fill='none' stroke='#fff' stroke-width='" + j + "'>" + rects + "</g></svg>";
   return { size: [w, h], mask: 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")' };
 }
 
@@ -397,7 +441,7 @@ registerKind({
     //  The can in the corner: what comes out of it, and how wide.
     //  The can's colour and nozzle are chosen on the panel, beside the can
     //  itself — not in here, where you cannot see what they do.
-    { key: "paint", label: "Paint", type: "color", default: "#ff2e88" },
+    { key: "paint", label: "Paint", type: "color", default: "#d6316e" },
   ],
   //  The paint goes with the panel.
   forget(id) { try { localStorage.removeItem(BOARD_NS + "paint:" + id); } catch (e) { /* unavailable */ } },
@@ -409,13 +453,13 @@ registerKind({
     seed %= 100000;
     //  Brickwork draws its own mortar from the bond; everything else has a
     //  pattern of its own.
-    const m = s.pattern === "brick" ? propBondMask(s.bond || "running", seed)
+    const m = s.pattern === "brick" ? propBondMask(s.bond || "running")
       : PROP_MATERIALS[s.pattern] || PROP_MATERIALS.grid;
     const words = String(s.words || "").trim();
     const lines = words ? words.split(/\s+/) : [];
     body.innerHTML = '<div class="prop prop-material"><i class="pm-ink"></i>' +
       '<canvas class="pm-paint"></canvas>' +
-      //  The wall's own relief, over the paint: see below.
+      //  A hint of the joints over the paint: see below.
       '<i class="pm-relief"></i>' +
       //  A ring showing how wide the can is set to spray.
       '<i class="pm-ring"></i>' +
@@ -435,7 +479,8 @@ registerKind({
             "px;height:" + Math.round(4 + n / 5) + 'px"></i></button>').join("") +
       "</div>" +
       '<div class="pm-colors">' +
-        ["#ff2e88", "#39ff88", "#ffd400", "#3aa0ff", "#ff5c1a", "#ffffff", "#111111"]
+        //  Paint, not neon: the colours a can actually comes in.
+        ["#d6316e", "#3fa65f", "#e0b32c", "#3d7fc1", "#d4622a", "#e8e4dc", "#17161a"]
           .map(col => '<button type="button" class="pm-swatch" data-col="' + col +
             '" title="' + col + '" style="background:' + col + '"></button>').join("") +
       "</div>" +
@@ -470,26 +515,17 @@ registerKind({
     }
     ink.style.background = propColor(s.ink, "--border");
     ink.style.opacity = String(s.strength);
-    /*  The grain goes over the joints, cutting them up: mask layers, kept
-        where BOTH are solid. Brickwork only; a grid or a blueprint is drawn,
-        not laid. */
-    if (s.pattern === "brick") {
-      ink.style.maskImage = ink.style.webkitMaskImage = m.mask + ", " + PROP_MORTAR_GRAIN;
-      ink.style.maskComposite = "intersect";
-      ink.style.webkitMaskComposite = "source-in";
-    } else {
-      ink.style.maskImage = ink.style.webkitMaskImage = m.mask;
-      ink.style.maskComposite = ink.style.webkitMaskComposite = "";
-    }
-    /*  PAINT TAKES THE SURFACE IT IS SPRAYED ON. Laid over the wall as a flat
-        colour it looks like a sticker: the joints and the lip of every brick
-        have to read through it, because paint sits in them rather than
-        filling them. So the same mortar mask, and the same shading down each
-        brick, are drawn AGAIN above the paint and multiplied into it — over
-        bare wall they change nothing to speak of, and over paint they put the
-        wall's relief back. */
+    ink.style.maskImage = ink.style.webkitMaskImage = m.mask;
+    /*  PAINT COVERS THE WALL, BUT THE WALL IS STILL UNDER IT. The joints are
+        drawn once more above the paint, faintly: not enough to uncover the
+        brick, enough that a sprayed wall still feels like a wall rather than
+        a sheet of colour. Over bare brick it does nothing you would notice. */
     const relief = body.querySelector(".pm-relief");
-    relief.style.maskImage = relief.style.webkitMaskImage = m.mask;
+    //  The joints, cut by the grain: kept only where both are solid, so the
+    //  line through the paint comes and goes instead of running unbroken.
+    relief.style.maskImage = relief.style.webkitMaskImage = m.mask + ", " + PROP_RELIEF_GRAIN;
+    relief.style.maskComposite = "intersect";
+    relief.style.webkitMaskComposite = "source-in";
     /*  THE MORTAR AND THE BRICKS ARE ONE WALL, so one sum sizes both. The
         mortar tile is rounded to whole pixels first, and the brick tile is
         then exactly twice it — rounding the two separately let them drift
@@ -498,18 +534,13 @@ registerKind({
     if (m.size) {
       tile = [Math.max(2, Math.round(m.size[0] * s.scale)), Math.max(2, Math.round(m.size[1] * s.scale))];
       ink.style.maskSize = ink.style.webkitMaskSize = tile[0] + "px " + tile[1] + "px";
+      relief.style.maskSize = relief.style.webkitMaskSize =
+        tile[0] + "px " + tile[1] + "px, " + Math.round(tile[0] * 2.4) + "px " + Math.round(tile[1] * 3.1) + "px";
     } else {
       //  Gradient rings scale by zooming the whole mask.
       ink.style.maskSize = ink.style.webkitMaskSize = (100 * s.scale) + "% " + (100 * s.scale) + "%";
-    }
-    if (tile) {
-      relief.style.maskSize = relief.style.webkitMaskSize = tile[0] + "px " + tile[1] + "px";
-      //  The grain tile is its own size, and repeats over the joints.
-      if (s.pattern === "brick") {
-        ink.style.maskSize = ink.style.webkitMaskSize =
-          tile[0] + "px " + tile[1] + "px, " + Math.round(tile[0] * 1.7) + "px " + Math.round(tile[1] * 2.3) + "px";
-      }
-      relief.style.backgroundSize = tile[0] + "px " + tile[1] + "px";
+      relief.style.maskSize = relief.style.webkitMaskSize =
+        (100 * s.scale) + "% " + (100 * s.scale) + "%, 40% 40%";
     }
     //  Brickwork: a tile of individually coloured bricks under the mortar,
     //  laid on the mortar's own grid. Anything else: the flat ground.
@@ -523,7 +554,6 @@ registerKind({
       /*  Three layers: the shading on each brick (one tile), a slow stain
           over the whole wall, which breaks up whatever repeat is left, and
           the bricks' own colours underneath. */
-      relief.style.backgroundImage = propBrickShade(bondName);
       root.style.background =
         propBrickShade(bondName) + " 0 0 / " + tile[0] + "px " + tile[1] + "px repeat, " +
         PROP_STAIN + " 0 0 / " + Math.round(tile[0] * 7.3) + "px " + Math.round(tile[1] * 11.7) + "px repeat, " +
@@ -547,7 +577,7 @@ registerKind({
     const canvas = body.querySelector(".pm-paint");
     const can = body.querySelector(".pm-can");
     //  The can shows what it is loaded with.
-    can.style.setProperty("--pm-paint", s.paint || "#ff2e88");
+    can.style.setProperty("--pm-paint", s.paint || "#d6316e");
     const key = BOARD_NS + "paint:" + id;
     let strokes = [];
     try { strokes = JSON.parse(localStorage.getItem(key) || "[]") || []; } catch (e) { strokes = []; }
@@ -568,41 +598,59 @@ registerKind({
         so it keeps its place when the panel is resized, and where it ran. The
         speckle comes from the stroke's own number rather than from chance, so
         drawing it again gives the same paint. */
+    /*  A proper shuffle. The sine trick used elsewhere in this file repeats
+        in patterns when you walk its input, which is how the mist ended up
+        looking like halftone; this one does not. */
+    const rnd = seedN => {
+      let a = (seedN >>> 0) + 0x6D2B79F5;
+      return () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    };
     const spray = (st, from) => {
       const W = canvas.width, H = canvas.height;
       const dpr = W / Math.max(1, canvas.getBoundingClientRect().width || W);
       const r = st.r * Math.min(W, H);
-      /*  WHAT COMES OUT OF A CAN IS A MIST, not a row of dots. Each stamp is
-          two things: a soft cone, densest at the middle and fading to nothing
-          at the edge, and a scatter of specks over it, thinning outward, so
-          the edge breaks up into grain the way real paint does. Overlapping
-          stamps build: a slow pass goes solid, a quick one leaves a haze. */
-      const cone = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-      cone.addColorStop(0, st.c);
-      cone.addColorStop(0.45, st.c);
-      cone.addColorStop(1, "transparent");
-      const speck = Math.max(1, Math.round(dpr));       // one device pixel
+      /*  WHAT COMES OUT OF A CAN IS DROPLETS — nothing else. No disc, no
+          gradient: a disc has an edge and paint does not. Each stamp throws a
+          few hundred droplets, thickest at the middle and thinning away to
+          nothing, each one landing where it lands. Passes build: one is a
+          haze, five is solid, and the edge stays ragged however many you do.
+          The throw is random but seeded, so drawing the same stroke again
+          gives the same paint rather than a new one. */
+      ctx.fillStyle = st.c;
       for (let i = from; i < st.p.length; i += 2) {
         const x = st.p[i] * W, y = st.p[i + 1] * H;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.globalAlpha = 0.085;
-        ctx.fillStyle = cone;
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, 6.3);
-        ctx.fill();
-        //  The grain: specks thrown wide of the cone, fewer the further out.
-        ctx.fillStyle = st.c;
-        const n = Math.round(18 + r * 1.8);
-        for (let d = 0; d < n; d++) {
-          const n1 = propNoise(st.k + i * 37 + d), n2 = propNoise(st.k + i * 37 + d + 911);
-          const a = n1 * Math.PI * 2;
-          //  Pushed toward the rim, and a few stray drops beyond it.
-          const t = 0.35 + 0.85 * n2 * n2;
-          ctx.globalAlpha = 0.34 * (1 - t) + 0.05;
-          ctx.fillRect(Math.cos(a) * r * t, Math.sin(a) * r * t, speck, speck);
+        const rand = rnd(st.k * 7919 + i);
+        /*  A PRESS LAYS PAINT. One press of the button should put a solid
+            spot on the wall, not a suggestion of one — a can does not need
+            four passes to show up. Enough droplets to cover the cone at
+            once, and each one carrying real colour. */
+        const drops = Math.max(140, Math.round(r * r * 4.5));
+        for (let d = 0; d < drops; d++) {
+          /*  SPREAD BY AREA, NOT BY DISTANCE. Throwing droplets at an even
+              spread of radius crowds them all into the middle — a ring of
+              wall has more room in it the further out it is — and the cone
+              comes out as a pin hole with a halo. The square root spreads
+              them evenly across the circle; the softness at the edge then
+              comes from the paint thinning, not from running out of drops. */
+          const u = rand();
+          const t = Math.sqrt(u) * 1.06;
+          if (t > 1.04) continue;                 // the few that go wide
+          const a = rand() * Math.PI * 2;
+          const px = x + Math.cos(a) * t * r, py = y + Math.sin(a) * t * r;
+          const size = (0.5 + rand() * 0.8) * dpr;
+          /*  FLAT, THEN SOFT AT THE RIM. The cone is one strength across
+              its face — a can does not paint a bullseye — and only the last
+              quarter of it fades out, which is the overspray at the edge of
+              the fan. */
+          const fade = t < 0.72 ? 1 : 1 - (t - 0.72) / 0.34;
+          ctx.globalAlpha = 0.2 * Math.max(0, fade);
+          ctx.fillRect(px, py, size, size);
         }
-        ctx.restore();
       }
       ctx.globalAlpha = 1;
     };
@@ -714,11 +762,11 @@ registerKind({
       canvas.setPointerCapture(e.pointerId);
       const r = canvas.getBoundingClientRect();
       at = [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
-      live = { c: s.paint || "#ff2e88", r: (s.brush || 14) / 200, k: Math.floor(Math.random() * 99999),
+      live = { c: s.paint || "#d6316e", r: (s.brush || 14) / 200, k: Math.floor(Math.random() * 99999),
                p: [at[0], at[1]] };
       strokes.push(live);
       spray(live, 0);
-      timer = setInterval(puff, 45);                 // it keeps spraying
+      timer = setInterval(puff, 32);                 // it keeps spraying
     });
     //  The ring tracks the pointer whenever the can is in your hand.
     canvas.addEventListener("pointerenter", () => { if (armed) ring.classList.add("on"); });
