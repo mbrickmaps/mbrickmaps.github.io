@@ -1811,6 +1811,16 @@ function wireDockReorder(rail, side) {
       panel.classList.remove("dock-moving");
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      /*  Carried to another edge: it moves there. Checked before the grid
+          drop, because a rail sits on the edge it is being taken to and the
+          pointer is over that rail when the mouse comes up. */
+      const edge = edgeAtPoint(e.clientX, e.clientY);
+      if (edge && edge !== side) {
+        if (boardDrag) endBoardDrag(false);
+        setDock(panel.id, edge);
+        saveBoard();
+        return;
+      }
       if (boardDrag) {
         //  A dock target may already have caught this press and undocked it,
         //  in which case boardDrag is gone and there is nothing to commit.
@@ -2126,12 +2136,20 @@ function renderBoardCardList() {
       const fp = FOOTPRINTS[id];
       const card = document.createElement("div");
       card.className = "board-card" + (fp.isKind ? " is-kind" : "");
-      card.draggable = true;
+      /*  NOT the browser's own drag and drop. A card used to be draggable="true",
+          and a drop the browser judged unsuccessful — which is any drop it does
+          not itself handle — flew the card back to the drawer before the panel
+          appeared. Nothing can turn that animation off. The card is moved with
+          plain mouse events instead, the same way a tile on the board is, and
+          there is no flight home because the browser is not involved. */
+      card.draggable = false;
       card.dataset.id = id;
       card.innerHTML =
         '<div class="cart-label">' +
         '<div class="board-card-row">' +
-          '<button type="button" class="fp-add" title="' + (fp.isKind ? "add another to the board" : "add to board") + '">+</button>' +
+          '<button type="button" class="fp-add" title="' +
+            (fp.isKind ? "add another to the board" : "add to board") +
+            ' — or drag it to where you want it">+</button>' +
           '<span class="board-card-name">' + bEsc(fp.name) +
             (fp.wip ? ' <span class="wip-badge" title="work in progress: may be incomplete or change">\u{1F6A7}</span>' : "") +
           "</span>" +
@@ -2153,7 +2171,10 @@ function renderBoardCardList() {
       hIn.addEventListener("change", () => { fp.h = Math.max(1, Math.min(12, parseInt(hIn.value, 10) || 1)); hIn.value = fp.h; saveFootprints(); });
 
       const add = card.querySelector(".fp-add");
-      add.addEventListener("mousedown", e => e.stopPropagation());
+      //  No mousedown guard here, unlike the size boxes: the + is the most
+      //  obvious thing on the card to take hold of, so it starts a drag as
+      //  readily as the card around it. Press and let go and it is still a
+      //  press — the drag needs the pointer to actually move.
       add.addEventListener("click", e => {
         e.stopPropagation();
         const slot = pickedSlot(fp.w, fp.h) || findFreeSlot(fp.w, fp.h);
@@ -2283,8 +2304,200 @@ function resetBoard() {
   renderBoard(); renderBoardCardList(); saveBoard();
 }
 
+/* --------------------------------------------------------------------------
+   THE SCROLLBARS — drawn by the panel, so they can be animated.
+
+   A browser's own scrollbar is not part of the page: its thumb takes a
+   colour and a width and nothing else, and no transform, so it cannot be
+   made to give when a scroll runs out of panel. The native bar is hidden in
+   board.css and this draws one in its place, over the panel's inside edge.
+
+   One bar per scrolling element, built the first time that element is
+   touched — panels come and go, and most of them never scroll at all.
+   -------------------------------------------------------------------------- */
+const BAR_MIN = 18;                    // a thumb shorter than this is a speck
+
+//  The panel a scrolling element belongs to, and the bar that panel holds.
+function barFor(el) {
+  const panel = el.closest && el.closest(".panel");
+  if (!panel) return null;
+  let bar = panel.querySelector(":scope > .panel-bar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "panel-bar";
+    bar.appendChild(document.createElement("i"));
+    panel.appendChild(bar);
+  }
+  //  A panel can hold several scrolling elements — the body, a table inside
+  //  it — but only one bar, which shows whichever was scrolled last.
+  bar._for = el;
+  return bar;
+}
+
+function drawBar(el) {
+  const bar = barFor(el);
+  if (!bar) return;
+  const thumb = bar.firstElementChild;
+  const room = el.scrollHeight - el.clientHeight;
+  if (room < 2) { bar.style.display = "none"; return; }
+  bar.style.display = "";
+  const track = bar.clientHeight;
+  //  As long as the visible part is of the whole, never shorter than BAR_MIN.
+  const len = Math.max(BAR_MIN, Math.round(track * (el.clientHeight / el.scrollHeight)));
+  //  The travel is what is left of the track once the thumb has its length.
+  const top = Math.round((track - len) * (el.scrollTop / room));
+  thumb.style.height = len + "px";
+  thumb.style.top = top + "px";
+}
+
+/*  Shown while it is moving, then left to the hover rule. */
+function flashBar(el) {
+  const bar = barFor(el);
+  if (!bar) return;
+  bar.classList.add("live");
+  clearTimeout(bar._idle);
+  bar._idle = setTimeout(() => bar.classList.remove("live"), 900);
+}
+
+/*  THE THUMB IS ON A SPRING.
+
+    Easing curves are a drawing of movement; a spring is the movement. The
+    thumb's length is one, pulled towards whatever length it ought to be and
+    slowed by damping, and everything that happens to it is a push on that
+    spring rather than an animation played at it:
+
+      • setting off from a standstill      a small push inwards — it gathers
+      • travelling                          the faster it goes, the longer it
+                                            is asked to be
+      • arriving at an end                  a hard push inwards, anchored at
+                                            the end it struck
+      • stopping                            asked to be its own length again
+
+    Because the spring carries what it was already doing into whatever comes
+    next, a fling that runs into the bottom of a panel lands harder than a
+    nudge that arrives there slowly, and the settle after it overshoots and
+    comes back by itself. Nothing schedules that; it falls out of the sum. */
+const BAR_PULL = 0.22;                 // how strongly it seeks its length
+const BAR_DAMP = 0.82;                 // what it loses to friction each frame
+const BAR_REST = 0.0015;               // near enough to stopped to stop
+
+function barSpring(bar) {
+  if (!bar._spring) bar._spring = { len: 1, vel: 0, want: 1, origin: "50% 50%", raf: 0 };
+  return bar._spring;
+}
+
+function runSpring(bar) {
+  const sp = barSpring(bar);
+  if (sp.raf) return;                                  // already running
+  const thumb = bar.firstElementChild;
+  let last = performance.now();
+  const step = now => {
+    //  In frames rather than milliseconds, and capped, so a tab that was in
+    //  the background does not resume with one enormous step.
+    const dt = Math.min(3, (now - last) / 16.667) || 1;
+    last = now;
+    sp.vel += (sp.want - sp.len) * BAR_PULL * dt;
+    sp.vel *= Math.pow(BAR_DAMP, dt);
+    sp.len += sp.vel * dt;
+    thumb.style.transformOrigin = sp.origin;
+    thumb.style.transform = "scaleY(" + sp.len.toFixed(4) + ")";
+    if (Math.abs(sp.want - sp.len) < BAR_REST && Math.abs(sp.vel) < BAR_REST) {
+      sp.len = sp.want; sp.vel = 0; sp.raf = 0;
+      thumb.style.transform = sp.want === 1 ? "" : "scaleY(" + sp.want + ")";
+      return;
+    }
+    sp.raf = requestAnimationFrame(step);
+  };
+  sp.raf = requestAnimationFrame(step);
+}
+
+//  Somebody who would rather nothing moved gets a bar that does not.
+const barStill = () => window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+//  A push on the spring: inwards is negative. The origin says which end it
+//  gives from — the middle while travelling, the end it hit on arrival.
+function pushBar(el, force, origin) {
+  if (barStill()) return;
+  const bar = barFor(el);
+  if (!bar) return;
+  const sp = barSpring(bar);
+  sp.origin = origin || "50% 50%";
+  sp.vel += force;
+  runSpring(bar);
+}
+
+/*  SETTING OFF. The only push that is not an arrival: a scroll starting from
+    a standstill gathers the thumb inwards, the way anything with weight does
+    before it moves. Nothing happens while it travels — a thumb that flexed
+    the whole way down would be flexing at nothing; it is the leaving and the
+    landing that have something to push against.
+
+    Momentum counts as the same journey: a trackpad fling keeps sending
+    scrolls after your fingers have left it, and because those arrive within
+    the gap below, the fling does not re-trigger the gather over and over. */
+const BAR_SETOFF = 140;                // ms of stillness that counts as stopped
+function startBar(el) {
+  if (barStill()) return;
+  const now = performance.now();
+  const gap = now - (el._barT || 0);
+  el._barT = now;
+  if (gap > BAR_SETOFF) pushBar(el, -0.08);
+}
+
+/*  THE BONK: arriving at the end of the travel. A push inwards, anchored at
+    the end that was struck, on top of whatever the thumb was already doing —
+    so running into the bottom at the end of a fling gives a harder knock
+    than drifting into it. */
+function bonkBar(el, end) {
+  flashBar(el);
+  pushBar(el, -0.28, end === "top" ? "50% 0" : "50% 100%");
+}
+
+function wireScrollBars() {
+  //  Scroll does not bubble, so it is caught on the way down instead.
+  document.addEventListener("scroll", e => {
+    const el = e.target;
+    if (!el.closest || !el.closest(".panel")) return;
+    drawBar(el); flashBar(el); startBar(el);
+    /*  THE KNOCK IS ARRIVING AT THE END, not leaning on one you were already
+        resting against. It used to fire on the wheel, which meant a panel
+        sitting at its top knocked the moment you touched the wheel, before
+        anything had moved — a bonk for a journey that never happened. Now it
+        waits until the scroll actually runs into the end, so the only way to
+        hear it is to travel there. */
+    const room = el.scrollHeight - el.clientHeight;
+    const end = room < 2 ? null
+      : el.scrollTop <= 0 ? "top"
+      : el.scrollTop >= room - 1 ? "bottom" : null;
+    if (end && el._barEnd !== end) bonkBar(el, end);
+    el._barEnd = end;
+  }, true);
+  //  A panel the pointer is over has its bar drawn before it is shown, so it
+  //  does not appear in the wrong place and then correct itself.
+  document.addEventListener("mouseover", e => {
+    const el = e.target.closest && e.target.closest(".panel");
+    if (!el) return;
+    for (const s of el.querySelectorAll(".panel-body")) if (s.scrollHeight > s.clientHeight + 1) drawBar(s);
+  }, true);
+}
+
 /* ---------- drag: card -> board, and tile -> board ---------- */
 let boardDrag = null;
+
+/*  A DRAG THAT ENDED ON AN EDGE, wherever it started. A card out of the
+    drawer is not on the board yet: it takes a cell first, so undocking later
+    has somewhere to put it back. */
+function dockFromDrag(id, side) {
+  if (!id || !side) return;
+  let placed = id;
+  if (!board.tiles.some(t => t.id === id)) {
+    const fp = FOOTPRINTS[id] || { w: 1, h: 1 };
+    const slot = findFreeSlot(fp.w, fp.h);
+    placed = addTile(id, slot.x, slot.y, fp.w, fp.h) || id;
+  }
+  setDock(placed, side);
+}
 
 function boardCellUnderPoint(clientX, clientY) {
   const b = boardEl();
@@ -2363,57 +2576,50 @@ function dockTargets() {
     }
     document.body.appendChild(host);
   }
-  //  Clear of any rail already on that edge, so the plus for the bottom is
-  //  never hidden behind the bottom rail.
-  for (const t of host.children) {
-    const side = t.dataset.side;
-    const off = dockSizeOf(side) + 8;
-    if (side === "left" || side === "right") t.style[side] = off + "px";
-    else t.style[side] = off + "px";
-  }
+  /*  ON the edge, not beside it. They used to be pushed clear of whatever
+      rail was already there, which put the plus for a docked edge halfway
+      across the board — nowhere near where you aim when you mean "put this on
+      that edge too". They sit at the edge and ride over the rail instead
+      (#dockTargets is above it), so an edge with one panel takes a second the
+      same way it took the first. */
+  for (const t of host.children) t.style[t.dataset.side] = "8px";
   return host;
 }
 
-/*  Both drags end here. The flyout uses HTML5 drag and drop and a tile already
-    on the board is moved with plain mouse events, so a target has to answer to
-    either one. */
+/*  Every drag ends here the same way: the pointer is down the whole time,
+    whether the panel came out of the drawer or off the board, so a plain
+    mouseup on the target is the drop. */
 function wireDockTarget(node, side) {
   const take = () => {
     if (!boardDrag) return false;
     const id = boardDrag.id;
-    const known = board.tiles.some(t => t.id === id);
-    //  Dragged in from the flyout: it has to be on the board before it can be
-    //  docked, and it keeps that cell for when it is undocked again.
-    let placed = id;
-    if (!known) {
-      const fp = FOOTPRINTS[id] || { w: 1, h: 1 };
-      const slot = findFreeSlot(fp.w, fp.h);
-      placed = addTile(id, slot.x, slot.y, fp.w, fp.h) || id;
-    }
     boardDrag = null;
-    setDock(placed, side);
+    dockFromDrag(id, side);
     return true;
   };
-  node.addEventListener("dragover", e => {
-    if (!boardDrag) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    node.classList.add("over");
-  });
-  node.addEventListener("dragleave", () => node.classList.remove("over"));
-  node.addEventListener("drop", e => {
-    e.preventDefault();
-    node.classList.remove("over");
-    if (take()) endBoardDrag(false);
-  });
-  //  The mouse drag: the pointer is down the whole way, so a plain mouseup on
-  //  the target is the drop.
   node.addEventListener("mouseenter", () => { if (boardDrag) node.classList.add("over"); });
   node.addEventListener("mouseleave", () => node.classList.remove("over"));
   node.addEventListener("mouseup", () => {
     node.classList.remove("over");
     if (take()) endBoardDrag(false);
   });
+}
+
+/*  WHICH EDGE YOU LET GO NEAR, if any.
+
+    Dropping onto an edge used to mean hitting a target element with the
+    pointer, which is a hit test — and a hit test loses to whatever else is
+    on that edge: the rail already there, its panels, its grip. Where the
+    mouse is when you release it is not in dispute, so the drop is decided
+    from that instead. Within this many pixels of a side of the window is
+    that side. */
+const DOCK_EDGE_GRAB = 64;
+function edgeAtPoint(x, y) {
+  const w = window.innerWidth, h = window.innerHeight;
+  const d = { left: x, right: w - x, top: y, bottom: h - y };
+  let best = null;
+  for (const side of DOCK_SIDES) if (d[side] <= DOCK_EDGE_GRAB && (!best || d[side] < d[best])) best = side;
+  return best;
 }
 
 function showDockTargets(on) {
@@ -2573,33 +2779,72 @@ function wireBoard() {
     renderBoard({ content: false }); saveBoard();
   });
 
+  wireScrollBars();
+
   /* ---------- drag wiring ---------- */
-  bEl("boardCardList").addEventListener("dragstart", e => {
-    if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") { e.preventDefault(); return; }
-    const card = e.target.closest(".board-card[draggable]");
-    if (!card) return;
+  /*  A CARD OUT OF THE DRAWER, on plain mouse events.
+
+      The pointer is held down the whole way, so where you let go is the drop
+      — near an edge it docks there, over the board it takes that cell — and
+      the panel simply appears.
+
+      ANYWHERE ON THE CARD, THE + INCLUDED. It is the one thing on a card
+      that looks like a handle, so it is the first thing anyone takes hold
+      of, and it refused to be dragged while the rest of the card went. It
+      is both now: press and let go and it adds the panel wherever there is
+      room, press and move and you place it yourself. Only the size boxes
+      keep the pointer to themselves, because they are for typing in. */
+  let cardDragEnded = 0;
+  bEl("boardCardList").addEventListener("mousedown", e => {
+    if (e.button !== 0) return;
+    const card = e.target.closest(".board-card");
+    if (!card || e.target.closest("input")) return;
     const fp = FOOTPRINTS[card.dataset.id];
     if (!fp) return;
-    card.classList.add("dragging");
-    boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
-    showDockTargets(true);
-    e.dataTransfer.effectAllowed = "copy";
-    // Firefox needs data set to fire subsequent drag events at all.
-    e.dataTransfer.setData("text/plain", card.dataset.id);
-  });
-  bEl("boardCardList").addEventListener("dragend", () => endBoardDrag(false));
+    //  A drag, not a text selection.
+    e.preventDefault();
+    const sel = window.getSelection && window.getSelection();
+    if (sel) sel.removeAllRanges();
 
-  boardEl().addEventListener("dragover", e => {
-    if (!boardDrag) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = boardDrag.fromTile ? "move" : "copy";
-    updateGhost(e.clientX, e.clientY);
+    const fromX = e.clientX, fromY = e.clientY;
+    let live = false;                              // past the threshold yet?
+    const onMove = ev => {
+      if (!live) {
+        if (Math.abs(ev.clientX - fromX) < 4 && Math.abs(ev.clientY - fromY) < 4) return;
+        live = true;
+        card.classList.add("dragging");
+        boardDrag = { id: card.dataset.id, w: Math.min(fp.w, board.cols), h: fp.h, fromTile: null, valid: false };
+        showDockTargets(true);
+      }
+      updateGhost(ev.clientX, ev.clientY);
+    };
+    const onUp = ev => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (!live) return;                           // a press that went nowhere
+      //  A drag that started on the + ends with a click on it, which would
+      //  add a second copy somewhere else entirely. The drop is what you
+      //  meant; the click that follows it is not.
+      cardDragEnded = Date.now();
+      const edge = edgeAtPoint(ev.clientX, ev.clientY);
+      if (edge) {
+        const id = boardDrag && boardDrag.id;
+        endBoardDrag(false);
+        dockFromDrag(id, edge);
+        return;
+      }
+      updateGhost(ev.clientX, ev.clientY);
+      endBoardDrag(true);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   });
-  boardEl().addEventListener("drop", e => {
-    if (!boardDrag) return;
+  //  Caught on the way down, before the + button's own handler hears it.
+  bEl("boardCardList").addEventListener("click", e => {
+    if (Date.now() - cardDragEnded > 150) return;
+    e.stopPropagation();
     e.preventDefault();
-    endBoardDrag(true);
-  });
+  }, true);
 
   // Repositioning a tile already on the board — grabbed by its ✥ handle only,
   // so the rest of the header (and anything under it) stays clickable.
@@ -2619,10 +2864,18 @@ function wireBoard() {
     showDockTargets(true);
     const onMove = ev => updateGhost(ev.clientX, ev.clientY);
     const onUp = ev => {
-      updateGhost(ev.clientX, ev.clientY);
-      endBoardDrag(true);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      //  Let go near an edge and that is where it goes.
+      const edge = edgeAtPoint(ev.clientX, ev.clientY);
+      if (edge) {
+        const id = boardDrag && boardDrag.id;
+        endBoardDrag(false);
+        dockFromDrag(id, edge);
+        return;
+      }
+      updateGhost(ev.clientX, ev.clientY);
+      endBoardDrag(true);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);

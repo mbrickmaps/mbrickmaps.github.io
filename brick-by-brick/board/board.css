@@ -65,10 +65,53 @@
   }
   .board-tile > .panel > .panel-body, .dock > .panel > .panel-body {
     flex: 1 1 auto; min-height: 0; overflow: auto;
+  }
+  /*  A SCROLLBAR THE PANEL DRAWS ITSELF.
+
+      The browser's own bar cannot be made to do this: ::-webkit-scrollbar-thumb
+      is drawn outside the page's own rendering and will not take a transform,
+      so it can be recoloured and narrowed and nothing more. The native bar is
+      hidden and a thumb is drawn in its place — an element like any other,
+      which can therefore squash against the end of its travel.
+
+      Anything inside a panel that scrolls on its own hides its bar too, so a
+      panel never shows two different kinds at once. */
+  .panel .panel-body, .panel .panel-body * {
     scrollbar-width: none; -ms-overflow-style: none;
   }
-  .board-tile > .panel > .panel-body::-webkit-scrollbar,
-  .dock > .panel > .panel-body::-webkit-scrollbar { display: none; }
+  .panel .panel-body::-webkit-scrollbar,
+  .panel .panel-body *::-webkit-scrollbar { width: 0; height: 0; }
+
+  /*  The bar sits over the inside edge of the panel, clear of the rounded
+      corners. No track behind it: the thumb is the whole of it. */
+  .panel > .panel-bar {
+    position: absolute; right: 3px; top: 14px; bottom: 10px; width: 7px;
+    pointer-events: none; z-index: 6;
+    opacity: 0; transition: opacity 0.2s ease;
+  }
+  /*  Out of sight until there is a reason for it: the pointer on the panel,
+      or a scroll happening right now. */
+  .panel:hover > .panel-bar, .panel > .panel-bar.live { opacity: 1; }
+  .panel > .panel-bar > i {
+    position: absolute; left: 2px; width: 3px; border-radius: 3px;
+    background: color-mix(in srgb, var(--fg) 30%, transparent);
+    /*  No transition on the transform: its length is driven frame by frame
+        by the spring in board.js, and an easing curve laid over a simulation
+        only fights it. */
+    transition: background 0.2s ease;
+  }
+  .panel:hover > .panel-bar > i { background: color-mix(in srgb, var(--fg) 46%, transparent); }
+
+  /*  THE BONK, the stretch and the gather are all one thing now: the thumb's
+      length is a spring, and board.js pushes it. See THE THUMB IS ON A SPRING
+      there — nothing about the movement is described here, because a keyframe
+      cannot know how fast the thumb was going when it arrived. */
+  @media (prefers-reduced-motion: reduce) {
+    .panel > .panel-bar { transition: none; }
+    /*  The spring never runs under reduced motion (barStill in board.js),
+        so nothing here has to undo it. */
+    .panel > .panel-bar > i { transform: none; }
+  }
   .board-tile.dragging { opacity: 0.4; }
   /* The footprint a drop would occupy. Never placed until mouseup. */
   #boardGhost {
@@ -522,23 +565,32 @@
   .dock-right .dock-grip { left: 0; }
   .dock-top .dock-grip { bottom: 0; }
   .dock-bottom .dock-grip { top: 0; }
+/*  THE WHOLE EDGE, NOT A BUTTON ON IT. It was a 34-pixel disc you had to
+    hit: fine when the edge is bare and the disc is the only thing there,
+    hopeless when a rail is already on that edge and you are dragging a panel
+    across it. The edge itself is the target — a band down the side or across
+    the top — so "put this on that edge" means dropping anywhere along it. */
   .dock-target {
     position: fixed; display: none; place-items: center;
-    width: 34px; height: 34px; font-size: 1.1rem; line-height: 1;
+    font-size: 1.1rem; line-height: 1;
     border: 1px dashed var(--accent2); border-radius: 6px;
     background: color-mix(in srgb, var(--accent2) 14%, var(--panel));
     color: var(--accent2); cursor: copy; pointer-events: auto;
+    z-index: 91;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   }
+  .dock-target-left, .dock-target-right { top: 8px; bottom: 8px; width: 54px; }
+  .dock-target-top, .dock-target-bottom { left: 8px; right: 8px; height: 54px; }
   #dockTargets.live .dock-target { display: grid; }
   .dock-target.over { background: var(--accent2); color: var(--bg); border-style: solid; }
-  .dock-target-top, .dock-target-bottom { left: 50%; margin-left: -17px; }
-  .dock-target-left, .dock-target-right { top: 50%; margin-top: -17px; }
+
   /*  The plus on the end of a rail, which is how an edge takes a second panel.
       Thin along the rail, full width across it. */
   /*  The same hole as an empty board cell, since it is the same thing: a place
       on the wall with no brick in it yet. */
   .dock-slot {
     flex: 0 0 22px; border: 1px dashed var(--border); border-radius: 4px;
+    position: relative; z-index: 2;
     background: color-mix(in srgb, #000 42%, var(--bg));
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
     color: inherit; opacity: 0.5; cursor: copy;
@@ -839,7 +891,11 @@
 
 /*  The drop targets. Out of the way until a panel is moving, then a plus at
     each edge of the window. */
-#dockTargets { position: fixed; inset: 0; z-index: 58; pointer-events: none; }
+/*  ABOVE EVERYTHING WHILE A DRAG IS ON. An edge that already has a panel on
+    it has a rail across it, and the rail was taking the drop: the target has
+    to sit over the rail, its panels and anything else on screen, or an edge
+    can only ever take its first panel. */
+#dockTargets { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 
 /*  Things you drag are never text to select. */
 .panel-head, .drag-handle, .panel-tab, .panel-cover, .tile-resize, .dock-grip, .dock-split,

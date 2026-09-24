@@ -32,6 +32,18 @@
     color: var(--accent2); text-decoration: none; border-bottom: 1px dotted currentColor;
   }
   h1 .back:hover { border-bottom-style: solid; }
+  /*  The invitation: a line, not a banner. */
+  .take {
+    margin: -4px 0 12px; max-width: 70ch;
+    font-size: 0.78rem; line-height: 1.6; opacity: 0.7;
+  }
+  .take code {
+    font-family: var(--mono); font-size: 0.92em;
+    background: var(--field); border: 1px solid var(--border);
+    border-radius: 3px; padding: 0 3px;
+  }
+  .take a { color: var(--accent2); text-decoration: none; border-bottom: 1px dotted currentColor; }
+  .take a:hover { border-bottom-style: solid; }
   button, input, textarea {
     background: var(--field); color: var(--fg); border: 1px solid var(--border);
     border-radius: 3px; padding: 3px 7px; font: inherit; font-size: 0.75rem;
@@ -52,6 +64,53 @@
 <body>
 <h1>Board demo <span>board.js + board.css, no Brick by Brick</span>
   <a class="back" href="../" title="the page this board was taken from">&larr; Brick by Brick</a></h1>
+
+<!--  Take it and make your own. No address is written down here: a fork of
+      this page is somebody else's now, and it should point at THEIR copy.
+      The links are worked out from the page's own address below. -->
+<p class="take">
+  Take it: the board is <code>board.js</code> and <code>board.css</code>, no build step and
+  nothing to install. Copy them, or <a data-gh="fork">fork the repo</a> and start from this
+  page — <a data-gh="dir">the board's folder</a> has the files and the
+  <a data-gh="readme">README</a>. Write a panel in one <code>registerPanel()</code> call;
+  the Notes panel here shows you how.
+</p>
+<script>
+/*  WHERE THIS PAGE LIVES, ASKED OF THE PAGE ITSELF.
+
+    On a GitHub Pages site the host names the owner (owner.github.io) and the
+    repository is either that same name, for a user site, or the first part of
+    the path, for a project site. That is enough to point at the repository
+    this very page was served from — so a fork sends people to the fork, and
+    nobody inherits somebody else's address.
+
+    Served from anywhere else (a laptop, a file), there is no repository to
+    point at, so the words stay and the links quietly become plain text. */
+(function () {
+  const p = document.querySelector(".take");
+  if (!p) return;
+  const links = [...p.querySelectorAll("a[data-gh]")];
+  const host = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname);
+  const parts = location.pathname.split("/").filter(Boolean);
+  if (host) {
+    const owner = host[1];
+    //  A project site keeps the repository first in the path; a user site
+    //  does not, and its repository is the host itself.
+    const userSite = parts[0] === "brick-by-brick" || parts.length < 2;
+    const repo = userSite ? location.hostname : parts[0];
+    const within = (userSite ? parts : parts.slice(1)).slice(0, -1).join("/");
+    const base = "https://github.com/" + owner + "/" + repo;
+    const where = {
+      fork: base + "/fork",
+      dir: base + "/tree/main/" + within,
+      readme: base + "/blob/main/" + within + "/README.md",
+    };
+    for (const a of links) a.href = where[a.dataset.gh];
+    return;
+  }
+  for (const a of links) a.replaceWith(document.createTextNode(a.textContent));
+})();
+</script>
 
 <!-- The markup the board looks for. -->
 <div id="board"></div>
@@ -96,10 +155,10 @@ registerPanel({
 let notes = [
   "HOW TO USE THE BOARD",
   "",
-  "• Add a panel: open 🧰 on the right edge, then press + on a card or drag the card onto a cell. Click an empty cell first to choose where + puts it.",
+  "• Add a panel: open 🧰 on the right edge. Drag a card to the cell you want it in, or click its + to drop it in the first free cell. OR click an empty cell first and then 🧰.",
   "• Move: drag a panel by its ✥ (top left).",
   "• Resize: hover a panel and use + or − on its right and bottom edges.",
-  "• Dock: drag a panel onto a + at a window edge. ↩ puts it back on the grid.",
+  "• Dock: drag a panel to a window edge and let go anywhere along it. ↩ puts it back on the grid.",
   "• Cover: press ▤ in the title, then pick the edge the cover comes in from (▤ again takes the lit one, from the left by default). Drag the cover's tab to peek underneath; click the bottom of the tab to change its material.",
   "• Reload: ↻ rebuilds a panel. Remove: ✕ takes it off the board.",
   "• Grid: Columns and Row px in 🧰 set the board's size. reset board starts over.",

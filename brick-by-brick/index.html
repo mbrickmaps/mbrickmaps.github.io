@@ -72,9 +72,15 @@
   }
   h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.02em; }
   h1 .brickmark { color: var(--accent); }
-  /*  THE PROJECT PANEL — what used to be the top of the page, in a panel. */
+  /*  THE PAGE'S OWN HEADING, above the board. It sits inside the body's
+      padding, which the board widens when a rail is docked at the top, so a
+      rail never lands on top of it. */
+  .page-head {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 12px 14px 10px;
+  }
+  /*  THE PROJECT PANEL — what the pile as a whole answers to. */
   .pj { display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
-  .pj-title { display: flex; flex-direction: column; gap: 3px; }
   .tagline { font-size: 0.72rem; opacity: 0.45; margin: 0; }
   .pj-search { display: flex; align-items: center; gap: 8px; }
   .pj-search input {
@@ -1835,6 +1841,20 @@
 </head>
 <body>
 
+<!--  THE NAME OF THE PAGE, ON THE PAGE. It used to be inside the Project
+      panel, which meant what you are looking at was only named while that
+      panel happened to be on the board, uncovered and not put away. A page
+      says what it is regardless of how its panels are arranged. -->
+<header class="page-head">
+  <h1><span class="brickmark">&#129521;</span> Brick by Brick</h1>
+  <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.
+    <a class="top-guide" href="doc/quick-guide.html" target="_blank" rel="noopener"
+       title="what a brick is, what the panels do, and how to keep your work safe">quick guide</a>
+    <!-- The grid these panels sit on, on its own: board/board.js + board.css. -->
+    <a class="top-guide" href="board/demo.html"
+       title="the panel board on its own, with a guide to building panels">board demo</a></p>
+</header>
+
 <div id="board"></div>
 
 <div id="boardFlyoutWrap">
@@ -2057,21 +2077,12 @@
 <!-- One button and nothing else. A panel this size has room for a control or
      for an explanation of it, not both, and the button's own words plus the
      dialog it opens are the explanation. -->
-<!--  THE PROJECT PANEL: what used to be the top of the page. The name and what
-      it is, the search across every panel, and the things you do to the pile
-      as a whole — keep it, export it, clear it — plus focus mode. A panel, so
-      it can be moved, docked, covered or put away like everything else. -->
+<!--  THE PROJECT PANEL: the things you do to the pile as a whole — search it,
+      keep it, export it, clear it — plus focus mode. The name of the project
+      is not in here; it is on the page itself, where it cannot be covered or
+      put away. A panel, so it can be moved, docked or hidden like any other. -->
 <template id="tpl-project">
   <div class="pj">
-    <div class="pj-title">
-      <h1><span class="brickmark">🧱</span> Brick by Brick</h1>
-      <p class="tagline">A notation system where you define the symbols. Add a brick, the connections emerge.
-        <a class="top-guide" href="doc/quick-guide.html" target="_blank" rel="noopener"
-           title="what a brick is, what the panels do, and how to keep your work safe">quick guide</a>
-        <!-- The grid these panels sit on, on its own: board/board.js + board.css. -->
-        <a class="top-guide" href="board/demo.html"
-           title="the panel board on its own, with a guide to building panels">board demo</a></p>
-    </div>
     <!-- The same filter the Filter panel's search box writes: one search, two ways in. -->
     <div class="pj-search">
       <input type="text" id="topsearchInput" placeholder="search the pile&hellip;" spellcheck="false">

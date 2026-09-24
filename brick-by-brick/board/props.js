@@ -688,9 +688,13 @@ registerKind({
       ring.style.left = Math.round(px) + "px";
       ring.style.top = Math.round(py) + "px";
     };
-    const flashRing = () => {
+    //  Shown where the pointer is when there is one — a size you changed
+    //  mid-stroke should appear under your hand, not in the middle of the
+    //  wall — and in the middle when the change came from a button.
+    const flashRing = ev => {
       const r = canvas.getBoundingClientRect();
-      ringAt(r.width / 2, r.height / 2);
+      if (ev) ringAt(ev.clientX - r.left, ev.clientY - r.top);
+      else ringAt(r.width / 2, r.height / 2);
       ring.classList.add("on");
       clearTimeout(ringTimer);
       ringTimer = setTimeout(() => ring.classList.remove("on"), 900);
@@ -728,6 +732,30 @@ registerKind({
       arm(true);
       flashRing();
     });
+    /*  THE WHEEL CHANGES THE SIZE while the can is in your hand — anywhere on
+        the wall, not only over the row of four. Aiming at one of four small
+        buttons is fussy mid-stroke, and a wheel turn while you are painting
+        can only mean one thing. The page keeps the wheel when the can is
+        down, so a wall you are only looking at still scrolls past. */
+    body.addEventListener("wheel", e => {
+      if (!armed) return;
+      const sizes = Array.from(nozzles.querySelectorAll(".pm-nozzle"), b => Number(b.dataset.brush));
+      if (!sizes.length) return;
+      e.preventDefault();
+      const now = Number(s.brush == null ? 14 : s.brush);
+      /*  The next size along, not the next button along: a size set in the ⚙
+          need not be one of the four, and from 14 a step up is 16, not
+          whatever happens to sit after 16 in the row. */
+      const next = e.deltaY > 0
+        ? sizes.filter(v => v < now).pop()          // down: the largest smaller
+        : sizes.find(v => v > now);                 // up: the smallest larger
+      if (next == null) return;                     // already at either end
+      s.brush = next;
+      saveInstances();
+      markPicked();
+      arm(true);
+      flashRing(e);
+    }, { passive: false });
     colors.addEventListener("click", e => {
       const sw = e.target.closest(".pm-swatch");
       if (!sw) return;

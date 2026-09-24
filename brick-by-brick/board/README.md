@@ -160,10 +160,10 @@ setDefaultBoard({
 
 | | How |
 |---|---|
-| Add a panel | Open 🧰 on the right edge. Press **+** on a card, or drag the card onto a cell. Click an empty cell first to choose where **+** puts it. Hovering a card outlines where it would go, in red if it won't fit. |
+| Add a panel | Open 🧰 on the right edge. Drag a card to the cell you want it in, or click its **+** to drop it in the first free cell. OR click an empty cell first and then 🧰. Hovering a card outlines where it would go, in red if it won't fit. |
 | Move | Drag by the **✥** in the title bar. Dropping onto a panel the same size swaps the two. |
 | Resize | Hover a panel, then **+** / **−** on its right and bottom edges. |
-| Dock | Drag a panel onto a **+** at a window edge. Docked panels share the edge, can be reordered, and the edge can be dragged wider or narrower. **↩** puts one back on the grid. |
+| Dock | Drag a panel to a window edge and let go anywhere along it. Docked panels share the edge, can be reordered, and the edge can be dragged wider or narrower. **↩** puts one back on the grid. |
 | Cover | **▤** in the title bar shows an arrow on each edge; pick one and the cover slides in from that edge, the way the arrow points (the left edge's → is lit by default, and pressing **▤** again takes the lit one). It blocks the mouse without changing anything underneath. Drag its tab to peek. Click the bottom of the tab to change the material (frosted, smoked, card). |
 | Rebuild | **↻** builds the panel again from nothing. |
 | Remove | **✕**. The panel is parked, not destroyed, so it comes back from 🧰 as it was. |
