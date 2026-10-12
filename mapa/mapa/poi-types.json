@@ -1,0 +1,16 @@
+{
+  "_about": "POI type styles for Mapa's + points groups — the style guide presets. One entry per CSV `type`; `default` applies to every point (and to a blank or unknown type), and a type's keys are layered on top of it. Keys: shape (circle | star-dot | square | triangle | diamond | star | cross | wye, or \"\" / none for no marker — label only), size (marker radius in px, same visual size for every shape), fill, stroke, stroke-width, opacity, label-size, label-color, label-font (family), label-style (normal | italic), label-weight (e.g. 500), label-case (\"upper\" = shown in capitals), label-halo-color, label-halo-width. Keys starting with _ are ignored. Edit and reload mapa.html.",
+  "_source": "Label sizes/colours: Figma 'Data viz style guide updates Oct 2026' › locator map v3 › Locator maps › Land fill, borders, and labels — DESKTOP column (w 800). Socials (375×469) column in _socials. Markers (› Markers: icons, labels & legend): capital = filled dot #000000 12p desktop / 9p socials (a plain circle, per the designer — the Figma light-mode icon shows a star in the dot, the dark-mode spec says filled dot); city = filled dot #000000 9p desktop / 7p socials. `size` is a radius, so 12p → 6.",
+  "_socials": { "country": 11, "water": 10, "focus": 16, "focus-copper": 16, "related": 14 },
+  "default": { "shape": "circle", "size": 4.5, "fill": "#000000", "label-size": 14, "label-color": "#000000",
+               "label-weight": 500,
+               "label-halo-color": "#ffffff", "label-halo-width": 0 },
+  "city":    { "shape": "circle", "size": 4.5, "fill": "#000000" },
+  "capital": { "shape": "circle", "size": 6, "fill": "#000000" },
+  "_comment_areas": "Area labels — no marker, centred. country = context land; focus = the subject on white land; focus-copper = the subject on Data Copper land; related = a country in a focal relationship with the subject.",
+  "country":      { "shape": "", "label-size": 14, "label-color": "#73726C", "label-case": "upper" },
+  "water":        { "shape": "", "label-size": 13, "label-color": "#858585", "label-style": "italic", "label-case": "upper" },
+  "focus":        { "shape": "", "label-size": 20, "label-color": "#000000", "label-case": "upper" },
+  "focus-copper": { "shape": "", "label-size": 20, "label-color": "#FFFFFF", "label-case": "upper" },
+  "related":      { "shape": "", "label-size": 18, "label-color": "#000000", "label-case": "upper" }
+}

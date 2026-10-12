@@ -1,0 +1,68 @@
+{
+  "view": {
+    "center": [35.41, 47.5],
+    "zoom": 5.86    },
+  "polys": {
+    "show": true,
+    "data": [
+      {
+        "insertBelow": "ne_10m_rivers",
+        "refUid":["admin1:ukr_kherson_oblast","admin1:ukr_zaporizhia_oblast","admin1:ukr_donetsk_oblast", "admin1:ukr_luhansk_oblast","admin1:ukr_sevastopol","admin1:ukr_autonomous_republic_of_crimea"],
+        "style": {
+          "fill": "#000000",
+          "pattern": "gray-diagonal",
+          "pattern-opacity": 0.2,
+          "fill-opacity": 0,
+          "stroke": "#000000",
+          "stroke-width": 0
+        }
+      },
+      {
+        "comment": "Same border, zoomed IN (>= z6): full dash-dot. Both oblasts in ONE entry so they union into a single polygon (dissolves the shared Donetsk–Luhansk edge).",
+        "refUid": ["admin1:ukr_sevastopol","admin1:ukr_autonomous_republic_of_crimea","admin1:ukr_donetsk_oblast", "admin1:ukr_luhansk_oblast"],
+        "insertBelow": "ne_10m_rivers",
+        "style": {
+          "fill": "none",
+          "stroke": "#D3CECB",
+          "stroke-opacity": 0,
+          "pattern": "gray-6-8",
+          "pattern-opacity": 0,
+          "stroke-width": 1.25,
+          "stroke-dash": [8, 2, 1.5, 4],
+          "line-join": "round"
+        }
+      },
+      {
+        "source": "data/frontline_april29_2024.json",
+        "style": {
+          "fill": "#000000",
+          "pattern": "gray-diagonal",
+          "pattern-opacity": 0,
+          "fill-opacity": 0,
+          "stroke": "#000000",
+          "stroke-width": 0
+        }
+      },
+      {
+        "comment": "Donbas border, zoomed OUT (< z6): dotted so the short on-screen line still reads.",
+        "refUid": ["admin1:ukr_donetsk_oblast", "admin1:ukr_luhansk_oblast"],
+        "maxzoom": 6,
+        "style": {
+          "fill": "none",
+          "stroke": "#000000",
+          "stroke-width": 0,
+          "stroke-dash": [0, 3],
+          "line-join": "round"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "show": false,
+    "data": []
+  },
+  "points": {
+    "show": false,
+    "data": []
+  }
+}

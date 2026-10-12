@@ -1,0 +1,186 @@
+{
+  "view": {
+    "bbox": [
+      72.3419,
+      29.9244,
+      80.9138,
+      39.0959
+    ]
+  },
+  "export": {
+    "width": 1000,
+    "height": null,
+    "projection": {
+      "proj": "geoMiller"
+    },
+    "graphic": {
+      "background": "#dfe7ea"
+    },
+    "clipping": {
+      "margin": 0
+    },
+    "basemap": {
+      "show": true,
+      "disputed": {
+        "show": true,
+        "style": {
+          "stroke": "#9a9993",
+          "opacity": 1,
+          "stroke-width": 0.8
+        }
+      },
+      "lake": {
+        "show": true,
+        "style": {
+          "fill": "#c1d5da",
+          "opacity": 1
+        }
+      },
+      "coastline": {
+        "show": false,
+        "style": {
+          "stroke": "#a7bbc0",
+          "opacity": 1,
+          "stroke-width": 0.6
+        }
+      },
+      "innerlines": {
+        "show": true,
+        "style": {
+          "stroke": "#9a9993",
+          "opacity": 1,
+          "stroke-width": 0.5
+        }
+      },
+      "border": {
+        "show": false,
+        "style": {
+          "stroke": "#9a9993",
+          "opacity": 1,
+          "stroke-width": 0.5
+        }
+      },
+      "river": {
+        "show": false,
+        "style": {
+          "stroke": "#c1d5da",
+          "opacity": 1,
+          "stroke-width": 1
+        }
+      },
+      "land": {
+        "show": true,
+        "style": {
+          "fill": "#efeee8",
+          "opacity": 1
+        }
+      },
+      "ocean": {
+        "show": true,
+        "style": {
+          "fill": "#c1d5da",
+          "opacity": 1
+        }
+      }
+    }
+  },
+  "frames": [
+    {
+      "name": "",
+      "map": {
+        "bbox": "",
+        "bboxShown": false,
+        "trackView": true,
+        "buffer": "0",
+        "proj": "geoMiller",
+        "satFov": "36.87",
+        "w": "1000",
+        "h": "",
+        "bg": "#dfe7ea",
+        "ratio": "",
+        "ov": {
+          "ovTilt": "",
+          "ovFov": "",
+          "ovRot": "",
+          "ovAlt": ""
+        },
+        "satParams": null
+      }
+    }
+  ],
+  "polys": {
+    "show": true,
+    "data": [
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NAME_EN == 'Azad Kashmir'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.BRK_NAME == 'Jammu and Kashmir'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NAME_EN == 'Gilgit-Baltistan'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NOTE_BRK == 'Admin. by China; Ceded to China by Pakistan; Claimed by India'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NAME_EN == 'Aksai Chin'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NAME == 'Siachen Glacier'"
+      },
+      {
+        "source": "./projects/data/disputed_geojson.json",
+        "style": {
+          "fill": "#3b82f6",
+          "fill-opacity": 0.35,
+          "stroke": "none",
+          "stroke-width": 1
+        },
+        "filter": "d.NAME_EN == 'Demchok'"
+      }
+    ]
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "format": "board-layout",
+  "version": 1,
+  "ns": "mapa:",
+  "board": {
+    "cols": 7,
+    "rowUnit": 220,
+    "tiles": [
+      {
+        "id": "mapPanel",
+        "x": 6,
+        "y": 0,
+        "w": 1,
+        "h": 2,
+        "dock": "left",
+        "dockSize": 373.9764404296875,
+        "dockPx": 440
+      },
+      {
+        "id": "projectPanel",
+        "x": 0,
+        "y": 6,
+        "w": 2,
+        "h": 2,
+        "dock": "right",
+        "dockSize": 386.8824462890625,
+        "dockPx": 225
+      },
+      {
+        "id": "annoPanel",
+        "x": 0,
+        "y": 6,
+        "w": 2,
+        "h": 2,
+        "dock": "right",
+        "dockSize": 386.8824462890625,
+        "dockPx": 200
+      },
+      {
+        "id": "dataPanel",
+        "x": 0,
+        "y": 2,
+        "w": 1,
+        "h": 2,
+        "dock": "right",
+        "dockSize": 386.8824462890625,
+        "dockPx": 771
+      },
+      {
+        "id": "basemapPanel",
+        "x": 0,
+        "y": 3,
+        "w": 3,
+        "h": 3,
+        "dockSize": 399.2554016113281
+      },
+      {
+        "id": "northArrowPanel",
+        "x": 5,
+        "y": 3,
+        "w": 2,
+        "h": 1,
+        "dockSize": 399.2554016113281
+      },
+      {
+        "id": "outputPanel",
+        "x": 3,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      {
+        "id": "navPanel",
+        "x": 0,
+        "y": 0,
+        "w": 3,
+        "h": 3
+      },
+      {
+        "id": "insetPanel",
+        "x": 3,
+        "y": 3,
+        "w": 2,
+        "h": 3,
+        "dockSize": 399.2554016113281
+      },
+      {
+        "id": "scalebarPanel",
+        "x": 5,
+        "y": 4,
+        "w": 2,
+        "h": 1,
+        "dockSize": 399.2554016113281
+      },
+      {
+        "id": "rasterPanel",
+        "x": 0,
+        "y": 3,
+        "w": 2,
+        "h": 2,
+        "dock": "left",
+        "dockSize": 373.9764404296875,
+        "dockPx": 374
+      },
+      {
+        "id": "jsonPanel",
+        "x": 4,
+        "y": 3,
+        "w": 2,
+        "h": 2,
+        "dock": "right",
+        "dockSize": 386.8824462890625,
+        "dockPx": 316
+      },
+      {
+        "id": "fontsPanel",
+        "x": 0,
+        "y": 6,
+        "w": 3,
+        "h": 2
+      },
+      {
+        "id": "stylePanel",
+        "x": 5,
+        "y": 5,
+        "w": 2,
+        "h": 3
+      }
+    ]
+  },
+  "instances": null,
+  "footprints": {
+    "projectPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "mapPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "insetPanel": {
+      "w": 2,
+      "h": 3
+    },
+    "dataPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "annoPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "fontsPanel": {
+      "w": 2,
+      "h": 1
+    },
+    "scalebarPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "northArrowPanel": {
+      "w": 2,
+      "h": 1
+    },
+    "basemapPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "rasterPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "jsonPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "navPanel": {
+      "w": 2,
+      "h": 2
+    },
+    "outputPanel": {
+      "w": 2,
+      "h": 4
+    },
+    "renderPanel": {
+      "w": 1,
+      "h": 1
+    },
+    "stylePanel": {
+      "w": 2,
+      "h": 3
+    }
+  }
+}

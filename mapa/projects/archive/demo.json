@@ -1,0 +1,640 @@
+{
+    "points": {
+      "show": true,
+      "data": [
+        {
+          "lng": 13.9373,
+          "lat": 13.00335,
+          "name": "Baga",
+          "dir": "N",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 13.54209,
+          "lat": 12.75506,
+          "name": "Monguno",
+          "dir": "NE",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 13.75287,
+          "lat": 12.36932,
+          "name": "Marte",
+          "dir": "NE",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 13.05905,
+          "lat": 11.81972,
+          "name": "Maidhuguri",
+          "dir": "NE",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 11.22352,
+          "lat": 11.79393,
+          "name": "Potiskum",
+          "dir": "NE",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 14.14808,
+          "lat": 12.39505,
+          "name": "Gambaru",
+          "dir": "S",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        },
+        {
+          "lng": 12.64628,
+          "lat": 13.27703,
+          "name": "Diffa",
+          "dir": "NW",
+          "style": {
+            "fill": "#412c26",
+            "size": 5,
+            "stroke": "none",
+            "stroke-width": 0
+          }
+        }
+      ]
+    },
+    "polys": {
+      "show": true,
+      "data": [
+        {
+          "refUid": [
+            "admin2:nga_gulani"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_gujba"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_bayo"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_kwaya_kusar"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_shani"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_askira_uba"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_biu"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_damboa"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_kaga"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_konduga"
+          ],
+          "style": {
+            "fill": "#ffd166",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_gwoza"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_madagali"
+          ],
+          "style": {
+            "fill": "#ffd166",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_chibok"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_bama"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_dikwa"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_kala_balge"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_ngala"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_mafa"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_marte"
+          ],
+          "style": {
+            "fill": "#ffd166",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_monguno"
+          ],
+          "style": {
+            "fill": "#ffd166",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_nganzai"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_gubio"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted",
+            "opacity": 0.5
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_mobbar"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_abadam"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_kukawa"
+          ],
+          "style": {
+            "fill": "#ffd166",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_guzamala"
+          ],
+          "style": {
+            "fill": "#ff6b6b",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_geidam"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_magumeri"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_jere"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "dotted"
+          }
+        },
+        {
+          "refUid": [
+            "admin2:nga_maiduguri"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1
+          }
+        },
+        {
+          "refUid": [
+            "admin1:nga_yobe"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "solid",
+            "opacity": 0.5
+          }
+        },
+        {
+          "refUid": [
+            "admin1:nga_gombe"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "solid",
+            "opacity": 0.5
+          }
+        },
+        {
+          "refUid": [
+            "admin1:nga_borno"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "solid",
+            "opacity": 0.5
+          }
+        },
+        {
+          "refUid": [
+            "admin1:nga_adamawa"
+          ],
+          "style": {
+            "fill": "none",
+            "fill-opacity": 0.3,
+            "stroke": "#000000",
+            "stroke-width": 1,
+            "stroke-dash": "solid",
+            "opacity": 0.5
+          }
+        },
+        {
+            "refUid": [
+              "admin0:nga"
+            ],"style": {
+              "fill": "none",
+              "fill-opacity": 0.75,
+              "stroke": "#ff0000",
+              "stroke-width": 0,
+              "stroke-dash": "solid",
+              "pattern":"dense-diagonal-lines",
+              "pattern-opacity": 0.2,
+              "opacity": 0.5
+            }
+
+        }
+      ]
+    },
+    "annotations": {
+      "show": true,
+      "data": [
+        {
+          "type": "text-area",
+          "position": [
+            11.19949,
+            12.87017
+          ],
+          "text": "Feb. 24 - 16 killed in attack by suicide bombers.\n\nFeb 21. - Five people killed in attack which used a girl strapped with explosives.",
+          "width": 157,
+          "height": 119,
+          "style": {
+            "align": "left",
+            "fill": "#ffffff",
+            "fill-opacity": 0.85,
+            "stroke": "#000000",
+            "stroke-width": 1
+          },
+          "id": "text-1"
+        },
+        {
+          "type": "straight-arrow",
+          "start": [
+            11.16177,
+            12.67745
+          ],
+          "end": [
+            11.21447,
+            11.8192
+          ],
+          "startRef": "text-1:s",
+          "style": {
+            "stroke": "#000000",
+            "stroke-width": 2,
+            "stroke-dash": "solid",
+            "align": "left",
+            "arrow-size": 0.15
+          }
+        },
+        {
+          "type": "text-area",
+          "position": [
+            14.89047,
+            13.71536
+          ],
+          "text": "Feb. 24 - Soldiers from Chad claimed to have killed 207 militants in fighting.",
+          "width": 127,
+          "height": 84,
+          "style": {
+            "align": "center",
+            "fill": "#ffffff",
+            "fill-opacity": 0.85,
+            "stroke": "#000000",
+            "stroke-width": 1
+          },
+          "id": "text-2"
+        },
+        {
+          "type": "curved-arrow",
+          "start": [
+            14.6873,
+            13.38317
+          ],
+          "end": [
+            14.26205,
+            12.43074
+          ],
+          "startRef": "text-2:s",
+          "style": {
+            "stroke": "#000000",
+            "stroke-width": 2,
+            "stroke-dash": "solid",
+            "align": "left",
+            "arrow-size": 0.15
+          },
+          "bend": 0.4327
+        }
+      ]
+    },
+    "inset": {
+      "position": "bottom-right",
+      "size": 160,
+      "labels": true,
+      "radius": "0%",
+      "center": [
+        7.77,
+        10.27
+      ],
+      "zoom": 2.25,
+      "projection": "mercator",
+      "bbox": {
+        "coords": [
+          11.4321,
+          10.3541,
+          15.5423,
+          13.8485
+        ],
+        "style": {
+          "stroke": "#f42f2f",
+          "stroke-width": 1.5,
+          "fill": "#d96363",
+          "fill-opacity": 0.5
+        }
+      },
+      "border": {
+        "color": "#000000"
+      }
+    },
+    "view": {
+      "insertBelow": {
+        "annotations": "innerlines",
+        "polys": "ne_10m_rivers"
+      },
+      "zoom":6.5,
+      "center":[12.26,11.75]
+    }
+  }

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="generator" content="Observable Framework v1.13.4">
+<title>Board smoke test | Mapa</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="preload" as="style" href="./_observablehq/theme-air,near-midnight.b050d634.css">
+<link rel="preload" as="style" href="./_observablehq/stdlib/inputs.f7bf0e12.css">
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="stylesheet" type="text/css" href="./_observablehq/theme-air,near-midnight.b050d634.css">
+<link rel="stylesheet" type="text/css" href="./_observablehq/stdlib/inputs.f7bf0e12.css">
+<link rel="modulepreload" href="./_observablehq/client.77f16a62.js">
+<link rel="modulepreload" href="./_observablehq/runtime.fa9f71c0.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.60afab10.js">
+<link rel="modulepreload" href="./_observablehq/stdlib/inputs.07ab08cb.js">
+<link rel="modulepreload" href="./_npm/htl@1.0.0/11521f02.js">
+<link rel="modulepreload" href="./_npm/isoformat@0.2.1/604cb63b.js">
+<script type="module">
+
+import {define} from "./_observablehq/client.77f16a62.js";
+
+define({id: "42c3d2c9", inputs: ["display"], outputs: ["boardGlobalsSeen"], body: (display) => {
+const boardGlobalsSeen = {
+  registerPanel: typeof window.registerPanel,
+  setBoardState: typeof window.setBoardState,
+  boardState: typeof window.boardState,   // "undefined": see note below
+  startBoard: typeof window.startBoard
+};
+display(boardGlobalsSeen);
+return {boardGlobalsSeen};
+}});
+
+define({id: "90d3c752", inputs: ["Inputs","display"], outputs: ["bumpFromCell"], body: (Inputs,display) => {
+const bumpFromCell = Inputs.button("bump count via setBoardState() from a Framework cell", {
+  reduce: () => window.setBoardState({ count: (document.querySelector("#board")?.textContent.match(/count: (\d+)/)?.[1] | 0) + 10 })
+});
+display(bumpFromCell);
+return {bumpFromCell};
+}});
+
+</script>
+</head>
+<body>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<style>
+  :root {
+    --bg: #f4f4f2; --fg: #1a1a1a; --panel: #26221f; --field: #fff;
+    --border: #3a3530; --border-soft: #55504a; --accent: #c65d2e;
+    --accent2: #e08a4b; --bad: #c0392b; --muted: #8a8580; --go: #2ecc71;
+    --stop: #e74c3c; --tint: rgba(224,138,75,.25);
+    --panel-radius: 8px; --panel-border: 1px; --panel-gap: 10px; --close-size: 20px;
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 13px system-ui, sans-serif; }
+</style>
+<link rel="stylesheet" href="./_file/board/board.d8d45bf4.css">
+<div id="board"></div>
+<div id="boardFlyoutWrap">
+  <button type="button" id="boardFlyoutTab" title="show/hide the panel list">🧰</button>
+  <div id="boardFlyout">
+    <h3>Panels</h3>
+    <div class="row">
+      <label>Columns <input type="number" id="boardCols" min="1" max="12" step="1" value="4"></label>
+      <label>Row px <input type="number" id="boardRowUnit" min="80" max="600" step="10" value="220"></label>
+      <button type="button" id="boardFlyoutClose" title="hide the list">×</button>
+    </div>
+    <div class="row"><button type="button" id="boardReset">reset board</button></div>
+    <input type="text" id="boardSearch" placeholder="search panels…">
+    <div id="boardCardList"></div>
+  </div>
+</div>
+<div id="panelStore" hidden=""></div>
+<script>window.BOARD_NS = "mapa-smoke-test:";</script>
+<script src="./_import/board/board.830b934d.js"></script>
+<script>
+  // Baseline, pre-Framework-reactivity check: the exact registerPanel/boardState/startBoard
+  // pattern from board's README, loaded as plain classic scripts (board.js shares global scope,
+  // it is not a module) -- same as it already works on mbrickmaps.github.io.
+  setBoardState({ count: 0 });
+
+  registerPanel({
+    id: "counter", title: "Counter", w: 1, h: 1,
+    render(body) {
+      body.innerHTML = 'count: <b>' + boardState.count + '</b> <button type="button">+1</button>';
+      body.querySelector("button").onclick = () => setBoardState({ count: boardState.count + 1 });
+    },
+  });
+
+  setDefaultBoard({ cols: 3, rowUnit: 200, tiles: [
+    { id: "counter", x: 0, y: 0, w: 1, h: 1 },
+  ]});
+
+  startBoard();
+</script>
+<h2 id="reactive-cell-interop-check" tabindex="-1"><a class="observablehq-header-anchor" href="#reactive-cell-interop-check">Reactive-cell interop check</a></h2>
+<p>A Framework fenced JS cell below, running through Framework's own reactive runtime (not a classic
+script), reads and writes Board's globals to confirm the two can interoperate:</p>
+<div class="observablehq observablehq--block"><!--:42c3d2c9:--></div>
+<p><code>registerPanel</code>/<code>setBoardState</code>/<code>startBoard</code> are function <em>declarations</em> in board.js, a classic
+script, so they attach to <code>window</code> and are reachable from a Framework cell (an ES module). <code>const boardState = {}</code> is a top-level lexical binding, not a <code>window</code> property, so it is <strong>not</strong> reachable
+from a Framework cell by that name — only from other classic scripts on the same page, which is
+exactly where every panel's <code>render</code>/<code>onchange</code> code lives. Calling the function still works fine
+from a cell:</p>
+<div class="observablehq observablehq--block"><!--:90d3c752:--></div>
+</main>
+</div>
+</body>
+</html>

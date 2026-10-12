@@ -1,0 +1,30 @@
+{
+  "view": { "bbox": [22, 44, 41, 53] },
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "Kyiv", "lng": 30.523333, "lat": 50.45, "dir": "NE",
+        "style": { "fill": "#8b0000", "size": 6, "label-size": 13, "label-color": "#8b0000" } },
+      { "name": "Odesa", "lng": 30.7326, "lat": 46.4825, "dir": "S",
+        "style": { "fill": "#412c26", "size": 5 } },
+      { "name": "Lviv", "lng": 24.0297, "lat": 49.8397, "dir": "W",
+        "style": { "fill": "#412c26", "size": 5 } }
+    ]
+  },
+  "export": {
+    "width": 1000,
+    "scalebar": {
+      "show": true,
+      "topValue": 200, "topUnit": "km",
+      "bottomValue": 120, "bottomUnit": "mi",
+      "position": [140, 60]
+    },
+    "basemap": {
+      "show": true,
+      "land":   { "show": true, "style": { "fill": "#eef0e9", "stroke": "none", "opacity": 1, "fill-opacity": 0.9 } },
+      "border": { "show": true, "style": { "fill": "none", "stroke": "#c8c8bd", "stroke-width": 0.6, "opacity": 1 } },
+      "background": { "show": true, "style": { "fill": "#cfe0e6", "stroke": "none", "opacity": 1 } }
+    },
+    "graphic": { "background": "#cfe0e6" }
+  }
+}

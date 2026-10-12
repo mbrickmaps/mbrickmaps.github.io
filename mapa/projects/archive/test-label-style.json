@@ -1,0 +1,18 @@
+{
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "Kyiv (default label style)", "lng": 30.523333, "lat": 50.45, "dir": "NE" },
+      { "name": "Kharkiv (bold, red, larger)", "lng": 36.231389, "lat": 50.004444, "dir": "S",
+        "style": { "fill": "#8b0000", "size": 7,
+          "label-font": "Season_Sans_Bold", "label-size": 16, "label-color": "#8b0000" } },
+      { "name": "Odesa (light italic, no halo)", "lng": 30.732251, "lat": 46.482526, "dir": "W",
+        "style": { "label-font": "Season_Sans_Light_Italic", "label-size": 12,
+          "label-color": "#ffffff", "label-halo-width": 0 } }
+    ]
+  },
+  "view": {
+    "center": [32.0, 48.0],
+    "zoom": 5
+  }
+}

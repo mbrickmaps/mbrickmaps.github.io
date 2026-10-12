@@ -1,0 +1,61 @@
+{
+  "view": {
+    "center": [2.0, 15.5],
+    "zoom": 4.0,
+    "hide": []
+  },
+  "inset": {
+    "position": "bottom-right",
+    "size": 160,
+    "labels": false,
+    "radius": "50%",
+    "center": [
+      2.0,
+      15.5
+    ],
+    "zoom": 0.65,
+   "vignette": { "color": "#000", "opacity": 0.35, "stop": 45 },
+    "border": {
+      "color": "#000",
+      "width": 1.5
+    },
+    "hide": [
+      "disputed",
+      "coastlines",
+      "admin1-stroke",
+      "hillshade"
+    ],
+    "markers": [
+
+    ]
+  },
+  "points": {
+    "show": false,
+    "data": []
+  },
+  "polys": {
+    "show": false,
+    "data": []
+  },
+  "annotations": {
+    "show": true,
+    "data": [
+      {
+        "type": "text-area",
+        "position": [
+          2.0,
+          18.6
+        ],
+        "text": "G5 Sahel corridor",
+        "width": 6,
+        "height": 1.4,
+        "style": {
+          "fill": "#ffffff",
+          "fill-opacity": 0.85,
+          "stroke": "#000000",
+          "stroke-width": 1
+        }
+      }
+    ]
+  }
+}

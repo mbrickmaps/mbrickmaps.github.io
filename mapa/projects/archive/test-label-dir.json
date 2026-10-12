@@ -1,0 +1,19 @@
+{
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "N label",  "lng": 33.0, "lat": 50.0, "dir": "N" },
+      { "name": "S label",  "lng": 35.0, "lat": 50.0, "dir": "S" },
+      { "name": "E label",  "lng": 31.0, "lat": 49.0, "dir": "E" },
+      { "name": "W label",  "lng": 37.0, "lat": 49.0, "dir": "W" },
+      { "name": "NE label", "lng": 33.0, "lat": 48.0, "dir": "NE" },
+      { "name": "NW label", "lng": 35.0, "lat": 48.0, "dir": "NW" },
+      { "name": "SE label", "lng": 31.0, "lat": 47.0, "dir": "SE" },
+      { "name": "SW label", "lng": 37.0, "lat": 47.0, "dir": "SW" }
+    ]
+  },
+  "view": {
+    "center": [34.0, 48.5],
+    "zoom": 6
+  }
+}

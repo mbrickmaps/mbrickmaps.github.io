@@ -1,0 +1,15 @@
+{
+  "mapa": [
+    "kashmir-2026-10-10",
+    "kashmir-landscape-2026-10-10",
+    "kashmir-multi-2026-10-10",
+    "kashmir-sat-2026-10-10"
+  ],
+  "templates": [
+    "kashmir"
+  ],
+  "boards": [
+    "mapa-label-layout",
+    "mbricknell-mapa-layout"
+  ]
+}

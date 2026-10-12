@@ -1,0 +1,12 @@
+{
+  "polys": {
+    "show": true,
+    "data": [
+      { "refUid": ["admin0:ukr"], "style": { "fill": "red", "stroke": "none", "fill-opacity": 0.3 } }
+    ]
+  },
+  "view": {
+    "center": [31.0, 49.0],
+    "zoom": 5
+  }
+}

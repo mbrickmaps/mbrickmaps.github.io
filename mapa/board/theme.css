@@ -1,0 +1,56 @@
+/*  The Theme panel's styles. Pairs with theme.js. */
+.th-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.th-presets button { display: flex; align-items: center; gap: 5px; }
+/* Each preset shows its own ground and both accents — you pick a theme by
+   looking at it, not by reading its name. */
+.th-chip {
+  display: inline-flex; gap: 2px; align-items: center; justify-content: center;
+  width: 22px; height: 13px; border: 1px solid; border-radius: 2px;
+}
+.th-chip i { width: 4px; height: 4px; border-radius: 50%; }
+/* A saved theme and its × read as one control, so they sit flush. */
+.th-item { display: inline-flex; }
+.th-item > button[data-theme] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.th-del {
+  border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0;
+  padding: 0 5px; opacity: 0.5; font-size: 0.8rem; line-height: 1;
+}
+.th-del:hover { opacity: 1; border-color: var(--bad); color: var(--bad); }
+.th-presets input[type="text"] { min-width: 0; }
+/* One column: each swatch now carries a line of explanation, and two
+   columns of that is a wall of text in a one-cell tile. */
+.th-rows { display: flex; flex-direction: column; gap: 3px; }
+.th-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; }
+.th-label { min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+.th-label b { font-weight: normal; font-size: 0.72rem; opacity: 0.85; }
+.th-label em {
+  font-style: normal; font-size: 0.6rem; opacity: 0.42;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.th-row input[type="color"] {
+  width: 24px; height: 18px; padding: 0; border: 1px solid var(--border);
+  border-radius: 3px; background: none; cursor: pointer;
+}
+.th-bar { gap: 6px; margin-top: 9px; }
+
+/*  The text cursor, chosen in the panel and set on <html> as data-caret. */
+html[data-caret="block"] :is(input, textarea, [contenteditable]) { caret-shape: block; }
+html[data-caret="underscore"] :is(input, textarea, [contenteditable]) { caret-shape: underscore; }
+.th-caret { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+.th-caret > span { font-size: 0.72rem; opacity: 0.85; margin-right: 3px; }
+.th-caret button { width: 22px; padding: 1px 0; font-family: var(--mono, monospace); text-align: center; }
+.th-caret button.on { border-color: var(--accent2); color: var(--accent2); }
+/*  The demo: a word and a blinking cursor drawn in the chosen shape. */
+.th-caret-demo {
+  display: inline-flex; align-items: center; margin-left: 6px; padding: 1px 6px;
+  font: 0.72rem/1.4 var(--mono, monospace); color: var(--fg);
+  background: var(--field); border: 1px solid var(--border); border-radius: 3px;
+}
+.th-caret-demo i {
+  display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px;
+  background: var(--fg); animation: th-blink 1.06s steps(1) infinite;
+}
+html[data-caret="block"] .th-caret-demo i { width: 0.6em; opacity: 0.85; }
+html[data-caret="underscore"] .th-caret-demo i { width: 0.6em; height: 1.5px; align-self: flex-end; margin-bottom: 0.2em; }
+@keyframes th-blink { 50% { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .th-caret-demo i { animation: none; } }

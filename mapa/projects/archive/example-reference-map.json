@@ -1,0 +1,132 @@
+{
+  "view": {
+    "hideFeatures": [
+      { "layer": "admin0-fill", "property": "shapeGroup", "values": ["UKR"] }
+    ],
+    "insertBelow": {
+      "polys": "ne_10m_rivers"
+    }
+  },
+  "points": {
+    "show": true,
+    "data": [
+      {
+        "name": "Kyiv",
+        "lng": 30.523333,
+        "lat": 50.45,
+        "dir": "NE"
+      },
+      {
+        "name": "Kharkiv",
+        "lng": 36.231389,
+        "lat": 50.004444,
+        "dir": "S",
+        "style": {
+          "fill": "#8b0000",
+          "size": 7
+        }
+      }
+    ]
+  },
+  "polys": {
+    "show": true,
+    "data": [
+      {
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                36.5,
+                49.5
+              ],
+              [
+                38.5,
+                49.5
+              ],
+              [
+                38.5,
+                50.5
+              ],
+              [
+                36.5,
+                50.5
+              ],
+              [
+                36.5,
+                49.5
+              ]
+            ]
+          ]
+        },
+        "style": {
+          "fill": "red",
+          "stroke": "none",
+          "fill-opacity": 0.3
+        }
+      },
+      {
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              30.5,
+              50.5
+            ],
+            [
+              36.2,
+              50.0
+            ]
+          ]
+        },
+        "style": {
+          "stroke": "blue",
+          "stroke-width": 2
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "show": true,
+    "data": [
+      {
+        "type": "straight-arrow",
+        "start": [
+          31.5,
+          51.2
+        ],
+        "end": [
+          30.6,
+          50.55
+        ]
+      },
+      {
+        "type": "curved-arrow",
+        "start": [
+          36.9,
+          50.6
+        ],
+        "end": [
+          36.3,
+          50.05
+        ],
+        "bend": 0.25
+      },
+      {
+        "type": "text-area",
+        "position": [
+          33.5,
+          51.5
+        ],
+        "text": "Frontline area, illustrative only",
+        "width": 4,
+        "height": 1.2,
+        "style": {
+          "fill": "#ffffff",
+          "fill-opacity": 0.85,
+          "stroke": "#000000"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,426 @@
+{
+  "comment": "?embed&project=gctvip126-sahel&style=light&highlight=admin0:mli,admin:bfa,admin0:ner,admin0:tcd,admin0:nga,admin0:bfa",
+  "view": {
+    "lock": false,
+    "height": 500,
+    "bbox": [
+      -19.9092,-2.3519,30.9776,29.9978
+    ],
+    "hide": [
+      "countries-labels"
+    ],
+    "hideFeatures": [
+      {
+        "layer": "admin0-fill",
+        "property": "shapeGroup",
+        "values": [
+          "MLI",
+          "BFA",
+          "NER",
+          "TCD",
+          "NGA"
+        ]
+      }
+    ],
+    "mobile": {
+      "bbox": [
+        -10.0071,
+        -0.2202,
+        20.1643,
+        27.704
+      ],
+      "height": 550
+    }
+  },
+  "inset": {
+    "show": false,
+    "position": "bottom-right",
+    "size": 160,
+    "labels": false,
+    "radius": "50%",
+    "center": [
+      6.0,
+      15.5
+    ],
+    "zoom": 1,
+    "vignette": {
+      "color": "#000",
+      "opacity": 0.35,
+      "stop": 45
+    },
+    "border": {
+      "color": "#000",
+      "width": 1.5
+    },
+    "hide": [
+      "disputed",
+      "coastlines",
+      "admin1-stroke",
+      "hillshade"
+    ],
+    "markers": [],
+    "centerDot": {
+      "style": {
+        "fill": "#d65b29",
+        "size": 4,
+        "stroke": "#000000",
+        "stroke-width": 0,
+        "opacity": 0
+      }
+    },
+    "highlight": {
+      "refUid": [
+        "admin0:mli",
+        "admin0:bfa",
+        "admin0:ner",
+        "admin0:tcd",
+        "admin0:nga"
+      ],
+      "style": {
+        "fill": "#FFCAA7",
+        "fill-opacity": 0.5,
+        "stroke": "#8F3602",
+        "stroke-width": 0.5,
+        "opacity": 1
+      }
+    }
+  },
+  "polys": {
+    "show": true,
+    "data": [
+      {
+        "source": "data/country_labels_render.json",
+        "minzoom": 4,
+        "maxzoom": 6,
+        "style": {
+          "fill": "#4b535d",
+          "fill-opacity": 0
+        }
+      },
+      {
+        "id": "sahel",
+        "insertBelow": "ne_10m_rivers",
+        "refUid": [
+          "land_region:sahel"
+        ],
+        "style": {
+          "fill": "#000000",
+          "pattern": "dot-2",
+          "pattern-opacity": 0.5,
+          "fill-opacity": 0,
+          "stroke": "#000000",
+          "stroke-width": 0
+        }
+      },
+      {
+        "insertBelow": "ne_10m_rivers",
+        "refUid": [
+          "admin0:mli",
+          "admin0:bfa",
+          "admin0:ner",
+          "admin0:tcd",
+          "admin0:nga"
+        ],
+        "style": {
+          "fill": "#F8F6F5",
+          "fill-opacity": 0.3
+        }
+      },
+      {
+        "id": "yellow-diagonal",
+        "insertBelow": "ne_10m_rivers",
+        "innerBorders": true,
+        "refUid": [
+          "admin1:bfa_centre",
+          "admin1:bfa_centre-est",
+          "admin1:bfa_centre-sud",
+          "admin1:bfa_centre-nord",
+          "admin1:bfa_est",
+          "admin1:bfa_plateau_central",
+          "admin1:bfa_nord",
+          "admin1:bfa_sahel",
+          "admin1:mli_mopti",
+          "admin1:mli_tombouctou",
+          "admin1:mli_gao",
+          "admin1:mli_kidal",
+          "admin1:ner_tillaberi",
+          "admin1:ner_tahoua",
+          "admin1:ner_niamey"
+        ],
+        "style": {
+          "fill": "#000000",
+          "pattern": "yellow-diagonal",
+          "pattern-opacity": 0.4,
+          "fill-opacity": 0,
+          "stroke": "#8F3602",
+          "stroke-width": 0
+        }
+      }
+    ]
+  },
+  "points": {
+    "show": false,
+    "data": [
+      {
+        "name": "Bamako",
+        "lng": -8.0035,
+        "lat": 12.6400,
+        "symbol": "capital-dot",
+        "dir": "N",
+        "id": "capital",
+        "style": {
+          "label-size": 11,
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4"
+        }
+      },
+      {
+        "name": "Ouagadougou",
+        "lng": -1.5197,
+        "lat": 12.3714,
+        "symbol": "capital-dot",
+        "dir": "S",
+        "style": {
+          "label-size": 11,
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4"
+        }
+      },
+      {
+        "name": "Niamey",
+        "lng": 2.1251,
+        "lat": 13.5117,
+        "symbol": "capital-dot",
+        "dir": "NE",
+        "style": {
+          "label-size": 11,
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4"
+        }
+      },
+      {
+        "name": "N'Djamena",
+        "lng": 15.0557,
+        "lat": 12.1348,
+        "symbol": "capital-dot",
+        "dir": "E",
+        "style": {
+          "label-size": 11,
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4"
+        }
+      },
+      {
+        "name": "Abuja",
+        "lng": 7.4986,
+        "lat": 9.0765,
+        "symbol": "capital-dot",
+        "dir": "S",
+        "style": {
+          "label-size": 11,
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "show": false,
+    "data": [
+      {
+        "type": "text-area",
+        "position": [
+          -1.46,
+          19.29
+        ],
+        "text": "Mali",
+        "style": {
+          "label-font": "Season_Sans_Bold",
+          "label-color": "#8F3602",
+          "label-halo-width": 0,
+          "label-size": 12,
+          "label-letter-spacing": 0.15
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          -1.11,
+          13.06
+        ],
+        "text": "Burkina Faso",
+        "style": {
+          "label-font": "Season_Sans_Bold",
+          "label-color": "#8F3602",
+          "label-halo-width": 2,
+          "label-halo-color": "#f0dfd4",
+          "label-size": 12,
+          "label-letter-spacing": 0.10
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          10.04,
+          17.18
+        ],
+        "text": "Nigeria",
+        "style": {
+          "label-font": "Season_Sans_Bold",
+          "label-color": "#8F3602",
+          "label-halo-width": 0,
+          "label-size": 12,
+          "label-letter-spacing": 0.15
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          8.75,
+          9.95
+        ],
+        "text": "Niger",
+        "style": {
+          "label-font": "Season_Sans_Bold",
+          "label-color": "#8F3602",
+          "label-halo-width": 0,
+          "label-size": 12,
+          "label-letter-spacing": 0.15
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          18.18,
+          14.75
+        ],
+        "text": "Chad",
+        "style": {
+          "label-font": "Season_Sans_Bold",
+          "label-color": "#8F3602",
+          "label-halo-width": 0,
+          "label-size": 12,
+          "label-letter-spacing": 0.15
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          -1.72,
+          16.66
+        ],
+        "text": "Liptako-Gourma \n borderlands",
+        "style": {
+          "label-font": "Season_Sans_Medium_Italic",
+          "label-letter-spacing": 0.09,
+          "label-color": "#8F3602",
+          "label-halo-width": 1,
+          "label-halo-color": "#F6D887",
+          "label-size": 10
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          4.40,
+          16.62
+        ],
+        "text": "Sahel",
+        "style": {
+          "label-font": "Season_Sans_Medium_Italic",
+          "label-letter-spacing": 0.75,
+          "label-color": "#8F3602",
+          "label-halo-width": 0,
+          "label-size": 12
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          -10.61,
+          18.33
+        ],
+        "text": "Sahel",
+        "style": {
+          "label-font": "Season_Sans_Medium_Italic",
+          "label-letter-spacing": 0.75,
+          "label-color": "#9f8989",
+          "label-halo-width": 2,
+          "label-halo-color": "#f5f4f3",
+          "label-size": 12
+        }
+      },
+      {
+        "type": "text-area",
+        "position": [
+          26.48,
+          13.99
+        ],
+        "text": "Sahel",
+        "style": {
+          "label-font": "Season_Sans_Medium_Italic",
+          "label-letter-spacing": 0.75,
+          "label-color": "#9f8989",
+          "label-halo-width": 2,
+          "label-halo-color": "#f5f4f3",
+          "label-size": 12
+        }
+      },
+      {
+        "show":false,
+        "type": "text-area",
+        "position": [
+          1.71,23.74
+        ],
+        "text": "Liptako-Gourma borderlands of Burkina Faso, Mali, and Niger now accounting for over half of global terrorism-related deaths",
+        "style": {
+          "label-font": "Season_Sans_Regular",
+          "label-letter-spacing": 0,
+          "label-color": "#000",
+          "label-halo-width": 2,
+          "label-halo-color": "#f5f4f3",
+          "label-size": 12,
+           "align": "left",
+      "text-max-width": 11
+        }
+      },
+      {
+        "show":false,
+        "bend":-0.2196,
+        "type": "curved-arrow",
+        "end": [0.98,17.48
+        ],
+        "start": [2.74,19.52
+        ],
+        "style": {
+          "stroke": "#8b0000",
+          "stroke-width": 2,
+          "stroke-dash": "solid",
+          "arrow-size": 0.8,
+          "label-anchor": "start"
+        }
+      }
+    ]
+  },
+  "legend": {
+    "show": true,
+    "position": "bottom-left",
+    "title": "Legend",
+    "layout": "horizontal",
+    "entries": [
+      {
+        "label": " "
+      },
+      {
+        "swatch": "rect",
+        "ref": "sahel",
+        "label": "Sahel"
+      },
+      {
+        "swatch": "rect",
+        "ref": "yellow-diagonal",
+        "label": "Liptako-Gourma"
+      }
+    ]
+  }
+}

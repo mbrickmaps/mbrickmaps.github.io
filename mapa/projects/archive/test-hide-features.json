@@ -1,0 +1,9 @@
+{
+  "view": {
+    "center": [31.0, 49.0],
+    "zoom": 5,
+    "hideFeatures": [
+      { "layer": "admin0-fill", "property": "shapeGroup", "values": ["UKR"] }
+    ]
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "_note": "geoSatellite via the @jjhembd/tilting-the-satellite PRIMITIVES (authored verbatim). longitude/latitude = sub-satellite (nadir) point; altitude km; rotation/tilt/fieldOfView degrees. mapa derives scale/yShift/distance/translate/preclip.",
+  "view": {},
+  "export": {
+    "width": 1000,
+    "height": 1000,
+    "projection": {
+      "proj": "geoSatellite",
+      "type": "custom",
+      "fit": "none",
+      "scale": 17316.029967382183,
+      "translate": [
+        500,
+        2502.049312249297
+      ],
+      "center": [
+        0,
+        0
+      ],
+      "rotate": [
+        -43.0107,
+        -34.5817,
+        128
+      ],
+      "tilt": 46,
+      "distance": 1.160728300109873,
+      "fieldOfView": 29,
+      "precision": 0.1,
+      "_params": {
+        "longitude": 43.0107,
+        "latitude": 34.5817,
+        "altitude": 1024,
+        "rotation": 128,
+        "tilt": 46,
+        "fieldOfView": 29
+      }
+    },
+    "graphic": {
+      "background": "#cfe0e6"
+    },
+    "clipping": {
+      "margin": 0
+    },
+    "basemap": {
+      "show": true,
+      "disputed": {
+        "show": true,
+        "style": {
+          "stroke": "#9a9993",
+          "opacity": 1,
+          "stroke-width": 0.8
+        }
+      },
+      "lake": {
+        "show": true,
+        "style": {
+          "fill": "#c1d5da",
+          "opacity": 1
+        }
+      },
+      "coastline": {
+        "show": true,
+        "style": {
+          "stroke": "#416c76",
+          "opacity": 1,
+          "stroke-width": 0.6
+        }
+      },
+      "innerlines": {
+        "show": true,
+        "style": {
+          "stroke": "#9a9993",
+          "opacity": 1,
+          "stroke-width": 0.5
+        }
+      },
+      "border": {
+        "show": true,
+        "style": {
+          "stroke": "#c8c8bd",
+          "opacity": 1,
+          "stroke-width": 0.6
+        }
+      },
+      "river": {
+        "show": false,
+        "style": {
+          "stroke": "#c1d5da",
+          "opacity": 1,
+          "stroke-width": 1
+        }
+      },
+      "land": {
+        "show": true,
+        "style": {
+          "fill": "#eef0e9",
+          "opacity": 0.6
+        }
+      },
+      "ocean": {
+        "show": true,
+        "style": {
+          "fill": "#c1d5da",
+          "opacity": 0.8
+        }
+      }
+    },
+    "northArrow": {
+      "show": true,
+      "position": "bottom-left",
+      "size": 40,
+      "style": {
+        "stroke": "#333333",
+        "fill": "#333333"
+      }
+    },
+    "tiles": {
+      "show": true,
+      "mime": "image/png",
+      "quality": 1,
+      "data": [
+        {
+          "show": true,
+          "id": "hillshade",
+          "type": "pmtiles",
+          "url": "https://static.cfr.org/atlas/pmtiles/hs.pmtiles",
+          "delta": 1,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "show": true,
+          "id": "raster-1",
+          "type": "xyz",
+          "url": "https://api.maptiler.com/maps/satellite-v4/{z}/{x}/{y}.jpg?key={key}",
+          "delta": 1,
+          "blendMode": "multiply",
+          "opacity": 0.7
+        }
+      ]
+    }
+  },
+  "inset": {
+    "position": "bottom-right",
+    "size": 160,
+    "radius": "0%",
+    "projection": "mercator",
+    "land": {
+      "style": {
+        "fill": "#efeee8"
+      }
+    },
+    "ocean": {
+      "style": {
+        "fill": "#c1d5da"
+      }
+    },
+    "border": {
+      "color": "#000000"
+    },
+    "zoom": 2,
+    "follow": true,
+    "center": [
+      59.1287,
+      21.8676
+    ],
+    "bbox": {
+      "marker": "rect",
+      "style": {
+        "fill": "#d96363",
+        "fill-opacity": 0.5,
+        "stroke": "#f42f2f",
+        "stroke-width": 1.5
+      }
+    }
+  }
+}

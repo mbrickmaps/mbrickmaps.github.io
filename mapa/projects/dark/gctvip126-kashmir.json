@@ -1,0 +1,46 @@
+{
+  "view": {
+    "center": [76.0, 34.5],
+    "zoom": 5.5,
+    "hide": []
+  },
+  "polys": {
+    "show": true,
+    "data": [
+     
+      {
+        "insertBelow": "ne_10m_rivers",
+        "source":"data/disputed_geojson.json",
+        "style": {
+          "fill": "#000000",
+          "pattern": "gray-diagonal",
+          "pattern-opacity": 0,
+          "fill-opacity": 0,
+          "stroke": "#000000",
+          "stroke-width": 0
+        }
+      },
+           
+      {
+        "insertBelow": "ne_10m_rivers",
+        "refUid":["admin1:ind_ladakh","admin1:ind_jammu_and_kashmir","admin1:pak_azad_kashmir","admin1:pak_gilgit-baltistan"],
+        "style": {
+          "fill": "#000000",
+          "pattern": "gray-diagonal",
+          "pattern-opacity": 0.2,
+          "fill-opacity": 0,
+          "stroke": "#000000",
+          "stroke-width": 0
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "show": false,
+    "data": []
+  },
+  "points": {
+    "show": false,
+    "data": []
+  }
+}

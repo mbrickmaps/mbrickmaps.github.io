@@ -1,0 +1,547 @@
+{
+  "background": {
+    "visibility": "none"
+  },
+  "hillshade": {
+    "visibility": "visible"
+  },
+  "ocean-fill": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#14171E",
+      "fill-opacity": 1
+    }
+  },
+  "admin0-fill": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#414A58",
+      "fill-opacity": 0.9
+    }
+  },
+  "admin1-stroke": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#bbb",
+      "line-width": 0
+    }
+  },
+  "disputed": {
+    "visibility": "none",
+    "line-cap": "round",
+    "paint": {
+      "line-color": "#DEDBD8",
+      "line-width": 1,
+      "line-dasharray": [
+        0,
+        3
+      ]
+    }
+  },
+  "ne_10m_rivers": {
+    "visibility": "none",
+    "line-cap": "round",
+    "paint": {
+      "line-color": "#14171E",
+      "line-opacity": 1,
+      "line-width": [
+        "*",
+        [
+          "get",
+          "strokeweig"
+        ],
+        1
+      ]
+    }
+  },
+  "innerlines": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#DEDBD8",
+      "line-width": 0.75
+    }
+  },
+  "coastlines": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#14171E",
+      "line-width": 0
+    }
+  },
+  "ne_10m_lake-fill": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#14171E"
+    }
+  },
+  "highlight-admin2": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#FFCAA7",
+      "fill-opacity": 0
+    }
+  },
+  "highlight-admin1": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#FFCAA7",
+      "fill-opacity": 0
+    }
+  },
+  "highlight-admin0": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#FFCAA7",
+      "fill-opacity": 0
+    }
+  },
+  "highlight-land_region": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#FFCAA7",
+      "fill-opacity": 0
+    }
+  },
+  "highlight-water_region": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": "#C1D5DA",
+      "fill-opacity": 0
+    }
+  },
+  "highlight-admin2-stroke": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#8F3602",
+      "line-opacity": 0,
+      "line-width": 1.5
+    }
+  },
+  "highlight-admin1-stroke": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#8F3602",
+      "line-opacity": 0,
+      "line-width": 1.5
+    }
+  },
+  "highlight-admin0-stroke": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#8F3602",
+      "line-opacity": 0,
+      "line-width": 1.5
+    }
+  },
+  "highlight-land_region-stroke": {
+    "visibility": "none",
+    "paint": {
+      "line-color": "#8F3602",
+      "line-opacity": 0,
+      "line-width": 1.5
+    }
+  },
+  "leader-lines": {
+    "visibility": "none",
+    "line-cap": "round",
+    "paint": {
+      "line-color": "#cccccc",
+      "line-opacity": 0.6,
+      "line-width": 1
+    }
+  },
+  "water-label": {
+    "visibility": "none",
+    "text-size": [
+      "interpolate",
+      [
+        "linear"
+      ],
+      [
+        "zoom"
+      ],
+      2,
+      10,
+      6,
+      13
+    ],
+    "text-font": [
+      "Season_Sans_Medium_Italic"
+    ],
+    "paint": {
+      "text-color": "rgba(255, 255, 255, 0.8)"
+    }
+  },
+  "cities-dots": {
+    "visibility": "none"
+  },
+  "cities-labels": {
+    "visibility": "none",
+    "text-size": 11.5,
+    "text-font": [
+      "Season_Sans_SemiBold"
+    ],
+    "paint": {
+      "text-color": "rgba(255, 255, 255, 0.8)",
+      "text-halo-color": "#000",
+      "text-halo-width": 0
+    }
+  },
+  "city-dots": {
+    "visibility": "none",
+    "minzoom": 4,
+    "paint": {
+      "circle-color": "black",
+      "circle-radius": 2,
+      "circle-stroke-color": "#000",
+      "circle-stroke-width": 1
+    }
+  },
+  "city-labels": {
+    "visibility": "none",
+    "text-size": 10,
+    "text-font": [
+      "Season_Sans_Medium"
+    ],
+    "minzoom": 4,
+    "paint": {
+      "text-color": "#fff",
+      "text-halo-color": "#000",
+      "text-halo-width": 1
+    }
+  },
+  "countries-labels": {
+    "visibility": "none",
+    "text-size": [
+      "interpolate",
+      [
+        "linear"
+      ],
+      [
+        "zoom"
+      ],
+      2,
+      10,
+      6,
+      13
+    ],
+    "text-font": [
+      "Season_Sans_Medium"
+    ],
+    "paint": {
+      "text-color": "rgba(255, 255, 255, 0.8)"
+    }
+  },
+  "other-labels": {
+    "visibility": "none",
+    "text-size": [
+      "interpolate",
+      [
+        "linear"
+      ],
+      [
+        "zoom"
+      ],
+      2,
+      10,
+      6,
+      13
+    ],
+    "text-font": [
+      "Season_Sans_Medium"
+    ],
+    "paint": {
+      "text-color": "rgba(255, 255, 255, 0.8)"
+    }
+  },
+  "conflict-red-worsening": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": "#D65B29",
+      "circle-radius": 12,
+      "circle-stroke-color": "#2A2E3C",
+      "circle-stroke-width": 2
+    }
+  },
+  "conflict-green-improving": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": "#39BC85",
+      "circle-radius": 12,
+      "circle-stroke-color": "#2A2E3C",
+      "circle-stroke-width": 2
+    }
+  },
+  "conflict-blue-unchanging": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": "#648FC7",
+      "circle-radius": 12,
+      "circle-stroke-color": "#2A2E3C",
+      "circle-stroke-width": 2
+    }
+  },
+  "conflict-white-developing": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": "#979595",
+      "circle-radius": 12,
+      "circle-stroke-color": "#2A2E3C",
+      "circle-stroke-width": 2
+    }
+  },
+  "project-points-circle--__top__": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": [
+        "get",
+        "_fill"
+      ],
+      "circle-opacity": [
+        "get",
+        "_opacity"
+      ],
+      "circle-radius": [
+        "get",
+        "_radius"
+      ],
+      "circle-stroke-color": [
+        "get",
+        "_stroke"
+      ],
+      "circle-stroke-width": [
+        "get",
+        "_strokeWidth"
+      ]
+    }
+  },
+  "project-points-label--__top__": {
+    "visibility": "none",
+    "text-size": [
+      "get",
+      "_labelSize"
+    ],
+    "text-font": [
+      "match",
+      [
+        "get",
+        "_labelFont"
+      ],
+      "Season_Sans_Light",
+      [
+        "literal",
+        [
+          "Season_Sans_Light"
+        ]
+      ],
+      "Season_Sans_Light_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_Light_Italic"
+        ]
+      ],
+      "Season_Sans_Regular",
+      [
+        "literal",
+        [
+          "Season_Sans_Regular"
+        ]
+      ],
+      "Season_Sans_Regular_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_Regular_Italic"
+        ]
+      ],
+      "Season_Sans_Medium",
+      [
+        "literal",
+        [
+          "Season_Sans_Medium"
+        ]
+      ],
+      "Season_Sans_Medium_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_Medium_Italic"
+        ]
+      ],
+      "Season_Sans_SemiBold",
+      [
+        "literal",
+        [
+          "Season_Sans_SemiBold"
+        ]
+      ],
+      "Season_Sans_SemiBold_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_SemiBold_Italic"
+        ]
+      ],
+      "Season_Sans_Bold",
+      [
+        "literal",
+        [
+          "Season_Sans_Bold"
+        ]
+      ],
+      "Season_Sans_Bold_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_Bold_Italic"
+        ]
+      ],
+      "Season_Sans_Heavy",
+      [
+        "literal",
+        [
+          "Season_Sans_Heavy"
+        ]
+      ],
+      "Season_Sans_Heavy_Italic",
+      [
+        "literal",
+        [
+          "Season_Sans_Heavy_Italic"
+        ]
+      ],
+      "Adobe_Caslon_Pro_Regular",
+      [
+        "literal",
+        [
+          "Adobe_Caslon_Pro_Regular"
+        ]
+      ],
+      "Adobe_Caslon_Pro_Italic",
+      [
+        "literal",
+        [
+          "Adobe_Caslon_Pro_Italic"
+        ]
+      ],
+      [
+        "literal",
+        [
+          "Season_Sans_Medium"
+        ]
+      ]
+    ],
+    "paint": {
+      "text-color": [
+        "get",
+        "_labelColor"
+      ],
+      "text-halo-color": [
+        "get",
+        "_labelHaloColor"
+      ],
+      "text-halo-width": [
+        "get",
+        "_labelHaloWidth"
+      ]
+    }
+  },
+  "sandbox-annotation-handles": {
+    "visibility": "none",
+    "paint": {
+      "circle-color": [
+        "case",
+        [
+          "==",
+          [
+            "get",
+            "_locked"
+          ],
+          1
+        ],
+        "#c39bff",
+        [
+          "match",
+          [
+            "get",
+            "_role"
+          ],
+          "bend",
+          "#7fd3ff",
+          [
+            "nw",
+            "ne",
+            "se",
+            "sw"
+          ],
+          "#9ae6a0",
+          "#ffd166"
+        ]
+      ],
+      "circle-radius": 4,
+      "circle-stroke-color": "#000000",
+      "circle-stroke-width": 1
+    }
+  },
+  "project-polys-fill--__top__--_null_null_null_null_null_": {
+    "visibility": "none",
+    "paint": {
+      "fill-color": [
+        "get",
+        "_fill"
+      ],
+      "fill-opacity": [
+        "get",
+        "_fillOpacity"
+      ]
+    }
+  },
+  "project-polys-pattern--__top__--_null_null_null_null_null_": {
+    "visibility": "none",
+    "paint": {
+      "fill-opacity": [
+        "get",
+        "_patternOpacity"
+      ],
+      "fill-pattern": [
+        "get",
+        "_pattern"
+      ]
+    }
+  },
+  "project-polys-outline--__top__--_null_null_null_null_null_": {
+    "visibility": "none",
+    "paint": {
+      "line-color": [
+        "get",
+        "_stroke"
+      ],
+      "line-opacity": [
+        "get",
+        "_opacity"
+      ],
+      "line-width": [
+        "get",
+        "_strokeWidth"
+      ]
+    }
+  },
+  "project-polys-line--__top__--_null_null_null_null_null_": {
+    "visibility": "none",
+    "paint": {
+      "line-color": [
+        "get",
+        "_stroke"
+      ],
+      "line-opacity": [
+        "get",
+        "_opacity"
+      ],
+      "line-width": [
+        "get",
+        "_strokeWidth"
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "view": { "center": [30.5, 50.4], "zoom": 6 },
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "Circle point", "lng": 30.0, "lat": 50.6, "dir": "N" },
+      { "name": "Symbol point", "lng": 31.0, "lat": 50.2, "dir": "S", "symbol": "capital-dot" },
+      { "name": "Bad symbol", "lng": 30.0, "lat": 50.0, "dir": "S", "symbol": "does-not-exist" }
+    ]
+  }
+}

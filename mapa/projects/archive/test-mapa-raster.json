@@ -1,0 +1,27 @@
+{
+  "view": { "bbox": [22, 44, 41, 53] },
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "Kyiv", "lng": 30.523333, "lat": 50.45, "dir": "NE",
+        "style": { "fill": "#8b0000", "size": 6, "label-size": 13, "label-color": "#8b0000" } },
+      { "name": "Lviv", "lng": 24.0297, "lat": 49.8397, "dir": "W",
+        "style": { "fill": "#412c26", "size": 5 } }
+    ]
+  },
+  "export": {
+    "width": 1000,
+    "tiles": {
+      "show": true,
+      "data": [
+        { "show": true, "id": "hillshade", "type": "pmtiles", "url": "https://static.cfr.org/atlas/pmtiles/hs.pmtiles", "delta": 2, "blendMode": "multiply" }
+      ]
+    },
+    "basemap": {
+      "show": true,
+      "background": { "show": true, "style": { "fill": "#cfe0e6", "stroke": "none" } },
+      "land":       { "show": true, "style": { "fill": "#eef0e9", "stroke": "none", "fill-opacity": 0.35 } },
+      "border":     { "show": true, "style": { "fill": "none", "stroke": "#888888", "stroke-width": 0.6 } }
+    }
+  }
+}

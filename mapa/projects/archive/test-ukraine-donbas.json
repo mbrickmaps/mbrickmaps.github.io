@@ -1,0 +1,311 @@
+{
+  "view": {
+    "center": [
+      35.41,
+      47.5
+    ],
+    "zoom": 5.86,
+    "hideFeatures": [
+      {
+        "layer": "admin0-fill",
+        "property": "shapeGroup",
+        "values": [
+          "UKR"
+        ]
+      }
+    ],
+    "hide": [
+      "ne_10m_rivers",
+      "ne_10m_lake-fill"
+    ]
+  },
+  "inset": {
+    "position": "bottom-right",
+    "size": 160,
+    "labels": false,
+    "radius": "50%",
+    "center": [
+      30,
+      50
+    ],
+    "vignette": {
+      "color": "#000",
+      "opacity": 0.35,
+      "stop": 45
+    },
+    "border": {
+      "color": "#000",
+      "width": 1.5
+    },
+    "hide": [
+      "disputed",
+      "coastlines",
+      "admin1-stroke",
+      "hillshade"
+    ],
+    "markers": [
+      {
+        "lng": 37.8,
+        "lat": 48.0,
+        "style": {
+          "fill": "#ffffff",
+          "stroke": "black",
+          "stroke-width": 2,
+          "size": 6
+        }
+      }
+    ]
+  },
+  "points": {
+    "show": true,
+    "data": [
+      {
+        "name": "Kharkiv",
+        "lat": 50.004444,
+        "lng": 36.231389,
+        "dir": "S",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Odesa",
+        "lat": 46.485722,
+        "lng": 30.743444,
+        "dir": "N",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Dnipro",
+        "lat": 48.45,
+        "lng": 35.033333,
+        "dir": "N",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Berdyansk",
+        "lat": 46.756822,
+        "lng": 36.78684,
+        "dir": "NW",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Donetsk",
+        "lat": 48.001948,
+        "lng": 37.828034,
+        "dir": "W",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Horlivka",
+        "lat": 48.299647,
+        "lng": 38.054669,
+        "dir": "E",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Kramatorsk",
+        "lat": 48.719363,
+        "lng": 37.534391,
+        "dir": "N",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Kupyansk",
+        "lat": 49.721783,
+        "lng": 37.598056,
+        "dir": "S",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Luhansk",
+        "lat": 48.56976,
+        "lng": 39.334384,
+        "dir": "S",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Lysychansk",
+        "lat": 48.920411,
+        "lng": 38.42736,
+        "dir": "NE",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Mariupol",
+        "lat": 47.096181,
+        "lng": 37.556198,
+        "dir": "NW",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      },
+      {
+        "name": "Severodonetsk",
+        "lat": 48.933333,
+        "lng": 38.5,
+        "dir": "NW",
+        "style": {
+          "stroke": "#FFFFFF",
+          "stroke-width": 1,
+          "label-color": "#FFFFFF",
+          "label-halo-color": "#000000"
+        }
+      }
+    ]
+  },
+  "polys": {
+    "show": true,
+    "data": [
+      {
+        "insertBelow": "ne_10m_rivers",
+        "refUid": [
+          "admin0:ukr"
+        ],
+        "style": {
+          "fill": "#505865",
+          "fill-opacity": 0.25
+        }
+      },
+      {
+        "insertBelow": "ne_10m_rivers",
+        "refUid": [
+          "admin1:ukr_donetsk_oblast",
+          "admin1:ukr_luhansk_oblast"
+        ],
+        "style": {
+          "fill": "#8b0000",
+          "fill-opacity": 0.25,
+          "stroke": "#8b0000",
+          "stroke-width": 2
+        }
+      },
+      {
+        "source": "data/area.json",
+        "insertBelow": "ne_10m_rivers",
+        "style": {
+          "pattern-opacity": 0.2,
+          "pattern": "yellow-diagonal",
+          "stroke": "black",
+          "stroke-width": 1,
+          "stroke-dash": "dotted"
+        }
+      },
+      {
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              38.6,
+              49.6
+            ],
+            [
+              38.4,
+              48.7
+            ],
+            [
+              37.9,
+              48.0
+            ],
+            [
+              37.7,
+              47.4
+            ]
+          ]
+        },
+        "insertBelow": "ne_10m_rivers",
+        "style": {
+          "stroke": "#8b0000",
+          "stroke-width": 2,
+          "stroke-dash": "dashed"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "show": true,
+    "data": [
+      {
+        "type": "text-area",
+        "position": [
+          31.8,
+          51.4
+        ],
+        "text": "Ukrainian-controlled territory",
+        "width": 4.5,
+        "height": 1,
+        "style": {
+          "fill": "#ffffff",
+          "fill-opacity": 0.85,
+          "stroke": "#000000",
+          "stroke-width": 1
+        }
+      },
+      {
+        "type": "straight-arrow",
+        "start": [39.53,50.00],
+        "end": [38.82,49.47],
+        "label": "Russian advance",
+        "style": {
+          "stroke": "#8b0000",
+          "stroke-width": 2,
+          "label-anchor": "start",
+          "label-offset": [0, -1],
+          "label-color": "#8b0000",
+          "label-size": 13
+        }
+      }
+     ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "points": {
+    "show": true,
+    "data": [
+      { "name": "Kyiv", "lng": 30.523333, "lat": 50.45, "dir": "NE" }
+    ]
+  },
+  "view": {
+    "center": [30.523333, 50.45],
+    "zoom": 5
+  },
+  "inset": {
+    "position": "top-right",
+    "size": 160,
+    "follow": true,
+    "zoom": 2
+  }
+}

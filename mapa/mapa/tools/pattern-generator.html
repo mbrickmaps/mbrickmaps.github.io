@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pattern generator</title>
+<script src="https://unpkg.com/d3@7/dist/d3.min.js"></script>
+<script src="https://unpkg.com/textures@1.2.3/dist/textures.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; gap: 28px; padding: 20px; background: #f9f9f9; color: #222; margin: 0; }
+
+  /* Controls column */
+  #controls { display: flex; flex-direction: column; gap: 8px; width: 264px; flex-shrink: 0; }
+
+  /* Mode switcher */
+  .mode-bar { display: flex; border: 1px solid #d0d0d0; border-radius: 6px; overflow: hidden; }
+  .mode-bar button { flex: 1; border: none; border-right: 1px solid #d0d0d0; padding: 8px 4px; background: #f0f0f0; cursor: pointer; font-size: 12px; font-weight: 500; color: #555; transition: background 0.1s; }
+  .mode-bar button:last-child { border-right: none; }
+  .mode-bar button:hover:not(.active) { background: #e4e4e4; }
+  .mode-bar button.active { background: #1a5fb4; color: #fff; }
+
+  /* Panel */
+  .panel { display: none; flex-direction: column; gap: 6px; }
+  .panel.active { display: flex; }
+
+  /* Slider row */
+  .rrow { display: flex; flex-direction: column; gap: 1px; }
+  .rrow-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .rrow-label { font-size: 12px; color: #444; }
+  .rrow-hint { font-size: 10px; color: #aaa; margin-left: 4px; }
+  .rrow-val { font-size: 11px; font-variant-numeric: tabular-nums; color: #888; min-width: 28px; text-align: right; }
+  input[type="range"] { width: 100%; accent-color: #1a5fb4; cursor: pointer; }
+
+  /* Color row */
+  .crow { display: flex; align-items: center; justify-content: space-between; height: 28px; }
+  .crow-label { font-size: 12px; color: #444; }
+  input[type="color"] { width: 36px; height: 24px; border: 1px solid #ccc; border-radius: 4px; padding: 1px; cursor: pointer; background: none; }
+
+  /* Background row (checkbox + color on one line) */
+  .bgrow { display: flex; align-items: center; gap: 6px; height: 28px; }
+  .bgrow input[type="checkbox"] { cursor: pointer; accent-color: #1a5fb4; }
+  .bgrow-label { font-size: 12px; color: #444; flex: 1; cursor: pointer; }
+  .bgrow input[type="color"] { width: 36px; height: 24px; }
+
+  /* Opacity slider paired with the color row above it */
+  .alpharow { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; padding-left: 18px; }
+  .alpharow input[type="range"] { flex: 1; }
+  .alpharow.off { opacity: 0.4; }
+
+  /* Rows that only apply to some dot shapes */
+  .stroke-only, .rot-only { display: flex; }
+  .stroke-only.na, .rot-only.na { display: none; }
+
+  /* Select row */
+  .srow { display: flex; flex-direction: column; gap: 2px; }
+  .srow-label { font-size: 12px; color: #444; }
+  select { width: 100%; padding: 5px 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #222; cursor: pointer; }
+
+  /* Orientations */
+  #orientations { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  #orientations label { display: flex; flex-direction: row; align-items: center; gap: 3px; font-size: 12px; color: #444; cursor: pointer; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; margin-top: 4px; }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid #e8e8e8; margin: 2px 0; }
+
+  /* Shared bottom */
+  .shared-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .shared-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #444; }
+  .shared-grid input { padding: 5px 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; background: #fff; width: 100%; }
+
+  /* Status */
+  #info { font-size: 11px; color: #888; min-height: 14px; line-height: 1.4; }
+
+  /* Download */
+  #download { width: 100%; padding: 9px; background: #1a5fb4; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 2px; }
+  #download:hover { background: #1850a0; }
+
+  /* Preview area */
+  .preview-col { display: flex; flex-direction: column; gap: 12px; }
+  .preview-block { display: flex; flex-direction: column; gap: 4px; }
+  .checkerboard {
+    background: repeating-conic-gradient(#d0d0d0 0% 25%, #f0f0f0 0% 50%) 50% / 16px 16px;
+    border: 1px solid #ddd; border-radius: 4px; overflow: hidden;
+    width: 280px; height: 280px;
+  }
+  .checkerboard svg { width: 100%; height: 100%; display: block; }
+  .checkerboard canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .preview-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; }
+
+  /* Alignment underlay — reference image, never exported */
+  #preview-wrap { position: relative; }
+  #preview-wrap.dragover { border-color: #1a5fb4; box-shadow: 0 0 0 2px rgba(26,95,180,0.25); }
+  #preview-wrap > #preview { position: absolute; inset: 0; }
+  #underlay {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; display: none; pointer-events: none;
+  }
+  #underlay.on { display: block; }
+  #underlay.front { z-index: 2; }
+  .ul-row { display: flex; align-items: center; gap: 6px; }
+  .ul-row input[type="file"] { display: none; }
+  .ul-btn { flex: 1; padding: 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #444; cursor: pointer; text-align: center; }
+  .ul-btn:hover { background: #f0f0f0; }
+  #underlayClear { flex: none; padding: 6px 8px; }
+  .ul-sub { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; }
+  .ul-sub input[type="range"] { flex: 1; }
+  #underlayName { font-size: 10px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Map context swatches */
+  .swatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 350px; }
+  .swatch-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .swatch-chip { width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.12); flex-shrink: 0; }
+  .swatch-chip svg, .swatch-chip canvas { width: 100%; height: 100%; display: block; }
+  .swatch-chip-label { font-size: 9px; color: #aaa; text-align: center; line-height: 1.3; }
+  /* Contrast of the pattern color vs each map-context bg. 3:1 = WCAG 1.4.11 non-text bar. */
+  .swatch-cc { font-size: 9px; font-variant-numeric: tabular-nums; padding: 0 4px; border-radius: 3px; line-height: 1.5; }
+  .swatch-cc.pass { color: #157a3f; background: rgba(21,122,63,0.12); }
+  .swatch-cc.fail { color: #c0392b; background: rgba(192,57,43,0.12); }
+  /* Read-only atlas color reference (fills + strokes) */
+  .palette { display: flex; flex-direction: column; gap: 8px; width: 350px; }
+  .pal-group-label { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #999; margin-bottom: 3px; }
+  .pal-row { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .pal-sw { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: #666; }
+  .pal-box { width: 15px; height: 15px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); flex: none; }
+  .pal-hex { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <div class="mode-bar">
+    <button id="mode-lines" class="active" onclick="setMode('lines')">Lines</button>
+    <button id="mode-dots" onclick="setMode('dots')">Dots</button>
+    <button id="mode-sym" onclick="setMode('sym')">Symmetry</button>
+  </div>
+
+  <!-- Lines panel -->
+  <div id="panel-lines" class="panel active">
+    <div class="section-label">Orientation</div>
+    <div id="orientations"></div>
+    <hr class="divider">
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Line size</span><span class="rrow-val" id="lineSize-val">12</span></div>
+      <input type="range" id="lineSize" min="1" max="30" step="0.5" value="12">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Stroke width</span><span class="rrow-val" id="lineWidth-val">3</span></div>
+      <input type="range" id="lineWidth" min="0" max="10" step="0.5" value="3">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head">
+        <span class="rrow-label">Offset X<span class="rrow-hint">phase, × line size</span></span>
+        <span class="rrow-val" id="lineOffsetX-val">0</span>
+      </div>
+      <input type="range" id="lineOffsetX" min="0" max="1" step="0.01" value="0">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Offset Y</span><span class="rrow-val" id="lineOffsetY-val">0</span></div>
+      <input type="range" id="lineOffsetY" min="0" max="1" step="0.01" value="0">
+    </div>
+    <hr class="divider">
+    <div class="crow"><span class="crow-label">Color</span><input type="color" id="accentColor" value="#e22222"></div>
+    <div class="alpharow" id="strokeAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="strokeAlpha" min="0" max="1" step="0.05" value="1">
+      <span class="rrow-val" id="strokeAlpha-val">1</span>
+    </div>
+    <div class="bgrow">
+      <input type="checkbox" id="bgOn">
+      <label class="bgrow-label" for="bgOn">Background</label>
+      <input type="color" id="backgroundColor" value="#ffffff" disabled>
+    </div>
+    <div class="alpharow off" id="bgAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="bgAlpha" min="0" max="1" step="0.05" value="1" disabled>
+      <span class="rrow-val" id="bgAlpha-val">1</span>
+    </div>
+  </div>
+
+  <!-- Dots panel -->
+  <div id="panel-dots" class="panel">
+    <div class="srow">
+      <span class="srow-label">Shape</span>
+      <select id="dotShape"></select>
+    </div>
+    <hr class="divider">
+    <div class="rrow">
+      <div class="rrow-head">
+        <span class="rrow-label">Size<span class="rrow-hint">radius / half-extent</span></span>
+        <span class="rrow-val" id="dotRadius-val">4</span>
+      </div>
+      <input type="range" id="dotRadius" min="1" max="20" step="0.5" value="4">
+    </div>
+    <div class="rrow stroke-only">
+      <div class="rrow-head"><span class="rrow-label">Line weight</span><span class="rrow-val" id="dotStroke-val">1.5</span></div>
+      <input type="range" id="dotStroke" min="0.25" max="8" step="0.25" value="1.5">
+    </div>
+    <div class="rrow rot-only">
+      <div class="rrow-head"><span class="rrow-label">Rotation</span><span class="rrow-val" id="dotRotation-val">0</span></div>
+      <input type="range" id="dotRotation" min="0" max="360" step="1" value="0">
+    </div>
+    <div class="rrow rot-only">
+      <div class="rrow-head">
+        <span class="rrow-label">Rotation jitter<span class="rrow-hint">0=aligned · 1=random</span></span>
+        <span class="rrow-val" id="dotRotJitter-val">0</span>
+      </div>
+      <input type="range" id="dotRotJitter" min="0" max="1" step="0.05" value="0">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head">
+        <span class="rrow-label">Size variation<span class="rrow-hint">0=uniform · 1=organic</span></span>
+        <span class="rrow-val" id="dotVariation-val">0.3</span>
+      </div>
+      <input type="range" id="dotVariation" min="0" max="1" step="0.05" value="0.3">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head">
+        <span class="rrow-label">Min spacing<span class="rrow-hint">0=random · >0 Poisson</span></span>
+        <span class="rrow-val" id="dotSpacing-val">0</span>
+      </div>
+      <input type="range" id="dotSpacing" min="0" max="40" step="1" value="0">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Max count</span><span class="rrow-val" id="dotCount-val">60</span></div>
+      <input type="range" id="dotCount" min="5" max="300" step="1" value="60">
+    </div>
+    <hr class="divider">
+    <div class="crow"><span class="crow-label">Color</span><input type="color" id="dotColor" value="#e22222"></div>
+    <div class="alpharow" id="dotAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="dotAlpha" min="0" max="1" step="0.05" value="1">
+      <span class="rrow-val" id="dotAlpha-val">1</span>
+    </div>
+    <div class="bgrow">
+      <input type="checkbox" id="dotBgOn">
+      <label class="bgrow-label" for="dotBgOn">Background</label>
+      <input type="color" id="dotBgColor" value="#ffffff" disabled>
+    </div>
+    <div class="alpharow off" id="dotBgAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="dotBgAlpha" min="0" max="1" step="0.05" value="1" disabled>
+      <span class="rrow-val" id="dotBgAlpha-val">1</span>
+    </div>
+    <hr class="divider">
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Seed</span></div>
+      <input type="number" id="dotSeed" min="0" step="1" value="42" style="padding:5px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;width:100%;background:#fff;">
+    </div>
+  </div>
+
+  <!-- Symmetry panel -->
+  <div id="panel-sym" class="panel">
+    <div class="srow">
+      <span class="srow-label">Primitive</span>
+      <select id="symPrimitive"></select>
+    </div>
+    <div class="srow">
+      <span class="srow-label">Wallpaper group</span>
+      <select id="symType"></select>
+    </div>
+    <hr class="divider">
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Tile size</span><span class="rrow-val" id="symTileSize-val">56</span></div>
+      <input type="range" id="symTileSize" min="10" max="200" step="0.5" value="56">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Repeats</span><span class="rrow-val" id="symRepeats-val">5</span></div>
+      <input type="range" id="symRepeats" min="1" max="12" step="1" value="5">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Scale</span><span class="rrow-val" id="symScale-val">0.7</span></div>
+      <input type="range" id="symScale" min="0.05" max="2" step="0.01" value="0.7">
+    </div>
+    <div class="rrow">
+      <div class="rrow-head"><span class="rrow-label">Stroke width</span><span class="rrow-val" id="symStroke-val">1.5</span></div>
+      <input type="range" id="symStroke" min="0.1" max="5" step="0.1" value="1.5">
+    </div>
+    <div class="srow">
+      <span class="srow-label">Line ends</span>
+      <select id="symCap">
+        <option value="round">Round — ends meet</option>
+        <option value="square">Square — ends meet, crisp</option>
+        <option value="butt">Butt — ends stop short</option>
+      </select>
+    </div>
+    <hr class="divider">
+    <div class="crow"><span class="crow-label">Color</span><input type="color" id="symColor" value="#e22222"></div>
+    <div class="alpharow" id="symAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="symAlpha" min="0" max="1" step="0.05" value="1">
+      <span class="rrow-val" id="symAlpha-val">1</span>
+    </div>
+    <div class="bgrow">
+      <input type="checkbox" id="symBgOn">
+      <label class="bgrow-label" for="symBgOn">Background</label>
+      <input type="color" id="symBgColor" value="#ffffff" disabled>
+    </div>
+    <div class="alpharow off" id="symBgAlpha-row">
+      <span>opacity</span>
+      <input type="range" id="symBgAlpha" min="0" max="1" step="0.05" value="1" disabled>
+      <span class="rrow-val" id="symBgAlpha-val">1</span>
+    </div>
+  </div>
+
+  <!-- Shared bottom -->
+  <hr class="divider">
+  <div class="section-label">Alignment reference (not exported)</div>
+  <div class="ul-row">
+    <input type="file" id="underlayFile" accept="image/*">
+    <label class="ul-btn" for="underlayFile">Load image…</label>
+    <button class="ul-btn" id="underlayClear" title="Remove reference image">✕</button>
+  </div>
+  <div id="underlayName"></div>
+  <div class="ul-sub">
+    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="underlayFront"> front</label>
+    <span>opacity</span>
+    <input type="range" id="underlayOpacity" min="0" max="1" step="0.05" value="0.5">
+    <span class="rrow-val" id="underlayOpacity-val">0.5</span>
+  </div>
+  <hr class="divider">
+  <div class="shared-grid">
+    <label id="exportSizeLabel">Export size (px)<input type="number" id="targetSize" value="128" step="1"></label>
+    <label>Filename<input type="text" id="filename" value="my-pattern"></label>
+  </div>
+  <div class="bgrow">
+    <input type="checkbox" id="persistOn">
+    <label class="bgrow-label" for="persistOn">Remember settings on this browser</label>
+  </div>
+  <div id="info"></div>
+  <button id="download">Download PNG</button>
+</div>
+
+<div class="preview-col">
+  <div class="preview-block">
+    <div class="checkerboard" id="preview-wrap" title="Drop an image here to use as an alignment reference">
+      <img id="underlay" alt="">
+      <div id="preview"></div>
+    </div>
+    <div class="preview-label">Preview</div>
+  </div>
+  <div class="preview-block" id="tiled-block" style="display:none">
+    <div class="checkerboard" id="tiled-preview"></div>
+    <div class="preview-label">2×2 — check seams</div>
+  </div>
+  <div class="preview-block">
+    <div class="swatch-grid">
+      <div class="swatch-item">
+        <div class="swatch-chip" id="sw-light-land" style="background:#F8F6F5"></div>
+        <div class="swatch-chip-label">light<br>land</div>
+        <div class="swatch-cc" id="cc-sw-light-land"></div>
+      </div>
+      <div class="swatch-item">
+        <div class="swatch-chip" id="sw-light-sea" style="background:#D4DEEA"></div>
+        <div class="swatch-chip-label">light<br>sea</div>
+        <div class="swatch-cc" id="cc-sw-light-sea"></div>
+      </div>
+      <div class="swatch-item">
+        <div class="swatch-chip" id="sw-dark-land" style="background:#414A58"></div>
+        <div class="swatch-chip-label">dark<br>land</div>
+        <div class="swatch-cc" id="cc-sw-dark-land"></div>
+      </div>
+      <div class="swatch-item">
+        <div class="swatch-chip" id="sw-dark-sea" style="background:#14171E"></div>
+        <div class="swatch-chip-label">dark<br>sea</div>
+        <div class="swatch-cc" id="cc-sw-dark-sea"></div>
+      </div>
+      <div class="swatch-item">
+        <div class="swatch-chip" id="sw-highlight" style="background:#FFCAA7"></div>
+        <div class="swatch-chip-label">high<br>light</div>
+        <div class="swatch-cc" id="cc-sw-highlight"></div>
+      </div>
+    </div>
+    <div class="preview-label">Map context · land fill opacity
+      <input type="number" id="patOpacity" min="0" max="1" step="0.05" value="0.9" style="width:44px;padding:1px 3px;font-size:10px;">
+      <span style="opacity:.6">(ocean opaque)</span></div>
+  </div>
+  <div class="preview-block">
+    <div class="palette" id="palette"></div>
+    <div class="preview-label">Atlas palette · fills &amp; strokes (reference)</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentMode = 'lines';
+
+// WCAG relative-luminance contrast ratio between two #rrggbb colors (same math as the
+// sandbox's label-contrast meter).
+function contrastRatio(a, b) {
+  const lum = hex => {
+    const ch = [0, 1, 2].map(i => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255)
+      .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const l1 = lum(a), l2 = lum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+// The background the active mode paints under its pattern, or null if off.
+function activeBg() {
+  const ids = currentMode === 'dots' ? ['dotBgOn', 'dotBgColor', 'dotBgAlpha']
+            : currentMode === 'sym'  ? ['symBgOn', 'symBgColor', 'symBgAlpha']
+            :                          ['bgOn', 'backgroundColor', 'bgAlpha'];
+  const [onId, colorId, alphaId] = ids;
+  if (!$(onId)?.checked) return null;
+  return { color: $(colorId).value, alpha: +$(alphaId).value };
+}
+
+// The pattern's own stroke/fill opacity for the active mode.
+function activePatternAlpha() {
+  const id = currentMode === 'dots' ? 'dotAlpha' : currentMode === 'sym' ? 'symAlpha' : 'strokeAlpha';
+  const v = parseFloat($(id)?.value ?? '1');
+  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+}
+
+// The pattern's own color for the active mode.
+function activePatternColor() {
+  return currentMode === 'dots' ? $("dotColor").value
+       : currentMode === 'sym'  ? $("symColor").value
+       : $("accentColor").value;
+}
+
+// Enable/disable a background color + opacity pair to match its checkbox.
+function syncBgAlpha(checkId, colorId, alphaId) {
+  const on = $(checkId).checked;
+  $(colorId).disabled = !on;
+  $(alphaId).disabled = !on;
+  $(`${alphaId}-row`).classList.toggle('off', !on);
+}
+
+// ── Persistence (localStorage) ────────────────────────────────────────────────
+const LS_KEY = 'atlas:pattern-generator';
+const PERSIST_IDS = [
+  'lineSize', 'lineWidth', 'lineOffsetX', 'lineOffsetY', 'accentColor', 'strokeAlpha', 'bgOn', 'backgroundColor', 'bgAlpha',
+  'dotShape', 'dotRadius', 'dotStroke', 'dotRotation', 'dotRotJitter', 'dotVariation', 'dotSpacing', 'dotCount', 'dotColor', 'dotAlpha', 'dotBgOn', 'dotBgColor', 'dotBgAlpha', 'dotSeed',
+  'symPrimitive', 'symType', 'symTileSize', 'symRepeats', 'symScale', 'symStroke', 'symCap', 'symColor', 'symAlpha', 'symBgOn', 'symBgColor', 'symBgAlpha',
+  'targetSize', 'filename', 'patOpacity',
+  // Underlay display prefs only — the image itself is never persisted.
+  'underlayOpacity', 'underlayFront'
+];
+const RANGE_VAL_IDS = ['lineSize', 'lineWidth', 'lineOffsetX', 'lineOffsetY', 'strokeAlpha', 'bgAlpha', 'dotRadius', 'dotStroke', 'dotRotation', 'dotRotJitter', 'dotVariation', 'dotSpacing', 'dotCount', 'dotAlpha', 'dotBgAlpha', 'symTileSize', 'symRepeats', 'symScale', 'symStroke', 'symAlpha', 'symBgAlpha', 'underlayOpacity'];
+
+const PERSIST_FLAG_KEY = LS_KEY + ':on';
+function persistEnabled() {
+  try { return localStorage.getItem(PERSIST_FLAG_KEY) === '1'; } catch { return false; }
+}
+
+function saveState() {
+  if (!$("persistOn")?.checked) return;
+  const controls = {};
+  for (const id of PERSIST_IDS) {
+    const el = $(id); if (!el) continue;
+    controls[id] = el.type === 'checkbox' ? el.checked : el.value;
+  }
+  const orientations = [...document.querySelectorAll('#orientations input:checked')].map(i => i.value);
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ mode: currentMode, controls, orientations })); } catch { /* private mode / full */ }
+}
+
+function restoreState() {
+  if (!persistEnabled()) return null;
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { /* ignore */ }
+  if (!s || !s.controls) return null;
+  for (const [id, v] of Object.entries(s.controls)) {
+    const el = $(id); if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+  }
+  // Dependent disabled states for the optional background color inputs.
+  syncBgAlpha('bgOn', 'backgroundColor', 'bgAlpha');
+  syncBgAlpha('dotBgOn', 'dotBgColor', 'dotBgAlpha');
+  syncBgAlpha('symBgOn', 'symBgColor', 'symBgAlpha');
+  syncDotShapeRows();
+  // Range value read-outs.
+  for (const id of RANGE_VAL_IDS) { const v = $(`${id}-val`); if (v && $(id)) v.textContent = $(id).value; }
+  // Orientation checkboxes (lines mode).
+  if (Array.isArray(s.orientations)) {
+    document.querySelectorAll('#orientations input').forEach(i => { i.checked = s.orientations.includes(i.value); });
+  }
+  return s;
+}
+
+// Off by default: the tool starts from its defaults every time unless asked not to.
+// (A remembered mode used to strand you on a blank Symmetry panel.)
+$("persistOn").addEventListener('change', () => {
+  const on = $("persistOn").checked;
+  try {
+    localStorage.setItem(PERSIST_FLAG_KEY, on ? '1' : '0');
+    if (on) saveState(); else localStorage.removeItem(LS_KEY);
+  } catch { /* private mode */ }
+});
+
+// Persist on any control change — one delegated pair covers every input/select/checkbox.
+document.addEventListener('input', saveState);
+document.addEventListener('change', saveState);
+
+// ── Symmetry tiling period ────────────────────────────────────────────────────
+// A wallpaper group's repeating unit is NOT the cell you set with "Tile size" —
+// the symmetry operations mean the true translational period is a multiple of it
+// (2× the cell in both axes for p4mm, for instance). Exporting one cell produced a
+// PNG that would not tile. Values verified empirically against the library's
+// output, not inferred from its source. `null` = no axis-aligned period exists
+// (oblique/hexagonal lattice), so no rectangular PNG can tile seamlessly.
+const SYM_PERIOD = {
+  p1: [1, 1], p2: [1, 2], pm: [1, 2], pg: [2, 1], cm: [1, 2],
+  p2mm: [2, 2], p2mg: [2, 2], p2gg: [1, 2], c2mm: [2, 2],
+  p4: [2, 2], p4mm: [2, 2], p4mg: [2, 2],
+  p3: [null, 3], p3m1: [null, 3], p31m: [1, null], p6: [1, null]
+};
+
+// ── Wallpaper groups (vendored) ───────────────────────────────────────────────
+// Local port of wallpaper-groups@1.0.3 (MIT). This was previously imported from
+// cdn.skypack.dev, which left Symmetry mode dead whenever that CDN was
+// unreachable. Verified numerically identical to the npm package across all 16
+// groups and several tile sizes (max coordinate delta 0), so output is unchanged.
+const [wallpaper, WP_TYPES] = (() => {
+const deg = t => t * (Math.PI / 180);
+const rotate = (theta, c) => p => {
+  const s = Math.sin(deg(theta)), co = Math.cos(deg(theta));
+  const oX = p.x - c.x, oY = p.y - c.y;
+  return { x: co * oX - s * oY + c.x, y: s * oX + co * oY + c.y };
+};
+const mirror = line => point => {
+  const a0 = line[0], a1 = line[1];
+  const dx = a1.x - a0.x, dy = a1.y - a0.y;
+  const a = (dx * dx - dy * dy) / (dx * dx + dy * dy);
+  const b = 2 * dx * dy / (dx * dx + dy * dy);
+  return { x: a * (point.x - a0.x) + b * (point.y - a0.y) + a0.x,
+           y: b * (point.x - a0.x) - a * (point.y - a0.y) + a0.y };
+};
+const mapTransform = pr => r => r.concat([r[r.length - 1].map(l => l.map(pr))]);
+const unnest = a => [].concat(...a);
+const linesToTile = r => [unnest(r)];
+const rotate90 = c => mapTransform(rotate(90, c));
+const rotate120 = c => mapTransform(rotate(120, c));
+const rotate180 = c => mapTransform(rotate(180, c));
+const mirrorHorizontal = (w,h) => mapTransform(mirror([{x:0,y:h},{x:2*w,y:h}]));
+const mirrorVertical   = (w,h) => mapTransform(mirror([{x:w,y:0},{x:w,y:2*h}]));
+const mirrorDiagonalRL = (w,h) => mapTransform(mirror([{x:0,y:0},{x:w,y:h}]));
+const mirrorDiagonalLR = (w,h) => mapTransform(mirror([{x:w,y:0},{x:0,y:h}]));
+const mirrorHex        = w     => mapTransform(mirror([{x:Math.sqrt(3)/2*w,y:w},{x:0,y:w*0.5}]));
+const mirrorTriangle   = (w,h) => mapTransform(mirror([{x:w/2,y:0},{x:w,y:h}]));
+const glideTranslate = (mf,ox,oy) => mapTransform(p => { const m = mf(p); return {x:m.x+ox,y:m.y+oy}; });
+const split = (s,e,pct) => ({x:s.x+(e.x-s.x)*pct, y:s.y+(e.y-s.y)*pct});
+const wC = (width,i,cols) => width * (i % cols);
+const hC = (height,i,cols) => height * Math.floor(i / cols);
+const mkT = (fW,fH) => (width,height,cols) => i => ({x: fW*wC(width,i,cols), y: fH*hC(height,i,cols)});
+const mkS = fH => (width,height,cols) => i => ({
+  x: (Math.floor(i/cols) % 2 ? width/2 : 0) + wC(width,i,cols), y: fH*hC(height,i,cols) });
+const translate1W1H=mkT(1,1), translate1W2H=mkT(1,2), translate2W1H=mkT(2,1), translate2W2H=mkT(2,2);
+const translateShifted=mkS(1), translateHex=mkS(0.75);
+
+const SETTINGS = {
+  p1:   ({width,height,columns}) => ({steps:[], translate:translate1W1H(width,height,columns)}),
+  p2:   ({width,height,columns}) => ({steps:[rotate180({x:width/2,y:height})], translate:translate1W2H(width,height,columns)}),
+  pm:   ({width,height,columns}) => ({steps:[mirrorVertical(width,height)], translate:translate1W2H(width,height,columns)}),
+  pg:   ({width,height,columns}) => ({steps:[glideTranslate(mirror([{x:0,y:height/2},{x:width,y:height/2}]),width,0)], translate:translate2W1H(width,height,columns)}),
+  cm:   ({width,height,columns}) => ({steps:[mirrorHorizontal(width,height)], translate:translateShifted(width,height,columns)}),
+  p2mm: ({width,height,columns}) => ({steps:[mirrorHorizontal(width,height),linesToTile,mirrorVertical(width,height)], translate:translate2W2H(width,height,columns)}),
+  p2mg: ({width,height,columns}) => ({steps:[rotate180({x:width,y:height/2}),linesToTile,mirrorHorizontal(width,height)], translate:translate2W2H(width,height,columns)}),
+  p2gg: ({width,height,columns}) => ({steps:[rotate180({x:width/2,y:height})], translate:translateShifted(width,height,columns)}),
+  c2mm: ({width,height,columns}) => ({steps:[mirrorHorizontal(width,height),mirrorVertical(width,height),mirrorHorizontal(width,height)], translate:translateShifted(width*2,height,columns)}),
+  p4:   ({width,height,columns}) => { const r=rotate90({x:width,y:height}); return {steps:[r,r,r], translate:translate2W2H(width,height,columns)}; },
+  p4mm: ({width,height,columns}) => { const r=rotate90({x:width,y:height}); return {steps:[mirrorDiagonalRL(width,height),linesToTile,r,r,r], translate:translate2W2H(width,height,columns)}; },
+  p4mg: ({width,height,columns}) => { const r=rotate90({x:width,y:height}); return {steps:[mirrorDiagonalLR(width,height),linesToTile,r,r,r], translate:translate2W2H(width,height,columns)}; },
+  p3:   ({width,columns}) => { const cx=Math.sqrt(3)/2*width, r=rotate120({x:cx,y:width}); return {steps:[r,r], translate:translateHex(cx*2,width*2,columns)}; },
+  p3m1: ({width,columns}) => { const cx=Math.sqrt(3)/2*width, r=rotate120({x:cx,y:width}); return {steps:[mirrorHex(width),linesToTile,r,r], translate:translateHex(cx*2,width*2,columns)}; },
+  p31m: ({width,columns}) => { const h=Math.sqrt(3)/2*width, r=rotate120({x:width/2,y:2*h/3}); return {steps:[r,r,linesToTile,mirrorTriangle(width,h)], translate:translateShifted(width,h,columns)}; },
+  p6:   ({width,columns}) => { const h=Math.sqrt(3)/2*width, r=rotate120({x:width/2,y:2*h/3}); return {steps:[r,r,linesToTile,rotate180(split({x:width/2,y:0},{x:width,y:h},0.5))], translate:translateShifted(width,h,columns)}; }
+};
+const PATTERN_TYPES = Object.keys(SETTINGS);
+function wallpaper({type,width,height,columns,rows,lines}) {
+  const st = SETTINGS[type]({width,height,columns});
+  const tile = unnest(st.steps.reduce((r,step)=>step(r),[lines]));
+  const out = [];
+  for (let i=0;i<columns*rows;i++){ const t = st.translate(i);
+    out.push(tile.map(l => l.map(p => ({x:p.x+t.x, y:p.y+t.y})))); }
+  return out;
+}
+
+return [wallpaper, PATTERN_TYPES];
+})();
+
+// The group list is local now, so the dropdown can never be empty.
+(() => {
+  const sel = $("symType");
+  WP_TYPES.forEach(t => {
+    const o = document.createElement("option"); o.value = o.textContent = t; sel.appendChild(o);
+  });
+  sel.value = "p4mm";   // restoreState() overrides this if a choice was saved
+})();
+
+const primitives = {
+  line: "M 0,50 L 100,50",
+  dot: "M 50,50 L 51,50",
+  slash: "M 0,0 L 100,100",
+  dash: "M 40,50 L 60,50",
+  vertical: "M 50,0 L 50,100",
+  backslash: "M 0,100 L 100,0",
+  longdash: "M 30,50 L 70,50",
+  shortdash: "M 45,50 L 55,50",
+  cross: "M 0,50 L 100,50 M 50,0 L 50,100",
+  plus: "M 40,50 L 60,50 M 50,40 L 50,60",
+  rightangle: "M 30,70 L 30,30 L 70,30",
+  bracket: "M 40,30 L 30,30 L 30,70 L 40,70",
+  hook: "M 30,30 L 30,50 L 50,50",
+  arrowup: "M 50,30 L 30,50 L 70,50",
+  arrowdown: "M 50,70 L 30,50 L 70,50",
+  sawtooth: "M 25,75 L 50,25 L 75,75",
+  mountain: "M 20,70 L 35,30 L 50,50 L 65,30 L 80,70",
+  pentagon: "M 50,20 L 73,40 L 63,70 L 37,70 L 27,40 Z",
+  hexagon: "M 50,20 L 75,35 L 75,65 L 50,80 L 25,65 L 25,35 Z",
+  check: "M 30,50 L 45,65 L 70,35",
+  tilde: "M 30,45 L 40,35 L 60,65 L 70,55",
+  grid: "M 0,33 L 100,33 M 0,66 L 100,66 M 33,0 L 33,100 M 66,0 L 66,100",
+  crosshatch: "M 0,0 L 100,100 M 0,100 L 100,0",
+  leaf: "M 50,20 L 60,40 L 70,60 L 60,80 L 50,75 L 40,80 L 30,60 L 40,40 Z"
+};
+
+// Populate primitive select
+const primSel = $("symPrimitive");
+Object.keys(primitives).forEach(k => {
+  const o = document.createElement("option"); o.value = o.textContent = k; primSel.appendChild(o);
+});
+primSel.value = "cross";
+
+function svgPathToLines(d) {
+  const lines = [], tokens = d.trim().match(/[MLZmlz]|[-+]?\d*\.?\d+/g) || [];
+  let current = [], startPt = null, cmd = '', i = 0;
+  while (i < tokens.length) {
+    const tok = tokens[i];
+    if (/^[MLZmlz]$/.test(tok)) {
+      cmd = tok; i++;
+      if (cmd === 'Z' || cmd === 'z') {
+        if (current.length > 1 && startPt) current.push({...startPt});
+        if (current.length > 1) lines.push(current);
+        current = []; startPt = null;
+      }
+      continue;
+    }
+    const x = parseFloat(tokens[i]), y = parseFloat(tokens[i + 1]); i += 2;
+    if (cmd === 'M') {
+      if (current.length > 1) lines.push(current);
+      current = [{x, y}]; startPt = {x, y}; cmd = 'L';
+    } else if (cmd === 'L') {
+      current.push({x, y});
+    }
+  }
+  if (current.length > 1) lines.push(current);
+  return lines;
+}
+
+// ── Mode ─────────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  ['lines','dots','sym'].forEach(m => {
+    $(`mode-${m}`).classList.toggle('active', m === mode);
+    $(`panel-${m}`).classList.toggle('active', m === mode);
+  });
+  $('tiled-block').style.display = 'flex';
+  $('exportSizeLabel').style.visibility = mode === 'sym' ? 'hidden' : 'visible';
+  render();
+}
+
+// ── Lines ─────────────────────────────────────────────────────────────────────
+const ORIENTATIONS = ["diagonal", "horizontal", "vertical", "1/8", "3/8", "5/8", "6/8", "7/8"];
+const orientBox = d3.select("#orientations");
+orientBox.selectAll("label").data(ORIENTATIONS).join("label").html(o =>
+  `<input type="checkbox" value="${o}" ${o === "diagonal" ? "checked" : ""}> ${o}`
+);
+$("bgOn").addEventListener("change", () => { syncBgAlpha('bgOn', 'backgroundColor', 'bgAlpha'); render(); });
+["lineSize", "lineWidth", "lineOffsetX", "lineOffsetY", "strokeAlpha", "bgAlpha"].forEach(id => {
+  $(id).addEventListener("input", () => { $(`${id}-val`).textContent = $(id).value; render(); });
+});
+["accentColor", "backgroundColor"].forEach(id => $(id).addEventListener("input", render));
+orientBox.selectAll("input").on("change", render);
+
+function seamlessLineSize(requested, exportSize) {
+  const n = Math.max(1, Math.round(exportSize / requested));
+  return exportSize / n;
+}
+
+function currentOrientations() {
+  const sel = orientBox.selectAll("input").nodes().filter(n => n.checked).map(n => n.value);
+  return sel.length ? sel : ["diagonal"];
+}
+
+// Background is drawn as its own rect under the pattern rather than via
+// textures.js .background(), so it can carry an opacity.
+function makeLineTexture(actual) {
+  return textures.lines()
+    .orientation(...currentOrientations())
+    .size(actual)
+    .strokeWidth(+$("lineWidth").value)
+    .stroke($("accentColor").value)
+    .shapeRendering("crispEdges");
+}
+
+// Post-process the generated <pattern>: shift its tile origin, and set the
+// stroke opacity (inherited by the paths inside it). A phase shift preserves the
+// pattern's period, so an exported size×size tile stays seamless.
+function tunePattern(svg, t, actual) {
+  const sel = t.url().replace(/^url\(|\)$/g, '');
+  svg.select(sel)
+    .attr("x", (+$("lineOffsetX").value) * actual)
+    .attr("y", (+$("lineOffsetY").value) * actual)
+    .attr("stroke-opacity", +$("strokeAlpha").value);
+}
+
+function paintBg(svg, w, h) {
+  const bg = activeBg();
+  if (!bg) return;
+  svg.append("rect").attr("width", w).attr("height", h)
+    .attr("fill", bg.color).attr("fill-opacity", bg.alpha);
+}
+
+function renderLines() {
+  const size = +$("targetSize").value;
+  const actual = seamlessLineSize(+$("lineSize").value, size);
+
+  const t1 = makeLineTexture(actual);
+  const container = d3.select("#preview");
+  container.selectAll("*").remove();
+  const svg = container.append("svg").attr("width", size).attr("height", size)
+    .attr("viewBox", `0 0 ${size} ${size}`);
+  svg.call(t1);
+  paintBg(svg, size, size);
+  svg.append("rect").attr("width", size).attr("height", size).style("fill", t1.url());
+  tunePattern(svg, t1, actual);
+
+  const t2 = makeLineTexture(actual);
+  const tiled = d3.select("#tiled-preview");
+  tiled.selectAll("*").remove();
+  const tSvg = tiled.append("svg").attr("width", size * 2).attr("height", size * 2)
+    .attr("viewBox", `0 0 ${size * 2} ${size * 2}`);
+  tSvg.call(t2);
+  paintBg(tSvg, size * 2, size * 2);
+  tSvg.append("rect").attr("width", size * 2).attr("height", size * 2).style("fill", t2.url());
+  tunePattern(tSvg, t2, actual);
+
+  // Offset read-outs get the px equivalent now that `actual` is known.
+  const px = f => `${(+$(f).value).toFixed(2)} · ${((+$(f).value) * actual).toFixed(1)}px`;
+  $("lineOffsetX-val").textContent = px("lineOffsetX");
+  $("lineOffsetY-val").textContent = px("lineOffsetY");
+
+  $("info").textContent = `Line size ${actual.toFixed(2)}px · ${Math.round(size / actual)} repeats across ${size}px`;
+  renderSwatches();
+}
+
+// ── Dots ──────────────────────────────────────────────────────────────────────
+
+function poissonDiskToroidal(size, minDist, rng, maxPoints) {
+  const cellSize = minDist / Math.SQRT2;
+  const gridW = Math.ceil(size / cellSize);
+  const gridH = Math.ceil(size / cellSize);
+  const grid = new Array(gridW * gridH).fill(null);
+  const K = 30;
+  function toroidalDist2(ax, ay, bx, by) {
+    let dx = Math.abs(ax - bx), dy = Math.abs(ay - by);
+    if (dx > size * 0.5) dx = size - dx;
+    if (dy > size * 0.5) dy = size - dy;
+    return dx * dx + dy * dy;
+  }
+  function cellOf(x, y) {
+    return [((Math.floor(x / cellSize) % gridW) + gridW) % gridW,
+            ((Math.floor(y / cellSize) % gridH) + gridH) % gridH];
+  }
+  function isValid(x, y) {
+    const [gx, gy] = cellOf(x, y);
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const pt = grid[(((gy + dy) % gridH + gridH) % gridH) * gridW + (((gx + dx) % gridW + gridW) % gridW)];
+        if (pt && toroidalDist2(x, y, pt[0], pt[1]) < minDist * minDist) return false;
+      }
+    }
+    return true;
+  }
+  const points = [], active = [];
+  function addPt(x, y) {
+    const [gx, gy] = cellOf(x, y);
+    grid[gy * gridW + gx] = [x, y];
+    points.push([x, y]);
+    active.push(points.length - 1);
+  }
+  addPt(rng() * size, rng() * size);
+  while (active.length && points.length < maxPoints) {
+    const i = Math.floor(rng() * active.length);
+    const [ax, ay] = points[active[i]];
+    let found = false;
+    for (let j = 0; j < K; j++) {
+      const angle = rng() * Math.PI * 2;
+      const dist = minDist * (1 + rng());
+      const nx = ((ax + Math.cos(angle) * dist) % size + size) % size;
+      const ny = ((ay + Math.sin(angle) * dist) % size + size) % size;
+      if (isValid(nx, ny)) { addPt(nx, ny); found = true; break; }
+    }
+    if (!found) active.splice(i, 1);
+  }
+  return points;
+}
+
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+$("dotBgOn").addEventListener("change", () => { syncBgAlpha('dotBgOn', 'dotBgColor', 'dotBgAlpha'); render(); });
+$("dotShape").addEventListener("change", () => { syncDotShapeRows(); render(); });
+["dotRadius", "dotStroke", "dotRotation", "dotRotJitter", "dotVariation", "dotSpacing", "dotCount", "dotColor", "dotAlpha", "dotBgColor", "dotBgAlpha", "dotSeed"].forEach(id => {
+  $(id).addEventListener("input", () => {
+    const v = $(`${id}-val`); if (v) v.textContent = $(id).value;
+    render();
+  });
+});
+
+// Shape catalogue. `stroked` shapes use the Line weight control; `oriented`
+// shapes are the ones where rotation is visible. Every shape is drawn centered
+// on (0,0) in a rotated, translated context, so placement stays identical to
+// the circle case and the toroidal wrap still works.
+const DOT_SHAPES = {
+  circle:   { label: "Circle",        stroked: false, oriented: false },
+  ring:     { label: "Ring",          stroked: true,  oriented: false },
+  square:   { label: "Square",        stroked: false, oriented: true  },
+  diamond:  { label: "Diamond",       stroked: false, oriented: true  },
+  triangle: { label: "Triangle",      stroked: false, oriented: true  },
+  dash:     { label: "Dash  —",       stroked: true,  oriented: true  },
+  cross:    { label: "Cross  ✕",      stroked: true,  oriented: true  },
+  plus:     { label: "Plus  +",       stroked: true,  oriented: true  },
+  tick:     { label: "Tick  /",       stroked: true,  oriented: true  }
+};
+
+const dotShapeSel = d3.select("#dotShape");
+dotShapeSel.selectAll("option").data(Object.entries(DOT_SHAPES)).join("option")
+  .attr("value", d => d[0]).text(d => d[1].label);
+$("dotShape").value = "circle";
+
+function currentDotShape() {
+  return DOT_SHAPES[$("dotShape").value] ? $("dotShape").value : "circle";
+}
+
+// Hide the controls that do nothing for the selected shape.
+function syncDotShapeRows() {
+  const def = DOT_SHAPES[currentDotShape()];
+  document.querySelectorAll('.stroke-only').forEach(el => el.classList.toggle('na', !def.stroked));
+  document.querySelectorAll('.rot-only').forEach(el => el.classList.toggle('na', !def.oriented));
+}
+
+// Draw one mark centered at (cx, cy). `r` is the half-extent, so every shape
+// occupies the same footprint as a circle of that radius.
+function drawDotShape(ctx, shape, cx, cy, r, angle, lw, color) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (angle) ctx.rotate(angle);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  switch (shape) {
+    case "ring":
+      ctx.arc(0, 0, Math.max(r - lw / 2, lw / 2), 0, Math.PI * 2);
+      ctx.stroke();
+      break;
+    case "square":
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.fill();
+      break;
+    case "diamond":
+      ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
+      ctx.closePath(); ctx.fill();
+      break;
+    case "triangle": {
+      // Equilateral, centered on its centroid.
+      const h = r * Math.sqrt(3);
+      ctx.moveTo(0, -r); ctx.lineTo(h / 2, r / 2); ctx.lineTo(-h / 2, r / 2);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "dash":
+      ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+      break;
+    case "tick":
+      ctx.moveTo(-r * 0.7, r * 0.7); ctx.lineTo(r * 0.7, -r * 0.7); ctx.stroke();
+      break;
+    case "cross":
+      ctx.moveTo(-r * 0.7, -r * 0.7); ctx.lineTo(r * 0.7, r * 0.7);
+      ctx.moveTo(r * 0.7, -r * 0.7); ctx.lineTo(-r * 0.7, r * 0.7);
+      ctx.stroke();
+      break;
+    case "plus":
+      ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+      ctx.moveTo(0, -r); ctx.lineTo(0, r);
+      ctx.stroke();
+      break;
+    default:
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Placement + per-mark size/angle, from the seed. Shared by the main preview and
+// the map-context chips so the two can never drift apart.
+function buildDots(size) {
+  const baseRadius = +$("dotRadius").value;
+  const variation  = +$("dotVariation").value;
+  const spacing    = +$("dotSpacing").value;
+  const maxCount   = +$("dotCount").value;
+  const seed       = parseInt($("dotSeed").value, 10) || 42;
+  const rot        = (+$("dotRotation").value) * Math.PI / 180;
+  const jitter     = +$("dotRotJitter").value;
+
+  const posRng = mulberry32(seed);
+  const radRng = mulberry32(seed ^ 0xdeadbeef);
+  const rotRng = mulberry32(seed ^ 0x9e3779b9);
+  const positions = spacing > 0
+    ? poissonDiskToroidal(size, baseRadius * 2 + spacing, posRng, maxCount)
+    : Array.from({ length: maxCount }, () => [posRng() * size, posRng() * size]);
+  return positions.map(([x, y]) => ({
+    x, y,
+    r: baseRadius * (1 - variation * 0.5 + radRng() * variation),
+    a: rot + jitter * rotRng() * Math.PI * 2
+  }));
+}
+
+// Paint the marks onto a transparent, seamlessly-wrapping tile.
+function paintDotTile(size, dots) {
+  const shape = currentDotShape();
+  const lw = +$("dotStroke").value;
+  const color = $("dotColor").value;
+  const tile = document.createElement("canvas");
+  tile.width = size; tile.height = size;
+  const ctx = tile.getContext("2d");
+  for (const { x, y, r, a } of dots) {
+    // Bounding margin covers rotated corners plus the stroke, so nothing clips
+    // at the seam.
+    const m = r * 1.5 + lw;
+    for (const dx of [-size, 0, size]) {
+      for (const dy of [-size, 0, size]) {
+        const cx = x + dx, cy = y + dy;
+        if (cx + m > 0 && cx - m < size && cy + m > 0 && cy - m < size) {
+          drawDotShape(ctx, shape, cx, cy, r, a, lw, color);
+        }
+      }
+    }
+  }
+  return tile;
+}
+
+function renderDots() {
+  const size = +$("targetSize").value;
+  const bgOn = $("dotBgOn").checked;
+  const bgColor = $("dotBgColor").value;
+
+  const dots = buildDots(size);
+  const dotLayer = paintDotTile(size, dots);
+
+  const tile = document.createElement("canvas");
+  tile.width = size; tile.height = size;
+  const ctx = tile.getContext("2d");
+  if (bgOn) {
+    ctx.save();
+    ctx.globalAlpha = +$("dotBgAlpha").value;
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+    ctx.restore();
+  }
+  // Marks are drawn opaque to their own layer, then composited once at the
+  // chosen alpha — otherwise overlapping marks would compound into darker blobs.
+  ctx.save();
+  ctx.globalAlpha = +$("dotAlpha").value;
+  ctx.drawImage(dotLayer, 0, 0);
+  ctx.restore();
+
+  const container = d3.select("#preview");
+  container.selectAll("*").remove();
+  const single = container.append("canvas").attr("width", size).attr("height", size).node();
+  single.getContext("2d").drawImage(tile, 0, 0);
+
+  const tiledDiv = $("tiled-preview");
+  d3.select(tiledDiv).selectAll("*").remove();
+  const tiled = d3.select(tiledDiv).append("canvas").attr("width", size * 2).attr("height", size * 2).node();
+  const tc = tiled.getContext("2d");
+  tc.drawImage(tile, 0, 0); tc.drawImage(tile, size, 0);
+  tc.drawImage(tile, 0, size); tc.drawImage(tile, size, size);
+
+  const variation = +$("dotVariation").value;
+  const spacing = +$("dotSpacing").value;
+  const varLabel = variation > 0 ? ` ±${(variation * 50).toFixed(0)}%` : '';
+  const modeLabel = spacing > 0 ? ` · spacing ${spacing}px · Poisson` : ' · random';
+  $("info").textContent = `${dots.length} ${DOT_SHAPES[currentDotShape()].label.split(' ')[0].toLowerCase()}s · size ${+$("dotRadius").value}${varLabel}${modeLabel} · seed ${parseInt($("dotSeed").value, 10) || 42}`;
+  renderSwatches();
+}
+
+// ── Symmetry ──────────────────────────────────────────────────────────────────
+$("symBgOn").addEventListener("change", () => { syncBgAlpha('symBgOn', 'symBgColor', 'symBgAlpha'); render(); });
+["symTileSize", "symRepeats", "symScale", "symStroke", "symCap", "symColor", "symAlpha", "symBgColor", "symBgAlpha", "symPrimitive", "symType"].forEach(id => {
+  $(id).addEventListener("input", () => {
+    const v = $(`${id}-val`); if (v) v.textContent = $(id).value;
+    render();
+  });
+});
+
+function scaleLines(lines, s) {
+  return lines.map(line => line.map(pt => ({ x: pt.x * s, y: pt.y * s })));
+}
+
+function symPeriod() {
+  const T = +$("symTileSize").value;
+  const type = $("symType").value || "p4mm";
+  const [mx, my] = SYM_PERIOD[type] || [1, 1];
+  return {
+    T, type, mx, my,
+    pw: (mx === null ? 1 : mx) * T,
+    ph: (my === null ? 1 : my) * T,
+    rectangular: mx !== null && my !== null
+  };
+}
+
+// Generate a field several periods wide and report the window to crop. The window
+// sits two full periods in, so ink overhanging from neighbours on every side is
+// present — cropping the corner cell (the old behaviour) lost the ink that should
+// have come from the cells above and to the left.
+function symField() {
+  const { T, type, pw, ph, rectangular } = symPeriod();
+  const scale = +$("symScale").value;
+  const prim  = $("symPrimitive").value;
+  const lines = scaleLines(svgPathToLines(primitives[prim]), scale);
+  const columns = Math.ceil(4 * pw / T) + 4;
+  const rows    = Math.ceil(4 * ph / T) + 4;
+  const pattern = wallpaper({ type, width: T, height: T, columns, rows, lines });
+  return { pattern, ox: 2 * pw, oy: 2 * ph, pw, ph, rectangular, type, T };
+}
+
+function symPaint(sel, pattern) {
+  const color  = $("symColor").value;
+  const stroke = +$("symStroke").value;
+  const alpha  = +$("symAlpha").value;
+  // A butt cap stops dead on the endpoint, so where two symmetry copies meet
+  // end-to-end the stroke leaves a notch. Round and square extend by half the
+  // stroke width, closing the join; the linejoin is matched so interior corners
+  // of a polyline don't stay mitred while its ends are rounded.
+  const cap = $("symCap").value;
+  const join = cap === "round" ? "round" : cap === "square" ? "bevel" : "miter";
+  pattern.forEach(tile => tile.forEach(line => {
+    const d = line.map((pt, i) => `${i === 0 ? "M" : "L"} ${pt.x},${pt.y}`).join(" ");
+    sel.append("path").attr("d", d).attr("stroke", color).attr("fill", "none")
+      .attr("stroke-width", stroke).attr("stroke-opacity", alpha)
+      .attr("stroke-linecap", cap).attr("stroke-linejoin", join);
+  }));
+}
+
+// One exported tile: the cropped window, as a standalone <svg>.
+function symTileSvg(f) {
+  const svg = d3.create("svg")
+    .attr("width", f.pw).attr("height", f.ph)
+    .attr("viewBox", `${f.ox} ${f.oy} ${f.pw} ${f.ph}`);
+  const bg = activeBg();
+  if (bg) svg.append("rect").attr("x", f.ox).attr("y", f.oy)
+    .attr("width", f.pw).attr("height", f.ph)
+    .attr("fill", bg.color).attr("fill-opacity", bg.alpha);
+  symPaint(svg, f.pattern);
+  return svg;
+}
+
+function renderSymmetry() {
+  const f = symField();
+  const repeats = +$("symRepeats").value;
+
+  // Preview: exactly the tile that will be exported.
+  const container = d3.select("#preview");
+  container.selectAll("*").remove();
+  const svg = container.append("svg")
+    .attr("viewBox", `${f.ox} ${f.oy} ${f.pw} ${f.ph}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+  const bg = activeBg();
+  if (bg) svg.append("rect").attr("x", f.ox).attr("y", f.oy)
+    .attr("width", f.pw).attr("height", f.ph)
+    .attr("fill", bg.color).attr("fill-opacity", bg.alpha);
+  symPaint(svg, f.pattern);
+
+  // Seam check: genuinely repeat the exported tile via an SVG <pattern>, rather
+  // than showing a wider window onto the continuous field — a wider window looks
+  // seamless whether or not the tile actually is.
+  const tiled = d3.select("#tiled-preview");
+  tiled.selectAll("*").remove();
+  const tw = f.pw * repeats, th = f.ph * repeats;
+  const tSvg = tiled.append("svg")
+    .attr("viewBox", `0 0 ${tw} ${th}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+  const pid = `symtile-${Math.random().toString(36).slice(2, 8)}`;
+  const pat = tSvg.append("defs").append("pattern")
+    .attr("id", pid).attr("patternUnits", "userSpaceOnUse")
+    .attr("width", f.pw).attr("height", f.ph);
+  const g = pat.append("g").attr("transform", `translate(${-f.ox},${-f.oy})`);
+  if (bg) g.append("rect").attr("x", f.ox).attr("y", f.oy)
+    .attr("width", f.pw).attr("height", f.ph)
+    .attr("fill", bg.color).attr("fill-opacity", bg.alpha);
+  symPaint(g, f.pattern);
+  tSvg.append("rect").attr("width", tw).attr("height", th).style("fill", `url(#${pid})`);
+
+  const dims = `${Math.round(f.pw)}×${Math.round(f.ph)}px`;
+  $("info").textContent = f.rectangular
+    ? `${f.type} · ${$("symPrimitive").value} · tile ${dims} (${f.pw / f.T}×${f.ph / f.T} cells) · scale ${$("symScale").value}`
+    : `${f.type} · ${$("symPrimitive").value} · ⚠ this group's lattice has no rectangular repeat — a ${dims} PNG will not tile seamlessly`;
+  renderSwatches();
+}
+
+// ── Map context swatches ─────────────────────────────────────────────────────
+const SWATCH_DEFS = [
+  // Land (admin0) is drawn at fill-opacity over the ocean beneath it, so `base` is the sea it
+  // sits on. Ocean has no opacity — it's opaque, so no `base` (effective bg = its own color).
+  { id: 'sw-light-land', bg: '#F8F6F5', base: '#D4DEEA' },
+  { id: 'sw-light-sea',  bg: '#D4DEEA' },
+  { id: 'sw-dark-land',  bg: '#414A58', base: '#14171E' },
+  { id: 'sw-dark-sea',   bg: '#14171E' },
+  // Admin highlight fill (#FFCAA7), same in dark & light styles.
+  { id: 'sw-highlight',  bg: '#FFCAA7' },
+];
+
+// Read-only atlas color reference — every color the atlas actually uses, fills and strokes,
+// so the hex is on hand while designing a pattern. Not a picker; just a lookup.
+const PALETTE = [
+  ['Brand',    [['orange', '#D65B29'], ['navy', '#2A2E3C'], ['green', '#39BC85'], ['blue', '#648FC7']]],
+  ['Neutrals', [['', '#F8F6F5'], ['', '#D4DEEA'], ['', '#D3CECB'], ['', '#979595'], ['', '#5E5B59'], ['', '#2A2E3C']]],
+  ['Fills',    [['light land', '#F8F6F5'], ['light sea', '#D4DEEA'], ['dark land', '#414A58'], ['dark sea', '#14171E'], ['highlight', '#FFCAA7'], ['water hl', '#C1D5DA']]],
+  ['Strokes',  [['highlight', '#8F3602'], ['admin1', '#bbb'], ['coastline', '#14171E'], ['disputed', '#DEDBD8']]],
+];
+function renderPalette() {
+  const el = $('palette'); if (!el) return;
+  el.innerHTML = PALETTE.map(([group, colors]) =>
+    `<div class="pal-group"><div class="pal-group-label">${group}</div><div class="pal-row">` +
+    colors.map(([name, hex]) =>
+      `<span class="pal-sw" title="${name ? name + ' — ' : ''}${hex}">` +
+      `<span class="pal-box" style="background:${hex}"></span><span class="pal-hex">${hex}</span></span>`
+    ).join('') + `</div></div>`
+  ).join('');
+}
+renderPalette();
+
+function renderSwatches() {
+  if (currentMode === 'lines') {
+    const size = +$("targetSize").value;
+    const actual = seamlessLineSize(+$("lineSize").value, size);
+    SWATCH_DEFS.forEach(sw => {
+      // Separate texture instance per swatch (avoids duplicate pattern id conflict)
+      const t = textures.lines()
+        .orientation(...currentOrientations())
+        .size(actual)
+        .strokeWidth(+$("lineWidth").value)
+        .stroke($("accentColor").value)
+        .shapeRendering("crispEdges");
+      const el = d3.select(`#${sw.id}`);
+      el.selectAll("*").remove();
+      const svg = el.append("svg").attr("width", size).attr("height", size)
+        .attr("viewBox", `0 0 ${size} ${size}`);
+      svg.call(t);
+      // Pattern background over the chip's land/sea color (CSS) — so the chip
+      // shows what the exported tile will actually look like in place.
+      paintBg(svg, size, size);
+      svg.append("rect").attr("width", size).attr("height", size).style("fill", t.url());
+      tunePattern(svg, t, actual);
+    });
+
+  } else if (currentMode === 'dots') {
+    const size = +$("targetSize").value;
+    const tile = paintDotTile(size, buildDots(size));   // marks only, transparent bg
+    SWATCH_DEFS.forEach(sw => {
+      const el = d3.select(`#${sw.id}`);
+      el.selectAll("*").remove();
+      const c = el.append("canvas").attr("width", 60).attr("height", 60).node();
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = sw.bg;
+      ctx.fillRect(0, 0, 60, 60);
+      const bg = activeBg();
+      if (bg) {
+        ctx.globalAlpha = bg.alpha;
+        ctx.fillStyle = bg.color;
+        ctx.fillRect(0, 0, 60, 60);
+      }
+      ctx.globalAlpha = +$("dotAlpha").value;
+      ctx.drawImage(tile, 0, 0, 60, 60);
+    });
+
+  } else if (currentMode === 'sym') {
+    const f = symField();
+    SWATCH_DEFS.forEach(sw => {
+      const el = d3.select(`#${sw.id}`);
+      el.selectAll("*").remove();
+      const svg = el.append("svg")
+        .attr("viewBox", `${f.ox} ${f.oy} ${f.pw} ${f.ph}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+      const bg = activeBg();
+      if (bg) svg.append("rect").attr("x", f.ox).attr("y", f.oy)
+        .attr("width", f.pw).attr("height", f.ph)
+        .attr("fill", bg.color).attr("fill-opacity", bg.alpha);
+      symPaint(svg, f.pattern);
+    });
+  }
+  updateSwatchContrast();
+}
+
+// Contrast of the pattern color vs each map-context bg. Because the pattern is drawn with an
+// opacity over the (light/dark) background, the visible mark is a BLEND of the two — so we
+// composite the pattern color over the bg at the applied opacity first, then measure against
+// the bg. 3:1 is the WCAG 1.4.11 non-text bar (patterns are graphic, not text).
+function blend(fg, bg, a) {
+  const px = h => [0, 1, 2].map(i => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16));
+  const f = px(fg), b = px(bg);
+  const mix = i => Math.round(f[i] * a + b[i] * (1 - a));
+  return '#' + [0, 1, 2].map(i => mix(i).toString(16).padStart(2, '0')).join('');
+}
+function updateSwatchContrast() {
+  const fg = activePatternColor();
+  const a = Math.max(0, Math.min(1, parseFloat($("patOpacity")?.value ?? '0.9') || 0));
+  for (const sw of SWATCH_DEFS) {
+    const cc = $(`cc-${sw.id}`);
+    if (!cc) continue;
+    // Land: its fill is drawn at `a` opacity over the sea beneath, so the effective background is
+    // that blend. Ocean has no `base` → opaque, effective bg is its own color (opacity ignored).
+    let effBg = sw.base ? blend(sw.bg, sw.base, a) : sw.bg;
+    // A pattern background sits between the map fill and the marks, so it — not
+    // the land/sea color — is what the marks are really measured against.
+    const patBg = activeBg();
+    if (patBg) effBg = blend(patBg.color, effBg, patBg.alpha);
+    // A translucent pattern color reads as its blend with whatever sits behind it.
+    const effFg = blend(fg, effBg, activePatternAlpha());
+    const r = contrastRatio(effFg, effBg);
+    cc.textContent = `${r.toFixed(1)}:1`;
+    cc.className = `swatch-cc ${r >= 3 ? 'pass' : 'fail'}`;
+    cc.title = `pattern vs ${sw.id.replace('sw-', '').replace('-', ' ')}` +
+      (sw.base ? ` (land at ${a} opacity over sea)` : ' (opaque ocean)') + ' — ' +
+      (r >= 3 ? 'passes' : 'below') + ' WCAG 1.4.11 non-text (3:1)';
+  }
+}
+
+// ── Shared ────────────────────────────────────────────────────────────────────
+$("targetSize").addEventListener("input", render);
+
+function render() {
+  if (currentMode === 'lines') renderLines();
+  else if (currentMode === 'dots') renderDots();
+  else renderSymmetry();
+}
+
+async function svgNodeToPng(svgNode, w, h) {
+  const xml = new XMLSerializer().serializeToString(svgNode);
+  const blob = new Blob([xml], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+  const img = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+  });
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d").drawImage(img, 0, 0, w, h);
+  URL.revokeObjectURL(url);
+  return c;
+}
+
+async function downloadPng() {
+  const fname = $("filename").value || "pattern";
+
+  if (currentMode === 'dots') {
+    const canvas = document.querySelector("#preview canvas");
+    const a = document.createElement("a");
+    a.download = `${fname}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+    return;
+  }
+
+  if (currentMode === 'sym') {
+    const f = symField();
+    const c = await svgNodeToPng(symTileSvg(f).node(), Math.round(f.pw), Math.round(f.ph));
+    const a = document.createElement("a"); a.download = `${fname}.png`; a.href = c.toDataURL("image/png"); a.click();
+    return;
+  }
+
+  // Lines mode
+  const size = +$("targetSize").value;
+  const svgNode = document.querySelector("#preview svg");
+  const c = await svgNodeToPng(svgNode, size, size);
+  const a = document.createElement("a"); a.download = `${fname}.png`; a.href = c.toDataURL("image/png"); a.click();
+}
+
+$("download").addEventListener("click", downloadPng);
+// Opacity change only affects the contrast read-out, not the pattern render.
+$("patOpacity").addEventListener("input", updateSwatchContrast);
+
+// ── Alignment underlay ────────────────────────────────────────────────────────
+// A reference image shown behind (or in front of) the main preview so a pattern
+// can be lined up against an existing graphic. Purely visual: it lives outside
+// #preview, so the export paths (which select inside #preview) never see it.
+const underlay = $("underlay");
+
+function applyUnderlayStyle() {
+  underlay.style.opacity = $("underlayOpacity").value;
+  underlay.classList.toggle("front", $("underlayFront").checked);
+}
+
+function loadUnderlay(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const url = URL.createObjectURL(file);
+  underlay.onload = () => {
+    $("underlayName").textContent =
+      `${file.name} · ${underlay.naturalWidth}×${underlay.naturalHeight}px`;
+  };
+  if (underlay.dataset.url) URL.revokeObjectURL(underlay.dataset.url);
+  underlay.dataset.url = url;
+  underlay.src = url;
+  underlay.classList.add("on");
+  applyUnderlayStyle();
+}
+
+function clearUnderlay() {
+  if (underlay.dataset.url) URL.revokeObjectURL(underlay.dataset.url);
+  delete underlay.dataset.url;
+  underlay.removeAttribute("src");
+  underlay.classList.remove("on");
+  $("underlayName").textContent = "";
+  $("underlayFile").value = "";
+}
+
+$("underlayFile").addEventListener("change", e => loadUnderlay(e.target.files[0]));
+$("underlayClear").addEventListener("click", clearUnderlay);
+$("underlayFront").addEventListener("change", applyUnderlayStyle);
+$("underlayOpacity").addEventListener("input", () => {
+  $("underlayOpacity-val").textContent = $("underlayOpacity").value;
+  applyUnderlayStyle();
+});
+
+// Drag and drop straight onto the preview.
+const wrap = $("preview-wrap");
+["dragenter", "dragover"].forEach(ev => wrap.addEventListener(ev, e => {
+  e.preventDefault(); wrap.classList.add("dragover");
+}));
+["dragleave", "drop"].forEach(ev => wrap.addEventListener(ev, () => wrap.classList.remove("dragover")));
+wrap.addEventListener("drop", e => {
+  e.preventDefault();
+  loadUnderlay(e.dataTransfer.files?.[0]);
+});
+// Paste an image from the clipboard.
+document.addEventListener("paste", e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+  if (item) loadUnderlay(item.getAsFile());
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Restore saved controls, then set the mode (which triggers the first render).
+$("persistOn").checked = persistEnabled();
+const savedState = restoreState();
+syncDotShapeRows();
+setMode(savedState?.controls?.mode || savedState?.mode || 'lines');
+applyUnderlayStyle();
+</script>
+</body>
+</html>

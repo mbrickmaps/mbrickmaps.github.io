@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="generator" content="Observable Framework v1.13.4">
+<title>Mapa</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="preload" as="style" href="./_observablehq/theme-air,near-midnight.b050d634.css">
+<link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&amp;display=swap" crossorigin>
+<link rel="stylesheet" type="text/css" href="./_observablehq/theme-air,near-midnight.b050d634.css">
+<link rel="modulepreload" href="./_observablehq/client.77f16a62.js">
+<link rel="modulepreload" href="./_observablehq/runtime.fa9f71c0.js">
+<link rel="modulepreload" href="./_observablehq/stdlib.60afab10.js">
+<script type="module">
+
+import "./_observablehq/client.77f16a62.js";
+
+</script>
+</head>
+<body>
+<div id="observablehq-center">
+<main id="observablehq-main" class="observablehq">
+<h1 id="mapa" tabindex="-1"><a class="observablehq-header-anchor" href="#mapa">Mapa</a></h1>
+<p>A static <strong>vector map export</strong> tool — author a map (projection, basemap, data layers, inset, scalebar, north arrow, raster/hillshade) and download it as a clean, layered <strong>SVG</strong> ready for print, Illustrator, Figma or Inkscape.</p>
+<p>Built on <a href="https://observablehq.com/framework/" target="_blank" rel="noopener noreferrer">Observable Framework</a> for the page/build, and a zero-dependency <strong>Board</strong> panel manager (<code>src/board/</code>) for the draggable/dockable editor UI.</p>
+<hr>
+<h2 id="getting-started" tabindex="-1"><a class="observablehq-header-anchor" href="#getting-started">Getting started</a></h2>
+<p><strong>Open Mapa: <a href="https://mbricknell.com/mapa" target="_blank" rel="noopener noreferrer">mbricknell.com/mapa</a></strong> — it runs in the browser, nothing to install.</p>
+<p>The page is a board of panels — each one edits one part of the map. Panels you don't see are in the
+flyout on the right (drag them onto the board).</p>
+<h3 id="make-your-first-map" tabindex="-1"><a class="observablehq-header-anchor" href="#make-your-first-map">Make your first map</a></h3>
+<ol>
+<li><strong>Frame it.</strong> Pan and zoom the <strong>Atlas</strong> panel (the live map) to the area you want. That view is the
+map's extent — or <strong>shift-drag</strong> on it to draw an exact frame. Pick a <strong>projection</strong> and <strong>size</strong> in
+the <strong>Map</strong> panel.</li>
+<li><strong>Add your data.</strong> In <strong>Data</strong>, search a country, province or sea by name (or drop a GeoJSON /
+TopoJSON file, or add points). Each layer gets its own fill, line, pattern and opacity.</li>
+<li><strong>Style the base.</strong> <strong>Basemap</strong> toggles and colours land, ocean, borders, rivers and lakes;
+<strong>Raster</strong> adds hillshade or imagery; <strong>Inset</strong>, <strong>Scalebar</strong> and <strong>North arrow</strong> add the furniture.</li>
+<li><strong>Annotate.</strong> <strong>Annotations</strong> adds callouts, arrows and text; drag them into place on the Output.
+<strong>Fonts</strong> sets the typefaces.</li>
+<li><strong>Render</strong> (top right). The <strong>Output</strong> panel shows the export; <strong>Preview</strong> shows it full-screen.
+With <strong>live update</strong> off (the default) the map only redraws when you press Render — the Render
+button gets a ring when something has changed.</li>
+<li><strong>Download</strong> the SVG (the ▾ menu has single layers and options). <strong>⬇ JSON</strong> saves the project —
+drop that file on the <strong>Project / Template</strong> panel to pick up where you left off.</li>
+</ol>
+<p>Start from a template instead: pick one in the <strong>Project / Template</strong> panel.</p>
+<h3 id="saving-your-work" tabindex="-1"><a class="observablehq-header-anchor" href="#saving-your-work">Saving your work</a></h3>
+<p>On <strong>mbricknell.com/mapa</strong> nothing is saved to the site — your project lives in the page until you
+download it:</p>
+<ul>
+<li><strong>⬇ JSON</strong> (top right) downloads the project. To reopen it, drop the file on the <strong>Project /
+Template</strong> panel. Keep these files — they <em>are</em> your maps.</li>
+<li><strong>Download</strong> saves the SVG export.</li>
+<li>The <strong>Projects</strong> list in the picker only shows maps that were put on the site itself, so it's
+the same for everyone and you can't add to it from the browser.</li>
+</ul>
+<p><strong>Running Mapa locally</strong> (see <em>Fork &amp; run your own copy</em>) adds one thing: drop a downloaded JSON into
+<code>src/mapa/projects/</code> and it appears in the Projects list — handy for a working set of maps.</p>
+<h3 id="using-your-own-data-files" tabindex="-1"><a class="observablehq-header-anchor" href="#using-your-own-data-files">Using your own data files</a></h3>
+<p>A web page can't open files on your computer by their path — browsers block that. So:</p>
+<table>
+<thead>
+<tr>
+<th>Where the data is</th>
+<th>Works</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A file you drop in</strong> (or pick with <strong>…</strong> on the layer)</td>
+<td>for this session — Mapa reads it into memory</td>
+</tr>
+<tr>
+<td><strong>After a reload / reopening a saved project</strong></td>
+<td>the project stores only a pointer (e.g. <code>data/occupied.json</code>), which the site can't follow to your disk — the layer shows <strong>missing</strong>. Click <strong>…</strong> on it (or drop the file again) to reconnect; its style and filter are kept</td>
+</tr>
+<tr>
+<td><strong>A URL</strong> (<strong>+ url</strong>, or any hosted GeoJSON / TopoJSON)</td>
+<td>always, for anyone who opens the project</td>
+</tr>
+<tr>
+<td><strong>Inside the site</strong> (<code>projects/data/</code> on the server)</td>
+<td>always — but only whoever runs the site can put files there</td>
+</tr>
+</tbody>
+</table>
+<p>To share a project that uses your own data, host the data at a URL — or send the data files along with
+the project JSON.</p>
+<h3 id="scripts" tabindex="-1"><a class="observablehq-header-anchor" href="#scripts">Scripts</a></h3>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run dev</code></td>
+<td>Dev server (<code>scripts/dev-server.mjs</code>): serves the app with live reload and keeps the indexes current.</td>
+</tr>
+<tr>
+<td><code>npm run build</code></td>
+<td><code>observable build</code> + copies static assets (<code>board/</code>, <code>mapa/</code>, <code>projects/</code>, <code>styles/</code>, <code>fonts/</code>, <code>sandbox.html</code>) into <code>dist/</code>.</td>
+</tr>
+<tr>
+<td><code>npm run build:basemap</code></td>
+<td>Convert source vector in <code>src/mapa/files/</code> → the streaming <code>.fgb</code> build (see <strong>Data</strong>).</td>
+</tr>
+<tr>
+<td><code>npm run gen</code></td>
+<td>Rebuild the project, pattern, shape-search and gazetteer indexes.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fork-and-run-your-own-copy" tabindex="-1"><a class="observablehq-header-anchor" href="#fork-and-run-your-own-copy">Fork &amp; run your own copy</a></h3>
+<ol>
+<li>
+<p><strong>Fork / clone</strong> the repository, then run it locally (you need <strong>Node 18+</strong> and npm):</p>
+<pre data-language="bash"><code class="language-bash">npm install
+npm run dev        <span class="hljs-comment"># → http://localhost:3000/mapa</span>
+</code></pre>
+</li>
+<li>
+<p><strong>Add the basemap data.</strong> The geometry isn't in the code — put these in <code>src/mapa/files/</code> (GeoJSON or TopoJSON):</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Layer</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>countries.json</code></td>
+<td>land + borders</td>
+<td>Natural Earth admin-0</td>
+</tr>
+<tr>
+<td><code>ocean.json</code>, <code>lakes.json</code>, <code>rivers.json</code>, <code>coastlines.json</code></td>
+<td>water / coast</td>
+<td>Natural Earth physical</td>
+</tr>
+<tr>
+<td><code>innerlines.json</code></td>
+<td>internal boundaries</td>
+<td>Natural Earth / your own</td>
+</tr>
+<tr>
+<td><code>disputed_2026.json</code></td>
+<td>disputed areas</td>
+<td>your own</td>
+</tr>
+<tr>
+<td><code>inset-ocean.json</code>, <code>inset-innerlines.json</code></td>
+<td>the inset's coarse world</td>
+<td>Natural Earth 110m</td>
+</tr>
+<tr>
+<td><code>provinces.json</code>, <code>admin2.json</code> (optional)</td>
+<td>admin areas for shape search</td>
+<td>geoBoundaries</td>
+</tr>
+</tbody>
+</table>
+<p>The layer → file mapping is <code>src/mapa/js/basemap-layers.js</code> (see <strong>Data</strong> below). A missing file just means that layer doesn't draw.</p>
+</li>
+<li>
+<p><strong>Regenerate the indexes:</strong> <code>npm run gen</code> (projects, patterns, shape search, gazetteer). <code>npm run dev</code> keeps them current after that.</p>
+</li>
+<li>
+<p><strong>Your own services:</strong></p>
+<ul>
+<li><strong>Hillshade</strong> — the default layer points at <code>https://tiles.mbricknell.com/hs.pmtiles</code>. Host your own <code>.pmtiles</code> and change the URL in the Raster panel (or its seed in <code>src/mapa.md</code>).</li>
+<li><strong>MapTiler</strong> — tile layers use your own key in the URL (<code>…?key=…</code>).</li>
+</ul>
+</li>
+<li>
+<p><strong>Deploy:</strong> <code>npm run build</code>, then serve <code>dist/</code> from any static host. The host must support <strong>HTTP range requests</strong> — FlatGeobuf (<code>.fgb</code>) and PMTiles stream by byte range; run <code>npm run build:basemap</code> first so the <code>.fgb</code> files exist.</p>
+</li>
+</ol>
+<p>Projects you make are plain JSON: drop them in <code>src/mapa/projects/</code> (or templates in <code>src/mapa/templates/</code>) and they appear in the Project panel.</p>
+<hr>
+<h2 id="project-structure" tabindex="-1"><a class="observablehq-header-anchor" href="#project-structure">Project structure</a></h2>
+<pre><code>src/
+  mapa.md                 the single Framework page — Board boot, panels, editor glue
+  mapa/
+    js/                   the render engine
+      mapa.js             renderMap(settings): slim orchestrator + data loaders
+      settings.js scalebar.js northArrow.js inset.js
+      layer.js basemap.js raster.js tiles.js labels.js overlay.js
+      basemap-layers.js   ← single source of truth for basemap layers
+      translate.js        Atlas-project → Mapa-settings
+      vendor.js           d3 / turf / topojson / proj4 / pmtiles bundle
+    files/  files-fgb/    basemap geometry (JSON for dev, FlatGeobuf for prod) *
+    projects/ templates/  Mapa projects &amp; templates
+    tools/                pattern-generator.html
+  board/                  board.js / board.css (panel manager) + theme.js/.css (Style panel)
+  projects/ templates/    saved projects &amp; templates
+  styles/ fonts/          MapLibre styles (nav pane) + geo-fonts
+  sandbox.html            the MapLibre "Atlas" nav-pane iframe (the monolith — not part of the render-engine refactor)
+scripts/                  dev-server (+ watch-manifests), copy-static-assets, build-basemap, gen-* (gazetteer, shape/project/pattern indexes)
+test/                     visual-regression harness + baselines
+
+* files/ and files-fgb/ are served from the CDN in production; a fresh checkout
+  may not have them, in which case the basemap simply doesn't paint (no crash).
+</code></pre>
+<hr>
+<h2 id="architecture" tabindex="-1"><a class="observablehq-header-anchor" href="#architecture">Architecture</a></h2>
+<ul>
+<li><strong><code>renderMap(settings)</code></strong> (<code>src/mapa/js/mapa.js</code>) is a plain function: build a settings object → get back an SVG DOM node (with <code>.tilesReady</code> / <code>.projection</code> attached). The engine is decomposed into one module per concern (basemap, raster, labels, inset, …); paint order is semantically meaningful (later = on top).</li>
+<li><strong>The editor</strong> (<code>src/mapa.md</code>) is a set of <strong>Board panels</strong> — Project, Map, Inset, Data, Scalebar, North arrow, Basemap, Raster, Project JSON, <strong>Atlas</strong> (nav pane), <strong>Output</strong>, and <strong>Style</strong>. Each is draggable/resizable/dockable; add/remove them from the 🧰 flyout.</li>
+<li><strong>State → render</strong>: field edits flow through one debounced entry point; <code>buildProject(frameMap)</code> turns the current panel/frame state into an Atlas <strong>project</strong> object, <code>translate.js</code> converts that to the settings <code>renderMap</code> consumes, and each output frame renders from its own saved state (no DOM-swapping).</li>
+<li><strong>Theming</strong>: the <strong>Style</strong> panel (<code>board/theme.js</code>) recolours the whole UI through 8 CSS tokens. Default theme is <strong>Parchment</strong> (the original warm light look); dark themes are available. App surfaces and the chrome bars derive from the theme tokens.</li>
+</ul>
+<hr>
+<h2 id="panels" tabindex="-1"><a class="observablehq-header-anchor" href="#panels">Panels</a></h2>
+<p>The editor is a <strong>Board</strong> of independent panels — drag by the ✥ handle to move, drag an edge to resize, drag to a window edge to dock, and use the ▤ button to cover/peek. Each panel's <code>?</code> (in its title bar) opens its section here.</p>
+<p><strong>The 🧰 flyout (panel list).</strong> The tab on the right edge opens the panel list. Every panel that isn't on the board shows up there as a <strong>cartridge</strong> — a card with the panel's name, its one-line description, and its size (W×H). Drag a cartridge onto the board, or press its <strong>+</strong>, to place it; remove a panel with the <strong>✕</strong> on its title bar (it goes back to the list, keeping its state). <strong>Columns</strong> / <strong>Row px</strong> set the grid; <strong>reset board</strong> returns to the default layout. Your layout is saved in the browser.</p>
+<svg width="190" height="210" viewBox="142 22 180 206" role="img" aria-label="A panel cartridge: a shell with a notch in the top edge, a paper label showing a + button, the panel name, a short description and its size (W×H), and grip ridges along the bottom." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ded5c7"></stop><stop offset="0.28" stop-color="#cdc1ae"></stop><stop offset="1" stop-color="#b3a68f"></stop>
+    </linearGradient>
+  </defs>
+  <!-- cartridge shell: rounded top, square bottom -->
+  <path d="M166,30 H294 A16,16 0 0 1 310,46 V214 A6,6 0 0 1 304,220 H156 A6,6 0 0 1 150,214 V46 A16,16 0 0 1 166,30 Z" fill="url(#shell)" stroke="#7f7360" stroke-width="1.5"></path>
+  <!-- notch -->
+  <rect x="212" y="28" width="36" height="8" rx="2" fill="#2b261f" stroke="#7f7360" stroke-width="0.8"></rect>
+  <!-- paper label set into the shell -->
+  <rect x="164" y="52" width="132" height="150" rx="4" fill="#faf8f5" stroke="#9c9080" stroke-width="1"></rect>
+  <!-- + add button -->
+  <rect x="174" y="62" width="18" height="18" rx="3" fill="#fff" stroke="#c9c2b8"></rect>
+  <text x="183" y="75" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" fill="#8a7f6e">+</text>
+  <!-- panel name -->
+  <text x="200" y="76" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#2b261f">Map</text>
+  <!-- description -->
+  <text x="174" y="100" font-family="system-ui,sans-serif" font-size="8.5" fill="#9a9080">Frames, projection,</text>
+  <text x="174" y="112" font-family="system-ui,sans-serif" font-size="8.5" fill="#9a9080">extent and size.</text>
+  <!-- size (w × h), bottom-right of the label -->
+  <rect x="222" y="178" width="22" height="15" rx="2" fill="#fff" stroke="#d8d2cb"></rect>
+  <text x="233" y="189" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#555">2</text>
+  <text x="252" y="189" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#9a9080">×</text>
+  <rect x="260" y="178" width="22" height="15" rx="2" fill="#fff" stroke="#d8d2cb"></rect>
+  <text x="271" y="189" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" fill="#555">3</text>
+  <!-- grip ridges -->
+  <g stroke="#6f6757" stroke-width="2">
+    <line x1="185" y1="208" x2="185" y2="215"></line><line x1="195" y1="208" x2="195" y2="215"></line>
+    <line x1="205" y1="208" x2="205" y2="215"></line><line x1="215" y1="208" x2="215" y2="215"></line>
+    <line x1="225" y1="208" x2="225" y2="215"></line><line x1="235" y1="208" x2="235" y2="215"></line>
+    <line x1="245" y1="208" x2="245" y2="215"></line><line x1="255" y1="208" x2="255" y2="215"></line>
+    <line x1="265" y1="208" x2="265" y2="215"></line><line x1="275" y1="208" x2="275" y2="215"></line>
+  </g>
+</svg>
+<h3 id="project-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#project-panel">Project panel</a></h3>
+<p><em>Project / Template.</em> The starting point — load a saved project or a template from the dropdown, give it a name (used for the export filename), or drop/browse a <code>.json</code> project file. The panel edits the current project; data and view live in the other panels.</p>
+<h3 id="map-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#map-panel">Map panel</a></h3>
+<p>Defines the export itself. <strong>Views (frames)</strong> — each frame is one export at its own extent + size; add frames to render several views of the same data in one go. Per frame: <strong>bbox</strong> (W,S,E,N) or "Atlas view as bbox", <strong>projection</strong>, <strong>width/height</strong>, <strong>buffer</strong>, <strong>background</strong>. Ratio buttons lock an aspect.</p>
+<h3 id="inset-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#inset-panel">Inset panel</a></h3>
+<p>A locator mini-map. Toggle it on, set <strong>position / size / radius / projection</strong>, the land/ocean/border/inner-line colours, and the "you are here" <strong>marker</strong> (rect/dot/none) with its own style. Can follow the map view or lock to a fixed centre.</p>
+<h3 id="data-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#data-panel">Data panel</a></h3>
+<p>Your own layers on top of the basemap. <strong>+ points</strong> (CSV lines, or click the Atlas map), <strong>+ shapes</strong> (GeoJSON/TopoJSON), <strong>+ url</strong> (a live GeoJSON/TopoJSON endpoint). Each row toggles, restyles, sets opacity, and reorders (top of the list draws on top).</p>
+<h3 id="scalebar-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#scalebar-panel">Scalebar panel</a></h3>
+<p>A two-tier distance scale — top/bottom <strong>values + units</strong>, <strong>anchor</strong> corner, and pixel <strong>offset</strong>.</p>
+<h3 id="north-arrow-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#north-arrow-panel">North arrow panel</a></h3>
+<p>A north arrow — <strong>position</strong>, <strong>size</strong>, <strong>colour</strong>.</p>
+<h3 id="basemap-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#basemap-panel">Basemap panel</a></h3>
+<p><em>Basemap layers.</em> Toggle and style the base layers (land, ocean, borders, rivers, coastline, lakes, disputed). Per layer: colour, opacity, stroke width, <strong>simplify</strong> tolerance, and winding <strong>rewind</strong>. The layer set + defaults come from <a href="./src/mapa/basemap-layers.js"><code>src/mapa/js/basemap-layers.js</code></a> (see <strong>Data</strong> below).</p>
+<h3 id="raster-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#raster-panel">Raster panel</a></h3>
+<p>Imagery layers. <strong>+ tiles</strong> (a <code>.pmtiles</code> or XYZ URL, incl. hillshade/elevation), <strong>+ worldfile</strong> (drop an image + its <code>.wld</code>/<code>.pgw</code>). Per row: opacity, blend mode, draw order.</p>
+<h3 id="project-json-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#project-json-panel">Project JSON panel</a></h3>
+<p>The saveable project as formatted JSON — datasets appear as <strong>pointers</strong>, not geometry (the geometry stays in the repo/CDN). Use it to inspect or copy the project; it's also where an old pre-project-file Mapa config can be pasted for view-only render.</p>
+<h3 id="atlas-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#atlas-panel">Atlas panel</a></h3>
+<p>The embedded interactive <strong>MapLibre</strong> navigation map (<code>sandbox.html</code>). Pan/zoom it to frame your export; <strong>shift-drag</strong> to draw a bbox; the ☰ menu toggles the pane's light/dark basemap, flat/globe, and tilt (globe/tilt are needed for the satellite projection). It's a viewer/extent-picker — it doesn't change the export except by feeding it a bbox/camera. Its basemap is swappable via <code>ATLAS_STYLE</code> (see <strong>Data</strong> below) — any style.json or raster PMTiles.</p>
+<h3 id="output-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#output-panel">Output panel</a></h3>
+<p>The rendered <strong>SVG</strong> export. Pan (drag) / zoom (scroll); <strong>Reset view</strong> refits, <strong>Crop to view</strong> sets the extent to the current zoom. A tab bar appears per frame. Download the full-stack SVG, a single layer, or every frame.</p>
+<h3 id="style-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#style-panel">Style panel</a></h3>
+<p>Pick, edit, or save a <strong>theme</strong> — eight colour tokens recolour the whole UI. Default is <strong>Parchment</strong> (the original light look); dark themes are included.</p>
+<hr>
+<h2 id="data-and-the-basemap-pipeline" tabindex="-1"><a class="observablehq-header-anchor" href="#data-and-the-basemap-pipeline">Data &amp; the basemap pipeline</a></h2>
+<h3 id="where-layers-are-defined" tabindex="-1"><a class="observablehq-header-anchor" href="#where-layers-are-defined">Where layers are defined</a></h3>
+<p>One file: <strong><code>src/mapa/js/basemap-layers.js</code></strong>. Each entry is a layer:</p>
+<pre data-language="js"><code class="language-js">{ <span class="hljs-attr">key</span>: <span class="hljs-string">"land"</span>, <span class="hljs-attr">label</span>: <span class="hljs-string">"land"</span>, <span class="hljs-attr">file</span>: <span class="hljs-string">"countries"</span>, <span class="hljs-attr">defaultOn</span>: <span class="hljs-literal">true</span>,
+  <span class="hljs-attr">fill</span>: <span class="hljs-string">"#efeee8"</span>, <span class="hljs-attr">fillOpacity</span>: <span class="hljs-number">1</span> <span class="hljs-comment">/*, simplify: 0.01 */</span> }
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>layer id used across the editor + <code>export.basemap[key]</code></td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td>name shown in the Basemap panel</td>
+</tr>
+<tr>
+<td><code>file</code></td>
+<td>data-file stem to load (the <code>BASEMAP[&lt;file&gt;]</code> bucket); layers may share one file (land + border → <code>countries</code>)</td>
+</tr>
+<tr>
+<td><code>fileName</code></td>
+<td>actual filename stem if it differs from <code>file</code> (e.g. <code>disputed</code> → <code>disputed_2026</code>)</td>
+</tr>
+<tr>
+<td><code>rewind</code></td>
+<td><code>false</code> to skip the winding-flip heuristic (ocean)</td>
+</tr>
+<tr>
+<td><code>defaultOn</code></td>
+<td>layer starts enabled on a blank project</td>
+</tr>
+<tr>
+<td><code>stroke</code> / <code>strokeWidth</code> / <code>fill</code> / <code>fillOpacity</code></td>
+<td>default style</td>
+</tr>
+<tr>
+<td><code>simplify</code></td>
+<td>default simplify tolerance in degrees (blank = full detail)</td>
+</tr>
+</tbody>
+</table>
+<p>Both the render engine (<code>loadBasemapData</code>) and the Basemap panel read this list, so editing it is enough to add/restyle/retoggle a layer.</p>
+<h3 id="the-atlas-nav-pane-basemap" tabindex="-1"><a class="observablehq-header-anchor" href="#the-atlas-nav-pane-basemap">The Atlas (nav-pane) basemap</a></h3>
+<p>The layer list above is the <strong>SVG export's</strong> basemap. The interactive <strong>Atlas pane</strong> (<code>sandbox.html</code>, MapLibre) draws its own basemap from a style, set by one value in the same file:</p>
+<pre data-language="js"><code class="language-js"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-variable constant_">ATLAS_STYLE</span> = <span class="hljs-string">"light"</span>;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Loads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"light"</code> / <code>"dark"</code></td>
+<td>a built-in style (<code>./styles/style-&lt;name&gt;.json</code>)</td>
+</tr>
+<tr>
+<td><code>"something.json"</code></td>
+<td>a style file in <code>./styles</code></td>
+</tr>
+<tr>
+<td><code>"./…/style.json"</code> or a URL</td>
+<td>any MapLibre style.json, local or remote (it can source its own vector/PMTiles tiles)</td>
+</tr>
+<tr>
+<td><code>"./…/x.pmtiles"</code> or a URL</td>
+<td>a <strong>raster</strong> PMTiles archive — auto-wrapped as a raster basemap</td>
+</tr>
+</tbody>
+</table>
+<p>Change the value and reload to swap the Atlas basemap. Notes: a bare <strong>vector</strong> PMTiles carries no styling (it renders blank) — point a <code>style.json</code> at it instead; the Atlas pane's light/dark toggle is a runtime override on top of this default. Remote styles/tiles must be CORS-reachable.</p>
+<h3 id="supported-data-formats" tabindex="-1"><a class="observablehq-header-anchor" href="#supported-data-formats">Supported data formats</a></h3>
+<ul>
+<li><strong>Vector</strong> (basemap + Data panel): GeoJSON, TopoJSON (auto-unwrapped), bare <code>Feature[]</code>, FlatGeobuf (<code>.fgb</code>, basemap streaming), CSV (points), live URL.</li>
+<li><strong>Raster</strong> (Raster panel): PMTiles, XYZ tile URLs (<code>{z}/{x}/{y}</code>), worldfile images (<code>.wld</code>/<code>.pgw</code>).</li>
+<li><strong>Output</strong>: SVG (write-only).</li>
+</ul>
+<h3 id="ingestion-order-of-operations" tabindex="-1"><a class="observablehq-header-anchor" href="#ingestion-order-of-operations">Ingestion — order of operations</a></h3>
+<ol>
+<li><strong>Author</strong> — GeoJSON/TopoJSON → <code>src/mapa/files/&lt;name&gt;.json</code></li>
+<li><strong>Build</strong> — <code>npm run build:basemap</code> → <code>src/mapa/files-fgb/&lt;name&gt;.fgb</code> <em>(prod streaming only)</em></li>
+<li><strong>Config</strong> — <code>basemap-layers.js</code> maps each layer → its file + default style</li>
+<li><strong>Load</strong> — <code>loadBasemapData()</code>: dev loads the whole <code>.json</code>; prod bbox-streams the <code>.fgb</code> → <code>BASEMAP[&lt;name&gt;]</code></li>
+<li><strong>Panel</strong> — config → Basemap rows; your toggles/colours/simplify → <code>export.basemap[key]</code></li>
+<li><strong>Render</strong> — <code>drawBasemap()</code> binds each layer to its geometry, applies style/simplify/rewind, paints in order → SVG</li>
+</ol>
+<p><strong>No build command?</strong> Dev still works (loads raw JSON directly). Only production needs the <code>.fgb</code> files; without them, those layers just don't draw.</p>
+<h3 id="build-basemap" tabindex="-1"><a class="observablehq-header-anchor" href="#build-basemap"><code>build:basemap</code></a></h3>
+<pre data-language="bash"><code class="language-bash">npm run build:basemap              <span class="hljs-comment"># convert every file in the config</span>
+node scripts/build-basemap.mjs rivers ocean      <span class="hljs-comment"># only these stems</span>
+node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pre-simplify at build time</span>
+</code></pre>
+<p>Reads the layer list from <code>basemap-layers.js</code>, so it converts exactly the files the app uses (dedupes shared files, honours <code>fileName</code>).</p>
+<h3 id="performance-notes" tabindex="-1"><a class="observablehq-header-anchor" href="#performance-notes">Performance notes</a></h3>
+<ul>
+<li><strong>Regional / framed vector</strong>: FlatGeobuf wins big — it range-streams <strong>only the features in the frame's bbox</strong>; GeoJSON and TopoJSON always load the whole file. (At world scale there's no narrow extent to exploit, so <code>.fgb</code> is then just a compact binary, not a selective stream; TopoJSON is smaller on the wire than GeoJSON but needs a decode step.)</li>
+<li><strong><code>simplify</code></strong> (cuts point count) often helps more than the format choice, and shrinks the SVG.</li>
+<li><strong>Raster</strong> layers reproject per-pixel and embed as a base64 image inside the SVG (PNG for tiles, hillshade and worldfile rasters) — the heaviest path on both render time and output size. Prefer PMTiles over many XYZ requests; keep worldfile images modest.</li>
+</ul>
+<h3 id="adding-a-basemap-layer" tabindex="-1"><a class="observablehq-header-anchor" href="#adding-a-basemap-layer">Adding a basemap layer</a></h3>
+<ol>
+<li>Add an entry to <code>src/mapa/js/basemap-layers.js</code>.</li>
+<li>Put the data at <code>src/mapa/files/&lt;file&gt;.json</code>.</li>
+<li><code>npm run build:basemap</code> (for prod).</li>
+<li><em>New</em> layers only: add a draw block in <code>src/mapa/js/basemap.js</code> (<code>drawBasemap</code>) — that's the one place paint order + geometry binding still live per-layer.</li>
+</ol>
+<hr>
+<h2 id="notes" tabindex="-1"><a class="observablehq-header-anchor" href="#notes">Notes</a></h2>
+<ul>
+<li><code>sandbox.html</code> (the MapLibre "Atlas" nav pane) is embedded as an iframe and kept <strong>unchanged</strong> — it's out of scope for the editor refactor.</li>
+<li>Production serves <code>files-fgb/*.fgb</code>, <code>pmtiles/*</code>, and the static tree from the CDN; a local checkout without <code>files/</code> renders everything except the basemap geometry.</li>
+</ul>
+<h2 id="credits" tabindex="-1"><a class="observablehq-header-anchor" href="#credits">Credits</a></h2>
+<p><strong>Mapa</strong> is made by <strong><a href="https://mbricknell.com" target="_blank" rel="noopener noreferrer">Michael Bricknell</a></strong> (<a href="https://old.observablehq.com/@mbrickmaps" target="_blank" rel="noopener noreferrer">@mbrickmaps</a>) — following
+<a href="https://old.observablehq.com/@mbrickmaps/mapa-2025" target="_blank" rel="noopener noreferrer">Mapa 2025</a> and
+<a href="https://cfr-prod-datawiz.s3.amazonaws.com/static/apps/makeamap/index.html" target="_blank" rel="noopener noreferrer">make-a-map</a>.
+The panel board — <a href="./src/board/board.js"><code>src/board/board.js</code></a>, the grid of panels you place, resize, dock and
+cover — comes from Michael's <strong>Brick by Brick</strong>.
+Built with Claude (Anthropic) as a coding assistant.</p>
+<p>It also builds on other people's work. If you publish a map made with it, credit the <strong>data</strong> you used
+(see Data below) on the map or in its source line.</p>
+<h3 id="libraries" tabindex="-1"><a class="observablehq-header-anchor" href="#libraries">Libraries</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>By</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://d3js.org" target="_blank" rel="noopener noreferrer">D3</a> (d3, d3-array, d3-geo)</td>
+<td>Mike Bostock and contributors</td>
+<td>rendering, projections, scales</td>
+</tr>
+<tr>
+<td><a href="https://github.com/d3/d3-geo-projection" target="_blank" rel="noopener noreferrer">d3-geo-projection</a></td>
+<td>Mike Bostock, Jason Davies, Philippe Rivière and contributors</td>
+<td>extended projections</td>
+</tr>
+<tr>
+<td><a href="https://github.com/d3/d3-geo-polygon" target="_blank" rel="noopener noreferrer">d3-geo-polygon</a></td>
+<td>Philippe Rivière, Jason Davies and contributors</td>
+<td>polygon clipping / polyhedral projections</td>
+</tr>
+<tr>
+<td><a href="https://github.com/HarryStevens/d3-geo-scale-bar" target="_blank" rel="noopener noreferrer">d3-geo-scale-bar</a></td>
+<td>Harry Stevens</td>
+<td>scale bar</td>
+</tr>
+<tr>
+<td><a href="https://d3-annotation.susielu.com" target="_blank" rel="noopener noreferrer">d3-svg-annotation</a></td>
+<td>Susie Lu</td>
+<td>annotations (callouts, arrows, notes)</td>
+</tr>
+<tr>
+<td><a href="https://turfjs.org" target="_blank" rel="noopener noreferrer">Turf.js</a></td>
+<td>Turf contributors</td>
+<td>geometry operations (rewind, clip, centroid…)</td>
+</tr>
+<tr>
+<td><a href="https://github.com/topojson/topojson-client" target="_blank" rel="noopener noreferrer">TopoJSON client</a></td>
+<td>Mike Bostock</td>
+<td>TopoJSON decoding</td>
+</tr>
+<tr>
+<td><a href="https://github.com/proj4js/proj4js" target="_blank" rel="noopener noreferrer">Proj4js</a></td>
+<td>Proj4js contributors</td>
+<td>proj4 projections</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mapbox/polylabel" target="_blank" rel="noopener noreferrer">polylabel</a></td>
+<td>Mapbox</td>
+<td>label placement inside polygons</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mfogel/polygon-clipping" target="_blank" rel="noopener noreferrer">polygon-clipping</a></td>
+<td>Mike Fogel</td>
+<td>polygon boolean operations</td>
+</tr>
+<tr>
+<td><a href="https://flatgeobuf.org" target="_blank" rel="noopener noreferrer">FlatGeobuf</a></td>
+<td>Björn Harrtell and contributors</td>
+<td>streamed basemap geometry</td>
+</tr>
+<tr>
+<td><a href="https://protomaps.com/docs/pmtiles" target="_blank" rel="noopener noreferrer">PMTiles</a></td>
+<td>Protomaps</td>
+<td>tiled rasters (hillshade)</td>
+</tr>
+<tr>
+<td><a href="https://maplibre.org" target="_blank" rel="noopener noreferrer">MapLibre GL JS</a></td>
+<td>MapLibre contributors</td>
+<td>the interactive Atlas pane</td>
+</tr>
+<tr>
+<td><a href="https://riccardoscalco.it/textures/" target="_blank" rel="noopener noreferrer">textures.js</a></td>
+<td>Riccardo Scalco</td>
+<td>the pattern generator tool</td>
+</tr>
+</tbody>
+</table>
+<h3 id="code-and-methods" tabindex="-1"><a class="observablehq-header-anchor" href="#code-and-methods">Code &amp; methods</a></h3>
+<ul>
+<li><strong>Raster tile reprojection</strong> in <code>src/mapa/js/raster.js</code> — Andrew Reid (2018), building on <a href="https://www.jasondavies.com" target="_blank" rel="noopener noreferrer">Jason Davies'</a> raster reprojection.</li>
+<li><strong>Satellite (tilted perspective) view</strong> — the primitives from <a href="https://observablehq.com/@jjhembd/tilting-the-satellite" target="_blank" rel="noopener noreferrer">@jjhembd's "Tilting the satellite"</a>.</li>
+<li><strong>Satellite camera notebook</strong> — <a href="https://old.observablehq.com/@cfr-design/mapa-sata" target="_blank" rel="noopener noreferrer">@cfr-design/mapa-sata</a>.</li>
+<li><strong>Data preparation</strong> — <a href="https://mapshaper.org" target="_blank" rel="noopener noreferrer">Mapshaper</a> by Matthew Bloch, used to simplify, clip and convert the basemap data.</li>
+<li><strong>Shaded relief</strong> — <a href="https://eduard.earth" target="_blank" rel="noopener noreferrer">Eduard</a> by Bernhard Jenny and team, used to make the hillshade.</li>
+</ul>
+<h3 id="data" tabindex="-1"><a class="observablehq-header-anchor" href="#data">Data</a></h3>
+<ul>
+<li><a href="https://www.naturalearthdata.com" target="_blank" rel="noopener noreferrer">Natural Earth</a> — basemap layers (countries, rivers, …). Public domain.</li>
+<li><a href="https://www.geoboundaries.org" target="_blank" rel="noopener noreferrer">geoBoundaries</a> — administrative boundaries (gazetteer). CC BY 4.0 — credit required.</li>
+</ul>
+<h3 id="services" tabindex="-1"><a class="observablehq-header-anchor" href="#services">Services</a></h3>
+<ul>
+<li><a href="https://www.maptiler.com" target="_blank" rel="noopener noreferrer">MapTiler</a> — raster tile layers (your own key). "© MapTiler © OpenStreetMap contributors" required on maps that use them.</li>
+<li><a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer">Google Fonts</a> — fonts loaded by the Fonts panel. Open-source licences (mostly OFL).</li>
+<li><a href="https://fontsource.org" target="_blank" rel="noopener noreferrer">Fontsource</a> — the Google Fonts list in the Fonts panel.</li>
+</ul>
+</main>
+</div>
+</body>
+</html>
