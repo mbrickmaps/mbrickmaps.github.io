@@ -73,7 +73,10 @@ export function drawInset({ parent, inset, d3, width, height, defs, uid, mainPro
   if (isGlobe) {
     // v1 globe: orthographic, rotated to `center`. zoom scale is approximate (same k as flat);
     // no zoom = whole hemisphere fills the box.
-    const gscale = zoom == null ? size / 2 : kFromZoom(zoom);
+    // zoom is relative to the box (calibrated at the default 160px), so a bigger inset frames the
+    // same view, just larger — in absolute px a 400px box at zoom 2 drew a 163px-radius globe inside
+    // a 200px ring. Never smaller than the box: the sphere always reaches the round frame.
+    const gscale = zoom == null ? size / 2 : Math.max(size / 2, kFromZoom(zoom) * (size / 160));
     // Clip to the visible cap sized to the box's corner radius, so the sphere fills the frame when
     // zoomed in and shows a hemisphere (90°) when zoomed out. Land is drawn from proper polygons
     // (inset-land) that render stably at any clip, so no cap is needed.

@@ -107,7 +107,7 @@ export function pmtilesReader(url) {
   return PMTILES_READERS.get(url);
 }
 const TILE_CACHE = new Map();      // "url|z/x/y" → Promise<ArrayBuffer | null>
-const TILE_CACHE_MAX = 800;        // oldest-first eviction beyond this
+const TILE_CACHE_MAX = 2000;       // oldest-first eviction beyond this
 export function cachedTile(url, p, z, x, y) {
   const key = url + "|" + z + "/" + x + "/" + y;
   if (TILE_CACHE.has(key)) {
@@ -177,7 +177,9 @@ function tileQueuePump() {
 // them with NO request, whatever cache headers the server sends; only tiles a changed bbox newly
 // needs are fetched. PMTiles tiles have their own byte cache (TILE_CACHE). Oldest-first eviction.
 const IMG_TILE_CACHE = new Map();   // url → HTMLImageElement
-const IMG_TILE_CACHE_MAX = 300;    // ~15 views at ~20 tiles; each decoded 256px tile is ~256 KB
+const IMG_TILE_CACHE_MAX = 600;    // a big frame needs a few hundred; each decoded 256px tile is ~256 KB
+                                   // (300 was smaller than one large view, so it evicted its own tiles
+                                   // and every re-render fetched them all again)
 export function imgTileGet(url) {
   const hit = IMG_TILE_CACHE.get(url);
   if (hit) { IMG_TILE_CACHE.delete(url); IMG_TILE_CACHE.set(url, hit); }   // mark recently used
@@ -187,4 +189,20 @@ export function imgTileHas(url) { return IMG_TILE_CACHE.has(url); }
 export function imgTilePut(url, img) {
   IMG_TILE_CACHE.set(url, img);
   while (IMG_TILE_CACHE.size > IMG_TILE_CACHE_MAX) IMG_TILE_CACHE.delete(IMG_TILE_CACHE.keys().next().value);
+}
+
+// ---- Finished tile-layer composites (shared across renders) ----
+// One entry per tile layer + tile set + projection + size (key built in raster.js): a re-render
+// where nothing about the layer changed reuses the composite image as is. Each is a full-frame
+// data URL (a few MB on big frames), so only a handful are kept, oldest-first eviction.
+const COMPOSITE_CACHE = new Map();
+const COMPOSITE_CACHE_MAX = 12;
+export function compositeGet(key) {
+  const hit = COMPOSITE_CACHE.get(key);
+  if (hit) { COMPOSITE_CACHE.delete(key); COMPOSITE_CACHE.set(key, hit); }
+  return hit;
+}
+export function compositePut(key, entry) {
+  COMPOSITE_CACHE.set(key, entry);
+  while (COMPOSITE_CACHE.size > COMPOSITE_CACHE_MAX) COMPOSITE_CACHE.delete(COMPOSITE_CACHE.keys().next().value);
 }

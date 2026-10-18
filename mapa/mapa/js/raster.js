@@ -5,7 +5,7 @@
 // image+worldfile raster reprojection path (drawWorldfileRaster). Both moved verbatim --
 // no internal restructuring of geoTile/getTiles, only the outer this.X -> params change.
 import { d3 } from "./vendor.js";
-import { pmtilesReader, cachedTile, tileQ, tileQueueAdd, tileQueueRun, getTileRequestGuard, imgTileGet, imgTileHas, imgTilePut } from "./tiles.js";
+import { pmtilesReader, cachedTile, tileQ, tileQueueAdd, tileQueueRun, getTileRequestGuard, imgTileGet, imgTileHas, imgTilePut, compositeGet, compositePut } from "./tiles.js";
 
 function drawTileLayers({ parent, layerGroup, tilesLayer, projection, width, height, margin = 0, uid, tilePromises }) {
     if (!tilesLayer.show) return;
@@ -410,6 +410,47 @@ function drawTileLayers({ parent, layerGroup, tilesLayer, projection, width, hei
           g.attr("data-tile-z", tileZ).attr("data-tile-count", tileList.length);
           if (!pending) { _resolve(); return _done; }  // nothing to load
 
+          // Same layer, same tiles, same projection and size as an earlier render → reuse that
+          // render's finished composite: no tile requests, no queue, no reprojection.
+          const compKey = compositeKey();
+          const hit = compKey && compositeGet(compKey);
+          if (hit) {
+            window._lo = hit.lo;
+            window._hi = hit.hi;
+            g.attr("data-tile-fresh", 0).attr("data-tile-cached", "composite")
+              .attr("data-tile-empty", hit.tileEmpty).attr("data-tile-failed", 0);
+            g.selectAll("image.tile").remove();
+            g.append("image")
+              .attr("class", "tile")
+              .attr("xlink:href", hit.href)
+              .attr("x", -m)
+              .attr("y", -m)
+              .attr("width", w + 2 * m)
+              .attr("height", h + 2 * m);
+            _resolve();
+            return _done;
+          }
+          // Everything the composite's pixels depend on. The projection is fingerprinted by where a
+          // grid of lon/lat points lands plus its clip, so any change to type, rotate, scale,
+          // translate or parallels gives a new key.
+          function compositeKey() {
+            try {
+              const cfg = tileConfig || {};
+              const grid = [];
+              for (let lon = -180; lon <= 180; lon += 30)
+                for (let lat = -80; lat <= 80; lat += 20) {
+                  const q = p([lon, lat]);
+                  grid.push(q ? q.map((v) => Math.round(v * 1000) / 1000).join(",") : "x");
+                }
+              return JSON.stringify([
+                cfg.type, cfg.url, cfg.format, cfg.zoom, cfg.delta, cfg.filter,
+                cfg.colorRamp, tileMime, tileQuality, w, h, m,
+                p.clipExtent ? p.clipExtent() : null, p.clipAngle ? p.clipAngle() : null,
+                grid.join(";"), tileList.map((d) => d.key.join("/")).join(" ")
+              ], (k, v) => typeof v === "function" ? String(v) : v);
+            } catch (e) { return null; }
+          }
+
           // Each tile gets up to TILE_TRIES attempts (fetch, image load, decode) with a backoff —
           // a CDN hiccup, a 429 or a momentary canvas-memory squeeze shouldn't leave a hole. Every
           // attempt goes through the shared tile queue, so only a few requests are in flight.
@@ -652,6 +693,8 @@ function drawTileLayers({ parent, layerGroup, tilesLayer, projection, width, hei
               console.warn("[mapa] raster composite came out blank (" + w + "×" + h + ") — counted as failed");
             }
             g.attr("data-tile-empty", tileEmpty).attr("data-tile-failed", tileFailed);
+            // Keep only complete composites — one with holes should retry its tiles next render.
+            if (compKey && !tileFailed) compositePut(compKey, { href, tileEmpty, lo: window._lo, hi: window._hi });
             g.selectAll("image.tile").remove();
             g.append("image")
               .attr("class", "tile")

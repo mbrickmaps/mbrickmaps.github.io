@@ -181,6 +181,14 @@ import "./_observablehq/client.77f16a62.js";
     #mlMenu .ml-switch { display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 5px 8px; border-radius: 3px; cursor: pointer; user-select: none; }
     #mlMenu .ml-switch:hover { background: rgba(255,255,255,.12); }
+    /* Value rows under a switch (terrain exaggeration, lighting settings). */
+    #mlMenu .ml-field { display: flex; align-items: center; gap: 8px; padding: 3px 8px 3px 20px; color: #bdb9b1; }
+    #mlMenu .ml-field > span:first-child { flex: 1; }
+    #mlMenu input[type=number] { width: 56px; background: #2b2723; color: #f4f4f2; border: 1px solid #5a544c; border-radius: 3px; padding: 1px 4px; }
+    #mlMenu .ml-field input[type=color] { width: 56px; height: 20px; padding: 0 2px; background: #2b2723; border: 1px solid #5a544c; border-radius: 3px; }
+    #mlMenu #mlLightSet { display: none; }
+    #mlMenu .ml-field button { width: auto; padding: 1px 8px; border: 1px solid #5a544c; border-radius: 3px; text-align: center; }
+    #mlMenu:has(#mlLight:checked) #mlLightSet { display: block; }
     #mlMenu .ml-switch span { color: #bdb9b1; min-width: 44px; }
     #mlMenu .ml-switch span:first-of-type { text-align: right; }
     #mlMenu .ml-switch span:last-of-type { text-align: left; }
@@ -639,7 +647,7 @@ import "./_observablehq/client.77f16a62.js";
     #boardSave, #boardLoadPick { flex: 1; min-width: 0; }
     #boardLoadPick { height: 26px; border-radius: 4px; background: var(--field); color: var(--fg); border: 1px solid var(--border); font: 12px system-ui, sans-serif; }
     .data-head .rw-btn.on { background: #a53f18; color: #fff; border-color: #a53f18; }
-    .data-head .rw-btn.auto { color: var(--accent); border-color: var(--accent); }
+    .data-head .rw-btn.inv { color: #a53f18; border-color: #a53f18; }
     #bboxShow.on { background: #a53f18; color: #fff; border-color: #a53f18; }
     .muted { color: #888; font-size: 11px; }
     #jsonPeek { width: 100%; height: 100%; min-height: 160px; box-sizing: border-box; padding: 7px 8px;
@@ -874,6 +882,20 @@ import "./_observablehq/client.77f16a62.js";
             <label class="ml-switch" title="Nav basemap (this pane only, not the export)"><span>Light</span><input type="checkbox" id="mlBasemap"><span>Dark</span></label>
             <label class="ml-switch" title="Nav pane projection (this pane only, not the export)"><span>Flat</span><input type="checkbox" id="mlGlobe"><span>Globe</span></label>
             <label class="ml-switch" title="Pitch + bearing in the nav pane (needed for satellite)"><span>No tilt</span><input type="checkbox" id="mlTilt"><span>Tilt</span></label>
+            <label class="ml-switch" title="3D terrain from the rgb height tiles (this pane only, not the export) — tilt to see it"><span>No terrain</span><input type="checkbox" id="mlTerrain"><span>Terrain</span></label>
+            <label class="ml-switch" title="Terrain height multiplier — 1 = true height"><span>Exaggeration</span><input type="number" id="mlTerrainExag" value="1.5" min="0" max="10" step="0.25" style="width:56px"></label>
+            <div id="mlSkySet" title="Sky gradient, top to horizon (this pane only). Shows past the horizon when tilted, and around the globe in Globe view.">
+              <label class="ml-field"><span>Sky</span><input type="color" id="mlSky" value="#9cc3e6"></label>
+              <label class="ml-field"><span>Horizon</span><input type="color" id="mlHorizon" value="#e6eef5"></label>
+              <div class="ml-field"><span id="mlSkyState">auto</span><button type="button" id="mlSkyAuto" title="Back to the default sky">auto</button></div>
+            </div>
+            <label class="ml-switch" title="Live shading from the rgb height tiles (replaces the pre-made hillshade while on; this pane only)"><span>No lighting</span><input type="checkbox" id="mlLight"><span>Lighting</span></label>
+            <div id="mlLightSet">
+              <label class="ml-field" title="Direction the light comes from, degrees clockwise from north (315 = north-west)"><span>Sun</span><input type="number" id="mlSun" value="315" min="0" max="359" step="15"><span class="u">°</span></label>
+              <label class="ml-field" title="Shading strength, 0–1"><span>Strength</span><input type="number" id="mlShade" value="0.5" min="0" max="1" step="0.05"></label>
+              <label class="ml-field" title="Colour of slopes facing away from the light"><span>Shadow</span><input type="color" id="mlShadow" value="#000000"></label>
+              <label class="ml-field" title="Colour of slopes facing the light"><span>Highlight</span><input type="color" id="mlHighlight" value="#ffffff"></label>
+            </div>
           </div>
         </div>
       </div>
@@ -1603,10 +1625,7 @@ import "./_observablehq/client.77f16a62.js";
     // A layer's features exactly as it's drawn (filter + rewind): an inside-out ring's centre is the
     // far side of the globe (Demchok's centre came out at -100.7, -32.9), so anchors use these.
     function drawnFC(L) {
-      const rw = L.rewind ?? 'auto';
-      let f = filteredFC(L).features;
-      if (rw === 'auto') f = f.map(autoRewound); else if (rw === true) f = f.map(rewound);
-      return { type: 'FeatureCollection', features: f };
+      return { type: 'FeatureCollection', features: applyRewind(L, filteredFC(L).features) };
     }
     function resolveAnnoAnchors() {
       for (const d of project.annotations?.data || []) {
@@ -2807,7 +2826,8 @@ import "./_observablehq/client.77f16a62.js";
           geometry: null, kind: 'poly', style: { ...(entry.style || POLY_STYLE) },
           show: entry.show !== false, missing: false, _entry: entry
         };
-        if (entry.rewind === true || entry.rewind === false || entry.rewind === 'auto') rec.rewind = entry.rewind;
+        // Rewind is on | off | 'invert'. Unset (and the retired 'auto') = on.
+        if (entry.rewind === false || entry.rewind === 'invert') rec.rewind = entry.rewind;
         if (typeof entry.fillFrom === 'string' && entry.fillFrom) rec.fillFrom = entry.fillFrom;
         if (typeof entry.filter === 'string') rec.filter = entry.filter;
         else if (entry.filter && typeof entry.filter === 'object') {
@@ -2848,8 +2868,8 @@ import "./_observablehq/client.77f16a62.js";
         delete base.geometry;
         const e = { ...base, source: d.source, style: { ...d.style } };
         if (d.show) delete e.show; else e.show = false;
-        // Unset = auto (the default), so only an explicit choice is written: true | false.
-        if (d.rewind === true || d.rewind === false) e.rewind = d.rewind; else delete e.rewind;
+        // Unset = on (the default), so only an explicit choice is written: false | 'invert'.
+        if (d.rewind === false || d.rewind === 'invert') e.rewind = d.rewind; else delete e.rewind;
         if (d.fillFrom) e.fillFrom = d.fillFrom; else delete e.fillFrom;
         // The filter expression (a retired object-form filter on the base entry is dropped).
         if (d.filter && d.filter.trim()) e.filter = d.filter; else delete e.filter;
@@ -3137,21 +3157,27 @@ import "./_observablehq/client.77f16a62.js";
     // the feature bound (Inspect reads it); a FeatureCollection would be one path for the whole layer.
     // simplify: 0 keeps the data at full detail (the engine only simplifies arrays, default 0.01°).
     // groupClass tags the layer's <g> so Inspect can name the layer a hovered feature belongs to.
-    // d.rewind: geojson rewind to d3's winding (reverse:true = clockwise exterior), same as loadInsetData.
+    // d.rewind — one of three, set by the ⇄ button:
+    //   on (unset, the default): geojson rewind to d3's winding (reverse:true = clockwise exterior),
+    //     same as loadInsetData — every shape fills its inside, whichever way the file wound it.
+    //   false: off — the file's own winding, untouched.
+    //   'invert': rewind the other way (reverse:false, RFC 7946) — d3 fills the OUTSIDE of every
+    //     shape (a mask: everything but these polygons).
     // Cached per source feature so a re-render doesn't re-wind the whole file.
-    const rewoundCache = new WeakMap();
+    const rewoundCache = new WeakMap(), invertedCache = new WeakMap();
     function rewound(f) {
       if (!rewoundCache.has(f)) rewoundCache.set(f, turfRewind(f, { reverse: true }));
       return rewoundCache.get(f);
     }
-    // d.rewind 'auto': rewind only shapes d3 would draw inside-out — area over a hemisphere (2π sr)
-    // means the ring runs the wrong way and the fill covers the rest of the globe. Same test the
-    // basemap loader uses (fixWinding). Cached per feature.
-    const insideOutCache = new WeakMap();
-    function autoRewound(f) {
+    function inverted(f) {
       if (!f || !f.geometry || !/Polygon/.test(f.geometry.type)) return f;
-      if (!insideOutCache.has(f)) insideOutCache.set(f, d3.geoArea(f) > 2 * Math.PI);
-      return insideOutCache.get(f) ? rewound(f) : f;
+      if (!invertedCache.has(f)) invertedCache.set(f, turfRewind(f, { reverse: false }));
+      return invertedCache.get(f);
+    }
+    const rewindMode = (d) => d.rewind === false ? 'off' : d.rewind === 'invert' ? 'invert' : 'on';
+    function applyRewind(d, features) {
+      const m = rewindMode(d);
+      return m === 'on' ? features.map(rewound) : m === 'invert' ? features.map(inverted) : features;
     }
     // d.fillFrom: take each feature's fill from a COLOUR attribute (e.g. DeepState's `fill`). Features
     // are grouped by that colour — one entry per colour; ones without a valid colour keep the layer fill.
@@ -3169,11 +3195,7 @@ import "./_observablehq/client.77f16a62.js";
       return [...ok].filter(([, y]) => y).map(([k]) => k);
     }
     function datasetEntries(d) {
-      let features = filteredFC(d).features;
-      // Rewind defaults to auto: a dataset with no setting gets the inside-out check.
-      const rw = d.rewind ?? 'auto';
-      if (rw === 'auto') features = features.map(autoRewound);
-      else if (rw === true) features = features.map(rewound);
+      const features = applyRewind(d, filteredFC(d).features);
       const style = { ...d.style, groupClass: 'ds-' + d.id };
       if (!d.fillFrom || d.style.fill === 'none') return [{ geometry: features, style, simplify: 0 }];
       const groups = new Map();
@@ -3234,17 +3256,20 @@ import "./_observablehq/client.77f16a62.js";
           customData.splice(customData.indexOf(d) + 1, 0, copy);
           renderDataList(); dataRender();
         };
-        // Rewind: apply geojson rewind to every shape in this file (fixes inside-out polygons).
-        // Cycles off → auto → on. Auto rewinds only the shapes that come out inside-out.
-        const rwMode = (d.rewind ?? 'auto') === 'auto' ? 'auto' : d.rewind ? 'on' : 'off';
-        const rw = document.createElement('button'); rw.textContent = rwMode === 'auto' ? '⇄ auto' : '⇄';
-        rw.className = 'rw-btn' + (rwMode === 'on' ? ' on' : rwMode === 'auto' ? ' auto' : '');
+        // Rewind: cycles on → invert → off (see applyRewind). On fixes inside-out polygons.
+        const rwMode = rewindMode(d);
+        const rw = document.createElement('button'); rw.textContent = rwMode === 'invert' ? '⇄ inv' : '⇄';
+        rw.className = 'rw-btn' + (rwMode === 'on' ? ' on' : rwMode === 'invert' ? ' inv' : '');
         rw.title = {
-          off: 'rewind off — click for auto (rewind only shapes that fill inside-out)',
-          auto: 'rewind auto — only inside-out shapes are rewound (click to rewind every shape)',
-          on: 'rewind ON — every shape rewound (click to turn off)'
+          on: 'rewind ON — every shape wound to fill its inside (click to invert)',
+          invert: 'rewind INVERT — every shape fills its outside (click to turn off)',
+          off: "rewind off — the file's own winding (click to turn on)"
         }[rwMode];
-        rw.onclick = () => { d.rewind = { off: 'auto', auto: true, on: false }[rwMode]; renderDataList(); dataRender(); };
+        rw.onclick = () => {
+          const next = { on: 'invert', invert: false, off: undefined }[rwMode];
+          if (next === undefined) delete d.rewind; else d.rewind = next;
+          renderDataList(); dataRender();
+        };
         // A URL layer is live: ↻ re-fetches it now (bypassing the browser cache).
         const live = /^https?:\/\//i.test(d.source || '');
         if (live) {
@@ -4854,6 +4879,7 @@ import "./_observablehq/client.77f16a62.js";
     }
     // Nav-pane globe vs flat (mercator) — pane-only, does NOT change the export projection.
     let navGlobe = false;
+    let skyCustom = false;   // nav-pane sky gradient picked (else the pane's auto sky) — see postSky
     let lastReadyLoaded = 'ready'; // last prefix passed to showReady(), re-used when flat/globe flips the hint
     function postGlobe() {
       const frame = $('mlmap').querySelector('iframe');
@@ -4958,6 +4984,10 @@ import "./_observablehq/client.77f16a62.js";
         .filter((n) => Number.isFinite(n)).join(',');
       if (b.split(',').length === 4) src += '&bbox=' + encodeURIComponent(b);
       if (navGlobe) src += '&globe'; // persist globe across pane reloads (basemap switch etc.)
+      if ($('mlTerrain')?.checked) src += '&terrain&exaggeration=' + encodeURIComponent($('mlTerrainExag').value || 1.5); // same for terrain
+      if (skyCustom) src += '&sky=' + encodeURIComponent($('mlSky').value) + '&horizon=' + encodeURIComponent($('mlHorizon').value);
+      if ($('mlLight')?.checked) src += '&lighting&sun=' + encodeURIComponent($('mlSun').value) + '&shade=' + encodeURIComponent($('mlShade').value) +
+        '&shadow=' + encodeURIComponent($('mlShadow').value) + '&highlight=' + encodeURIComponent($('mlHighlight').value);
       // Landing camera for geoSatellite: hand the pane the full pose (center/zoom/tilt/rotation)
       // so it frames itself on its own map-load — deterministic, not a postMessage race.
       if ($('proj').value === 'geoSatellite' && satelliteCam) {
@@ -5084,6 +5114,36 @@ import "./_observablehq/client.77f16a62.js";
     });
     syncBounderAvailability(); // reflect the initial globe/flat state (satellite projects default to globe)
     $('mlTilt').addEventListener('change', postTilt);
+    // Terrain: 3D relief in the pane from the rgb height tiles (pane-only, like Globe).
+    function postTerrain() {
+      const frame = $('mlmap').querySelector('iframe');
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'mapaTerrain', on: $('mlTerrain').checked,
+        exaggeration: parseFloat($('mlTerrainExag').value) }, '*');
+    }
+    $('mlTerrain').addEventListener('change', postTerrain);
+    $('mlTerrainExag').addEventListener('input', postTerrain);
+    // Sky gradient (top → horizon). Untouched = auto (the pane's default); picking a colour makes it
+    // custom, the auto button goes back. The menu stays open: it only closes on buttons, so auto's
+    // click is stopped before the menu's handler sees it.
+    function postSky() {
+      const frame = $('mlmap').querySelector('iframe');
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'mapaSky',
+        top: skyCustom ? $('mlSky').value : null, horizon: skyCustom ? $('mlHorizon').value : null }, '*');
+      $('mlSkyState').textContent = skyCustom ? 'custom' : 'auto';
+      $('mlSkyAuto').disabled = !skyCustom;
+    }
+    for (const id of ['mlSky', 'mlHorizon']) $(id).addEventListener('input', () => { skyCustom = true; postSky(); });
+    $('mlSkyAuto').addEventListener('click', (e) => { e.stopPropagation(); skyCustom = false; postSky(); });
+    $('mlSkyAuto').disabled = true;
+    // Lighting: live hillshade from the rgb height tiles; the settings apply as you change them.
+    function postLighting() {
+      const frame = $('mlmap').querySelector('iframe');
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage({ type: 'mapaLighting', on: $('mlLight').checked,
+        sun: parseFloat($('mlSun').value), shade: parseFloat($('mlShade').value),
+        shadow: $('mlShadow').value, highlight: $('mlHighlight').value }, '*');
+    }
+    for (const id of ['mlLight', 'mlSun', 'mlShade', 'mlShadow', 'mlHighlight']) $(id).addEventListener('input', postLighting);
+    $('mlLight').addEventListener('change', postLighting);
     // ☰ overflow menu: open/close; close on outside-click or after an ACTION (button), but NOT when
     // toggling a switch inside it.
     { const mb = $('mlMenuBtn'), menu = $('mlMenu');

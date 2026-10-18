@@ -22,8 +22,8 @@
        dark/light colors as the loading overlay, so it isn't blank white. */
     /* Globe space must contrast the ocean-fill so the globe's edge reads. Dark ocean is #14171E, so
        space is a lighter slate; light ocean is #D4DEEA, so space is white. */
-    body.globe { background: #2A2E38; }
-    body.globe.light { background: #ffffff; }
+    body.globe { background: var(--sky-bg, #2A2E38); }
+    body.globe.light { background: var(--sky-bg, #ffffff); }
 
     /* Covers the map until boot() has framed the view, applied highlights/project data, and
        hit 'idle' (every visible tile painted, including hillshade) — otherwise the viewer sees
@@ -395,6 +395,14 @@
       margin-bottom: 4px;
     }
     #panel .paste-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+    /* Images (world-file rasters): one row per image + a drop zone. */
+    #panel .img-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #panel .img-row .img-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #panel .img-row .img-op-in { width: 40px; }
+    #panel .img-drop { margin-top: 6px; padding: 10px 8px; border: 1px dashed rgba(255,255,255,.4); border-radius: 4px;
+      text-align: center; color: rgba(255,255,255,.7); cursor: pointer; }
+    #panel .img-drop.drag { border-color: #ff8c42; color: #fff; background: rgba(255,140,66,.12); }
+    #panel .img-pending { margin-top: 4px; color: #ff8c42; }
     #panel .paste-actions .sketch-btn { flex-basis: 100%; }
     #panel .sketch-btn {
       flex: 1;
@@ -1082,9 +1090,126 @@
     // `projection:` constructor field.
     killPaintTransitions(map);
     map.on('style.load', () => zeroPaintTransitions(map));
+    // Terrain: rgb.pmtiles is HEIGHT data (Terrarium-encoded RGB, GEBCO, z0–8) — a raster-dem source
+    // MapLibre reads for 3D terrain, never drawn as an image. ?terrain turns it on at load; the
+    // parent flips it live with the 'mapaTerrain' message. Re-applied on every style.load, since a
+    // style swap drops sources + terrain. Only shows with tilt (pitch > 0).
+    const TERRAIN_SRC = 'rgb-dem', TERRAIN_URL = 'pmtiles://https://tiles.mbricknell.com/rgb.pmtiles';
+    let terrainOn = params.has('terrain');
+    // Exaggeration: 1 = true height. ?exaggeration=<n> at load; the parent changes it live.
+    let terrainExag = Number.isFinite(parseFloat(params.get('exaggeration'))) ? parseFloat(params.get('exaggeration')) : 1.5;
+    // Terrain draws the map into textures laid over the 3D surface. The style's base isn't opaque
+    // (background at 0.7, land at 0.9), so with terrain the page showed through as see-through seams
+    // along tile edges, and the area past the horizon was empty. So while terrain is on (flat view):
+    // an opaque background, and a sky in the background colour.
+    const isGlobe = () => { try { return map.getProjection()?.type === 'globe'; } catch { return false; } };
+    // Globe can't use an opaque background (it floods the space around the sphere), so on globe +
+    // terrain the land (0.75) and hillshade (0.5) had nothing solid under them: see-through land and
+    // grey patches near the camera. A world polygon in the background colour is drawn only ON the
+    // sphere, so it's the opaque base there instead.
+    const GLOBE_BASE = 'globe-base';
+    function worldPolygon() {
+      const ring = [];
+      for (let x = -180; x <= 180; x += 10) ring.push([x, -90]);
+      for (let x = 180; x >= -180; x -= 10) ring.push([x, 90]);
+      ring.push([-180, -90]);
+      return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } };
+    }
+    function setGlobeBase(on, color) {
+      if (on) {
+        if (!map.getSource(GLOBE_BASE)) map.addSource(GLOBE_BASE, { type: 'geojson', data: worldPolygon() });
+        if (!map.getLayer(GLOBE_BASE)) {
+          const layers = map.getStyle().layers, i = layers.findIndex((l) => l.id === 'background');
+          map.addLayer({ id: GLOBE_BASE, type: 'fill', source: GLOBE_BASE }, layers[i + 1]?.id);
+        }
+        map.setPaintProperty(GLOBE_BASE, 'fill-color', color);
+      } else if (map.getLayer(GLOBE_BASE)) map.removeLayer(GLOBE_BASE);
+    }
+    function applyTerrain() {
+      try {
+        const bgColor = map.getLayer('background') ? map.getPaintProperty('background', 'background-color') || '#D4DEEA' : '#D4DEEA';
+        if (terrainOn) {
+          if (!map.getSource(TERRAIN_SRC)) map.addSource(TERRAIN_SRC, { type: 'raster-dem', url: TERRAIN_URL, encoding: 'terrarium', tileSize: 256 });
+          map.setTerrain({ source: TERRAIN_SRC, exaggeration: terrainExag });
+          if (map.getLayer('background') && !isGlobe()) map.setPaintProperty('background', 'background-opacity', 1);
+          setGlobeBase(isGlobe(), bgColor);
+        } else if (map.getTerrain()) {
+          map.setTerrain(null);
+          setGlobeBase(false);
+          if (map.getLayer('background')) map.setPaintProperty('background', 'background-opacity', isGlobe() ? 0 : 0.7);
+        }
+      } catch (e) { console.warn('[terrain]', e.message); }
+      applySky();
+    }
+    // Sky: a gradient from `top` (high above) down to `horizon`. Unset = auto — terrain fills the sky
+    // with the style's background colour, and without terrain there's no sky. Flat view: MapLibre's
+    // sky (shows past the horizon when tilted). Globe: the same gradient on the space around the
+    // sphere (the --sky-bg used by body.globe). ?sky=<colour>&horizon=<colour> at load; the parent
+    // changes it live ('mapaSky').
+    const sky = { top: params.get('sky') || null, horizon: params.get('horizon') || null };
+    function applySky() {
+      try {
+        const bgColor = map.getLayer('background') ? map.getPaintProperty('background', 'background-color') || '#D4DEEA' : '#D4DEEA';
+        const custom = !!(sky.top || sky.horizon);
+        const top = sky.top || sky.horizon || bgColor, hor = sky.horizon || sky.top || bgColor;
+        if (terrainOn || custom) {
+          map.setSky({ 'sky-color': top, 'horizon-color': hor, 'fog-color': hor,
+            'sky-horizon-blend': custom ? 0.8 : 0.5, 'horizon-fog-blend': 0.5,
+            'fog-ground-blend': terrainOn ? 0.9 : 1, 'atmosphere-blend': 0 });
+        } else {
+          map.setSky({ 'atmosphere-blend': 0, 'fog-ground-blend': 1, 'sky-horizon-blend': 0, 'horizon-fog-blend': 0 });
+        }
+        if (custom) document.body.style.setProperty('--sky-bg', `linear-gradient(to bottom, ${top}, ${hor})`);
+        else document.body.style.removeProperty('--sky-bg');
+      } catch (e) { console.warn('[sky]', e.message); }
+    }
+    window.__setSky = (o) => { sky.top = o?.top || null; sky.horizon = o?.horizon || null;
+      if (map.isStyleLoaded()) applySky(); else map.once('style.load', applySky); };
+    window.__applyTerrain = applyTerrain;
+    window.__setTerrain = (on, exag) => { terrainOn = !!on; if (Number.isFinite(exag)) terrainExag = exag; if (map.isStyleLoaded()) applyTerrain(); else map.once('style.load', applyTerrain); };
+    map.on('style.load', applyTerrain);
+
+    // Lighting: live hillshade computed from the same rgb height tiles (its own raster-dem source —
+    // MapLibre advises not sharing one between terrain and hillshade). While on, it takes the place
+    // of the style's pre-made `hillshade` raster (hs.pmtiles), which is hidden and restored after.
+    // ?lighting at load (+ sun, shade, shadow, highlight); the parent changes it live ('mapaLighting').
+    const LIGHT_SRC = 'rgb-dem-light', LIGHT_LAYER = 'live-hillshade';
+    const pnum = (k, d) => Number.isFinite(parseFloat(params.get(k))) ? parseFloat(params.get(k)) : d;
+    const light = { on: params.has('lighting'), sun: pnum('sun', 315), shade: pnum('shade', 0.5),
+      shadow: params.get('shadow') || '#000000', highlight: params.get('highlight') || '#ffffff' };
+    let bakedHsVis = null;   // the pre-made hillshade's visibility before lighting hid it
+    function applyLighting() {
+      try {
+        const paint = { 'hillshade-illumination-direction': light.sun, 'hillshade-illumination-anchor': 'map',
+          'hillshade-exaggeration': light.shade, 'hillshade-shadow-color': light.shadow,
+          'hillshade-highlight-color': light.highlight, 'hillshade-accent-color': light.shadow };
+        if (light.on) {
+          if (!map.getSource(LIGHT_SRC)) map.addSource(LIGHT_SRC, { type: 'raster-dem', url: TERRAIN_URL, encoding: 'terrarium', tileSize: 256 });
+          // Added bare, then painted: the addLayer wrapper (killPaintTransitions) gives every paint key
+          // a -transition, which MapLibre rejects for direction/anchor (not animatable).
+          if (!map.getLayer(LIGHT_LAYER)) map.addLayer({ id: LIGHT_LAYER, type: 'hillshade', source: LIGHT_SRC }, map.getLayer('hillshade') ? 'hillshade' : undefined);
+          for (const [k, v] of Object.entries(paint)) map.setPaintProperty(LIGHT_LAYER, k, v);
+          if (map.getLayer('hillshade')) {
+            if (bakedHsVis === null) bakedHsVis = map.getLayoutProperty('hillshade', 'visibility') || 'visible';
+            map.setLayoutProperty('hillshade', 'visibility', 'none');
+          }
+        } else {
+          if (map.getLayer(LIGHT_LAYER)) map.removeLayer(LIGHT_LAYER);
+          if (bakedHsVis !== null && map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', bakedHsVis);
+          bakedHsVis = null;
+        }
+      } catch (e) { console.warn('[lighting]', e.message); }
+    }
+    window.__setLighting = (o) => {
+      Object.assign(light, Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== undefined && !(typeof v === 'number' && !Number.isFinite(v)))));
+      if (map.isStyleLoaded()) applyLighting(); else map.once('style.load', applyLighting);
+    };
+    // A new style starts with its own (visible) hillshade layer and none of ours.
+    map.on('style.load', () => { bakedHsVis = null; applyLighting(); });
     if (globeParam) map.on('style.load', () => {
       map.setProjection({ type: 'globe' });
       if (map.getLayer('background')) map.setPaintProperty('background', 'background-opacity', 0);
+      applyTerrain();   // ran before the projection flipped — redo so globe + terrain gets its base
     });
 
     // Frame the view: bbox wins, else the requested zoom. `fitBbox` is the extent to KEEP framed
@@ -1582,6 +1707,13 @@
       window.addEventListener('message', (e) => {
         if (!e.data) return;
         if (e.data.type === 'mapaTilt') { if (window.__applyTilt) window.__applyTilt(!!e.data.on); return; }
+        if (e.data.type === 'mapaSky') { window.__setSky({ top: e.data.top, horizon: e.data.horizon }); return; }
+        if (e.data.type === 'mapaLighting') {
+          const d = e.data;
+          window.__setLighting({ on: !!d.on, sun: +d.sun, shade: +d.shade, shadow: d.shadow, highlight: d.highlight });
+          return;
+        }
+        if (e.data.type === 'mapaTerrain') { window.__setTerrain(!!e.data.on, +e.data.exaggeration); return; }
         if (e.data.type === 'mapaRequestCamera') { postCamera(); return; }
         if (e.data.type === 'mapaSatelliteMode') { satelliteModeOn = !!e.data.on; setSatInteractions(); return; }
         if (e.data.type === 'mapaGlobe') {
@@ -1590,6 +1722,7 @@
             // The flat 'background' layer is ocean-blue; on the globe it floods the space AROUND the
             // globe. Make it transparent on globe so only the globe itself (ocean-fill) stays blue.
             if (map.getLayer('background')) map.setPaintProperty('background', 'background-opacity', e.data.on ? 0 : 0.7);
+            if (window.__applyTerrain) window.__applyTerrain();   // terrain wants an opaque background in flat view
           } catch (_) {}
           document.body.classList.toggle('globe', !!e.data.on);
           postCamera(); // globe changes the camera framing → resend so the export tracks it
@@ -1630,11 +1763,16 @@
     // Handoff button on the map: opens the current view in Mapa (static export). It's a
     // tool affordance, so it's shown by default; `?embed` hides it for a chrome-free
     // presentation of a project view (the flag for stripping tool UI generally).
-    if (!params.has('embed')) {
+    // ?debug's panel has its own Open in Mapa button in the top-right corner — the floating one
+    // would sit on top of it.
+    if (!params.has('embed') && !debug) {
       const openMapaBtn = document.createElement('button');
       openMapaBtn.textContent = 'Open in Mapa ↗';
       openMapaBtn.title = 'Open the current map view in Mapa (static vector export)';
-      openMapaBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;padding:6px 12px;font:13px system-ui,sans-serif;background:#26221f;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.4)';
+      // ?export's #export-panel (220px) sits in the top-right corner at right:10 — park the button
+      // just left of it instead of on top of it.
+      const btnRight = exportParam ? 10 + 220 + 10 : 10;
+      openMapaBtn.style.cssText = 'position:fixed;top:10px;right:' + btnRight + 'px;z-index:99999;padding:6px 12px;font:13px system-ui,sans-serif;background:#26221f;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.4)';
       openMapaBtn.onclick = () => {
         const bd = map.getBounds();
         const b = [bd.getWest(), bd.getSouth(), bd.getEast(), bd.getNorth()].map((n) => n.toFixed(4)).join(',');
@@ -1796,6 +1934,7 @@
       if (lockZoomParam) lockZoomAt(map.getZoom());
       applyHighlights();
       await loadProjects();
+      renderProjectRasters();
       // ?hide= last, so a URL override beats the project's own view.hide and applies even when
       // multiple ?project= files are combined (their view.* is ignored).
       applyUrlHide();
@@ -1962,8 +2101,9 @@
       if (/^highlight-/.test(l.id)) return 'highlight';
       return 'basemap';
     }
-    // Sections render top-of-stack first
-    const GROUPS = ['interactions', 'symbols', 'label', 'highlight', 'basemap'];
+    // Sections render top-of-stack first. The debug panel leaves out 'interactions' (the empty
+    // conflict-* placeholder layers in the style files) — they still exist for ?hide=interactions.
+    const GROUPS = ['symbols', 'label', 'highlight', 'basemap'];
 
     // Project-file view.basemap: false hides every style layer groupOf() buckets as 'basemap'
     // (this also covers 'hillshade', since it isn't matched by any of the other patterns).
@@ -2158,7 +2298,7 @@
       if (activeTab === 'layer') {
         // Style order is bottom->top; reverse so the topmost layer sits at the top of the list.
         // Hide the synthetic pattern-background helper layers.
-        const layers = map.getStyle().layers.slice().reverse().filter(l => !isPatternHelper(l.id));
+        const layers = map.getStyle().layers.slice().reverse().filter(l => !isPatternHelper(l.id) && groupOf(l) !== 'interactions');
         const _su = styleUrl(style);  // a string URL, or a wrapped-pmtiles style object
         head += `<div class="style-name">${esc(typeof _su === 'string' ? _su.split('/').pop() : style.split('/').pop())}</div>` +
           `<h3>Layers (${layers.length})</h3>` +
@@ -5188,7 +5328,10 @@
       const cur = projectBeforeId[kind] || '';
       // Style order is bottom->top; reverse so the topmost layer is first, matching the Layer
       // tab's list rather than contradicting it.
+      // The empty conflict-* placeholders ('interactions') are left out too, unless a project
+      // already anchors to one (so its saved choice still shows).
       const ids = map.getStyle().layers.slice().reverse()
+        .filter((l) => groupOf(l) !== 'interactions' || l.id === cur)
         .map((l) => l.id)
         .filter((id) => !id.startsWith('project-') && !id.startsWith('sandbox-') && !isPatternHelper(id));
       return `<select class="section-anchor-sel" data-kind="${kind}">` +
@@ -5223,7 +5366,80 @@
               <span>Trim the selected shape — enter a refUid (Enter to run):</span>
               <input type="text" class="trim-refuid-in" placeholder="e.g. admin0:ukr">
             </div>` : ''}
-          </div>`).join('') + viewSectionHtml() + insetSectionHtml();
+          </div>`).join('') + imagesSectionHtml() + viewSectionHtml() + insetSectionHtml();
+    }
+
+    // Images: world-file rasters in export.raster (drawn by renderProjectRasters). Drop an image
+    // and its world file (.pgw/.jgw/.wld/.tfw…), together or one after the other (anything else,
+    // e.g. a .prj, is ignored). The dropped image renders from memory (imgBlobs), while the
+    // project stores the pointer data/<name> — copy the file into projects/data/ to keep it.
+    function imagesSectionHtml() {
+      const list = projectDoc.export?.raster?.data || [];
+      const rows = list.map((r, i) => `
+            <div class="img-row">
+              <input type="checkbox" class="img-show-cb" data-i="${i}"${r.show === false ? '' : ' checked'} title="show">
+              <span class="img-name" title="${esc(r.image || '')}">${esc(r.name || r.image || 'image')}</span>
+              <select class="img-pos-sel" data-i="${i}" title="draw over the basemap fills, or under the basemap">
+                <option value="top"${r.position === 'top' ? ' selected' : ''}>over</option>
+                <option value="raster"${r.position === 'top' ? '' : ' selected'}>under</option>
+              </select>
+              <input type="text" inputmode="decimal" class="img-op-in" data-i="${i}" value="${r.opacity ?? 1}" title="opacity, 0–1">
+              <button class="img-del-btn" data-i="${i}" title="remove">×</button>
+            </div>`).join('');
+      const pend = imgPending.image ? `waiting for the world file for ${esc(imgPending.image.name)}`
+        : imgPending.worldfile ? `world file ${esc(imgPending.worldfileName)} — now drop its image` : '';
+      return `<div class="edit-row" data-kind="images">
+            <div class="edit-row-head">Images <span class="edit-row-hint">image + world file</span></div>
+            ${rows}
+            ${pend ? `<div class="img-pending">${pend}</div>` : ''}
+            <div class="img-drop">drop an image + its world file here (or click)</div>
+            <input type="file" class="img-file-in" multiple accept="image/*,.pgw,.jgw,.wld,.tfw,.pngw,.jpgw,.tifw" hidden>
+          </div>`;
+    }
+    // Opacity box: a text field (a number field can blank itself on "0.9" vs "0,9" depending on
+    // browser/locale). Accepts either separator; null when it isn't a number.
+    function parseImgOpacity(raw) {
+      const v = parseFloat(String(raw).trim().replace(',', '.'));
+      return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : null;
+    }
+    function setImgOpacity(i, v) {
+      const r = projectDoc.export?.raster?.data?.[i]; if (!r) return;
+      r.opacity = v;
+      if (map.getLayer('project-raster-' + i)) map.setPaintProperty('project-raster-' + i, 'raster-opacity', v);
+    }
+    const imgBlobs = new WeakMap();   // entry → blob: URL of a dropped image (never serialized)
+    const imgPending = { image: null, worldfile: null, worldfileName: '' };
+    const IMG_EXT = /\.(png|jpe?g|webp|gif|avif)$/i, WF_EXT = /\.(pgw|jgw|wld|tfw|pngw|jpgw|tifw|gfw|txt)$/i;
+    function parseWorldFile(text) {
+      const n = String(text).split(/\r?\n/).map((s) => parseFloat(s.trim())).filter(Number.isFinite);
+      if (n.length < 6) return null;
+      return { xPixelSize: n[0], yRotation: n[1], xRotation: n[2], yPixelSize: n[3], xUpperLeft: n[4], yUpperLeft: n[5] };
+    }
+    async function takeImageFiles(files) {
+      for (const f of files) {
+        if (/^image\//.test(f.type || '') || IMG_EXT.test(f.name)) imgPending.image = f;
+        else if (WF_EXT.test(f.name)) {
+          const wf = parseWorldFile(await f.text());
+          if (wf) { imgPending.worldfile = wf; imgPending.worldfileName = f.name; }
+          else readout.textContent = `${f.name}: not a world file (needs 6 numbers)`;
+        }
+      }
+      if (imgPending.image && imgPending.worldfile) {
+        const file = imgPending.image;
+        const base = file.name.replace(/\.[^.]+$/, ''), ext = (file.name.match(/\.[^.]+$/) || ['.png'])[0].toLowerCase();
+        const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'image';
+        const entry = { show: true, id: 'image-' + Date.now().toString(36), name: file.name, image: `data/${slug}${ext}`,
+          worldfile: imgPending.worldfile, position: 'top', opacity: 1 };
+        imgBlobs.set(entry, URL.createObjectURL(file));
+        projectDoc.export = projectDoc.export || {};
+        projectDoc.export.raster = { show: true, ...(projectDoc.export.raster || {}),
+          data: [...(projectDoc.export.raster?.data || []), entry] };
+        projectDoc.export.raster.show = true;
+        imgPending.image = imgPending.worldfile = null; imgPending.worldfileName = '';
+        readout.textContent = `added ${file.name} — the project points at ${entry.image}: copy the file into projects/data/ to keep it`;
+        renderProjectRasters();
+      }
+      buildPanel();
     }
 
     // Style controls for the "next sketch" of this kind — also edits the selected placed item
@@ -5742,6 +5958,99 @@
     // than one there's no non-arbitrary way to resolve two files disagreeing on e.g.
     // view.basemap, so they're ignored entirely rather than picking a rule (use ?lock etc. for
     // view behavior when combining multiple project files).
+    // --- World-file images (export.raster) ------------------------------------------------
+    // The same block Mapa writes: export.raster = { show, data: [{ image, worldfile: { xPixelSize,
+    // yRotation, xRotation, yPixelSize, xUpperLeft, yUpperLeft }, opacity, order, position, show }] }.
+    // Each image becomes a MapLibre image source pinned at its four corners. Two world-file flavours,
+    // told apart the way Mapa does (|pixel size| < 1 → degrees):
+    //   Web Mercator metres — MapLibre stretches images linearly in Web Mercator, so the corners
+    //     alone place it exactly (rotation terms included);
+    //   degrees (EPSG:4326) — latitude isn't linear in Mercator, so the image is first re-warped
+    //     row by row into Mercator on a canvas, then pinned the same way.
+    // Like Mapa, the upper-left value is taken as the image's outer corner. Not supported: other
+    // projections (UTM…) and blend modes (MapLibre rasters only have opacity).
+    // position: 'top' = over the basemap fills, under labels and project data (Mapa: over basemap);
+    // otherwise just above the style background, under the basemap. insertBelow (a style layer id)
+    // overrides either. Draw order follows `order` (higher on top).
+    const MERC_R = 6378137, MERC_MAX = 20037508.342789244;
+    const mercToLngLat = (x, y) => [x / MERC_MAX * 180, (2 * Math.atan(Math.exp(y / MERC_R)) - Math.PI / 2) * 180 / Math.PI];
+    const latToMercY = (lat) => MERC_R * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+    // Relative paths resolve like Mapa's pointers: the project file's own folder first, then ./projects/.
+    function rasterCandidates(src) {
+      if (/^(https?:)?\/\//.test(src) || /^(blob|data):/.test(src) || /^\.{0,2}\//.test(src)) return [src];
+      const base = loadedProjectUrls.length === 1 ? loadedProjectUrls[0].slice(0, loadedProjectUrls[0].lastIndexOf('/') + 1) : './projects/';
+      return [...new Set([base + src, './projects/' + src])];
+    }
+    async function loadRasterImage(src) {
+      for (const url of rasterCandidates(src)) {
+        try {
+          const img = new Image(); img.crossOrigin = 'anonymous'; img.src = url;
+          await img.decode();
+          return img;
+        } catch { /* next candidate */ }
+      }
+      throw new Error('not found: ' + rasterCandidates(src).join(', '));
+    }
+    // Re-warp a degrees (plate carrée) image so its rows are evenly spaced in Web Mercator.
+    function warpToMercator(img, north, south) {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      const yN = latToMercY(north), yS = latToMercY(south);
+      for (let j = 0; j < h; j++) {
+        const lat = (2 * Math.atan(Math.exp((yN + (yS - yN) * (j + 0.5) / h) / MERC_R)) - Math.PI / 2) * 180 / Math.PI;
+        const sy = Math.min(h - 1, Math.max(0, Math.floor((north - lat) / (north - south) * h)));
+        ctx.drawImage(img, 0, sy, w, 1, 0, j, w, 1);
+      }
+      return new Promise((res) => c.toBlob((b) => res(URL.createObjectURL(b)), 'image/png'));
+    }
+    let rasterIds = [], rasterGen = 0;
+    async function renderProjectRasters() {
+      // A newer call (e.g. another drop) supersedes this one: stop before adding anything stale.
+      const gen = ++rasterGen;
+      for (const id of rasterIds) { if (map.getLayer(id)) map.removeLayer(id); if (map.getSource(id)) map.removeSource(id); }
+      rasterIds = [];
+      const block = projectDoc.export?.raster;
+      if (!block || block.show === false || !Array.isArray(block.data)) return;
+      const items = block.data.filter((r) => r && r.show !== false && typeof r.image === 'string' && r.worldfile)
+        .map((r, i) => ({ r, i })).sort((a, b) => (a.r.order ?? a.i) - (b.r.order ?? b.i));
+      for (const { r, i } of items) {
+        try {
+          const img = await loadRasterImage(imgBlobs.get(r) || r.image);
+          if (gen !== rasterGen) return;
+          const wf = r.worldfile, W = img.naturalWidth, H = img.naturalHeight;
+          const A = +wf.xPixelSize || 0, D = +wf.yRotation || 0, B = +wf.xRotation || 0, E = +wf.yPixelSize || 0;
+          const C = +wf.xUpperLeft || 0, F = +wf.yUpperLeft || 0;
+          const at = (px, py) => [A * px + B * py + C, D * px + E * py + F];
+          const geographic = Math.abs(A) < 1;
+          let url = img.src, corners;
+          if (geographic) {
+            corners = [at(0, 0), at(W, 0), at(W, H), at(0, H)];
+            // Unrotated degrees image: re-warp so latitude lands right across its whole height.
+            if (!B && !D) url = await warpToMercator(img, F, F + E * H);
+            if (gen !== rasterGen) return;
+          } else {
+            corners = [at(0, 0), at(W, 0), at(W, H), at(0, H)].map(([x, y]) => mercToLngLat(x, y));
+          }
+          if (r.blendMode && r.blendMode !== 'normal') console.warn(`[raster] ${r.name || r.image}: blend mode "${r.blendMode}" isn't available in MapLibre — drawn normally`);
+          const id = 'project-raster-' + i;
+          if (map.getSource(id)) continue;
+          const layers = map.getStyle().layers;
+          const firstSymbol = layers.find((l) => l.type === 'symbol')?.id;
+          const afterBackground = layers[layers.findIndex((l) => l.id === 'background') + 1]?.id;
+          const beforeId = (r.insertBelow && map.getLayer(r.insertBelow)) ? r.insertBelow
+            : r.position === 'top' ? firstSymbol : afterBackground;
+          map.addSource(id, { type: 'image', url, coordinates: corners });
+          // Added bare, then painted — the addLayer wrapper's -transition keys are rejected for
+          // raster-fade-duration (not animatable).
+          map.addLayer({ id, type: 'raster', source: id }, beforeId);
+          map.setPaintProperty(id, 'raster-opacity', r.opacity ?? 1);
+          map.setPaintProperty(id, 'raster-fade-duration', 0);
+          rasterIds.push(id);
+        } catch (e) { console.warn(`[raster] ${r.name || r.image}: ${e.message}`); }
+      }
+    }
+    const loadedProjectUrls = [];   // the URL each loaded project actually came from (relative data paths)
     async function loadProjects() {
       if (!projectUrlSets.length) return;
       const loaded = [];
@@ -5752,6 +6061,7 @@
             const res = await fetch(url);
             if (!res.ok) continue;   // 404 on the mode-folder candidate -> try the flat fallback
             loaded.push(await res.json());
+            loadedProjectUrls.push(url);
             ok = true;
             break;
           } catch { /* network/parse error on this candidate — try the next */ }
@@ -6367,7 +6677,27 @@
       btn.textContent = hide ? 'show helpers' : 'hide helpers';
     }
 
+    // Images section: drop zone (drag events bubble to the panel, which survives buildPanel()).
+    panel.addEventListener('dragover', (e) => {
+      const z = e.target.closest('.img-drop'); if (!z) return;
+      e.preventDefault(); z.classList.add('drag');
+    });
+    panel.addEventListener('dragleave', (e) => { e.target.closest('.img-drop')?.classList.remove('drag'); });
+    panel.addEventListener('drop', (e) => {
+      const z = e.target.closest('.img-drop'); if (!z) return;
+      e.preventDefault(); z.classList.remove('drag');
+      if (e.dataTransfer?.files?.length) takeImageFiles([...e.dataTransfer.files]);
+    });
     panel.addEventListener('click', (e) => {
+      if (e.target.closest('.img-drop')) { panel.querySelector('.img-file-in')?.click(); return; }
+      const imgDel = e.target.closest('.img-del-btn');
+      if (imgDel) {
+        const list = projectDoc.export?.raster?.data || [];
+        const [gone] = list.splice(+imgDel.dataset.i, 1);
+        if (gone && imgBlobs.has(gone)) URL.revokeObjectURL(imgBlobs.get(gone));
+        renderProjectRasters(); buildPanel();
+        return;
+      }
       // Export / import buttons
       const io = e.target.closest('.io-btn');
       if (io) {
@@ -6489,6 +6819,21 @@
 
     panel.addEventListener('change', (e) => {
       const t = e.target;
+      if (t.classList.contains('img-file-in')) { if (t.files.length) takeImageFiles([...t.files]); t.value = ''; return; }
+      if (t.classList.contains('img-op-in')) {
+        // Commit on Enter/blur: any valid 0–1 (0 included); anything else snaps back to the current value.
+        const i = +t.dataset.i, v = parseImgOpacity(t.value);
+        if (v != null) setImgOpacity(i, v);
+        t.value = projectDoc.export?.raster?.data?.[i]?.opacity ?? 1;
+        return;
+      }
+      if (t.classList.contains('img-show-cb') || t.classList.contains('img-pos-sel')) {
+        const r = projectDoc.export?.raster?.data?.[+t.dataset.i]; if (!r) return;
+        if (t.classList.contains('img-show-cb')) { if (t.checked) delete r.show; else r.show = false; }
+        else r.position = t.value;
+        renderProjectRasters();
+        return;
+      }
       // Import a settings file
       if (t.classList.contains('import-file')) {
         const file = t.files[0];
@@ -6597,6 +6942,13 @@
     // Live edits: color swatch -> setPaintProperty; zoom fields -> setLayerZoomRange
     panel.addEventListener('input', (e) => {
       const t = e.target;
+      if (t.classList.contains('img-op-in')) {
+        // Live while typing, no rebuild (keeps focus) — but only for a value above 0, so the
+        // "0" on the way to "0.9" doesn't blank the image. Enter/blur commits anything (setImgOpacity).
+        const v = parseImgOpacity(t.value);
+        if (v > 0) setImgOpacity(+t.dataset.i, v);
+        return;
+      }
       if (t.classList.contains('inset-in')) {
         // No buildPanel() here — these fire per keystroke and a rebuild would drop focus.
         const raw = t.type === 'number' ? (t.value === '' ? '' : +t.value) : t.value;
