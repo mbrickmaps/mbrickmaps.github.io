@@ -182,7 +182,7 @@
       position: absolute;
       top: 10px;
       right: 10px;
-      z-index: 1;
+      z-index: 6;   /* above the ?export crop box (2) and inset-map (5), like #export-panel */
       width: 300px;
       max-height: calc(100% - 20px);
       display: flex;
@@ -383,6 +383,11 @@
     #panel .ptab:hover { background: rgba(255, 255, 255, .15); opacity: 1; }
     #panel .ptab.active { background: rgba(127, 211, 255, .2); border-color: rgba(127, 211, 255, .5); opacity: 1; }
     #panel .edit-row { margin-bottom: 12px; }
+    #panel .view-ctl { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #panel .view-ctl > span:first-child { width: 58px; flex: none; }
+    #panel .view-ctl input[type="range"] { flex: 1; min-width: 0; accent-color: #7fd3ff; }
+    #panel .view-ctl input[type="color"] { width: 32px; height: 18px; padding: 0; border: none; background: none; }
+    #panel .view-val { width: 36px; flex: none; text-align: right; opacity: .75; }
     #panel .edit-row-head {
       display: flex;
       flex-wrap: wrap;
@@ -585,55 +590,71 @@
       top: 10px;
       right: 10px;
       z-index: 6;   /* above inset-map (5) so a top-right inset can't block its buttons */
-      width: 220px;
-      background: rgba(0, 0, 0, .75);
-      color: #fff;
-      font: 12px/1.4 monospace;
-      border-radius: 4px;
-      padding: 8px 10px;
+      width: 300px;
+      max-height: calc(100vh - 20px);
+      overflow-y: auto;
+      box-sizing: border-box;
+      background: rgba(20, 20, 22, .92);
+      color: #eee;
+      font: 12px/1.4 system-ui, sans-serif;
+      border-radius: 6px;
+      padding: 4px 12px 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .4);
     }
     #export-panel[hidden] { display: none; }
     #export-panel .io-btn {
-      width: 100%;
-      padding: 4px 6px;
+      padding: 5px 10px;
       color: #fff;
       background: rgba(255, 255, 255, .1);
       border: 1px solid rgba(255, 255, 255, .25);
-      border-radius: 3px;
-      font: 11px monospace;
+      border-radius: 4px;
+      font: 12px system-ui, sans-serif;
       cursor: pointer;
+      white-space: nowrap;
     }
     #export-panel .io-btn:hover { background: rgba(255, 255, 255, .2); }
     #export-panel .io-btn.armed { background: #ff8c42; color: #000; }
-    #export-panel .export-row {
-      display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px;
-      font-size: 10px; opacity: .85;
+    #export-panel .io-btn.xp-primary { background: #ff8c42; border-color: #ff8c42; color: #111; font-weight: 600; }
+    #export-panel .io-btn.xp-primary:hover { background: #ffa265; }
+    #export-panel .io-btn:disabled { opacity: .4; cursor: default; }
+    #export-panel .xp-sec {
+      margin: 12px 0 6px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, .12);
+      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #aaa;
     }
-    #export-panel .export-row label { display: flex; align-items: center; gap: 3px; }
-    #export-panel .export-row select {
-      color: #fff;
-      background: rgba(255, 255, 255, .1);
-      border: 1px solid rgba(255, 255, 255, .2);
-      border-radius: 3px;
-      font: 10px monospace;
-      padding: 1px 2px;
+    #export-panel .xp-sec:first-child { border-top: 0; margin-top: 4px; }
+    #export-panel .xp-hint { color: #999; margin-bottom: 6px; }
+    #export-panel .xp-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+    #export-panel .xp-lab { flex: none; width: 58px; color: #bbb; }
+    #export-panel .xp-ctl { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+    #export-panel .xp-ctl label { display: flex; align-items: center; gap: 4px; }
+    #export-panel .xp-unit { color: #999; }
+    #export-panel .xp-ctl input[type="text"], #export-panel .xp-ctl input[type="number"], #export-panel .xp-ctl select {
+      box-sizing: border-box; min-width: 0; height: 26px;
+      color: #fff; background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .22); border-radius: 4px;
+      font: 12px system-ui, sans-serif; padding: 2px 6px;
     }
-    #export-panel .export-row select option { color: #000; }
-    #export-panel .export-hint { flex-basis: 100%; font-style: italic; opacity: .7; }
-    #export-panel .export-dims { opacity: .8; }
-    #export-panel .export-filename-in {
-      flex: 1; min-width: 100px; color: #fff; background: rgba(255, 255, 255, .1);
-      border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px; font: 10px monospace; padding: 2px 4px;
-    }
-    /* Without this the title/subtitle/notes fields fall back to unstyled browser defaults —
-       no width, no background — and read as invisible against the dark panel. */
-    #export-panel .export-meta-in {
-      flex-basis: 100%; min-width: 0; box-sizing: border-box;
-      color: #fff; background: rgba(255, 255, 255, .1);
-      border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px;
-      font: 10px monospace; padding: 2px 4px;
-    }
-    #export-panel .export-meta-in::placeholder { color: rgba(255, 255, 255, .4); }
+    #export-panel .xp-ctl input[type="text"] { flex: 1; }
+    #export-panel .xp-ctl input[type="number"] { width: 56px; }
+    #export-panel .xp-ctl input.export-seq-in { flex: 1; width: 0; -moz-appearance: textfield; }
+    #export-panel .xp-ctl input.export-seq-in::-webkit-inner-spin-button,
+    #export-panel .xp-ctl input.export-seq-in::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    #export-panel .xp-ctl select option { color: #000; }
+    #export-panel .export-dims { color: #999; margin-left: auto; }
+    #export-panel .xp-btns { display: flex; gap: 6px; margin-top: 8px; }
+    #export-panel .xp-btns .io-btn { flex: 1; }
+    #export-panel .export-seq-status, #export-panel .export-kf-status { margin-top: 6px; color: #bbb; min-height: 1em; }
+    #export-panel .xp-kf-tools { margin-top: 0; }
+    #export-panel .xp-kf-tools .io-btn { padding: 5px 6px; }
+    #export-panel .xp-kf-tools .xp-kf-capture { flex: 2; }
+    #export-panel .xp-kf-list { margin: 6px 0; max-height: 180px; overflow-y: auto; }
+    #export-panel .xp-kf { display: flex; align-items: center; gap: 4px; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+    #export-panel .xp-kf-n { flex: none; width: 18px; color: #ff8c42; font-weight: 600; }
+    #export-panel .xp-kf-txt { flex: 1; min-width: 0; color: #ccc; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #export-panel .xp-kf-btn { flex: none; padding: 2px 6px; font-size: 11px; }
+    #export-panel .xp-ctl input.xp-kf-in { width: 56px; }
+    #export-panel .xp-ctl input.xp-gif-in { width: 52px; }
+    #export-panel .xp-ctl input::placeholder { color: rgba(255, 255, 255, .4); }
     /* Live caption preview drawn around/on the crop box, mirroring what renderExportBlob()
        composites. Sizes come from exportChromeMetrics() divided by the scale multiplier, so what
        you see is the layout at 1x. pointer-events:none so it never blocks dragging the box. */
@@ -650,13 +671,6 @@
     #export-box .export-cap .cap-sub { opacity: .7; line-height: 1.45; }
     #export-box .export-cap .cap-notes { opacity: .7; line-height: 1.4; }
     #export-box .export-cap .cap-logo { position: absolute; right: 0; bottom: 0; }
-    #export-panel .export-margin-in {
-      width: 38px; color: #fff; background: rgba(255, 255, 255, .1);
-      border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px; font: 10px monospace; padding: 1px 3px;
-    }
-    #export-panel .export-invert-btn { width: auto; padding: 2px 6px; }
-    #export-panel .export-preview-btn,
-    #export-panel .export-download-btn { flex: 1 1 auto; width: auto; margin-top: 2px; }
     #panel .placed-list { margin-top: 6px; max-height: 110px; overflow-y: auto; }
     #panel .selected-item {
       display: flex; align-items: center; gap: 6px;
@@ -921,8 +935,10 @@
     document.getElementById('readout-bar').style.display = debug ? '' : 'none';
     // ?export shows the crop-box image-export tool — its own flag, independent of ?debug, so a
     // link can be shared for exporting a static frame without exposing the layer-editing panel.
-    const exportParam = params.has('export');
+    let exportParam = params.has('export');   // also toggled live from the debug panel's Export image button
     document.getElementById('export-panel').hidden = !exportParam;
+    // With ?debug too, the debug panel (300px) already holds the top-right corner — sit just left of it.
+    if (debug && exportParam) document.getElementById('export-panel').style.right = (10 + 300 + 10) + 'px';
     const style = params.get('style') || 'dark';
     // Match the loading overlay to the target style's own background color (from style-*.json's
     // "background" layer) so there's no dark->light flash when the overlay fades out — falls
@@ -954,9 +970,13 @@
       if (s.toLowerCase().endsWith('.json')) return `./styles/${s}`;
       return devMode ? `./styles/style-dev-${s}.json` : `./styles/style-${s}.json`;
     }
+    // Short name for default export filenames: `dark`, or `my-style` for ?style=./styles/my-style.json.
+    const styleSlug = style.split(/[?#]/)[0].split('/').pop().replace(/\.(json|pmtiles)$/i, '') || 'map';
     const bbox = params.get('bbox')?.split(',').map(Number); // w,s,e,n
     const zoom = params.get('zoom') ? +params.get('zoom') : null;
     const centerParam = params.get('center')?.split(',').map(Number); // lng,lat
+    // ?maxzoom=N overrides the default cap (7) and any project view.maxzoom.
+    const maxZoomParam = Number.isFinite(parseFloat(params.get('maxzoom'))) ? parseFloat(params.get('maxzoom')) : null;
     // Satellite landing pose: mapa passes the projection's tilt/rotation so the pane frames the
     // whole camera (not just center/zoom) on its own map-load — no reliance on a postMessage race.
     const pitchParam = params.get('pitch') ? +params.get('pitch') : null;
@@ -1070,7 +1090,7 @@
       style: styleUrl(style),
       center: [0, 20],
       zoom: zoom ?? 2,
-      maxZoom: 7,
+      maxZoom: maxZoomParam ?? 7,
       // Pitch + rotate are enabled only while Mapa's projection is geoSatellite (toggled at runtime
       // via a 'mapaSatelliteMode' message); otherwise the pane stays a flat 2D framer.
       maxPitch: mapaMode ? 85 : 60,
@@ -1094,6 +1114,10 @@
     // MapLibre reads for 3D terrain, never drawn as an image. ?terrain turns it on at load; the
     // parent flips it live with the 'mapaTerrain' message. Re-applied on every style.load, since a
     // style swap drops sources + terrain. Only shows with tilt (pitch > 0).
+    // The style itself is parsed and editable. Not map.isStyleLoaded(): that's also false while any
+    // source's tiles are loading (e.g. just after lighting adds its height source), and a change
+    // queued on 'style.load' then would wait for a style swap that never comes — and be lost.
+    const styleReady = () => !!map.style?._loaded;
     const TERRAIN_SRC = 'rgb-dem', TERRAIN_URL = 'pmtiles://https://tiles.mbricknell.com/rgb.pmtiles';
     let terrainOn = params.has('terrain');
     // Exaggeration: 1 = true height. ?exaggeration=<n> at load; the parent changes it live.
@@ -1164,23 +1188,25 @@
       } catch (e) { console.warn('[sky]', e.message); }
     }
     window.__setSky = (o) => { sky.top = o?.top || null; sky.horizon = o?.horizon || null;
-      if (map.isStyleLoaded()) applySky(); else map.once('style.load', applySky); };
+      if (styleReady()) applySky(); else map.once('style.load', applySky); };
     window.__applyTerrain = applyTerrain;
-    window.__setTerrain = (on, exag) => { terrainOn = !!on; if (Number.isFinite(exag)) terrainExag = exag; if (map.isStyleLoaded()) applyTerrain(); else map.once('style.load', applyTerrain); };
+    window.__setTerrain = (on, exag) => { terrainOn = !!on; if (Number.isFinite(exag)) terrainExag = exag; if (styleReady()) applyTerrain(); else map.once('style.load', applyTerrain); };
     map.on('style.load', applyTerrain);
 
     // Lighting: live hillshade computed from the same rgb height tiles (its own raster-dem source —
     // MapLibre advises not sharing one between terrain and hillshade). While on, it takes the place
     // of the style's pre-made `hillshade` raster (hs.pmtiles), which is hidden and restored after.
-    // ?lighting at load (+ sun, shade, shadow, highlight); the parent changes it live ('mapaLighting').
+    // ?lighting at load (+ sun, shade, shadow, hilite — not `highlight`, which is the feature uids); the parent changes it live ('mapaLighting').
     const LIGHT_SRC = 'rgb-dem-light', LIGHT_LAYER = 'live-hillshade';
     const pnum = (k, d) => Number.isFinite(parseFloat(params.get(k))) ? parseFloat(params.get(k)) : d;
-    const light = { on: params.has('lighting'), sun: pnum('sun', 315), shade: pnum('shade', 0.5),
-      shadow: params.get('shadow') || '#000000', highlight: params.get('highlight') || '#ffffff' };
+    // lock: ?lightlock anchors the sun to the screen instead of north, so turning the camera keeps the
+    // light coming from the same side of the image (sun 315 = always top-left).
+    const light = { on: params.has('lighting'), lock: params.has('lightlock'), sun: pnum('sun', 315), shade: pnum('shade', 0.5),
+      shadow: params.get('shadow') || '#000000', highlight: params.get('hilite') || '#ffffff' };
     let bakedHsVis = null;   // the pre-made hillshade's visibility before lighting hid it
     function applyLighting() {
       try {
-        const paint = { 'hillshade-illumination-direction': light.sun, 'hillshade-illumination-anchor': 'map',
+        const paint = { 'hillshade-illumination-direction': light.sun, 'hillshade-illumination-anchor': light.lock ? 'viewport' : 'map',
           'hillshade-exaggeration': light.shade, 'hillshade-shadow-color': light.shadow,
           'hillshade-highlight-color': light.highlight, 'hillshade-accent-color': light.shadow };
         if (light.on) {
@@ -1202,7 +1228,7 @@
     }
     window.__setLighting = (o) => {
       Object.assign(light, Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== undefined && !(typeof v === 'number' && !Number.isFinite(v)))));
-      if (map.isStyleLoaded()) applyLighting(); else map.once('style.load', applyLighting);
+      if (styleReady()) applyLighting(); else map.once('style.load', applyLighting);
     };
     // A new style starts with its own (visible) hillshade layer and none of ours.
     map.on('style.load', () => { bakedHsVis = null; applyLighting(); });
@@ -1769,9 +1795,9 @@
       const openMapaBtn = document.createElement('button');
       openMapaBtn.textContent = 'Open in Mapa ↗';
       openMapaBtn.title = 'Open the current map view in Mapa (static vector export)';
-      // ?export's #export-panel (220px) sits in the top-right corner at right:10 — park the button
+      // ?export's #export-panel (300px) sits in the top-right corner at right:10 — park the button
       // just left of it instead of on top of it.
-      const btnRight = exportParam ? 10 + 220 + 10 : 10;
+      const btnRight = exportParam ? 10 + 300 + 10 : 10;
       openMapaBtn.style.cssText = 'position:fixed;top:10px;right:' + btnRight + 'px;z-index:99999;padding:6px 12px;font:13px system-ui,sans-serif;background:#26221f;color:#fff;border:1px solid #666;border-radius:5px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.4)';
       openMapaBtn.onclick = () => {
         const bd = map.getBounds();
@@ -2284,7 +2310,7 @@
     // style file's own layers, 'project' shows the resulting file. Three separate jobs that used
     // to share one scroll, with the authoring tools wedged into the layer inspector's header.
     let activeTab = 'edit';
-    const PANEL_TABS = { edit: 'Edit', layer: 'Layer', project: 'Project' };
+    const PANEL_TABS = { edit: 'Edit', layer: 'Layer', view: 'View', project: 'Project' };
 
     function buildPanel() {
       const tabs = `<div class="ptabs">` +
@@ -2292,7 +2318,10 @@
           `<button class="ptab${activeTab === id ? ' active' : ''}" data-tab="${id}">${label}</button>`).join('') +
         `</div>`;
       let head = tabs +
-        `<button class="io-btn" data-act="openmapa" style="width:100%;margin-bottom:8px" title="Open the current map view in Mapa (static vector export)">Open in Mapa ↗</button>`;
+        `<div style="display:flex;gap:6px;margin-bottom:8px">` +
+        `<button class="io-btn${exportParam ? ' armed' : ''}" data-act="exportimg" style="flex:1" title="Show the image-export panel and crop box (same as ?export) — your layer edits stay as they are">${exportParam ? 'Export image: on' : 'Export image'}</button>` +
+        `<button class="io-btn" data-act="openmapa" style="flex:1" title="Open the current map view in Mapa (static vector export)">Open in Mapa ↗</button>` +
+        `</div>`;
       let body = '', foot = '';
 
       if (activeTab === 'layer') {
@@ -2322,6 +2351,8 @@
           `<input type="file" class="import-file" accept="application/json,.json" hidden></div>`;
       } else if (activeTab === 'edit') {
         body = editSectionHtml();
+      } else if (activeTab === 'view') {
+        body = lightCamHtml();
       } else {
         body = `<pre class="project-json">${esc(JSON.stringify(projectDoc, null, 2))}</pre>`;
         foot = `<div class="toolbar"><button class="project-copy-btn">Copy</button></div>`;
@@ -2949,7 +2980,7 @@
     }
 
     // --- Export image: a ratio-locked crop box dragged/resized over the map, rasterized to a
-    // downloadable WEBP at a chosen scale multiplier. Lives in its own #export-panel/#export-box,
+    // downloadable PNG/JPEG/WEBP at a chosen scale multiplier. Lives in its own #export-panel/#export-box,
     // entirely separate from the ?debug layer panel — gated by ?export instead. The box is a
     // plain DOM element (not a map layer) so dragging it never reaches the map's own click/drag
     // handlers underneath.
@@ -2964,7 +2995,39 @@
     // cosmetic breathing room, not a hard limit while dragging/resizing by hand afterward.
     const EXPORT_MARGIN = 24;
     // ratio: '' means free — no aspect lock, width/height resize independently.
-    let exportBox = { ratio: '3:2', inverted: false, scale: 2, innerMargin: 15, left: 0, top: 0, width: 0, height: 0, filename: '' };
+    let exportBox = { ratio: '3:2', inverted: false, scale: 2, innerMargin: 15, left: 0, top: 0, width: 0, height: 0, filename: '', format: 'png' };
+    // Sequence export: step one camera/light setting from → to and save a frame per value (zipped).
+    const EXPORT_SEQ_PARAMS = { bearing: '°', pitch: '°', sun: '°' };
+    // running: false | 'run' (capturing) | 'preview' (stepping the live map, nothing captured).
+    // source: which section started the run ('seq' or 'kf') — one run at a time across both.
+    let exportSeq = { param: 'bearing', from: 0, to: 345, step: 15, running: false, source: null, stop: false, status: '' };
+    // Keyframes: captured camera views ({ center, zoom, bearing, pitch, sun? }) tweened into frames.
+    let keyframes = [];
+    let kfState = { between: 24, ease: 'smooth', status: '' };
+    // Sequence/Keyframes runs can also build a small looping GIF of the frames (into the same zip).
+    let gifOpts = { on: false, width: 480, fps: 12 };
+    // Seconds per frame, for the time estimate: measured on this browser per setting + scale (kept in
+    // localStorage), else a rough first guess — sun only repaints; bearing/pitch load new tiles, and
+    // a bigger scale renders a second, denser pass.
+    const SEQ_TIMING_KEY = 'sandbox:seq-timing';
+    let seqTiming = {};
+    try { seqTiming = JSON.parse(localStorage.getItem(SEQ_TIMING_KEY) || '{}') || {}; } catch { seqTiming = {}; }
+    function seqSecondsPerFrame(param = exportSeq.param, scale = exportBox.scale) {
+      const seen = seqTiming[`${param}@${scale}`];
+      if (Number.isFinite(seen)) return seen;
+      return ({ sun: 1, bearing: 1.2, pitch: 1.6, views: 1.8 }[param] || 1.2) * (scale > 1 ? 0.6 + 0.4 * scale : 1);
+    }
+    const fmtDuration = (sec) => {
+      sec = Math.max(1, Math.round(sec));
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+      return h ? `${h} h ${m} min` : m ? `${m} min${s && m < 10 ? ` ${s} s` : ''}` : `${s} s`;
+    };
+    // Image format → mime, quality and the matching world-file extension.
+    const EXPORT_FORMATS = {
+      png:  { label: 'PNG',  mime: 'image/png',  ext: 'png',  wld: 'pgw' },
+      jpeg: { label: 'JPEG', mime: 'image/jpeg', ext: 'jpg',  wld: 'jgw', quality: .92 },
+      webp: { label: 'WEBP', mime: 'image/webp', ext: 'webp', wld: 'wld', quality: .92 }
+    };
     // Caption chrome composited into the exported image. `chrome` is 'none' | 'overlay' — it's
     // drawn onto the map itself, so the output is always exactly the crop-box size.
     let exportMeta = { title: '', subtitle: '', notes: '', chrome: 'none', logo: '' };
@@ -3166,6 +3229,16 @@
       clampExportPosition();
       applyExportBoxRect();
     }
+    // Debug panel's Export image button: open/close the export panel + crop box without a reload.
+    function toggleExportPanel(on = !exportParam) {
+      exportParam = on;
+      const el = document.getElementById('export-panel');
+      el.hidden = !on;
+      if (debug) el.style.right = (10 + 300 + 10) + 'px';   // beside the debug panel, not on it
+      setExportMode(on);
+      if (on) buildExportPanel();
+      buildPanel();   // button label
+    }
     function setExportMode(on) {
       exportMode = on;
       exportBoxEl.hidden = !on;
@@ -3215,46 +3288,98 @@
       const outW = Math.round(exportBox.width * exportBox.scale);
       const cm = exportChromeMetrics();
       const outH = Math.round(exportBox.height * exportBox.scale + cm.header + cm.footer);
-      // Box geometry.
-      return `<div class="export-row">` +
-        `<span class="export-hint">drag the box to position it, drag its corner to resize${exportBox.ratio ? ' (ratio stays locked)' : ''}</span>` +
-        `<label>ratio <select class="export-ratio-select">${ratioOpts}</select></label>` +
-        `<button class="io-btn export-invert-btn" title="swap width/height">⇄ invert</button>` +
-        `<label>margin <input type="number" class="export-margin-in" min="0" value="${exportBox.innerMargin}">px</label>` +
-        `</div>` +
-        // bbox.
-        `<div class="export-row">` +
-        `<label style="flex:1">bbox <input type="text" class="export-bbox-in" placeholder="W, S, E, N" value="${esc(fmtBbox(exportBoxBbox()))}" title="Edit to reframe the map so the export box covers this extent" style="flex:1; min-width:160px"></label>` +
-        `<button class="io-btn export-bbox-copy" title="copy bbox to clipboard">copy</button>` +
-        `</div>` +
-        // Toggles (checkboxes) + caption text.
-        `<div class="export-row">` +
-        `<label><input type="checkbox" class="export-caption-toggle"${exportMeta.chrome === 'overlay' ? ' checked' : ''}> caption</label>` +
-        `<label><input type="checkbox" class="export-logo-toggle"${exportMeta.logo ? ' checked' : ''}> logo</label>` +
-        `<label><input type="checkbox" class="export-legend-toggle"${showLegend ? ' checked' : ''}> legend</label>` +
-        `<input type="text" class="export-meta-in" data-field="title" placeholder="title" value="${esc(exportMeta.title)}">` +
-        `<input type="text" class="export-meta-in" data-field="subtitle" placeholder="subtitle" value="${esc(exportMeta.subtitle)}">` +
-        `<input type="text" class="export-meta-in" data-field="notes" placeholder="notes / source" value="${esc(exportMeta.notes)}">` +
-        `</div>` +
-        // Output + download (bottom).
-        `<div class="export-row">` +
-        `<label>scale <select class="export-scale-select">${scaleOpts}</select></label>` +
-        `<span class="export-dims">${outW} × ${outH} px</span>` +
-        `<input type="text" class="export-filename-in" placeholder="${esc(style)}-export" value="${esc(exportBox.filename)}">` +
-        `<button class="io-btn export-preview-btn">Preview</button>` +
-        `<button class="io-btn export-download-btn">Download WEBP</button>` +
-        `</div>`;
+      const fmtOpts = Object.entries(EXPORT_FORMATS)
+        .map(([k, f]) => `<option value="${k}"${exportBox.format === k ? ' selected' : ''}>${f.label}</option>`).join('');
+      const seqOpts = Object.keys(EXPORT_SEQ_PARAMS)
+        .map((k) => `<option${exportSeq.param === k ? ' selected' : ''}>${k}</option>`).join('');
+      // Labelled rows (label column + controls) in four sections, so nothing wraps mid-row.
+      const row = (label, ctl) => `<div class="xp-row"><span class="xp-lab">${label}</span><div class="xp-ctl">${ctl}</div></div>`;
+      return `<div class="xp-sec">Frame</div>` +
+        `<div class="xp-hint">Drag the box to move it, drag its corner to resize${exportBox.ratio ? ' (ratio stays locked)' : ''}.</div>` +
+        row('Ratio', `<select class="export-ratio-select">${ratioOpts}</select>` +
+          `<button class="io-btn export-invert-btn" title="Swap width and height">⇄ Invert</button>`) +
+        row('Margin', `<input type="number" class="export-margin-in" min="0" value="${exportBox.innerMargin}"><span class="xp-unit">px</span>`) +
+        row('Bbox', `<input type="text" class="export-bbox-in" placeholder="W, S, E, N" value="${esc(fmtBbox(exportBoxBbox()))}" title="Edit to reframe the map so the export box covers this extent">` +
+          `<button class="io-btn export-bbox-copy" title="Copy bbox to clipboard">Copy</button>`) +
+        `<div class="xp-sec">Caption</div>` +
+        row('Show', `<label><input type="checkbox" class="export-caption-toggle"${exportMeta.chrome === 'overlay' ? ' checked' : ''}> caption</label>` +
+          `<label><input type="checkbox" class="export-logo-toggle"${exportMeta.logo ? ' checked' : ''}> logo</label>` +
+          `<label><input type="checkbox" class="export-legend-toggle"${showLegend ? ' checked' : ''}> legend</label>`) +
+        row('Title', `<input type="text" class="export-meta-in" data-field="title" placeholder="title" value="${esc(exportMeta.title)}">`) +
+        row('Subtitle', `<input type="text" class="export-meta-in" data-field="subtitle" placeholder="subtitle" value="${esc(exportMeta.subtitle)}">`) +
+        row('Notes', `<input type="text" class="export-meta-in" data-field="notes" placeholder="notes / source" value="${esc(exportMeta.notes)}">`) +
+        `<div class="xp-sec">Image</div>` +
+        row('Scale', `<select class="export-scale-select">${scaleOpts}</select><span class="export-dims">${outW} × ${outH} px</span>`) +
+        row('Format', `<select class="export-format-select">${fmtOpts}</select>`) +
+        row('File', `<input type="text" class="export-filename-in" placeholder="${esc(styleSlug)}-export" value="${esc(exportBox.filename)}">`) +
+        row('GIF', `<label title="Sequence and Keyframes exports also add a small looping GIF to the zip"><input type="checkbox" class="xp-gif-on"${gifOpts.on ? ' checked' : ''}> with runs</label>` +
+          `<input type="number" class="xp-gif-in" data-k="width" min="64" step="16" value="${gifOpts.width}" title="GIF width (px)"><span class="xp-unit">px</span>` +
+          `<input type="number" class="xp-gif-in" data-k="fps" min="1" max="50" value="${gifOpts.fps}" title="frames per second"><span class="xp-unit">fps</span>`) +
+        `<div class="xp-btns"><button class="io-btn export-preview-btn" title="Open the image in a new tab">Preview</button>` +
+        `<button class="io-btn xp-primary export-download-btn">Download ${EXPORT_FORMATS[exportBox.format].label}</button></div>` +
+        `<div class="xp-sec">Sequence</div>` +
+        row('Vary', `<select class="export-seq-param">${seqOpts}</select>`) +
+        row('Light', `<label title="Keep the light at the same angle on screen as the camera turns (needs lighting on)"><input type="checkbox" class="export-lightlock"${light.lock ? ' checked' : ''}> follow camera</label>`) +
+        row('Range', `<input type="number" class="export-seq-in" data-k="from" value="${exportSeq.from}" title="from">` +
+          `<span class="xp-unit">to</span><input type="number" class="export-seq-in" data-k="to" value="${exportSeq.to}" title="to">` +
+          `<span class="xp-unit">step</span><input type="number" class="export-seq-in" data-k="step" value="${exportSeq.step}" title="step">`) +
+        `<div class="xp-btns"><button class="io-btn export-seq-preview" title="Step the live map through the values — nothing is saved">${exportSeq.running === 'preview' ? 'Stop' : 'Play'}</button>` +
+        `<button class="io-btn xp-primary export-seq-run">${exportSeq.running === 'run' ? 'Stop' : `Export ${exportSeqValues().length} frames`}</button></div>` +
+        `<div class="export-seq-status"></div>` +
+        `<div class="xp-sec">Keyframes</div>` +
+        `<div class="xp-btns xp-kf-tools"><button class="io-btn xp-primary xp-kf-capture" title="Add the current camera (centre, zoom, bearing, pitch, sun) as the next view">+ Capture view</button>` +
+        `<button class="io-btn xp-kf-save" title="Download the views (+ between / easing) as a .json file">Save</button>` +
+        `<button class="io-btn xp-kf-load" title="Load views from a .json file (replaces the list)">Load</button>` +
+        `<input type="file" class="xp-kf-file" accept="application/json,.json" hidden>` +
+        `<button class="io-btn xp-kf-clear" title="Remove all views">Clear</button></div>` +
+        `<div class="xp-kf-list">${keyframes.map((v, i) =>
+          `<div class="xp-kf"><span class="xp-kf-n">${i + 1}</span><span class="xp-kf-txt" title="${esc(kfSummary(v))}">${esc(kfSummary(v))}</span>` +
+          `<button class="io-btn xp-kf-btn" data-kf="go" data-i="${i}" title="Jump to this view">Go</button>` +
+          `<button class="io-btn xp-kf-btn" data-kf="set" data-i="${i}" title="Replace with the current view">⟳</button>` +
+          `<button class="io-btn xp-kf-btn" data-kf="up" data-i="${i}" title="Move up"${i ? '' : ' disabled'}>↑</button>` +
+          `<button class="io-btn xp-kf-btn" data-kf="del" data-i="${i}" title="Remove">✕</button></div>`).join('') ||
+          `<div class="xp-hint">No views yet — frame the map, then Capture view. Add two or more to tween between them.</div>`}</div>` +
+        row('Between', `<input type="number" class="xp-kf-in" min="0" value="${kfState.between}"><span class="xp-unit">frames per step</span>`) +
+        row('Easing', `<select class="xp-kf-ease">${['smooth', 'linear'].map((k) => `<option${kfState.ease === k ? ' selected' : ''}>${k}</option>`).join('')}</select>`) +
+        `<div class="xp-btns"><button class="io-btn export-kf-preview" title="Fly the live map through the tween — nothing is saved">Play</button>` +
+        `<button class="io-btn xp-primary export-kf-run"></button></div>` +
+        `<div class="export-kf-status"></div>`;
     }
     // ?export means "export mode" — the crop box and its controls are just always on, no extra
     // arming click needed.
     function buildExportPanel() {
       if (!exportParam) return;
       exportPanelEl.innerHTML = exportImageRowHtml();
+      updateExportSeqUi();
     }
     exportPanelEl.addEventListener('click', (e) => {
       if (e.target.closest('.export-invert-btn')) { toggleExportInvert(); buildExportPanel(); return; }
       if (e.target.closest('.export-preview-btn')) { previewExportImage(); return; }
       if (e.target.closest('.export-download-btn')) { downloadExportImage(); return; }
+      if (e.target.closest('.export-seq-run')) { if (exportSeq.running) exportSeq.stop = true; else runExportSequence(); return; }
+      if (e.target.closest('.export-seq-preview')) { if (exportSeq.running) exportSeq.stop = true; else runExportSequence({ preview: true }); return; }
+      if (e.target.closest('.export-kf-run')) { if (exportSeq.running) exportSeq.stop = true; else runKeyframes(); return; }
+      if (e.target.closest('.export-kf-preview')) { if (exportSeq.running) exportSeq.stop = true; else runKeyframes({ preview: true }); return; }
+      if (e.target.closest('.xp-kf-capture')) { keyframes.push(captureView()); kfState.status = ''; buildExportPanel(); return; }
+      if (e.target.closest('.xp-kf-clear')) { if (keyframes.length && confirm(`Remove all ${keyframes.length} views?`)) { keyframes = []; kfState.status = ''; buildExportPanel(); } return; }
+      if (e.target.closest('.xp-kf-save')) {
+        if (!keyframes.length) { kfState.status = 'nothing to save — capture a view first'; updateExportSeqUi(); return; }
+        const file = { views: keyframes, between: kfState.between, ease: kfState.ease };
+        download(`${exportBaseName()}-views.json`, JSON.stringify(file, null, 2));
+        kfState.status = `saved ${keyframes.length} view${keyframes.length === 1 ? '' : 's'}`; updateExportSeqUi();
+        return;
+      }
+      if (e.target.closest('.xp-kf-load')) { exportPanelEl.querySelector('.xp-kf-file').click(); return; }
+      const kfBtn = e.target.closest('.xp-kf-btn');
+      if (kfBtn && !exportSeq.running) {
+        const i = +kfBtn.dataset.i, act = kfBtn.dataset.kf;
+        if (act === 'go') { applyView(keyframes[i]); return; }
+        if (act === 'set') keyframes[i] = captureView();
+        else if (act === 'up' && i > 0) [keyframes[i - 1], keyframes[i]] = [keyframes[i], keyframes[i - 1]];
+        else if (act === 'del') keyframes.splice(i, 1);
+        kfState.status = ''; buildExportPanel();
+        return;
+      }
       const copyBtn = e.target.closest('.export-bbox-copy');
       if (copyBtn) {
         const inp = exportPanelEl.querySelector('.export-bbox-in');
@@ -3282,10 +3407,34 @@
         return;
       }
       if (e.target.classList.contains('export-ratio-select')) setExportRatio(e.target.value);
-      else if (e.target.classList.contains('export-scale-select')) { exportBox.scale = +e.target.value; updateExportDimsReadout(); }
+      else if (e.target.classList.contains('export-scale-select')) { exportBox.scale = +e.target.value; updateExportDimsReadout(); clearSeqStatus(); }
+      else if (e.target.classList.contains('export-seq-param')) { exportSeq.param = e.target.value; clearSeqStatus(); }
+      else if (e.target.classList.contains('xp-kf-ease')) kfState.ease = e.target.value;
+      else if (e.target.classList.contains('xp-gif-on')) gifOpts.on = e.target.checked;
+      else if (e.target.classList.contains('xp-kf-file')) {
+        const f = e.target.files[0]; e.target.value = '';
+        if (f) f.text().then((txt) => {
+          // { views, between?, ease? } as saved here — or just the array of views.
+          const data = JSON.parse(txt), arr = Array.isArray(data) ? data : data?.views;
+          keyframes = parseKeyframes(arr);
+          if (!Array.isArray(data)) {
+            if (Number.isFinite(+data.between)) kfState.between = Math.max(0, Math.round(+data.between));
+            if (data.ease === 'smooth' || data.ease === 'linear') kfState.ease = data.ease;
+          }
+          kfState.status = `loaded ${keyframes.length} view${keyframes.length === 1 ? '' : 's'} from ${f.name}`;
+        }).catch((err) => { kfState.status = `couldn't load ${f.name}: ${err.message}`; }).finally(buildExportPanel);
+      }
+      else if (e.target.classList.contains('export-lightlock')) { window.__setLighting({ lock: e.target.checked }); syncLightLockUi(); }
+      else if (e.target.classList.contains('export-format-select')) {
+        exportBox.format = e.target.value;
+        exportPanelEl.querySelector('.export-download-btn').textContent = `Download ${EXPORT_FORMATS[exportBox.format].label}`;
+      }
     });
     exportPanelEl.addEventListener('input', (e) => {
       if (e.target.classList.contains('export-filename-in')) exportBox.filename = e.target.value;
+      else if (e.target.classList.contains('export-seq-in')) { exportSeq[e.target.dataset.k] = +e.target.value; clearSeqStatus(); }
+      else if (e.target.classList.contains('xp-gif-in')) { const v = Math.round(+e.target.value); if (v > 0) gifOpts[e.target.dataset.k] = v; }
+      else if (e.target.classList.contains('xp-kf-in')) { kfState.between = Math.max(0, Math.round(+e.target.value || 0)); clearSeqStatus(); }
       else if (e.target.classList.contains('export-margin-in')) { exportBox.innerMargin = e.target.value === '' ? 0 : +e.target.value; updateExportGuide(); }
     });
     // bbox field: reframe the map on commit (Enter / blur), not on every keystroke.
@@ -3301,7 +3450,7 @@
       buildExportPanel();
     }
 
-    // Renders the box's on-screen rect to a WEBP blob at width/height * the chosen scale
+    // Renders the box's on-screen rect to an image blob (PNG/JPEG/WEBP) at width/height * the chosen scale
     // multiplier. Just upscaling the already-rendered canvas via drawImage looks soft past ~2x,
     // since the source has no more real detail than the screen it was painted for — so before
     // capturing, the map's actual rendering pixel ratio is bumped (map.setPixelRatio) and given
@@ -3442,7 +3591,8 @@
         map.setPixelRatio(origPixelRatio);
         map.triggerRepaint();
       }
-      return new Promise((resolve) => out.toBlob(resolve, 'image/webp', .92));
+      const fmt = EXPORT_FORMATS[exportBox.format];
+      return new Promise((resolve) => out.toBlob(resolve, fmt.mime, fmt.quality));
     }
     // System serif for now. Map glyphs are MapLibre PBF ranges (SDF bitmaps for WebGL), which
     // canvas and CSS can't render text with — swapping this for a real
@@ -3580,16 +3730,239 @@
       try { await fn(); }
       finally { if (btn) { btn.disabled = false; btn.textContent = prevLabel; } }
     }
+    // World file (.wld) for the crop: EPSG:3857 metres per output pixel, from three crop-box corners
+    // (so a rotated bearing comes out as the rotation terms). Only a flat, untilted Mercator view is
+    // affine — with pitch or globe there's no world file. Referenced to the top-left pixel's centre.
+    function exportWorldFile() {
+      if (map.getPitch() > 0.01 || isGlobe()) return null;
+      const R = 6378137, k = exportBox.scale, { left: x, top: y, width: w, height: h } = exportBox;
+      const merc = (px, py) => {
+        const c = maplibregl.MercatorCoordinate.fromLngLat(map.unproject([px, py]));
+        return [(c.x - 0.5) * 2 * Math.PI * R, (0.5 - c.y) * 2 * Math.PI * R];
+      };
+      const o = merc(x, y), r = merc(x + w, y), d = merc(x, y + h);
+      if (r[0] < o[0]) r[0] += 2 * Math.PI * R;   // crop crosses the antimeridian
+      const outW = Math.round(w * k), outH = Math.round(h * k);
+      const A = (r[0] - o[0]) / outW, D = (r[1] - o[1]) / outW;   // per pixel along a row
+      const B = (d[0] - o[0]) / outH, E = (d[1] - o[1]) / outH;   // per pixel down a column
+      return [A, D, B, E, o[0] + A / 2 + B / 2, o[1] + D / 2 + E / 2].map((v) => v.toPrecision(15)).join('\n') + '\n';
+    }
     function downloadExportImage() {
       withExportBusy('.export-download-btn', 'Rendering…', async () => {
+        const wld = exportWorldFile();   // before the render's pixel-ratio bump (same CSS px either way)
         const blob = await renderExportBlob();
-        const a = document.createElement('a');
-        const name = (exportBox.filename || `${style}-export`).replace(/\.webp$/i, '');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${name}.webp`;
-        a.click();
-        URL.revokeObjectURL(a.href);
+        const fmt = EXPORT_FORMATS[exportBox.format];
+        const name = (exportBox.filename || `${styleSlug}-export`).replace(/\.(png|jpe?g|webp)$/i, '');
+        const save = (b, file) => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(b); a.download = file; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        };
+        save(blob, `${name}.${fmt.ext}`);
+        if (wld) { await new Promise((res) => setTimeout(res, 150)); save(new Blob([wld], { type: 'text/plain' }), `${name}.${fmt.wld}`); }
       });
+    }
+    // The values a sequence visits: from, from+step, … up to and including `to` (step's sign is taken
+    // from the direction). Empty when the step is 0 or the inputs aren't numbers.
+    function exportSeqValues() {
+      const { from, to } = exportSeq, step = Math.abs(exportSeq.step);
+      if (![from, to, step].every(Number.isFinite) || step === 0) return [];
+      const dir = to >= from ? 1 : -1, n = Math.floor(Math.abs(to - from) / step + 1e-9) + 1;
+      return Array.from({ length: n }, (_, i) => +(from + dir * i * step).toFixed(6));
+    }
+    // The light-lock checkbox lives in both the View tab and the export panel — keep them agreeing.
+    function syncLightLockUi() {
+      document.querySelectorAll('.export-lightlock, .view-in[data-k="lightLock"]').forEach((el) => { el.checked = light.lock; });
+    }
+    // A finished run's message gives way to the new estimate once the inputs change.
+    function clearSeqStatus() { if (!exportSeq.running) { exportSeq.status = ''; kfState.status = ''; } updateExportSeqUi(); }
+    // Buttons + status lines for both Sequence and Keyframes. While one runs, its own button reads
+    // Stop and every other run/play button is disabled.
+    function updateExportSeqUi() {
+      const q = (sel) => exportPanelEl.querySelector(sel);
+      const busy = exportSeq.running, mine = (src, mode) => busy === mode && exportSeq.source === src;
+      const est = (n, key) => n ? `${n} frame${n === 1 ? '' : 's'} · about ${fmtDuration(n * seqSecondsPerFrame(key))}` : '';
+      const nSeq = exportSeqValues().length, nKf = kfViews().length;
+      const btn = (sel, src, mode, label) => { const b = q(sel); if (!b) return;
+        b.textContent = mine(src, mode) ? 'Stop' : label; b.disabled = !!busy && !mine(src, mode); };
+      btn('.export-seq-run', 'seq', 'run', `Export ${nSeq} frames`);
+      btn('.export-seq-preview', 'seq', 'preview', 'Play');
+      btn('.export-kf-run', 'kf', 'run', `Export ${nKf} frames`);
+      btn('.export-kf-preview', 'kf', 'preview', 'Play');
+      if (!busy) { const r = q('.export-kf-run'), pl = q('.export-kf-preview'); if (r) r.disabled = nKf < 1; if (pl) pl.disabled = nKf < 2; }
+      const st = q('.export-seq-status'); if (st) st.textContent = exportSeq.status || est(nSeq, exportSeq.param);
+      const ks = q('.export-kf-status'); if (ks) ks.textContent = kfState.status || (nKf > 1 ? est(nKf, 'views') : '');
+    }
+    // Wait for the map to finish drawing (tiles, terrain) after a change, or give up after `ms`.
+    function waitMapIdle(ms = 30000) {
+      return new Promise((resolve) => {
+        const t = setTimeout(() => { map.off('idle', done); resolve(false); }, ms);
+        function done() { clearTimeout(t); resolve(true); }
+        map.once('idle', done);
+        map.triggerRepaint();
+      });
+    }
+    // The camera + light, to put back after a run.
+    const cameraNow = () => ({ center: map.getCenter().toArray(), zoom: map.getZoom(), bearing: map.getBearing(),
+      pitch: map.getPitch(), sun: light.sun, lightOn: light.on });
+    // Runs a list of frames ({ file, label, apply }): per frame apply it, wait for the map to settle,
+    // capture the crop (same scale/format/caption as Download) + its world file when the view is
+    // flat, and add both to one zip. Camera and light are put back afterwards. Stop ends it early and
+    // still saves what was captured. preview: step the live map through the frames (a short pause on
+    // each) without capturing or downloading anything. Shared by Sequence ('seq') and Keyframes ('kf').
+    async function runFrames({ source, preview, frames, timingKey, zipName, pause = 400 }) {
+      const ui = source === 'kf' ? kfState : exportSeq;   // whose status line
+      const say = (t) => { ui.status = t; updateExportSeqUi(); };
+      exportSeq.running = preview ? 'preview' : 'run'; exportSeq.source = source; exportSeq.stop = false;
+      say(preview ? '' : 'loading zip library…');
+      const before = cameraNow();
+      const fmt = EXPORT_FORMATS[exportBox.format];
+      const timedOut = [];
+      let saved = 0;
+      try {
+        if (preview) {
+          for (const [i, f] of frames.entries()) {
+            if (exportSeq.stop) break;
+            say(`preview: ${f.label} — ${i + 1}/${frames.length}`);
+            f.apply();
+            await waitMapIdle(3000);   // don't stall on slow tiles — it's only a look
+            if (pause) await new Promise((res) => setTimeout(res, pause));
+          }
+          ui.status = exportSeq.stop ? 'preview stopped' : 'preview done';
+          return;
+        }
+        const { default: JSZip } = await import('https://esm.sh/jszip@3.10.1');
+        const zip = new JSZip();
+        // GIF: each captured frame is shrunk to gifOpts.width, given its own 256-colour palette and
+        // appended as it's made, so only the small encoded GIF is held — not every frame's pixels.
+        let gif = null;
+        if (gifOpts.on) {
+          const { GIFEncoder, quantize, applyPalette } = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js');
+          gif = { enc: GIFEncoder(), quantize, applyPalette, cv: document.createElement('canvas') };
+        }
+        const t0 = performance.now();
+        for (const f of frames) {
+          if (exportSeq.stop) break;
+          const per = saved ? (performance.now() - t0) / 1000 / saved : seqSecondsPerFrame(timingKey);
+          say(`${f.label} — frame ${saved + 1}/${frames.length} · ${fmtDuration(per * (frames.length - saved))} left`);
+          f.apply();
+          if (!(await waitMapIdle())) timedOut.push(f.label);
+          const wld = exportWorldFile();
+          const blob = await renderExportBlob();
+          zip.file(`${f.file}.${fmt.ext}`, blob);
+          if (wld) zip.file(`${f.file}.${fmt.wld}`, wld);
+          if (gif) {
+            const bmp = await createImageBitmap(blob);
+            const w = Math.min(gifOpts.width, bmp.width), h = Math.max(1, Math.round(bmp.height * w / bmp.width));
+            gif.cv.width = w; gif.cv.height = h;
+            const ctx = gif.cv.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(bmp, 0, 0, w, h); bmp.close();
+            const px = ctx.getImageData(0, 0, w, h).data, palette = gif.quantize(px, 256);
+            gif.enc.writeFrame(gif.applyPalette(px, palette), w, h, { palette, delay: Math.round(1000 / gifOpts.fps) });
+          }
+          saved++;
+        }
+        if (saved) {
+          // Remember the real pace for next time's estimate (this kind of run at this scale).
+          seqTiming[`${timingKey}@${exportBox.scale}`] = +((performance.now() - t0) / 1000 / saved).toFixed(2);
+          try { localStorage.setItem(SEQ_TIMING_KEY, JSON.stringify(seqTiming)); } catch { /* estimate just stays a guess */ }
+          if (gif) { gif.enc.finish(); zip.file(zipName.replace(/\.zip$/, '.gif'), gif.enc.bytes()); }
+          say(`zipping ${saved} frames…`);
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
+          a.download = zipName; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+        ui.status = `${exportSeq.stop ? 'stopped — ' : ''}saved ${saved} frame${saved === 1 ? '' : 's'} in ${fmtDuration((performance.now() - t0) / 1000)}` +
+          (timedOut.length ? ` · didn't finish loading at ${timedOut.join(', ')} (may be patchy)` : '');
+      } catch (err) {
+        ui.status = `failed: ${err.message}`;
+      } finally {
+        map.jumpTo({ center: before.center, zoom: before.zoom, bearing: before.bearing, pitch: before.pitch });
+        window.__setLighting({ on: before.lightOn, sun: before.sun });
+        exportSeq.running = false; exportSeq.source = null; exportSeq.stop = false; updateExportSeqUi();
+      }
+    }
+    const exportBaseName = () => (exportBox.filename || `${styleSlug}-export`).replace(/\.(png|jpe?g|webp)$/i, '');
+    // Sequence: step one setting (bearing / pitch / sun) from → to.
+    function runExportSequence({ preview = false } = {}) {
+      const values = exportSeqValues(), param = exportSeq.param;
+      if (!values.length) { exportSeq.status = 'set a non-zero step'; updateExportSeqUi(); return; }
+      const name = exportBaseName();
+      const tag = (v) => (v < 0 ? 'neg' : '') + String(Math.abs(v)).replace('.', 'p').padStart(3, '0');
+      const set = (v) => {
+        if (param === 'bearing') map.setBearing(v);
+        else if (param === 'pitch') { if (v > map.getMaxPitch()) map.setMaxPitch(85); map.setPitch(v); }
+        else window.__setLighting({ on: true, sun: v });
+      };
+      return runFrames({ source: 'seq', preview, timingKey: param, zipName: `${name}-${param}-sequence.zip`,
+        frames: values.map((v) => ({ file: `${name}-${param}-${tag(v)}`, label: `${param} ${v}${EXPORT_SEQ_PARAMS[param]}`, apply: () => set(v) })) });
+    }
+
+    // --- Keyframes: capture camera views, tween between them -------------------------------------
+    const round = (v, d) => +(+v).toFixed(d);
+    function captureView() {
+      const c = map.getCenter();
+      const v = { center: [round(c.lng, 5), round(c.lat, 5)], zoom: round(map.getZoom(), 3),
+        bearing: round(map.getBearing(), 2), pitch: round(map.getPitch(), 2) };
+      if (light.on) v.sun = round(light.sun, 1);
+      return v;
+    }
+    // Hoisted (not a const) — the panel markup calls it, and the panel can be built before this line runs.
+    function kfSummary(v) {
+      return `${v.center[0].toFixed(2)}, ${v.center[1].toFixed(2)} · z${v.zoom.toFixed(1)} · ` +
+        `b${Math.round(v.bearing)}° p${Math.round(v.pitch)}°${v.sun != null ? ` · sun ${Math.round(v.sun)}°` : ''}`;
+    }
+    // A pasted array → clean views (center + zoom required; bearing/pitch default 0; sun optional).
+    function parseKeyframes(arr) {
+      if (!Array.isArray(arr)) throw new Error('expected a JSON array');
+      return arr.map((v, i) => {
+        const ok = (n) => Number.isFinite(+n);
+        if (!Array.isArray(v?.center) || v.center.length !== 2 || !v.center.every(ok) || !ok(v.zoom))
+          throw new Error(`view ${i + 1} needs "center": [lng, lat] and "zoom"`);
+        const out = { center: v.center.map(Number), zoom: +v.zoom, bearing: ok(v.bearing) ? +v.bearing : 0, pitch: ok(v.pitch) ? +v.pitch : 0 };
+        if (ok(v.sun)) out.sun = +v.sun;
+        return out;
+      });
+    }
+    function applyView(v) {
+      if (v.pitch > map.getMaxPitch()) map.setMaxPitch(85);
+      map.jumpTo({ center: v.center, zoom: v.zoom, bearing: v.bearing, pitch: v.pitch });
+      if (v.sun != null) window.__setLighting({ on: true, sun: v.sun });
+    }
+    // Angles take the short way round (350° → 10° goes through 0°, not back through 180°).
+    const angLerp = (a, b, t) => a + ((((b - a) % 360) + 540) % 360 - 180) * t;
+    // Centre moves in Web Mercator (straight on the map, the short way across the antimeridian);
+    // zoom, pitch linear; bearing and sun the short way round.
+    function lerpView(a, b, t) {
+      const A = maplibregl.MercatorCoordinate.fromLngLat(a.center), B = maplibregl.MercatorCoordinate.fromLngLat(b.center);
+      let dx = B.x - A.x; if (dx > 0.5) dx -= 1; else if (dx < -0.5) dx += 1;
+      const ll = new maplibregl.MercatorCoordinate((((A.x + dx * t) % 1) + 1) % 1, A.y + (B.y - A.y) * t).toLngLat();
+      const v = { center: [ll.lng, ll.lat], zoom: a.zoom + (b.zoom - a.zoom) * t,
+        bearing: angLerp(a.bearing, b.bearing, t), pitch: a.pitch + (b.pitch - a.pitch) * t };
+      if (a.sun != null && b.sun != null) v.sun = (angLerp(a.sun, b.sun, t) + 360) % 360;
+      else if (a.sun != null || b.sun != null) v.sun = a.sun ?? b.sun;
+      return v;
+    }
+    // Every frame of the tween: each view, with `between` in-between frames after it (none after the
+    // last). Each step eases on its own, so the camera settles on every captured view.
+    function kfViews() {
+      const n = Math.max(0, Math.round(kfState.between) || 0), out = [];
+      const ease = kfState.ease === 'smooth' ? (t) => t * t * (3 - 2 * t) : (t) => t;
+      keyframes.forEach((a, i) => {
+        out.push({ v: a, key: i + 1 });
+        const b = keyframes[i + 1];
+        if (b) for (let k = 1; k <= n; k++) out.push({ v: lerpView(a, b, ease(k / (n + 1))) });
+      });
+      return out;
+    }
+    function runKeyframes({ preview = false } = {}) {
+      const views = kfViews();
+      if (!views.length) { kfState.status = 'capture a view first'; updateExportSeqUi(); return; }
+      const name = exportBaseName();
+      return runFrames({ source: 'kf', preview, timingKey: 'views', zipName: `${name}-keyframes.zip`, pause: 0,
+        frames: views.map(({ v, key }, i) => ({ file: `${name}-view-${String(i + 1).padStart(4, '0')}`,
+          label: key ? `view ${key}` : `between ${i + 1}`, apply: () => applyView(v) })) });
     }
     // Opens the render in a new tab instead of downloading it — a quick way to check framing/
     // resolution at full size without littering the downloads folder.
@@ -5340,6 +5713,60 @@
         `</select>`;
     }
 
+    // View tab: live lighting (sun/strength/shadow/highlight) and camera (pitch/bearing) controls —
+    // the in-sandbox counterpart of ?lighting&sun=…&pitch=…, applied as you drag.
+    function lightCamHtml() {
+      const slider = (k, label, min, max, step, v, unit = '') =>
+        `<label class="view-ctl"><span>${label}</span><input type="range" class="view-in" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${v}">` +
+        `<span class="view-val" data-k="${k}">${v}${unit}</span></label>`;
+      const color = (k, label, v) =>
+        `<label class="view-ctl"><span>${label}</span><input type="color" class="view-in" data-k="${k}" value="${esc(toHex(v))}"></label>`;
+      return `
+          <div class="edit-row">
+            <div class="edit-row-head">Terrain
+              <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="terrainOn"${terrainOn ? ' checked' : ''}> on</label>
+            </div>
+            ${slider('terrainExag', 'height', 0, 5, 0.1, terrainExag, '×')}
+            <div class="edit-row-hint" style="margin-top:4px">3D only shows with pitch above 0 (Camera below).</div>
+          </div>
+          <div class="edit-row">
+            <div class="edit-row-head">Lighting
+              <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="lightOn"${light.on ? ' checked' : ''}> on</label>
+            </div>
+            <label class="edit-row-hint" title="Keep the light at the same angle on screen when the camera turns"><input type="checkbox" class="view-in" data-k="lightLock"${light.lock ? ' checked' : ''}> lock to camera</label>
+            ${slider('sun', 'sun', 0, 359, 1, light.sun, '°')}
+            ${slider('shade', 'strength', 0, 1, 0.05, light.shade)}
+            ${color('shadow', 'shadow', light.shadow)}
+            ${color('highlight', 'highlight', light.highlight)}
+          </div>
+          <div class="edit-row">
+            <div class="edit-row-head">Camera</div>
+            ${slider('pitch', 'pitch', 0, 85, 1, Math.round(map.getPitch()), '°')}
+            ${slider('bearing', 'bearing', -180, 180, 1, Math.round(map.getBearing()), '°')}
+          </div>`;
+    }
+    function setLightCamCtl(t) {
+      const k = t.dataset.k, v = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value;
+      const out = panel.querySelector(`.view-val[data-k="${k}"]`);
+      if (out) out.textContent = v + (k === 'shade' ? '' : k === 'terrainExag' ? '×' : '°');
+      if (k === 'terrainOn') window.__setTerrain(v, terrainExag);
+      else if (k === 'terrainExag') window.__setTerrain(terrainOn, v);
+      else if (k === 'lightOn') window.__setLighting({ on: v });
+      else if (k === 'lightLock') { window.__setLighting({ lock: v }); syncLightLockUi(); }
+      else if (k === 'pitch') { if (v > map.getMaxPitch()) map.setMaxPitch(85); map.setPitch(v); }
+      else if (k === 'bearing') map.setBearing(v);
+      else window.__setLighting({ [k]: v });
+    }
+    // Keep the camera sliders in step when the pitch/bearing changes from elsewhere (URL, Mapa, ctrl-drag).
+    map.on('move', () => {
+      if (activeTab !== 'view') return;
+      for (const [k, v] of [['pitch', map.getPitch()], ['bearing', map.getBearing()]]) {
+        const inp = panel.querySelector(`.view-in[data-k="${k}"]`), out = panel.querySelector(`.view-val[data-k="${k}"]`);
+        if (inp && document.activeElement !== inp) inp.value = Math.round(v);
+        if (out) out.textContent = Math.round(v) + '°';
+      }
+    });
+
     function editSectionHtml() {
       const labels = { points: 'Points', polys: 'Polygons', annotations: 'Annotations' };
       return Object.keys(labels).map((kind) => `
@@ -6176,7 +6603,7 @@
         // Per-project zoom limits (interactive, unlike lock which pins to one level). Override the
         // default maxZoom cap / min of 0. `lock` below still wins if also set.
         if (Number.isFinite(projectData.view.minzoom)) map.setMinZoom(projectData.view.minzoom);
-        if (Number.isFinite(projectData.view.maxzoom)) map.setMaxZoom(projectData.view.maxzoom);
+        if (maxZoomParam == null && Number.isFinite(projectData.view.maxzoom)) map.setMaxZoom(projectData.view.maxzoom);
         if (Number.isFinite(projectData.view.height)) embedHeight = projectData.view.height;
         // view.bounds is a HARD cage (maxBounds): the map can move within it but can't be panned/
         // zoomed off to another area — keeps an embed pinned to its region so it can't be rewired.
@@ -6701,8 +7128,9 @@
       // Export / import buttons
       const io = e.target.closest('.io-btn');
       if (io) {
-        if (io.dataset.act === 'export') download(`${style}-layer-settings.json`, JSON.stringify(exportSettings(), null, 2));
+        if (io.dataset.act === 'export') download(`${styleSlug}-layer-settings.json`, JSON.stringify(exportSettings(), null, 2));
         else if (io.dataset.act === 'import') panel.querySelector('.import-file').click();
+        else if (io.dataset.act === 'exportimg') toggleExportPanel();
         else if (io.dataset.act === 'openmapa') {
           const bd = map.getBounds();
           const bbox = [bd.getWest(), bd.getSouth(), bd.getEast(), bd.getNorth()].map((n) => n.toFixed(4)).join(',');
@@ -6942,6 +7370,7 @@
     // Live edits: color swatch -> setPaintProperty; zoom fields -> setLayerZoomRange
     panel.addEventListener('input', (e) => {
       const t = e.target;
+      if (t.classList.contains('view-in')) { setLightCamCtl(t); return; }
       if (t.classList.contains('img-op-in')) {
         // Live while typing, no rebuild (keeps focus) — but only for a value above 0, so the
         // "0" on the way to "0.9" doesn't blank the image. Enter/blur commits anything (setImgOpacity).

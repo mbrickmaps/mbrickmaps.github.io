@@ -199,7 +199,7 @@ npm run dev        <span class="hljs-comment"># → http://localhost:3000/mapa</
       vendor.js           d3 / turf / topojson / proj4 / pmtiles bundle
     files/  files-fgb/    basemap geometry (JSON for dev, FlatGeobuf for prod) *
     projects/ templates/  Mapa projects &amp; templates
-    tools/                pattern-generator.html
+    tools/                pattern-generator.html, sequence-player.html
   board/                  board.js / board.css (panel manager) + theme.js/.css (Style panel)
   projects/ templates/    saved projects &amp; templates
   styles/ fonts/          MapLibre styles (nav pane) + geo-fonts
@@ -272,13 +272,13 @@ test/                     visual-regression harness + baselines
 <h3 id="basemap-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#basemap-panel">Basemap panel</a></h3>
 <p><em>Basemap layers.</em> Toggle and style the base layers (land, ocean, borders, rivers, coastline, lakes, disputed). Per layer: colour, opacity, stroke width, <strong>simplify</strong> tolerance, and winding <strong>rewind</strong>. The layer set + defaults come from <a href="./src/mapa/basemap-layers.js"><code>src/mapa/js/basemap-layers.js</code></a> (see <strong>Data</strong> below).</p>
 <h3 id="raster-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#raster-panel">Raster panel</a></h3>
-<p>Imagery layers. <strong>+ tiles</strong> (a <code>.pmtiles</code> or XYZ URL, incl. hillshade/elevation), <strong>+ worldfile</strong> (drop an image + its <code>.wld</code>/<code>.pgw</code>). Per row: opacity, blend mode, draw order.</p>
+<p>Imagery layers. <strong>+ tiles</strong> (a <code>.pmtiles</code> or XYZ URL, incl. hillshade/elevation), <strong>+ worldfile</strong> (drop an image + its <code>.wld</code>/<code>.pgw</code>). Per row: opacity, blend mode, draw order. Blend modes (here and on Data layers): normal, multiply, screen, overlay, darken, lighten, hard-light, soft-light, difference, exclusion, hue, saturation, color, luminosity — the last four render in browsers but their Illustrator import hasn't been checked; color-dodge / color-burn are left out because Illustrator resets them.</p>
 <h3 id="project-json-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#project-json-panel">Project JSON panel</a></h3>
 <p>The saveable project as formatted JSON — datasets appear as <strong>pointers</strong>, not geometry (the geometry stays in the repo/CDN). Use it to inspect or copy the project; it's also where an old pre-project-file Mapa config can be pasted for view-only render.</p>
 <h3 id="atlas-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#atlas-panel">Atlas panel</a></h3>
-<p>The embedded interactive <strong>MapLibre</strong> navigation map (<code>sandbox.html</code>). Pan/zoom it to frame your export; <strong>shift-drag</strong> to draw a bbox; the ☰ menu toggles the pane's light/dark basemap, flat/globe, and tilt (globe/tilt are needed for the satellite projection). It's a viewer/extent-picker — it doesn't change the export except by feeding it a bbox/camera. Its basemap is swappable via <code>ATLAS_STYLE</code> (see <strong>Data</strong> below) — any style.json or raster PMTiles.</p>
+<p>The embedded interactive <strong>MapLibre</strong> navigation map (<code>sandbox.html</code>). Pan/zoom it to frame your export; <strong>shift-drag</strong> to draw a bbox; the ☰ menu toggles the pane's light/dark basemap, flat/globe, tilt (globe/tilt are needed for the satellite projection), 3D terrain + exaggeration, sky colours, and live lighting (sun, strength, shadow, highlight). It's a viewer/extent-picker — it doesn't change the export except by feeding it a bbox/camera. Its basemap is swappable via <code>ATLAS_STYLE</code> (see <strong>Data</strong> below) — any style.json or raster PMTiles.</p>
 <h3 id="output-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#output-panel">Output panel</a></h3>
-<p>The rendered <strong>SVG</strong> export. Pan (drag) / zoom (scroll); <strong>Reset view</strong> refits, <strong>Crop to view</strong> sets the extent to the current zoom. A tab bar appears per frame. Download the full-stack SVG, a single layer, or every frame.</p>
+<p>The rendered <strong>SVG</strong> export. Pan (drag) / zoom (scroll); <strong>Reset view</strong> refits, <strong>Crop to view</strong> sets the extent to the current zoom. A tab bar appears per frame. Download the full-stack SVG, a single layer, or every frame. <strong>Download ▾ → PNG + world file</strong> saves a raster for GIS: it takes the frame's current settings, swaps the projection to <strong>geoMercator</strong>, renders off-page (the preview and your chosen projection are untouched) and downloads <code>&lt;name&gt;.png</code> + <code>&lt;name&gt;.pgw</code> (EPSG:3857 metres, no <code>.prj</code>). <strong>image scale</strong> (1× / 2× / 4×) in the same menu sets PNG pixels per export pixel. If the export height is auto, the Mercator PNG's height can differ from the SVG's.</p>
 <h3 id="style-panel" tabindex="-1"><a class="observablehq-header-anchor" href="#style-panel">Style panel</a></h3>
 <p>Pick, edit, or save a <strong>theme</strong> — eight colour tokens recolour the whole UI. Default is <strong>Parchment</strong> (the original light look); dark themes are included.</p>
 <hr>
@@ -397,6 +397,191 @@ node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pr
 <li><code>npm run build:basemap</code> (for prod).</li>
 <li><em>New</em> layers only: add a draw block in <code>src/mapa/js/basemap.js</code> (<code>drawBasemap</code>) — that's the one place paint order + geometry binding still live per-layer.</li>
 </ol>
+<hr>
+<h2 id="atlas-sandbox-sandbox-html" tabindex="-1"><a class="observablehq-header-anchor" href="#atlas-sandbox-sandbox-html">Atlas sandbox (<code>sandbox.html</code>)</a></h2>
+<p>The MapLibre map behind the Atlas pane also runs on its own: open <code>sandbox.html</code> directly and drive it with URL parameters. Flags (no value) are switched on just by being present.</p>
+<h3 id="url-parameters" tabindex="-1"><a class="observablehq-header-anchor" href="#url-parameters">URL parameters</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>debug</code></td>
+<td>Show the editing panel (Edit / Layer / View / Project tabs).</td>
+</tr>
+<tr>
+<td><code>export</code></td>
+<td>Show the crop-box image-export tool (without <code>debug</code>, on its own; with <code>debug</code>, beside the editing panel — or open it there with the <strong>Export image</strong> button, which keeps your layer edits). Pick <strong>format</strong> (PNG, JPEG or WEBP; default PNG). <strong>Download</strong> also saves a world file — <code>.pgw</code> / <code>.jgw</code> / <code>.wld</code> to match, in EPSG:3857 metres — when the view is flat (no pitch, not globe; bearing is fine). The <strong>Sequence</strong> section steps one setting — <code>bearing</code>, <code>pitch</code> or <code>sun</code> — from → to by step and saves a frame per value into one <code>.zip</code> (see the cookbook).</td>
+</tr>
+<tr>
+<td><code>embed</code></td>
+<td>Hide the floating <strong>Open in Mapa ↗</strong> button.</td>
+</tr>
+<tr>
+<td><code>style=…</code></td>
+<td>Basemap style (default <code>dark</code>): <code>dark</code> / <code>light</code> (built in), a file in <code>src/styles/</code> (<code>my-style.json</code>), a path (<code>./styles/my-style.json</code>), a URL to any MapLibre style.json, or a raster <code>.pmtiles</code>. Works in every mode, <code>?export</code> included. <code>mode=dev</code> loads the <code>style-dev-*</code> variants.</td>
+</tr>
+<tr>
+<td><code>project=a.json,b.json</code></td>
+<td>Load one or more project files.</td>
+</tr>
+<tr>
+<td><code>bbox=w,s,e,n</code></td>
+<td>Fit the view to a box.</td>
+</tr>
+<tr>
+<td><code>center=lng,lat</code> · <code>zoom=N</code></td>
+<td>Start position.</td>
+</tr>
+<tr>
+<td><code>pitch=deg</code> · <code>bearing=deg</code></td>
+<td>Start camera tilt and rotation.</td>
+</tr>
+<tr>
+<td><code>maxzoom=N</code></td>
+<td>Max zoom (default <strong>7</strong>). Overrides a project's <code>view.maxzoom</code>.</td>
+</tr>
+<tr>
+<td><code>lock</code></td>
+<td>Freeze the view (no pan/zoom).</td>
+</tr>
+<tr>
+<td><code>globe</code></td>
+<td>Globe projection instead of flat Mercator.</td>
+</tr>
+<tr>
+<td><code>hide=group,layer-id</code></td>
+<td>Hide layers, by group (<code>labels</code>) or by id.</td>
+</tr>
+<tr>
+<td><code>highlight=uid,uid</code></td>
+<td>Highlight features by uid.</td>
+</tr>
+<tr>
+<td><code>terrain</code></td>
+<td>3D terrain from the rgb height tiles (<code>rgb.pmtiles</code>, z0–8). Only visible with pitch &gt; 0.</td>
+</tr>
+<tr>
+<td><code>exaggeration=N</code></td>
+<td>Terrain height multiplier (default 1.5; 1 = true height).</td>
+</tr>
+<tr>
+<td><code>lighting</code></td>
+<td>Live hillshade computed from the height tiles (replaces the pre-made hillshade while on).</td>
+</tr>
+<tr>
+<td><code>sun=deg</code></td>
+<td>Light direction, clockwise from north (default 315 = north-west).</td>
+</tr>
+<tr>
+<td><code>lightlock</code></td>
+<td>Lock the light to the camera: <code>sun</code> is measured from the top of the screen instead of north, so turning the map keeps the light on the same side of the image.</td>
+</tr>
+<tr>
+<td><code>shade=0–1</code></td>
+<td>Shading strength (default 0.5).</td>
+</tr>
+<tr>
+<td><code>shadow=#hex</code> · <code>hilite=#hex</code></td>
+<td>Colours of slopes facing away from / towards the light.</td>
+</tr>
+<tr>
+<td><code>sky=#hex</code> · <code>horizon=#hex</code></td>
+<td>Sky gradient, top to horizon.</td>
+</tr>
+<tr>
+<td><code>mapa</code></td>
+<td>Set by Mapa when the sandbox is its Atlas pane — not for direct use.</td>
+</tr>
+</tbody>
+</table>
+<p>Colours in a URL need the <code>#</code> escaped as <code>%23</code>. The lighting highlight colour is <code>hilite</code>; <code>highlight</code> is only the feature uids.</p>
+<p><strong>Zooming past the data.</strong> Raising <code>maxzoom</code> lets you zoom past the height tiles' z8: MapLibre stretches the z8 tiles rather than asking for tiles that don't exist, so terrain and lighting keep working (softer). World-file images have no zoom limit and stay sharp.</p>
+<h3 id="view-tab-debug" tabindex="-1"><a class="observablehq-header-anchor" href="#view-tab-debug">View tab (<code>?debug</code>)</a></h3>
+<p>Live controls, applied as you drag:</p>
+<ul>
+<li><strong>Terrain</strong>: on/off and <strong>height</strong> (exaggeration, 0–5×). 3D only shows with pitch above 0.</li>
+<li><strong>Lighting</strong>: on/off, <strong>lock to camera</strong>, <strong>sun</strong> (0–359°), <strong>strength</strong> (0–1), <strong>shadow</strong> and <strong>highlight</strong> colour pickers.</li>
+<li><strong>Camera</strong>: <strong>pitch</strong> (0–85°) and <strong>bearing</strong> (−180…180°). They follow the map if the camera is moved some other way.</li>
+</ul>
+<h2 id="cookbook" tabindex="-1"><a class="observablehq-header-anchor" href="#cookbook">Cookbook</a></h2>
+<p>Sandbox URLs are relative to the site root (e.g. <code>http://localhost:3000/sandbox.html?…</code> with <code>npm run dev</code>).</p>
+<p><strong>Zoom in further than 7</strong></p>
+<pre><code>sandbox.html?maxzoom=12
+</code></pre>
+<p><strong>3D terrain, tilted</strong></p>
+<pre><code>sandbox.html?terrain&amp;center=74.8,34.1&amp;zoom=8&amp;pitch=60&amp;bearing=30
+</code></pre>
+<p><strong>Terrain with live lighting from the east, purple shadows</strong></p>
+<pre><code>sandbox.html?terrain&amp;lighting&amp;sun=90&amp;shade=0.8&amp;shadow=%23330066&amp;hilite=%23ffee88&amp;center=74.8,34.1&amp;zoom=8&amp;pitch=60
+</code></pre>
+<p><strong>Close-up over low-res terrain with your own images on top</strong>: zoom past z8, load world-file images from the debug panel's Edit tab (drop the image + its <code>.wld</code>/<code>.pgw</code>).</p>
+<pre><code>sandbox.html?debug&amp;maxzoom=14&amp;terrain&amp;lighting
+</code></pre>
+<p><strong>Clean map to share (no labels, no button, view frozen)</strong></p>
+<pre><code>sandbox.html?embed&amp;lock&amp;hide=labels&amp;bbox=68,23,82,37
+</code></pre>
+<p><strong>Georeferenced image from the sandbox (image + world file)</strong>: frame it flat (pitch 0, not globe), drag the crop box, pick a <strong>format</strong>, <strong>Download</strong>. You get e.g. <code>&lt;name&gt;.png</code> + <code>&lt;name&gt;.pgw</code>; in QGIS set the layer CRS to EPSG:3857.</p>
+<pre><code>sandbox.html?export&amp;lighting&amp;center=74.8,34.1&amp;zoom=6
+</code></pre>
+<p><strong>Image sequence (turn the camera or move the sun)</strong>: open the export view, set up the crop box, scale and format, then in the <strong>Sequence</strong> section pick <code>bearing</code>, <code>pitch</code> or <code>sun</code>, enter <strong>from</strong>, <strong>to</strong> and <strong>step</strong>, and press <strong>Export N frames</strong>. Each frame waits for the map to finish loading and is captured like a normal download. You get <code>&lt;name&gt;-&lt;setting&gt;-sequence.zip</code> with files like <code>&lt;name&gt;-sun-045.png</code> (negatives are <code>neg030</code>). Under the buttons is the frame count and an estimated time; during a run it shows the time left. The estimate learns from your runs (per setting and scale, saved in this browser). Press <strong>Stop</strong> to end early and still keep the frames so far. <strong>Play</strong> steps the live map through the same values (a short pause on each) without capturing or downloading anything — check framing and lighting first, then export.</p>
+<pre><code>sandbox.html?export&amp;terrain&amp;lighting&amp;center=74.8,34.1&amp;zoom=7
+</code></pre>
+<ul>
+<li><code>sun</code> turns lighting on for the run. It only repaints the shading, so it's the fastest.</li>
+<li><code>bearing</code> with <strong>follow camera</strong> ticked (Sequence → Light; same as <strong>lock to camera</strong> in the View tab, or <code>?lightlock</code>) keeps the shading coming from the same side in every frame; without it the light stays fixed to north and swings round as the map turns.</li>
+<li><code>bearing</code> turns the map around the screen centre, not the crop box: keep the box centred or the area drifts. World files are included (with rotation) while pitch is 0.</li>
+<li><code>pitch</code> frames above 0 have no world file, and higher pitch loads more tiles, so it's slower.</li>
+<li>Bearing, pitch and sun go back to where they were afterwards. The status line lists any value that hadn't finished loading after 30 s (that frame may be patchy).</li>
+<li>Keep the tab visible while it runs — background tabs slow WebGL down.</li>
+<li>For a full-quality video instead of the GIF: <code>ffmpeg -framerate 12 -pattern_type glob -i '*-bearing-*.png' -pix_fmt yuv420p out.mp4</code></li>
+</ul>
+<p><strong>Export with your own style file</strong>: put the MapLibre style.json in <code>src/styles/</code> (e.g. <code>src/styles/my-style.json</code>) and name it in the URL. Exports default to <code>my-style-export.png</code>.</p>
+<pre><code>sandbox.html?export&amp;style=my-style.json&amp;center=74.8,34.1&amp;zoom=6
+</code></pre>
+<ul>
+<li>A style from elsewhere works too (<code>style=https://…/style.json</code>) if its host allows CORS.</li>
+<li>Keep a <code>background</code> layer and, if you want <strong>Lighting</strong> to replace the pre-made shading, a <code>hillshade</code> layer — lighting is drawn just under <code>hillshade</code> and hides it while on. Without one, it's added on top of the style.</li>
+<li>The style's <code>glyphs</code> and <code>sprite</code> URLs must be reachable, or labels and icons won't draw. The built-in styles use <code>https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf</code>.</li>
+</ul>
+<p><strong>Keyframe tween (fly between captured views)</strong>: in the export panel's <strong>Keyframes</strong> section, frame the map and press <strong>+ Capture view</strong> for each stop (it records centre, zoom, bearing, pitch, and sun when lighting is on). Set <strong>Between</strong> (frames added between each pair of views) and <strong>Easing</strong> (<code>smooth</code> settles on every view, <code>linear</code> keeps an even pace), press <strong>Play</strong> to watch it on the live map, then <strong>Export N frames</strong> for <code>&lt;name&gt;-keyframes.zip</code> (<code>&lt;name&gt;-view-0001.png</code>, …). Total frames = views + (views − 1) × between.</p>
+<ul>
+<li>Each row has <strong>Go</strong> (jump there), <strong>⟳</strong> (replace with the current view), <strong>↑</strong> (move up) and <strong>✕</strong> (remove).</li>
+<li><strong>Save</strong> downloads <code>&lt;name&gt;-views.json</code> (the views plus <strong>Between</strong> and <strong>Easing</strong>); <strong>Load</strong> opens one and replaces the list. Load also takes a bare array of views, so you can write one by hand:</li>
+</ul>
+<pre data-language="json"><code class="language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"views"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span>
+    <span class="hljs-punctuation">{</span> <span class="hljs-attr">"center"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-number">74.8</span><span class="hljs-punctuation">,</span> <span class="hljs-number">34.1</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"zoom"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">6</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"bearing"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">350</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"pitch"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">0</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"sun"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">300</span> <span class="hljs-punctuation">}</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-punctuation">{</span> <span class="hljs-attr">"center"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">[</span><span class="hljs-number">77.5</span><span class="hljs-punctuation">,</span> <span class="hljs-number">32.5</span><span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"zoom"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">7</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"bearing"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">10</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"pitch"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">45</span><span class="hljs-punctuation">,</span> <span class="hljs-attr">"sun"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">30</span> <span class="hljs-punctuation">}</span>
+  <span class="hljs-punctuation">]</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"between"</span><span class="hljs-punctuation">:</span> <span class="hljs-number">24</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">"ease"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"smooth"</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p><code>center</code> and <code>zoom</code> are required; <code>bearing</code> and <code>pitch</code> default to 0; <code>sun</code> is optional (turns lighting on).</p>
+<ul>
+<li>The centre moves in a straight line on the Mercator map (the short way across the antimeridian); bearing and sun turn the short way round (350° → 10° passes through 0°).</li>
+<li>World files are written for frames with pitch 0; the camera and lighting go back to where they were afterwards. <strong>follow camera</strong> (Sequence → Light) applies here too.</li>
+<li>Views live in the page until you reload — <strong>Save</strong> them to keep them.</li>
+</ul>
+<p><strong>Low-res GIF of a run</strong>: tick <strong>GIF → with runs</strong> in the Image section and set its width (default 480 px) and speed (default 12 fps). Every <strong>Sequence</strong> or <strong>Keyframes</strong> export then also puts a looping <code>&lt;name&gt;-…-sequence.gif</code> / <code>&lt;name&gt;-keyframes.gif</code> in the zip, made from the same frames (256 colours per frame — fine for previews and sharing, not for print). Built as it goes, so it adds little memory.</p>
+<p><strong>Join clips into a video for Instagram (sequence player)</strong>: open <code>mapa/tools/sequence-player.html</code> (e.g. <code>http://localhost:3000/mapa/tools/sequence-player.html</code>). Each load adds a <strong>clip</strong>: <strong>+ Zip…</strong> (one clip per sandbox export zip — pick several at once), <strong>+ Folder…</strong>, or <strong>+ Images…</strong> — or drop them on the preview (each folder or zip becomes its own clip). Frames within a clip play in filename order (<code>view-2</code> before <code>view-10</code>); clips play in list order.</p>
+<ul>
+<li><strong>Per clip</strong>: <strong>once</strong> or <strong>ping-pong</strong>, <strong>×</strong> times through, <strong>hold</strong> the last frame for some seconds, and <strong>position x / y %</strong> — where the clip sits when its shape differs from the output (which part a crop keeps, or where the bars go; 50/50 is centred). You can also <strong>drag the preview</strong> to move the current clip; double-click re-centres it. <strong>↑</strong> moves it earlier, <strong>✕</strong> removes it, clicking its name jumps there.</li>
+<li><strong>Timeline</strong>: speed (fps), <strong>Between</strong> clips a <strong>cut</strong> or a <strong>crossfade</strong> of N frames (last frame of one dissolving into the first of the next), and <strong>Repeat</strong> for the whole thing.</li>
+<li><strong>Playback</strong> covers the whole timeline: scrubber, ◀ ▶ (or ← → keys), space to play/pause; the label shows clip and frame.</li>
+<li><strong>Export</strong> the whole timeline as <strong>MP4</strong> (H.264, what Instagram takes), <strong>GIF</strong>, or <strong>PNG frames</strong> (a zip of the finished frames — keeps transparency); <strong>Size</strong> original (first clip), ½, 1080×1080, 1080×1350 (Instagram post), 1080×1920 (Reel / Story) or 1920×1080; <strong>Fit</strong> keeps each frame whole with bars (pick their colour) or fills and crops — clips of different shapes are fitted the same way.</li>
+<li><strong>Look → Background</strong> (behind bars and any transparent pixels): <strong>transparent</strong> (checkerboard in the preview), a <strong>colour</strong>, or a <strong>gradient</strong>. <strong>Look → Vignette</strong> draws a gradient <strong>on top</strong> of everything (default: clear centre fading to 70% black at the edges, elliptical), in a <strong>blend mode</strong> (normal, multiply, screen, overlay, soft-light, color, luminosity, …).</li>
+<li>Both gradients share one editor: <strong>Shape</strong> — <strong>linear</strong> (with an <strong>Angle</strong>, CSS-style: 0° to the top, 90° to the right), <strong>circle</strong>, <strong>ellipse</strong> (stretches with the frame) or <strong>box</strong> (contours follow the frame's edges); for the non-linear shapes, <strong>Centre</strong> (% across, % down) and <strong>Size</strong>. <strong>Stops</strong> are the break points: colour, position (%) and opacity each; <strong>+ stop</strong> adds one halfway along the biggest gap, <strong>✕</strong> removes one (two minimum). The strip above the stops previews them.</li>
+<li>MP4 can't be transparent, so anything still transparent exports as black; GIF transparency is on/off per pixel; <strong>PNG frames</strong> keep it all. The line above Export shows size, clips, frames and length, and warns when an MP4 is under the 3 s Reels minimum.</li>
+<li>MP4 needs Chrome, Edge or Safari (they encode video in the page); in Firefox, export a GIF. Everything happens in the browser — nothing is uploaded.</li>
+</ul>
+<p><strong>Tweak lighting and camera by hand</strong>: open <code>sandbox.html?debug&amp;terrain&amp;lighting</code>, switch to the <strong>View</strong> tab and drag the sliders. Copy the values you like back into the URL (<code>sun</code>, <code>shade</code>, <code>pitch</code>, <code>bearing</code>).</p>
+<p><strong>Mercator PNG + world file for GIS (Mapa)</strong>: render the frame, then <strong>Download ▾ → PNG + world file</strong>. Pick <strong>image scale</strong> first for a sharper PNG. Drop <code>map.png</code> + <code>map.pgw</code> into QGIS and set the layer CRS to EPSG:3857.</p>
 <hr>
 <h2 id="notes" tabindex="-1"><a class="observablehq-header-anchor" href="#notes">Notes</a></h2>
 <ul>

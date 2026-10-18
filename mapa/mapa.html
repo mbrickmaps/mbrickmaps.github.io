@@ -184,6 +184,7 @@ import "./_observablehq/client.77f16a62.js";
     /* Value rows under a switch (terrain exaggeration, lighting settings). */
     #mlMenu .ml-field { display: flex; align-items: center; gap: 8px; padding: 3px 8px 3px 20px; color: #bdb9b1; }
     #mlMenu .ml-field > span:first-child { flex: 1; }
+    #mlMenu .ml-field .u { margin-left: -4px; }
     #mlMenu input[type=number] { width: 56px; background: #2b2723; color: #f4f4f2; border: 1px solid #5a544c; border-radius: 3px; padding: 1px 4px; }
     #mlMenu .ml-field input[type=color] { width: 56px; height: 20px; padding: 0 2px; background: #2b2723; border: 1px solid #5a544c; border-radius: 3px; }
     #mlMenu #mlLightSet { display: none; }
@@ -1055,6 +1056,7 @@ import "./_observablehq/client.77f16a62.js";
   <script type="module">
     import { renderMap, loadBasemapData, loadInsetData, resolveRefUid, satelliteViewCenter, satelliteProjector, looksLikeRawConfig, BASEMAP_LAYERS, ATLAS_STYLE, setTileRequestGuard, redrawAnnotations } from './mapa/js/mapa.js';
     import { atlasProjectToMapaSettings, atlasAnnotationsToMapa } from './mapa/js/translate.js';
+    import { worldFileFor } from './mapa/js/worldfile.js';
     import * as d3 from 'https://esm.sh/d3@5'; // same URL as mapa.js → esm.sh dedupes; gives d3.zoom/d3.select
     import * as topojson from 'https://esm.sh/topojson-client@3';
     import { rewind as turfRewind } from 'https://esm.sh/@turf/rewind@7'; // same URL as mapa.js → deduped
@@ -1288,6 +1290,7 @@ import "./_observablehq/client.77f16a62.js";
       delete sel.dataset.want;
     }
     let embedPatternsOn = true; // Download ▾ menu → "embed patterns"
+    let imageScale = 1;         // Download ▾ menu → "image scale" (PNG + world file)
     // Pattern tiles render as links to styles/patterns/*.png. On download, "embed patterns" (on by
     // default) swaps each link for the PNG as a data URI — a few KB each — so the SVG still has its
     // patterns in Illustrator or anywhere styles/patterns/ doesn't exist. href -> data URI cache.
@@ -2245,49 +2248,8 @@ import "./_observablehq/client.77f16a62.js";
         const framesJson = frameList.map((f) => ({ name: f.name || '', map: f.map }));
         for (let fi = 0; fi < frameList.length; fi++) {
           const fm = frameList[fi].map;         // this frame's saved state — the source of truth
-          const fp = buildProject(fm);          // project for THIS frame + the shared panels
-          // fgb mode (prod / ?fgb): stream just this frame's extent. Satellite waits for the pane bbox.
-          if (USE_FGB) {
-            const extent = (fp.view && fp.view.bbox) || paneBounds;
-            if (fm.proj === 'geoSatellite' && !extent) {
-              note('waiting for map…'); openNavPane(); await paneReady;
-            }
-            note('streaming basemap…');
-            await loadBasemapData('./mapa/files/', extent || satelliteBbox(fm), true, enabledBasemapFiles());
-          }
-          // Merge loaded custom datasets (Data panel, shared) as poly layers on a CLONE.
-          let toRender = fp;
-          // `d.geometry` is null for a pointer that hasn't resolved (or is missing) — skip those.
-          const dataOn = $('showCustom')?.checked !== false;
-          // Top of the Data list draws on top: SVG paints later elements over earlier, so hand the
-          // layers over bottom row first (reversed list order).
-          const shownCustom = dataOn ? customData.filter((d) => d.kind !== 'points' && d.show && d.geometry).reverse() : [];
-          if (shownCustom.length) {
-            const base = fp.polys?.data || [];
-            toRender = { ...fp, polys: { ...(fp.polys || {}), show: true,
-              data: [...base, ...shownCustom.flatMap((d) => datasetEntries(d))] } };
-          }
-          // Reversed per group so the FIRST CSV line draws on top (SVG paints later elements over earlier).
-          // Render-only — the saved file keeps CSV order so a reload gives back the same text.
-          // Groups reversed too, so the top POI group draws over the ones below it.
-          const shownPoints = dataOn ? customData.filter((d) => d.kind === 'points' && d.show).reverse().flatMap((g) => groupPointEntries(g, true).reverse()) : [];
-          if (shownPoints.length) {
-            const base = fp.points?.data || [];
-            toRender = { ...toRender, points: { ...(fp.points || {}), show: true, data: [...base, ...shownPoints] } };
-          }
-          const resolved = await resolveRaster(await resolvePolys(toRender));
+          const cfg = await frameRenderCfg(fm);
           if (myRender !== renderSeq) return;   // a newer render superseded this one — abandon it
-          const cfg = atlasProjectToMapaSettings(resolved, {});
-          cfg.patterns = { ...(cfg.patterns || {}), sizes: PATTERN_SIZES };
-          // Annotations attached to a Data layer: hand the engine that layer's (filtered) features as
-          // the annotation's data — d3-annotation's accessors place it on their centre. Render-only:
-          // the project file keeps just the pointer (anchor: { source, filter }).
-          for (const it of cfg.layer?.annotations?.data || []) {
-            const src = project.annotations?.data?.[it.src];
-            const L = src && src.anchor && anchorLayer(src.anchor);
-            if (L) { const fc = drawnFC(L); if (fc.features.length) it.feature = fc; }
-          }
-          if (annoEditOn && cfg.layer?.annotations) cfg.layer.annotations.editMode = true;
           const s = renderMap(cfg);
           if (fi === activeFrame && $('bmGen').value === 'auto') {
             $('bmGenNote').textContent = s.basemapSimplify > 0 ? '≈ ' + s.basemapSimplify + '°' : 'full detail';
@@ -2324,6 +2286,38 @@ import "./_observablehq/client.77f16a62.js";
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([str], { type: 'image/svg+xml' }));
           a.download = dlName() + (suffix ? '-' + suffix : '') + '.svg'; a.click();
+        };
+        // PNG + world file: the frame's current settings with the projection swapped to geoMercator,
+        // rendered off-page (the preview isn't touched) so the .pgw is plain EPSG:3857 metres.
+        // Patterns are always embedded (an SVG drawn as an image can't fetch links).
+        const savePng = async (fi, suffix) => {
+          note('rendering Mercator PNG…');
+          saveActiveFrame();
+          const svg = renderMap(await frameRenderCfg({ ...frames[fi].map, proj: 'geoMercator' }));
+          if (svg.tilesReady) await svg.tilesReady;
+          const W = +svg.getAttribute('width'), H = +svg.getAttribute('height'), k = imageScale;
+          const node = cleanFullClone(svg);
+          await embedPatterns(node); portableSvg(node);
+          node.setAttribute('width', W); node.setAttribute('height', H);
+          const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(node)], { type: 'image/svg+xml' }));
+          const img = new Image();
+          try {
+            await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('could not rasterise the SVG')); img.src = url; });
+            const cv = document.createElement('canvas'); cv.width = Math.round(W * k); cv.height = Math.round(H * k);
+            cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+            const png = await new Promise((res) => cv.toBlob(res, 'image/png'));
+            if (!png) throw new Error('image too large for the browser canvas — try a smaller scale');
+            const base = dlName() + (suffix ? '-' + suffix : '');
+            const files = [[base + '.png', png]];
+            const wf = worldFileFor({ projection: svg.projection, width: W, height: H, pxW: cv.width, pxH: cv.height });
+            if (wf) files.push([base + '.pgw', new Blob([wf], { type: 'text/plain' })]);
+            for (const [name, blob] of files) {
+              const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+              await new Promise((res) => setTimeout(res, 150));
+            }
+            note(wf ? 'PNG + world file (Mercator, EPSG:3857)' : 'PNG saved — no world file (frame corners not on the map)');
+          } catch (e) { fail('PNG export: ' + e.message); }
+          finally { URL.revokeObjectURL(url); }
         };
         const multi = rendered.length > 1;
         // Append the frame name to the download filename: always for multi-frame (so files don't
@@ -2373,14 +2367,25 @@ import "./_observablehq/client.77f16a62.js";
               saveSvg(c, suffix ? suffix + '-' + t.suffix : t.suffix); };
             menu.append(b);
           }
+          const ih = document.createElement('div'); ih.className = 'dl-head'; ih.textContent = 'Image';
+          const pngBtn = document.createElement('button'); pngBtn.type = 'button';
+          pngBtn.textContent = 'PNG + world file'; pngBtn.title = 'Mercator raster of the full export with a .pgw world file (EPSG:3857), for GIS';
+          pngBtn.onclick = () => { menu.hidden = true; savePng(i, suffix); };
+          menu.append(ih, pngBtn);
           // Download options live in this menu, not the crowded footer.
+          const sopt = document.createElement('label'); sopt.className = 'dl-opt'; sopt.title = 'PNG pixels per export pixel';
+          const ssel = document.createElement('select');
+          for (const v of [1, 2, 4]) ssel.add(new Option(v + '×', v, false, v === imageScale));
+          ssel.onchange = () => { imageScale = +ssel.value; };
+          ssel.onclick = (e) => e.stopPropagation();
+          sopt.append('image scale ', ssel);
           const opt = document.createElement('label'); opt.className = 'dl-opt';
           opt.title = 'Put pattern fills inside the SVG (as encoded PNGs) so it opens anywhere — off links styles/patterns/ instead';
           const ocb = document.createElement('input'); ocb.type = 'checkbox'; ocb.checked = embedPatternsOn;
           ocb.onchange = () => { embedPatternsOn = ocb.checked; };
           opt.append(ocb, ' embed patterns');
           const oh = document.createElement('div'); oh.className = 'dl-head'; oh.textContent = 'Options';
-          menu.append(oh, opt);
+          menu.append(oh, opt, sopt);
           $('dlArrow').style.display = 'inline-flex'; // always: the options are in here
         }
         // Tab bar above the output — one tab per frame; hidden when there's only one.
@@ -3775,10 +3780,11 @@ import "./_observablehq/client.77f16a62.js";
     // Dev-dropped raster images, keyed by row id: blob: URLs used for rendering ONLY. Never
     // serialized — the project always stores the pointer in the row's `url`.
     const rasterBlobs = new Map();
-    // Only blend modes that reliably survive Illustrator's SVG import (color-dodge / color-burn
-    // commonly reset to Normal on import, so they're omitted).
+    // color-dodge / color-burn commonly reset to Normal on Illustrator's SVG import, so they're
+    // omitted. The colour-family modes (hue … luminosity) render in browsers; their Illustrator
+    // round-trip hasn't been checked.
     const BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten',
-      'hard-light', 'soft-light', 'difference', 'exclusion'];
+      'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'];
     // MapTiler key: one per browser (the Raster panel's key field, localStorage), never in a
     // project. Rows and saved files carry `?key={key}`; a literal key pasted into a URL (or found
     // in an old file) is lifted into the field and replaced by the placeholder. Rendering fills
@@ -4396,6 +4402,53 @@ import "./_observablehq/client.77f16a62.js";
       d3.select(svg).call(outZoom.transform, d3.zoomIdentity);
       render();
     }
+    // One frame's saved Map-panel state → engine settings (shared panels read live). Used by the
+    // render loop and by PNG + world file, which passes a copy with proj: 'geoMercator'.
+    async function frameRenderCfg(fm) {
+      const fp = buildProject(fm);          // project for THIS frame + the shared panels
+      // fgb mode (prod / ?fgb): stream just this frame's extent. Satellite waits for the pane bbox.
+      if (USE_FGB) {
+        const extent = (fp.view && fp.view.bbox) || paneBounds;
+        if (fm.proj === 'geoSatellite' && !extent) {
+          note('waiting for map…'); openNavPane(); await paneReady;
+        }
+        note('streaming basemap…');
+        await loadBasemapData('./mapa/files/', extent || satelliteBbox(fm), true, enabledBasemapFiles());
+      }
+      // Merge loaded custom datasets (Data panel, shared) as poly layers on a CLONE.
+      let toRender = fp;
+      // `d.geometry` is null for a pointer that hasn't resolved (or is missing) — skip those.
+      const dataOn = $('showCustom')?.checked !== false;
+      // Top of the Data list draws on top: SVG paints later elements over earlier, so hand the
+      // layers over bottom row first (reversed list order).
+      const shownCustom = dataOn ? customData.filter((d) => d.kind !== 'points' && d.show && d.geometry).reverse() : [];
+      if (shownCustom.length) {
+        const base = fp.polys?.data || [];
+        toRender = { ...fp, polys: { ...(fp.polys || {}), show: true,
+          data: [...base, ...shownCustom.flatMap((d) => datasetEntries(d))] } };
+      }
+      // Reversed per group so the FIRST CSV line draws on top (SVG paints later elements over earlier).
+      // Render-only — the saved file keeps CSV order so a reload gives back the same text.
+      // Groups reversed too, so the top POI group draws over the ones below it.
+      const shownPoints = dataOn ? customData.filter((d) => d.kind === 'points' && d.show).reverse().flatMap((g) => groupPointEntries(g, true).reverse()) : [];
+      if (shownPoints.length) {
+        const base = fp.points?.data || [];
+        toRender = { ...toRender, points: { ...(fp.points || {}), show: true, data: [...base, ...shownPoints] } };
+      }
+      const resolved = await resolveRaster(await resolvePolys(toRender));
+      const cfg = atlasProjectToMapaSettings(resolved, {});
+      cfg.patterns = { ...(cfg.patterns || {}), sizes: PATTERN_SIZES };
+      // Annotations attached to a Data layer: hand the engine that layer's (filtered) features as
+      // the annotation's data — d3-annotation's accessors place it on their centre. Render-only:
+      // the project file keeps just the pointer (anchor: { source, filter }).
+      for (const it of cfg.layer?.annotations?.data || []) {
+        const src = project.annotations?.data?.[it.src];
+        const L = src && src.anchor && anchorLayer(src.anchor);
+        if (L) { const fc = drawnFC(L); if (fc.features.length) it.feature = fc; }
+      }
+      if (annoEditOn && cfg.layer?.annotations) cfg.layer.annotations.editMode = true;
+      return cfg;
+    }
     // A clone of the rendered SVG reset to the full artboard at fit: drop the interactive zoom
     // transform and restore each chrome overlay to its authored corner position. The basis for every
     // export (full stack + per-layer).
@@ -4987,7 +5040,7 @@ import "./_observablehq/client.77f16a62.js";
       if ($('mlTerrain')?.checked) src += '&terrain&exaggeration=' + encodeURIComponent($('mlTerrainExag').value || 1.5); // same for terrain
       if (skyCustom) src += '&sky=' + encodeURIComponent($('mlSky').value) + '&horizon=' + encodeURIComponent($('mlHorizon').value);
       if ($('mlLight')?.checked) src += '&lighting&sun=' + encodeURIComponent($('mlSun').value) + '&shade=' + encodeURIComponent($('mlShade').value) +
-        '&shadow=' + encodeURIComponent($('mlShadow').value) + '&highlight=' + encodeURIComponent($('mlHighlight').value);
+        '&shadow=' + encodeURIComponent($('mlShadow').value) + '&hilite=' + encodeURIComponent($('mlHighlight').value);
       // Landing camera for geoSatellite: hand the pane the full pose (center/zoom/tilt/rotation)
       // so it frames itself on its own map-load — deterministic, not a postMessage race.
       if ($('proj').value === 'geoSatellite' && satelliteCam) {

@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sequence player</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; gap: 28px; padding: 20px; background: #f9f9f9; color: #222; margin: 0; min-height: 100vh; }
+
+  /* Controls column */
+  #controls { display: flex; flex-direction: column; gap: 8px; width: 300px; flex-shrink: 0; }
+  .section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; margin-top: 6px; }
+  .divider { border: none; border-top: 1px solid #e8e8e8; margin: 4px 0; }
+  .btns { display: flex; gap: 6px; }
+  .btns button { flex: 1; }
+  button { padding: 7px 8px; font-size: 12px; border: 1px solid #ccc; border-radius: 5px; background: #fff; color: #222; cursor: pointer; }
+  button:hover:not(:disabled) { background: #f0f0f0; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: #1a5fb4; border-color: #1a5fb4; color: #fff; font-weight: 500; }
+  button.primary:hover:not(:disabled) { background: #1850a0; }
+  .row { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .row > .lab { width: 64px; flex-shrink: 0; font-size: 12px; color: #444; }
+  select, input[type="number"] { padding: 5px 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #222; }
+  .row select { flex: 1; min-width: 0; }
+  .row input[type="number"] { width: 64px; }
+  .unit { font-size: 11px; color: #888; }
+  input[type="range"] { width: 100%; accent-color: #1a5fb4; cursor: pointer; }
+  input[type="color"] { width: 36px; height: 24px; border: 1px solid #ccc; border-radius: 4px; padding: 1px; cursor: pointer; background: none; }
+  .note, #status { font-size: 11px; color: #777; line-height: 1.45; min-height: 14px; }
+  #status.err { color: #b42318; }
+  #progress { width: 100%; height: 6px; accent-color: #1a5fb4; }
+  #progress[hidden] { display: none; }
+
+  /* Clip list */
+  #clips { display: flex; flex-direction: column; gap: 6px; }
+  .clip { border: 1px solid #ddd; border-radius: 6px; background: #fff; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; }
+  .clip.active { border-color: #1a5fb4; box-shadow: 0 0 0 1px #1a5fb4 inset; }
+  .clip-head { display: flex; align-items: center; gap: 6px; }
+  .clip-n { flex: none; width: 18px; color: #1a5fb4; font-weight: 600; font-size: 12px; }
+  .clip-name { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .clip-meta { font-size: 11px; color: #888; }
+  .clip-head button { flex: none; padding: 2px 7px; font-size: 11px; }
+  .clip-opts { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #555; }
+  .clip-opts select, .clip-opts input { padding: 3px 4px; font-size: 11px; }
+  .clip-opts input[type="number"] { width: 46px; }
+
+  /* Preview */
+  #stage { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  #view { flex: 1; min-height: 300px; display: flex; align-items: center; justify-content: center; border: 2px dashed #d0d0d0; border-radius: 8px; background: #eee; position: relative; overflow: hidden; }
+  #view.drag { border-color: #1a5fb4; background: #e8f0fb; }
+  /* Checkerboard behind the preview, so transparent areas read as transparent. */
+  #view canvas { max-width: 100%; max-height: calc(100vh - 140px); box-shadow: 0 1px 6px rgba(0,0,0,.15);
+    background: repeating-conic-gradient(#d6d6d6 0% 25%, #fff 0% 50%) 0 0 / 16px 16px; }
+  .row input[type="color"] { flex: none; }
+  .row[hidden] { display: none; }
+
+  /* Gradient editor (background + vignette) */
+  .grad-ed { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 8px; border: 1px solid #e2e2e2; border-radius: 6px; background: #fff; }
+  .grad-ed[hidden] { display: none; }
+  .grad-ed .row > .lab { width: 52px; }
+  .grad-ed .row input[type="number"] { width: 52px; }
+  .grad-bar { height: 16px; border-radius: 3px; border: 1px solid #ccc; margin: 2px 0; }
+  .grad-stop { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+  .grad-stop input[type="number"] { width: 46px; padding: 3px 4px; font-size: 11px; }
+  .grad-stop input[type="range"] { flex: 1; min-width: 0; }
+  .grad-stop .gv { width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+  .grad-stop button, .grad-ed .add { padding: 2px 7px; font-size: 11px; }
+  .grad-ed .add { align-self: flex-start; }
+  #empty { text-align: center; color: #888; font-size: 14px; line-height: 1.6; padding: 20px; }
+  #empty b { color: #444; }
+  #transport { display: flex; align-items: center; gap: 8px; }
+  #transport button { min-width: 36px; }
+  #frameLabel { font-size: 12px; color: #555; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+  #scrub { flex: 1; }
+
+  @media (max-width: 760px) {
+    body { flex-direction: column; padding: 16px; gap: 16px; }
+    #controls { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="controls">
+  <div class="section-label">Clips</div>
+  <div class="btns">
+    <button id="openFiles" title="Add a clip from image files (PNG, JPEG, WebP)">+ Images…</button>
+    <button id="openFolder" title="Add a clip from a folder of images">+ Folder…</button>
+    <button id="openZip" title="Add clips from sandbox export zips (one clip per zip)">+ Zip…</button>
+  </div>
+  <input type="file" id="fileIn" accept="image/png,image/jpeg,image/webp,image/avif" multiple hidden>
+  <input type="file" id="folderIn" webkitdirectory hidden>
+  <input type="file" id="zipIn" accept=".zip,application/zip" multiple hidden>
+  <div id="clips"></div>
+  <div class="note" id="clipNote">Each load adds a clip; they play in list order. Drop images, folders or zips on the preview too.</div>
+
+  <hr class="divider">
+  <div class="section-label">Timeline</div>
+  <div class="row"><span class="lab">Speed</span><input type="number" id="fps" min="1" max="60" value="12"><span class="unit">fps</span></div>
+  <div class="row"><span class="lab">Between</span>
+    <select id="trans"><option value="cut">cut</option><option value="fade">crossfade</option></select>
+    <input type="number" id="fadeN" min="1" max="120" value="6" title="crossfade length"><span class="unit">frames</span>
+  </div>
+  <div class="row"><span class="lab">Repeat</span><input type="number" id="repeat" min="1" max="100" value="1"><span class="unit">× whole timeline</span></div>
+
+  <hr class="divider">
+  <div class="section-label">Look</div>
+  <div class="row"><span class="lab">Background</span>
+    <select id="bgMode" title="Behind the frames — shows through bars and any transparent parts">
+      <option value="none">transparent</option><option value="solid">colour</option><option value="gradient">gradient</option>
+    </select>
+    <input type="color" id="bg" value="#000000" title="Background colour">
+  </div>
+  <div id="bgGrad" class="grad-ed"></div>
+  <div class="row"><span class="lab">Vignette</span>
+    <label style="font-size:12px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="vigOn"> on top</label>
+    <select id="vigBlend" title="How the vignette mixes with the frames under it">
+      <option value="source-over">normal</option><option>multiply</option><option>screen</option><option>overlay</option>
+      <option>darken</option><option>lighten</option><option>color-dodge</option><option>color-burn</option>
+      <option>hard-light</option><option>soft-light</option><option>difference</option><option>exclusion</option>
+      <option>hue</option><option>saturation</option><option>color</option><option>luminosity</option>
+    </select>
+  </div>
+  <div id="vigGrad" class="grad-ed"></div>
+
+  <hr class="divider">
+  <div class="section-label">Export</div>
+  <div class="row"><span class="lab">Format</span>
+    <select id="format"><option value="mp4">MP4 video (Instagram, slides)</option><option value="gif">GIF (256 colours)</option><option value="png">PNG frames (zip, keeps transparency)</option></select>
+  </div>
+  <div class="row"><span class="lab">Size</span>
+    <select id="size">
+      <option value="orig">original (first clip)</option>
+      <option value="half">original ½</option>
+      <option value="1080x1080">1080 × 1080 — square</option>
+      <option value="1080x1350">1080 × 1350 — Instagram post</option>
+      <option value="1080x1920">1080 × 1920 — Reel / Story</option>
+      <option value="1920x1080">1920 × 1080 — HD</option>
+    </select>
+  </div>
+  <div class="row"><span class="lab">Fit</span>
+    <select id="fit"><option value="contain">whole frame, add bars</option><option value="cover">fill, crop edges</option></select>
+  </div>
+  <div class="note" id="outInfo"></div>
+  <button id="export" class="primary" disabled>Export</button>
+  <progress id="progress" value="0" max="1" hidden></progress>
+  <div id="status"></div>
+</div>
+
+<div id="stage">
+  <div id="view">
+    <div id="empty"><b>Drop image sequences here</b><br>PNG / JPEG / WebP files, folders, or sandbox export zips — each becomes a clip</div>
+    <canvas id="canvas" hidden></canvas>
+  </div>
+  <div id="transport">
+    <button id="prev" title="Previous frame (←)" disabled>◀</button>
+    <button id="play" title="Play / pause (space)" disabled>Play</button>
+    <button id="next" title="Next frame (→)" disabled>▶</button>
+    <input type="range" id="scrub" min="0" max="0" value="0" disabled>
+    <span id="frameLabel"></span>
+  </div>
+</div>
+
+<script type="module">
+// Sequence player: load image sequences as clips (files, a folder, or sandbox export zips), chain them
+// into one timeline (per-clip once/ping-pong, repeat, hold; cut or crossfade between), play it back,
+// and export the whole timeline as an MP4 (WebCodecs H.264 — what Instagram takes) or a GIF.
+const $ = (id) => document.getElementById(id);
+const IMG_RE = /\.(png|jpe?g|webp|avif)$/i;
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', avif: 'image/avif' };
+const PREVIEW_MAX = 1280;   // preview frames are decoded at most this wide
+const CACHE_MAX = 64;       // decoded preview frames kept (oldest dropped)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let clips = [];             // [{ name, frames: [{ name, blob }], w, h, mode: 'once'|'pingpong', repeat, hold }]
+let timeline = [];          // [{ layers: [{ c, i, a }], label, clip }] — one entry per output frame
+let pos = 0, playing = false, timer = null, active = 0;
+const cache = new Map();    // `${clip.id}:${i}` → ImageBitmap (preview size); insertion order = age
+let nextId = 1;
+
+// ---- loading -------------------------------------------------------------------------------
+const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+async function framesFromZip(file) {
+  const { default: JSZip } = await import('https://esm.sh/jszip@3.10.1');
+  const zip = await JSZip.loadAsync(file), out = [];
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir || !IMG_RE.test(entry.name) || /(^|\/)(__MACOSX|\.)/.test(entry.name)) continue;
+    const ext = entry.name.split('.').pop().toLowerCase();
+    out.push({ name: entry.name.split('/').pop(), blob: new Blob([await entry.async('arraybuffer')], { type: MIME[ext] }) });
+  }
+  return out.sort(byName);
+}
+async function addClip(name, frames) {
+  if (!frames.length) return false;
+  const bmp = await createImageBitmap(frames[0].blob);
+  clips.push({ id: nextId++, name, frames, w: bmp.width, h: bmp.height, mode: 'once', repeat: 1, hold: 0, px: 50, py: 50 });
+  bmp.close();
+  return true;
+}
+// Zips → one clip each (in name order); loose images → one clip; a folder's images → one clip.
+async function load(fileList, label) {
+  const files = [...fileList];
+  if (!files.length) return;
+  setStatus('loading…');
+  try {
+    let added = 0;
+    for (const z of files.filter((f) => /\.zip$/i.test(f.name)).sort(byName))
+      if (await addClip(z.name.replace(/\.zip$/i, ''), await framesFromZip(z))) added++;
+    const imgs = files.filter((f) => IMG_RE.test(f.name) && !/(^|\/)\./.test(f.name)).map((f) => ({ name: f.name, blob: f })).sort(byName);
+    if (imgs.length && await addClip(label || imgs[0].name.replace(/[-_ ]?\d+\.[a-z]+$/i, '') || 'images', imgs)) added++;
+    setStatus(added ? '' : 'no PNG / JPEG / WebP images found', !added);
+    rebuild({ jumpTo: added ? clips.length - added : null });
+  } catch (err) { setStatus(`couldn't load: ${err.message}`, true); }
+}
+
+// ---- timeline --------------------------------------------------------------------------------
+// One clip's frame order: once or there-and-back, × repeat, then the last frame held `hold` seconds.
+function clipOrder(c, fps) {
+  const n = c.frames.length, pass = [...Array(n).keys()];
+  if (c.mode === 'pingpong' && n > 2) pass.push(...pass.slice(1, -1).reverse());
+  const out = Array.from({ length: Math.max(1, c.repeat) }, () => pass).flat();
+  for (let k = Math.round(c.hold * fps); k > 0; k--) out.push(out[out.length - 1]);
+  return out;
+}
+// The whole film: each clip's frames, with a crossfade (last frame of one dissolving into the
+// first of the next) between clips when chosen, all × the timeline repeat.
+function buildTimeline() {
+  const fps = fpsNow(), fade = $('trans').value === 'fade' ? Math.max(1, Math.round(+$('fadeN').value || 6)) : 0;
+  const one = [];
+  clips.forEach((c, ci) => {
+    const order = clipOrder(c, fps);
+    order.forEach((i) => one.push({ layers: [{ c: ci, i, a: 1 }], clip: ci, label: `${c.name} · ${c.frames[i].name}` }));
+    const nx = clips[ci + 1];
+    if (fade && nx) {
+      const last = order[order.length - 1], first = clipOrder(nx, fps)[0];
+      for (let k = 1; k <= fade; k++) {
+        const t = k / (fade + 1);
+        one.push({ layers: [{ c: ci, i: last, a: 1 }, { c: ci + 1, i: first, a: t }], clip: ci, label: `crossfade ${c.name} → ${nx.name}` });
+      }
+    }
+  });
+  const reps = Math.max(1, Math.round(+$('repeat').value || 1));
+  return Array.from({ length: reps }, () => one).flat();
+}
+const fpsNow = () => Math.max(1, Math.round(+$('fps').value || 12));
+const clipStart = (ci) => Math.max(0, timeline.findIndex((f) => f.clip === ci));
+function rebuild({ jumpTo = null } = {}) {
+  timeline = buildTimeline();
+  const has = timeline.length > 0;
+  for (const id of ['prev', 'play', 'next', 'scrub', 'export']) $(id).disabled = !has;
+  $('empty').hidden = has; $('canvas').hidden = !has;
+  $('scrub').max = Math.max(0, timeline.length - 1);
+  if (!has) { stop(); $('frameLabel').textContent = ''; }
+  renderClips();
+  updateOutInfo();
+  if (has) show(jumpTo != null ? clipStart(jumpTo) : Math.min(pos, timeline.length - 1));
+}
+function renderClips() {
+  $('clips').innerHTML = clips.map((c, ci) => `
+    <div class="clip${ci === active ? ' active' : ''}" data-ci="${ci}">
+      <div class="clip-head">
+        <span class="clip-n">${ci + 1}</span>
+        <span class="clip-name" data-act="jump" title="${esc(c.name)} — click to jump here">${esc(c.name)}</span>
+        <span class="clip-meta">${c.frames.length} fr · ${c.w}×${c.h}</span>
+        <button data-act="up" title="Move earlier"${ci ? '' : ' disabled'}>↑</button>
+        <button data-act="del" title="Remove clip">✕</button>
+      </div>
+      <div class="clip-opts">
+        <select data-k="mode" title="Play the clip once, or there and back"><option value="once"${c.mode === 'once' ? ' selected' : ''}>once</option><option value="pingpong"${c.mode === 'pingpong' ? ' selected' : ''}>ping-pong</option></select>
+        × <input type="number" data-k="repeat" min="1" max="100" value="${c.repeat}" title="Times through">
+        hold <input type="number" data-k="hold" min="0" step="0.5" value="${c.hold}" title="Seconds to hold the last frame"> s
+      </div>
+      <div class="clip-opts" title="Where the clip sits in the frame when its shape differs from the output — or drag the preview (double-click resets)">
+        position x <input type="number" data-k="px" min="0" max="100" value="${c.px}"> y <input type="number" data-k="py" min="0" max="100" value="${c.py}"> %
+      </div>
+    </div>`).join('');
+  $('clipNote').hidden = clips.length > 0;
+}
+
+// ---- drawing (shared by preview and export) --------------------------------------------------
+function outSize() {
+  const v = $('size').value, c0 = clips[0];
+  if (!c0) return { w: 0, h: 0 };
+  const even = (n) => Math.max(2, Math.floor(n / 2) * 2);   // H.264 needs even dimensions
+  if (v === 'orig') return { w: even(c0.w), h: even(c0.h) };
+  if (v === 'half') return { w: even(c0.w / 2), h: even(c0.h / 2) };
+  const [w, h] = v.split('x').map(Number);
+  return { w, h };
+}
+// ---- gradients (background + vignette) -----------------------------------------------------
+// A gradient: shape (linear at an angle; circle; ellipse, which stretches with the frame; box, whose
+// contours follow the frame's edges), centre + size for the non-linear shapes, and any number of
+// stops ({ pos %, color, alpha % }). Rendered per pixel through a 256-step lookup, so every shape
+// shares the same stops; the result is cached per size, since it's the same on every frame.
+const bgSpec = { shape: 'linear', angle: 180, cx: 50, cy: 50, size: 100,
+  stops: [{ pos: 0, color: '#26313d', alpha: 100 }, { pos: 100, color: '#06090d', alpha: 100 }] };
+const vigSpec = { shape: 'ellipse', angle: 180, cx: 50, cy: 50, size: 100,
+  stops: [{ pos: 0, color: '#000000', alpha: 0 }, { pos: 55, color: '#000000', alpha: 0 }, { pos: 100, color: '#000000', alpha: 70 }] };
+const SHAPES = { linear: 'linear', circle: 'circle', ellipse: 'ellipse (follows frame)', box: 'box (follows frame edges)' };
+const hexRgb = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
+function gradLut(stops) {
+  const st = [...stops].sort((a, b) => a.pos - b.pos).map((x) => ({ p: x.pos / 100, c: hexRgb(x.color), a: x.alpha / 100 }));
+  const lut = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    let k = st.findIndex((x) => x.p >= t);
+    if (k === -1) k = st.length - 1;
+    const b = st[k], a = st[Math.max(0, k - 1)];
+    const f = b.p > a.p ? Math.min(1, Math.max(0, (t - a.p) / (b.p - a.p))) : 1;
+    for (let c = 0; c < 3; c++) lut[i * 4 + c] = a.c[c] + (b.c[c] - a.c[c]) * f;
+    lut[i * 4 + 3] = 255 * (a.a + (b.a - a.a) * f);
+  }
+  return lut;
+}
+const gradCache = new Map();
+function gradCanvas(spec, w, h) {
+  const key = `${w}x${h}:${JSON.stringify(spec)}`;
+  if (gradCache.has(key)) return gradCache.get(key);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h), d = img.data, lut = gradLut(spec.stops);
+  const cx = spec.cx / 100 * w, cy = spec.cy / 100 * h, size = Math.max(0.01, spec.size / 100);
+  const th = spec.angle * Math.PI / 180, dx = Math.sin(th), dy = -Math.cos(th);   // CSS angles: 0° = to top, 90° = to right
+  const half = (Math.abs(w * dx) + Math.abs(h * dy)) / 2 || 1;
+  const R = Math.max(Math.hypot(cx, cy), Math.hypot(w - cx, cy), Math.hypot(cx, h - cy), Math.hypot(w - cx, h - cy)) || 1;
+  const tOf = {
+    linear: (x, y) => ((x - w / 2) * dx + (y - h / 2) * dy) / (2 * half) + 0.5,
+    circle: (x, y) => Math.hypot(x - cx, y - cy) / (R * size),
+    ellipse: (x, y) => Math.hypot((x - cx) / (w / 2), (y - cy) / (h / 2)) / size,
+    box: (x, y) => Math.max(Math.abs(x - cx) / (w / 2), Math.abs(y - cy) / (h / 2)) / size,
+  }[spec.shape];
+  for (let y = 0, o = 0; y < h; y++) for (let x = 0; x < w; x++, o += 4) {
+    const k = Math.min(255, Math.max(0, Math.round(tOf(x + 0.5, y + 0.5) * 255))) * 4;
+    d[o] = lut[k]; d[o + 1] = lut[k + 1]; d[o + 2] = lut[k + 2]; d[o + 3] = lut[k + 3];
+  }
+  ctx.putImageData(img, 0, 0);
+  if (gradCache.size >= 6) gradCache.delete(gradCache.keys().next().value);
+  gradCache.set(key, cv);
+  return cv;
+}
+// Editor UI for one gradient spec: shape, angle or centre/size, a preview strip, and the stops.
+function gradEditor(el, spec, onChange) {
+  const bar = () => {
+    const st = [...spec.stops].sort((a, b) => a.pos - b.pos)
+      .map((x) => `rgba(${hexRgb(x.color).join(',')},${x.alpha / 100}) ${x.pos}%`).join(', ');
+    return `linear-gradient(90deg, ${st}), repeating-conic-gradient(#d6d6d6 0% 25%, #fff 0% 50%) 0 0 / 8px 8px`;
+  };
+  const render = () => {
+    const lin = spec.shape === 'linear';
+    el.innerHTML = `
+      <div class="row"><span class="lab">Shape</span><select data-g="shape">${Object.entries(SHAPES).map(([k, v]) => `<option value="${k}"${spec.shape === k ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="row"${lin ? '' : ' hidden'}><span class="lab">Angle</span><input type="range" data-g="angle" min="0" max="359" value="${spec.angle}"><span class="unit gv" data-v="angle">${spec.angle}°</span></div>
+      <div class="row"${lin ? ' hidden' : ''}><span class="lab">Centre</span><input type="number" data-g="cx" min="-50" max="150" value="${spec.cx}" title="across, % of width"><span class="unit">%</span><input type="number" data-g="cy" min="-50" max="150" value="${spec.cy}" title="down, % of height"><span class="unit">%</span></div>
+      <div class="row"${lin ? ' hidden' : ''}><span class="lab">Size</span><input type="range" data-g="size" min="10" max="300" value="${spec.size}"><span class="unit gv" data-v="size">${spec.size}%</span></div>
+      <div class="grad-bar" style="background:${bar()}" title="${lin ? 'start → end' : 'centre → edge'}"></div>
+      ${spec.stops.map((x, i) => `<div class="grad-stop" data-i="${i}">
+        <input type="color" data-s="color" value="${x.color}" title="colour">
+        <input type="number" data-s="pos" min="0" max="100" value="${x.pos}" title="position, %">%
+        <input type="range" data-s="alpha" min="0" max="100" value="${x.alpha}" title="opacity"><span class="gv" data-a="${i}">${x.alpha}%</span>
+        <button data-s="del" title="remove stop"${spec.stops.length > 2 ? '' : ' disabled'}>✕</button></div>`).join('')}
+      <button class="add" data-g="add" title="Add a stop halfway along the biggest gap">+ stop</button>`;
+  };
+  el.addEventListener('input', (e) => {
+    const t = e.target, g = t.dataset.g, sKey = t.dataset.s;
+    if (g) {
+      spec[g] = g === 'shape' ? t.value : +t.value;
+      if (g === 'shape') { render(); onChange(); return; }
+      const v = el.querySelector(`[data-v="${g}"]`); if (v) v.textContent = spec[g] + (g === 'angle' ? '°' : '%');
+    } else if (sKey) {
+      const i = +t.closest('.grad-stop').dataset.i, x = spec.stops[i];
+      x[sKey] = sKey === 'color' ? t.value : Math.min(100, Math.max(0, +t.value || 0));
+      if (sKey === 'alpha') el.querySelector(`[data-a="${i}"]`).textContent = x.alpha + '%';
+    }
+    el.querySelector('.grad-bar').style.background = bar();
+    onChange();
+  });
+  el.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.dataset.s === 'del' && spec.stops.length > 2) spec.stops.splice(+t.closest('.grad-stop').dataset.i, 1);
+    else if (t.dataset.g === 'add') {
+      const st = [...spec.stops].sort((a, b) => a.pos - b.pos);
+      let k = 0; for (let i = 1; i < st.length - 1; i++) if (st[i + 1].pos - st[i].pos > st[k + 1].pos - st[k].pos) k = i;
+      const a = st[k], b = st[k + 1] || a, mix = hexRgb(a.color).map((c, i) => Math.round((c + hexRgb(b.color)[i]) / 2));
+      spec.stops.push({ pos: Math.round((a.pos + b.pos) / 2), color: '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join(''), alpha: Math.round((a.alpha + b.alpha) / 2) });
+    } else return;
+    render(); onChange();
+  });
+  render();
+}
+// Background under the frames (shows through bars and transparent pixels). MP4 has no alpha, so
+// whatever stays transparent becomes black there (forceOpaque).
+function paintBackground(ctx, w, h, forceOpaque = false) {
+  const mode = $('bgMode').value;
+  ctx.clearRect(0, 0, w, h);
+  if (forceOpaque || mode === 'solid') { ctx.fillStyle = mode === 'solid' ? $('bg').value : '#000'; ctx.fillRect(0, 0, w, h); }
+  if (mode === 'gradient') ctx.drawImage(gradCanvas(bgSpec, w, h), 0, 0);
+}
+// Draw one timeline frame into a w×h context: background, then each layer fitted ('contain'
+// letterboxes, 'cover' crops to fill) at its opacity. Placement is snapped to whole pixels, and a
+// side within a pixel of the frame is stretched to it — else rounding leaves a 1px background line.
+// Where a clip's frame goes in a w×h output: fitted ('contain' letterboxes, 'cover' crops to fill),
+// then placed by the clip's position (px/py %: 50 = centred, 0 = left/top, 100 = right/bottom).
+function placement(c, w, h) {
+  const fit = $('fit').value;
+  const s = fit === 'cover' ? Math.max(w / c.w, h / c.h) : Math.min(w / c.w, h / c.h);
+  let dw = Math.round(c.w * s), dh = Math.round(c.h * s);
+  if (Math.abs(dw - w) <= 1) dw = w;
+  if (Math.abs(dh - h) <= 1) dh = h;
+  return { dw, dh, dx: Math.round((w - dw) * c.px / 100), dy: Math.round((h - dh) * c.py / 100) };
+}
+function drawFrame(ctx, bitmaps, layers, w, h, forceOpaque = false) {
+  ctx.globalAlpha = 1;
+  paintBackground(ctx, w, h, forceOpaque);
+  ctx.imageSmoothingQuality = 'high';
+  layers.forEach((L, k) => {
+    const { dw, dh, dx, dy } = placement(clips[L.c], w, h);
+    ctx.globalAlpha = L.a;
+    ctx.drawImage(bitmaps[k], dx, dy, dw, dh);
+  });
+  ctx.globalAlpha = 1;
+  if ($('vigOn').checked) {   // vignette over everything, in its blend mode
+    ctx.globalCompositeOperation = $('vigBlend').value;
+    ctx.drawImage(gradCanvas(vigSpec, w, h), 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+// ---- playback --------------------------------------------------------------------------------
+async function previewBitmap(ci, i) {
+  const c = clips[ci], key = `${c.id}:${i}`;
+  if (cache.has(key)) { const b = cache.get(key); cache.delete(key); cache.set(key, b); return b; }
+  const w = Math.min(PREVIEW_MAX, c.w);
+  const b = await createImageBitmap(c.frames[i].blob, { resizeWidth: w, resizeHeight: Math.max(1, Math.round(c.h * w / c.w)), resizeQuality: 'medium' });
+  cache.set(key, b);
+  while (cache.size > CACHE_MAX) { const [k, old] = cache.entries().next().value; cache.delete(k); old.close(); }
+  return b;
+}
+async function show(p) {
+  pos = p;
+  const f = timeline[p];
+  if (!f) return;
+  const bmps = await Promise.all(f.layers.map((L) => previewBitmap(L.c, L.i)));
+  if (pos !== p) return;   // a newer frame was asked for meanwhile
+  const out = outSize(), k = Math.min(1, PREVIEW_MAX / Math.max(out.w, out.h));
+  const cv = $('canvas'), w = Math.round(out.w * k), h = Math.round(out.h * k);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  drawFrame(cv.getContext('2d'), bmps, f.layers, w, h);
+  $('scrub').value = p;
+  $('frameLabel').textContent = `${p + 1} / ${timeline.length} · ${f.label}`;
+  if (f.clip !== active) { active = f.clip; document.querySelectorAll('.clip').forEach((el) => el.classList.toggle('active', +el.dataset.ci === active)); }
+  const nx = timeline[(p + 1) % timeline.length];
+  nx.layers.forEach((L) => previewBitmap(L.c, L.i).catch(() => {}));   // decode ahead
+}
+function step(d) { if (timeline.length) show((pos + d + timeline.length) % timeline.length); }
+function tick() { step(1); timer = setTimeout(tick, 1000 / fpsNow()); }
+function play() { if (!timeline.length) return; playing = true; $('play').textContent = 'Pause'; tick(); }
+function stop() { playing = false; clearTimeout(timer); $('play').textContent = 'Play'; }
+
+// ---- export ----------------------------------------------------------------------------------
+function updateOutInfo() {
+  $('fadeN').disabled = $('trans').value !== 'fade';
+  const bm = $('bgMode').value;
+  $('bg').style.display = bm === 'solid' ? '' : 'none';
+  $('bgGrad').hidden = bm !== 'gradient';
+  $('vigGrad').hidden = !$('vigOn').checked;
+  $('vigBlend').disabled = !$('vigOn').checked;
+  if (!timeline.length) { $('outInfo').textContent = ''; return; }
+  const o = outSize(), fps = fpsNow(), n = timeline.length, secs = n / fps;
+  let t = `${o.w} × ${o.h} px · ${clips.length} clip${clips.length === 1 ? '' : 's'} · ${n} frames · ${secs.toFixed(1)} s at ${fps} fps`;
+  if ($('format').value === 'mp4' && secs < 3) t += ' — Instagram Reels need 3 s or more: raise a Repeat or Hold, or lower fps';
+  if ($('format').value === 'gif' && o.w * o.h > 1100 * 1100) t += ' — large for a GIF (slow, big file)';
+  if (clips.some((c) => Math.abs(c.w / c.h - clips[0].w / clips[0].h) > 0.01)) t += ' · clips differ in shape — Fit decides bars or crop';
+  if (bm === 'none') {
+    if ($('format').value === 'mp4') t += ' · MP4 has no transparency — the background will be black';
+    else if ($('format').value === 'gif') t += ' · GIF transparency is on/off (soft edges get hard)';
+  }
+  $('outInfo').textContent = t;
+}
+function setStatus(t, err = false) { $('status').textContent = t; $('status').classList.toggle('err', err); }
+function save(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+// Full-size frames for export: the previous frame's bitmaps are reused when the next frame needs the
+// same images (holds, repeats of one frame), otherwise decoded fresh and the old ones closed.
+function exportFrames() {
+  let keys = [], bmps = [];
+  return {
+    async get(f) {
+      const want = f.layers.map((L) => `${clips[L.c].id}:${L.i}`);
+      const next = await Promise.all(f.layers.map((L, k) => {
+        const j = keys.indexOf(want[k]);
+        return j >= 0 ? bmps[j] : createImageBitmap(clips[L.c].frames[L.i].blob);
+      }));
+      bmps.forEach((b) => { if (!next.includes(b)) b.close(); });
+      keys = want; bmps = next;
+      return next;
+    },
+    done() { bmps.forEach((b) => b.close()); keys = []; bmps = []; },
+  };
+}
+async function pickAvcCodec(w, h, fps, bitrate) {
+  if (!('VideoEncoder' in window)) return null;
+  for (const codec of ['avc1.640033', 'avc1.4d0033', 'avc1.42003e', 'avc1.42001f']) {
+    try {
+      const { supported } = await VideoEncoder.isConfigSupported({ codec, width: w, height: h, bitrate, framerate: fps });
+      if (supported) return codec;
+    } catch { /* try the next profile */ }
+  }
+  return null;
+}
+async function exportMp4(w, h, fps, cv, ctx, src, progress) {
+  const bitrate = Math.round(Math.min(20e6, Math.max(2e6, w * h * fps * 0.15)));
+  const codec = await pickAvcCodec(w, h, fps, bitrate);
+  if (!codec) throw new Error('this browser can\'t encode H.264 video — use Chrome, Edge or Safari, or export a GIF');
+  const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.mjs');
+  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: w, height: h, frameRate: fps }, fastStart: 'in-memory' });
+  let failure = null;
+  const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => { failure = e; } });
+  enc.configure({ codec, width: w, height: h, bitrate, framerate: fps, avc: { format: 'avc' } });
+  const us = 1e6 / fps;
+  for (const [k, f] of timeline.entries()) {
+    if (failure) throw failure;
+    drawFrame(ctx, await src.get(f), f.layers, w, h, true);
+    const vf = new VideoFrame(cv, { timestamp: Math.round(k * us), duration: Math.round(us) });
+    enc.encode(vf, { keyFrame: k % (fps * 2) === 0 });
+    vf.close();
+    while (enc.encodeQueueSize > 6) await new Promise((r) => setTimeout(r, 4));
+    progress(k + 1);
+  }
+  await enc.flush();
+  if (failure) throw failure;
+  muxer.finalize();
+  return new Blob([muxer.target.buffer], { type: 'video/mp4' });
+}
+async function exportGif(w, h, fps, cv, ctx, src, progress) {
+  const { GIFEncoder, quantize, applyPalette } = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js');
+  const gif = GIFEncoder(), delay = Math.round(1000 / fps), clear = $('bgMode').value === 'none';
+  for (const [k, f] of timeline.entries()) {
+    drawFrame(ctx, await src.get(f), f.layers, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data;
+    if (clear) {
+      // GIF transparency is on/off per pixel: quantize with alpha, then mark the clear palette entry.
+      const palette = quantize(px, 256, { format: 'rgba4444', oneBitAlpha: true, clearAlpha: true });
+      const ti = palette.findIndex((c) => c[3] === 0);
+      gif.writeFrame(applyPalette(px, palette, 'rgba4444'), w, h, { palette, delay, transparent: ti >= 0, transparentIndex: Math.max(0, ti) });
+    } else {
+      const palette = quantize(px, 256);
+      gif.writeFrame(applyPalette(px, palette), w, h, { palette, delay });
+    }
+    progress(k + 1);
+    await new Promise((r) => setTimeout(r, 0));   // let the progress bar paint
+  }
+  gif.finish();
+  return new Blob([gif.bytes()], { type: 'image/gif' });
+}
+// PNG frames: every timeline frame composited (background, fit, crossfades) at full alpha, zipped.
+async function exportPngZip(w, h, fps, cv, ctx, src, progress) {
+  const { default: JSZip } = await import('https://esm.sh/jszip@3.10.1');
+  const zip = new JSZip(), pad = String(timeline.length).length;
+  for (const [k, f] of timeline.entries()) {
+    drawFrame(ctx, await src.get(f), f.layers, w, h);
+    zip.file(`frame-${String(k + 1).padStart(Math.max(4, pad), '0')}.png`, await new Promise((r) => cv.toBlob(r, 'image/png')));
+    progress(k + 1);
+  }
+  return zip.generateAsync({ type: 'blob' });
+}
+async function runExport() {
+  const fmt = $('format').value, { w, h } = outSize(), fps = fpsNow();
+  stop();
+  $('export').disabled = true; $('progress').hidden = false; $('progress').max = timeline.length; $('progress').value = 0;
+  const t0 = performance.now(), src = exportFrames();
+  const progress = (k) => { $('progress').value = k; setStatus(`encoding frame ${k} / ${timeline.length}…`); };
+  try {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: fmt === 'gif', alpha: true });
+    const blob = await ({ mp4: exportMp4, gif: exportGif, png: exportPngZip })[fmt](w, h, fps, cv, ctx, src, progress);
+    const base = clips.length === 1 ? clips[0].name : 'sequence';
+    const name = `${base}-${w}x${h}.${fmt === 'png' ? 'zip' : fmt}`;
+    save(blob, name);
+    setStatus(`saved ${name} · ${(blob.size / 1048576).toFixed(1)} MB · ${((performance.now() - t0) / 1000).toFixed(1)} s to encode`);
+  } catch (err) {
+    setStatus(`export failed: ${err.message}`, true);
+  } finally {
+    src.done();
+    $('export').disabled = false; $('progress').hidden = true;
+  }
+}
+
+// ---- wiring ----------------------------------------------------------------------------------
+$('openFiles').onclick = () => $('fileIn').click();
+$('openFolder').onclick = () => $('folderIn').click();
+$('openZip').onclick = () => $('zipIn').click();
+$('fileIn').onchange = (e) => { load(e.target.files); e.target.value = ''; };
+$('zipIn').onchange = (e) => { load(e.target.files); e.target.value = ''; };
+$('folderIn').onchange = (e) => {
+  const fs = e.target.files;
+  load(fs, fs[0]?.webkitRelativePath?.split('/')[0]);
+  e.target.value = '';
+};
+$('play').onclick = () => (playing ? stop() : play());
+$('prev').onclick = () => { stop(); step(-1); };
+$('next').onclick = () => { stop(); step(1); };
+$('scrub').oninput = (e) => { stop(); show(+e.target.value); };
+$('export').onclick = runExport;
+// Timeline-shaping inputs rebuild it; look-only inputs just redraw.
+for (const id of ['fps', 'trans', 'fadeN', 'repeat']) $(id).addEventListener('input', () => rebuild());
+const redraw = () => { updateOutInfo(); if (timeline.length && !playing) show(pos); };
+for (const id of ['format', 'size', 'fit', 'bg', 'bgMode', 'vigOn', 'vigBlend']) $(id).addEventListener('input', redraw);
+gradEditor($('bgGrad'), bgSpec, redraw);
+gradEditor($('vigGrad'), vigSpec, redraw);
+$('clips').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]'), row = e.target.closest('.clip');
+  if (!el || !row) return;
+  const ci = +row.dataset.ci;
+  if (el.dataset.act === 'jump') { stop(); show(clipStart(ci)); return; }
+  if (el.dataset.act === 'up' && ci > 0) [clips[ci - 1], clips[ci]] = [clips[ci], clips[ci - 1]];
+  if (el.dataset.act === 'del') clips.splice(ci, 1);
+  active = Math.min(active, Math.max(0, clips.length - 1));
+  rebuild({ jumpTo: el.dataset.act === 'up' ? ci - 1 : null });
+});
+$('clips').addEventListener('input', (e) => {
+  const row = e.target.closest('.clip'), k = e.target.dataset.k;
+  if (!row || !k) return;
+  const c = clips[+row.dataset.ci];
+  if (k === 'mode') c.mode = e.target.value;
+  else if (k === 'repeat') c.repeat = Math.max(1, Math.round(+e.target.value || 1));
+  else if (k === 'hold') c.hold = Math.max(0, +e.target.value || 0);
+  else if (k === 'px' || k === 'py') { c[k] = Math.min(100, Math.max(0, +e.target.value || 0)); if (!playing) show(pos); return; }
+  timeline = buildTimeline(); $('scrub').max = Math.max(0, timeline.length - 1); updateOutInfo();   // no list re-render: keeps focus
+});
+document.addEventListener('keydown', (e) => {
+  if (!timeline.length || e.target.matches('input, select')) return;
+  if (e.key === ' ') { e.preventDefault(); playing ? stop() : play(); }
+  else if (e.key === 'ArrowRight') { stop(); step(1); }
+  else if (e.key === 'ArrowLeft') { stop(); step(-1); }
+});
+// Drag the preview to move the current clip within the frame (only along an axis where it doesn't
+// exactly fit); double-click puts it back in the centre.
+{
+  const cv = $('canvas');
+  let drag = null;
+  const target = () => { const f = timeline[pos]; return f && clips[f.layers[f.layers.length - 1].c]; };
+  const free = (c) => { const o = outSize(), p = placement(c, o.w, o.h); return { fx: o.w - p.dw, fy: o.h - p.dh, o }; };
+  cv.addEventListener('pointerdown', (e) => {
+    const c = target(); if (!c) return;
+    const { fx, fy, o } = free(c);
+    if (!fx && !fy) return;
+    stop();
+    drag = { c, x: e.clientX, y: e.clientY, px: c.px, py: c.py, fx, fy, k: o.w / cv.getBoundingClientRect().width };
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) {
+      const c = target(), f = c && free(c);
+      cv.style.cursor = f && (f.fx || f.fy) ? 'grab' : '';
+      return;
+    }
+    cv.style.cursor = 'grabbing';
+    const clamp = (v) => Math.round(Math.min(100, Math.max(0, v)));
+    if (drag.fx) drag.c.px = clamp(drag.px + (e.clientX - drag.x) * drag.k / drag.fx * 100);
+    if (drag.fy) drag.c.py = clamp(drag.py + (e.clientY - drag.y) * drag.k / drag.fy * 100);
+    show(pos);
+  });
+  const end = () => { if (!drag) return; drag = null; cv.style.cursor = 'grab'; renderClips(); };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', () => { const c = target(); if (c) { c.px = c.py = 50; renderClips(); show(pos); } });
+}
+// Drop files, zips, or folders (each folder becomes its own clip, walked via the entries API).
+const view = $('view');
+view.addEventListener('dragover', (e) => { e.preventDefault(); view.classList.add('drag'); });
+view.addEventListener('dragleave', () => view.classList.remove('drag'));
+view.addEventListener('drop', async (e) => {
+  e.preventDefault(); view.classList.remove('drag');
+  const entries = [...e.dataTransfer.items].map((it) => it.webkitGetAsEntry?.()).filter(Boolean);
+  const dirs = entries.filter((en) => en.isDirectory);
+  if (!dirs.length) { load(e.dataTransfer.files); return; }
+  const loose = [...e.dataTransfer.files].filter((f) => !dirs.some((d) => d.name === f.name));
+  if (loose.length) await load(loose);
+  for (const d of dirs.sort(byName)) {
+    const files = [];
+    const walk = async (en) => {
+      if (en.isFile) files.push(await new Promise((res, rej) => en.file(res, rej)));
+      else if (en.isDirectory) {
+        const reader = en.createReader();
+        for (let batch; (batch = await new Promise((res, rej) => reader.readEntries(res, rej))).length;) for (const c of batch) await walk(c);
+      }
+    };
+    await walk(d);
+    await load(files, d.name);
+  }
+});
+rebuild();
+</script>
+</body>
+</html>
