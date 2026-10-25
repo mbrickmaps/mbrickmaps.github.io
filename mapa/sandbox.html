@@ -89,7 +89,8 @@
        instead of hand-writing a refUid. Sits top-center, clear of #panel (right) and #leftcol. */
     #featsearch {
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      z-index: 2; width: 320px; font: 12px monospace;
+      /* As wide as the gap between #leftcol (330px) and #panel (310px) allows, up to 560px. */
+      z-index: 2; width: clamp(320px, calc(100vw - 700px), 560px); font: 12px monospace;
     }
     #featsearch-in {
       width: 100%; box-sizing: border-box; padding: 6px 8px;
@@ -123,6 +124,7 @@
     }
     #featsearch-list .fs-all:hover { background: #7fd3ff; color: #000; }
     #featsearch-list .fs-cat { opacity: .8; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #7fd3ff; }
+    #featsearch-list .fs-sub { opacity: .6; }
     #featsearch-list .fs-empty { padding: 6px 8px; opacity: .55; font-size: 11px; }
     /* body.light is set for ?style=light (see below) — the dark-on-dark default is unreadable
        over a light basemap. */
@@ -134,8 +136,14 @@
     body.light #featsearch-list {
       color: #111; background: rgba(255, 255, 255, .97); border-color: rgba(0, 0, 0, .25);
     }
+    /* The rows set their own white text (and pale-blue tags) for the dark list, so they need
+       their own light-mode colours too — the list's #111 alone never reaches them. */
+    body.light #featsearch-list .fs-row { color: #111; border-bottom-color: rgba(0, 0, 0, .08); }
     body.light #featsearch-list .fs-row:hover,
     body.light #featsearch-list .fs-row.active { background: rgba(26, 95, 180, .18); }
+    body.light #featsearch-list .fs-cat { color: #1a5fb4; }
+    body.light #featsearch-list .fs-all { color: #1a5fb4; background: rgba(26, 95, 180, .1); border-color: rgba(26, 95, 180, .5); }
+    body.light #featsearch-list .fs-all:hover { background: #1a5fb4; color: #fff; }
 
     #readout-bar {
       position: absolute;
@@ -384,10 +392,17 @@
     #panel .ptab.active { background: rgba(127, 211, 255, .2); border-color: rgba(127, 211, 255, .5); opacity: 1; }
     #panel .edit-row { margin-bottom: 12px; }
     #panel .view-ctl { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    #panel .view-ctl > span:first-child { width: 58px; flex: none; }
+    #panel .view-ctl > span:first-child { width: 86px; flex: none; }
     #panel .view-ctl input[type="range"] { flex: 1; min-width: 0; accent-color: #7fd3ff; }
     #panel .view-ctl input[type="color"] { width: 32px; height: 18px; padding: 0; border: none; background: none; }
     #panel .view-val { width: 36px; flex: none; text-align: right; opacity: .75; }
+    #panel .tool-links { margin: -2px 0 8px; font-size: 11px; opacity: .8; }
+    #panel .tool-links a, #export-panel .xp-hint a { color: #7fd3ff; text-decoration: none; }
+    #panel .tool-links a:hover, #export-panel .xp-hint a:hover { text-decoration: underline; }
+    #panel .view-hex, #panel .view-ctl input[type="number"] { width: 62px; flex: none; font: 11px ui-monospace, Menlo, monospace; color: inherit;
+      background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); border-radius: 3px; padding: 1px 4px; height: 18px; box-sizing: border-box; }
+    #panel .view-hex:focus, #panel .view-ctl input[type="number"]:focus { outline: none; border-color: rgba(127, 211, 255, .7); }
+    #panel .view-unit { opacity: .75; }
     #panel .edit-row-head {
       display: flex;
       flex-wrap: wrap;
@@ -652,6 +667,12 @@
     #export-panel .xp-kf-txt { flex: 1; min-width: 0; color: #ccc; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #export-panel .xp-kf-btn { flex: none; padding: 2px 6px; font-size: 11px; }
     #export-panel .xp-ctl input.xp-kf-in { width: 56px; }
+    #export-panel .xp-kf-legs { margin: 4px 0 0; font-size: 11px; color: #aaa; }
+    #export-panel .xp-kf-leg { display: flex; gap: 6px; padding: 2px 0; }
+    #export-panel .xp-kf-leg b { flex: none; width: 34px; color: #ff8c42; font-weight: 600; }
+    #export-panel .xp-kf-leg span { flex: 1; min-width: 0; }
+    #export-panel .xp-kf-leg em { flex: none; font-style: normal; color: #ddd; }
+    #export-panel .xp-kf-tip { color: #e0b060; }
     #export-panel .xp-ctl input.xp-gif-in { width: 52px; }
     #export-panel .xp-ctl input::placeholder { color: rgba(255, 255, 255, .4); }
     /* Live caption preview drawn around/on the crop box, mirroring what renderExportBlob()
@@ -902,7 +923,7 @@
   </div>
   <div id="camhud"></div>
   <div id="featsearch">
-    <input type="text" id="featsearch-in" placeholder="search countries, states, regions, seas…" autocomplete="off">
+    <input type="text" id="featsearch-in" placeholder="search countries, states, cities, regions, seas…" autocomplete="off">
     <div id="featsearch-list" hidden></div>
   </div>
   <div id="panel"></div>
@@ -1169,7 +1190,14 @@
     // sky (shows past the horizon when tilted). Globe: the same gradient on the space around the
     // sphere (the --sky-bg used by body.globe). ?sky=<colour>&horizon=<colour> at load; the parent
     // changes it live ('mapaSky').
-    const sky = { top: params.get('sky') || null, horizon: params.get('horizon') || null };
+    // Colour params take a hex with or without the '#' — a raw '#' in a URL starts the hash, so
+    // ?shadow=#333 arrives as an empty value; ?shadow=333 (or %23333) is the form that survives.
+    function colorParam(k, d) {
+      const v = (params.get(k) || '').trim();
+      if (!v) return d;
+      return /^([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? '#' + v : v;
+    }
+    const sky = { top: colorParam('sky', null), horizon: colorParam('horizon', null) };
     function applySky() {
       try {
         const bgColor = map.getLayer('background') ? map.getPaintProperty('background', 'background-color') || '#D4DEEA' : '#D4DEEA';
@@ -1201,7 +1229,7 @@
     // lock: ?lightlock anchors the sun to the screen instead of north, so turning the camera keeps the
     // light coming from the same side of the image (sun 315 = always top-left).
     const light = { on: params.has('lighting'), lock: params.has('lightlock'), sun: pnum('sun', 315), shade: pnum('shade', 0.5),
-      shadow: params.get('shadow') || '#000000', highlight: params.get('hilite') || '#ffffff' };
+      shadow: colorParam('shadow', '#000000'), highlight: colorParam('hilite', '#ffffff') };
     let bakedHsVis = null;   // the pre-made hillshade's visibility before lighting hid it
     function applyLighting() {
       try {
@@ -1959,6 +1987,9 @@
       if (lockZoomParam) lockZoomAt(map.getZoom());
       applyHighlights();
       await loadProjects();
+      const histRefs = pastedArrayFor('polys').filter((it) => Array.isArray(it.refUid) && it.refUid.some((u) => String(u).startsWith('hist_')));
+      for (const it of histRefs) ensureHistSourcesFor(it.refUid);
+      if (histRefs.length) loadFeatIndex().then(() => buildPanel());
       renderProjectRasters();
       // ?hide= last, so a URL override beats the project's own view.hide and applies even when
       // multiple ?project= files are combined (their view.* is ignored).
@@ -2313,6 +2344,12 @@
     // to share one scroll, with the authoring tools wedged into the layer inspector's header.
     let activeTab = 'edit';
     const PANEL_TABS = { edit: 'Edit', layer: 'Layer', view: 'View', project: 'Project' };
+    // The standalone tools in mapa/tools/, linked from the panel header (and the player from the
+    // export panel's Keyframes, where its frames come from).
+    const TOOL_LINKS = [
+      ['./mapa/tools/sequence-player.html', 'Sequence player', 'Turn exported frames into an MP4 or GIF'],
+      ['./mapa/tools/pattern-generator.html', 'Pattern generator', 'Make fill patterns']
+    ];
 
     function buildPanel() {
       const tabs = `<div class="ptabs">` +
@@ -2323,7 +2360,9 @@
         `<div style="display:flex;gap:6px;margin-bottom:8px">` +
         `<button class="io-btn${exportParam ? ' armed' : ''}" data-act="exportimg" style="flex:1" title="Show the image-export panel and crop box (same as ?export) — your layer edits stay as they are">${exportParam ? 'Export image: on' : 'Export image'}</button>` +
         `<button class="io-btn" data-act="openmapa" style="flex:1" title="Open the current map view in Mapa (static vector export)">Open in Mapa ↗</button>` +
-        `</div>`;
+        `<button class="io-btn" data-act="copylink" style="flex:1" title="Copy a link that reopens this map as it is now — view, project and layer settings">Copy link</button>` +
+        `</div>` +
+        `<div class="tool-links">${TOOL_LINKS.map(([href, label, title]) => `<a href="${href}" target="_blank" rel="noopener" title="${title}">${label} ↗</a>`).join(' · ')}</div>`;
       let body = '', foot = '';
 
       if (activeTab === 'layer') {
@@ -2358,7 +2397,6 @@
       } else {
         body = `<pre class="project-json">${esc(JSON.stringify(projectDoc, null, 2))}</pre>`;
         foot = `<div class="toolbar"><button class="project-copy-btn">Copy</button>` +
-          `<button class="project-copy-btn project-link-btn" title="Copy a link that reopens this map as it is now — view, project and layer settings">Copy link</button>` +
           `<button class="project-copy-btn project-open-btn" title="Open a project JSON (or drop one anywhere on the page)">Open…</button>` +
           `<input type="file" class="project-file" accept="application/json,.json" hidden></div>`;
       }
@@ -2856,7 +2894,7 @@
         u.searchParams.set('lighting', '');
         if (light.lock) u.searchParams.set('lightlock', '');
         u.searchParams.set('sun', light.sun); u.searchParams.set('shade', light.shade);
-        u.searchParams.set('shadow', light.shadow); u.searchParams.set('hilite', light.highlight);
+        u.searchParams.set('shadow', toHex(light.shadow).slice(1)); u.searchParams.set('hilite', toHex(light.highlight).slice(1));
       }
       const state = { v: 1, project: projectDoc, settings: exportSettings() };
       if (loadedProjectUrls.length === 1) state.base = loadedProjectUrls[0];   // so relative data paths still resolve
@@ -3087,7 +3125,16 @@
     let exportSeq = { param: 'bearing', from: 0, to: 345, step: 15, running: false, source: null, stop: false, status: '' };
     // Keyframes: captured camera views ({ center, zoom, bearing, pitch, sun? }) tweened into frames.
     let keyframes = [];
-    let kfState = { between: 24, ease: 'smooth', status: '' };
+    // mode 'auto': each leg gets its own frame count from how far the camera moves (kfLeg);
+    // 'fixed': every leg gets `between` frames. fps is the playback rate the film is planned for.
+    let kfState = { mode: 'auto', pace: 'steady', fps: 24, between: 24, ease: 'smooth', status: '' };
+    // Smooth-camera speeds, per second: pan in frame-widths, zoom in levels, turn (bearing) and tilt
+    // (pitch) in degrees. Faster than ~0.5 widths/s or 1 zoom level/s starts to read as a jump.
+    const KF_PACE = {
+      gentle: { pan: 0.25, zoom: 0.5, turn: 15, tilt: 10 },
+      steady: { pan: 0.35, zoom: 0.75, turn: 22, tilt: 15 },
+      brisk: { pan: 0.5, zoom: 1, turn: 30, tilt: 20 }
+    };
     // Sequence/Keyframes runs can also build a small looping GIF of the frames (saved alongside them).
     let gifOpts = { on: false, width: 480, fps: 12 };
     // Seconds per frame, for the time estimate: measured on this browser per setting + scale (kept in
@@ -3201,6 +3248,7 @@
       const h = Math.round(exportBox.height * exportBox.scale + cm.header + cm.footer);
       el.textContent = `${w} × ${h} px`;
       updateExportBboxReadout();
+      if (keyframes.length > 1 && kfState.mode === 'auto') updateExportSeqUi();   // leg pans are in box widths
     }
     // The export box's geographic bounds [W,S,E,N]: unproject its screen corners (box coords are
     // CSS px within #map, same space map.unproject expects). Null until the box has a size.
@@ -3378,7 +3426,8 @@
         .map((k) => `<option${exportSeq.param === k ? ' selected' : ''}>${k}</option>`).join('');
       // Labelled rows (label column + controls) in four sections, so nothing wraps mid-row.
       const row = (label, ctl) => `<div class="xp-row"><span class="xp-lab">${label}</span><div class="xp-ctl">${ctl}</div></div>`;
-      return `<div class="xp-sec">Frame</div>` +
+      return (debug ? '' : `<div class="xp-btns" style="margin:0 0 8px"><button class="io-btn export-link-btn" title="Copy a link that reopens this map as it is now — view, project and layer settings">Copy link</button></div>`) +
+        `<div class="xp-sec">Frame</div>` +
         `<div class="xp-hint">Drag the box to move it, drag its corner to resize${exportBox.ratio ? ' (ratio stays locked)' : ''}.</div>` +
         row('Ratio', `<select class="export-ratio-select">${ratioOpts}</select>` +
           `<button class="io-btn export-invert-btn" title="Swap width and height">⇄ Invert</button>`) +
@@ -3403,7 +3452,7 @@
         `<button class="io-btn xp-primary export-download-btn">Download ${EXPORT_FORMATS[exportBox.format].label}</button></div>` +
         `<div class="xp-sec">Sequence</div>` +
         row('Vary', `<select class="export-seq-param">${seqOpts}</select>`) +
-        row('Light', `<label title="Keep the light at the same angle on screen as the camera turns (needs lighting on)"><input type="checkbox" class="export-lightlock"${light.lock ? ' checked' : ''}> follow camera</label>`) +
+        row('Light', `<label title="Lock the light to the camera — keeps it at the same angle on screen as the camera turns (needs lighting on)"><input type="checkbox" class="export-lightlock"${light.lock ? ' checked' : ''}> lightlock</label>`) +
         row('Range', `<input type="number" class="export-seq-in" data-k="from" value="${exportSeq.from}" title="from">` +
           `<span class="xp-unit">to</span><input type="number" class="export-seq-in" data-k="to" value="${exportSeq.to}" title="to">` +
           `<span class="xp-unit">step</span><input type="number" class="export-seq-in" data-k="step" value="${exportSeq.step}" title="step">`) +
@@ -3423,11 +3472,19 @@
           `<button class="io-btn xp-kf-btn" data-kf="up" data-i="${i}" title="Move up"${i ? '' : ' disabled'}>↑</button>` +
           `<button class="io-btn xp-kf-btn" data-kf="del" data-i="${i}" title="Remove">✕</button></div>`).join('') ||
           `<div class="xp-hint">No views yet — frame the map, then Capture view. Add two or more to tween between them.</div>`}</div>` +
-        row('Between', `<input type="number" class="xp-kf-in" min="0" value="${kfState.between}"><span class="xp-unit">frames per step</span>`) +
+        row('Frames', `<select class="xp-kf-mode" title="auto: each leg gets as many frames as its camera move needs to look smooth · fixed: the same number for every leg">` +
+          [['auto', 'auto (by distance)'], ['fixed', 'fixed per leg']].map(([k, l]) => `<option value="${k}"${kfState.mode === k ? ' selected' : ''}>${l}</option>`).join('') + `</select>`) +
+        (kfState.mode === 'auto'
+          ? row('Pace', `<select class="xp-kf-pace" title="How fast the camera may move — ${Object.entries(KF_PACE).map(([k, v]) => `${k}: ${v.pan} frame-widths/s, ${v.zoom} zoom/s, ${v.turn}°/s turn, ${v.tilt}°/s tilt`).join(' · ')}">` +
+              Object.keys(KF_PACE).map((k) => `<option${kfState.pace === k ? ' selected' : ''}>${k}</option>`).join('') + `</select>`)
+          : row('Between', `<input type="number" class="xp-kf-in" min="0" value="${kfState.between}"><span class="xp-unit">frames per leg</span>`)) +
+        row('Rate', `<input type="number" class="xp-kf-fps xp-kf-in" min="1" max="60" value="${kfState.fps}" title="The rate the film will play at — set the sequence player to the same"><span class="xp-unit">fps</span>`) +
         row('Easing', `<select class="xp-kf-ease">${['smooth', 'linear'].map((k) => `<option${kfState.ease === k ? ' selected' : ''}>${k}</option>`).join('')}</select>`) +
         `<div class="xp-btns"><button class="io-btn export-kf-preview" title="Fly the live map through the tween — nothing is saved">Play</button>` +
         `<button class="io-btn xp-primary export-kf-run"></button></div>` +
-        `<div class="export-kf-status"></div>`;
+        `<div class="xp-kf-legs"></div>` +
+        `<div class="export-kf-status"></div>` +
+        `<div class="xp-hint" style="margin-top:6px"><a href="${TOOL_LINKS[0][0]}" target="_blank" rel="noopener">Open the Sequence player ↗</a> to turn the frames into a video</div>`;
     }
     // ?export means "export mode" — the crop box and its controls are just always on, no extra
     // arming click needed.
@@ -3437,6 +3494,7 @@
       updateExportSeqUi();
     }
     exportPanelEl.addEventListener('click', (e) => {
+      if (e.target.closest('.export-link-btn')) { copyShareLink(e.target.closest('.export-link-btn')); return; }
       if (e.target.closest('.export-invert-btn')) { toggleExportInvert(); buildExportPanel(); return; }
       if (e.target.closest('.export-preview-btn')) { previewExportImage(); return; }
       if (e.target.closest('.export-download-btn')) { downloadExportImage(); return; }
@@ -3448,7 +3506,7 @@
       if (e.target.closest('.xp-kf-clear')) { if (keyframes.length && confirm(`Remove all ${keyframes.length} views?`)) { keyframes = []; kfState.status = ''; buildExportPanel(); } return; }
       if (e.target.closest('.xp-kf-save')) {
         if (!keyframes.length) { kfState.status = 'nothing to save — capture a view first'; updateExportSeqUi(); return; }
-        const file = { views: keyframes, between: kfState.between, ease: kfState.ease };
+        const file = { views: keyframes, mode: kfState.mode, pace: kfState.pace, fps: kfState.fps, between: kfState.between, ease: kfState.ease };
         download(`${exportBaseName()}-views.json`, JSON.stringify(file, null, 2));
         kfState.status = `saved ${keyframes.length} view${keyframes.length === 1 ? '' : 's'}`; updateExportSeqUi();
         return;
@@ -3493,7 +3551,9 @@
       if (e.target.classList.contains('export-ratio-select')) setExportRatio(e.target.value);
       else if (e.target.classList.contains('export-scale-select')) { exportBox.scale = +e.target.value; updateExportDimsReadout(); clearSeqStatus(); }
       else if (e.target.classList.contains('export-seq-param')) { exportSeq.param = e.target.value; clearSeqStatus(); }
-      else if (e.target.classList.contains('xp-kf-ease')) kfState.ease = e.target.value;
+      else if (e.target.classList.contains('xp-kf-ease')) { kfState.ease = e.target.value; clearSeqStatus(); }
+      else if (e.target.classList.contains('xp-kf-mode')) { kfState.mode = e.target.value; kfState.status = ''; buildExportPanel(); }
+      else if (e.target.classList.contains('xp-kf-pace')) { kfState.pace = e.target.value; clearSeqStatus(); }
       else if (e.target.classList.contains('xp-gif-on')) gifOpts.on = e.target.checked;
       else if (e.target.classList.contains('xp-kf-file')) {
         const f = e.target.files[0]; e.target.value = '';
@@ -3504,6 +3564,10 @@
           if (!Array.isArray(data)) {
             if (Number.isFinite(+data.between)) kfState.between = Math.max(0, Math.round(+data.between));
             if (data.ease === 'smooth' || data.ease === 'linear') kfState.ease = data.ease;
+            if (data.mode === 'auto' || data.mode === 'fixed') kfState.mode = data.mode;
+            else if (Number.isFinite(+data.between)) kfState.mode = 'fixed';   // older files: keep their frame count
+            if (KF_PACE[data.pace]) kfState.pace = data.pace;
+            if (+data.fps >= 1 && +data.fps <= 60) kfState.fps = Math.round(+data.fps);
           }
           kfState.status = `loaded ${keyframes.length} view${keyframes.length === 1 ? '' : 's'} from ${f.name}`;
         }).catch((err) => { kfState.status = `couldn't load ${f.name}: ${err.message}`; }).finally(buildExportPanel);
@@ -3518,6 +3582,7 @@
       if (e.target.classList.contains('export-filename-in')) exportBox.filename = e.target.value;
       else if (e.target.classList.contains('export-seq-in')) { exportSeq[e.target.dataset.k] = +e.target.value; clearSeqStatus(); }
       else if (e.target.classList.contains('xp-gif-in')) { const v = Math.round(+e.target.value); if (v > 0) gifOpts[e.target.dataset.k] = v; }
+      else if (e.target.classList.contains('xp-kf-fps')) { const v = Math.round(+e.target.value); if (v >= 1 && v <= 60) { kfState.fps = v; clearSeqStatus(); } }
       else if (e.target.classList.contains('xp-kf-in')) { kfState.between = Math.max(0, Math.round(+e.target.value || 0)); clearSeqStatus(); }
       else if (e.target.classList.contains('export-margin-in')) { exportBox.innerMargin = e.target.value === '' ? 0 : +e.target.value; updateExportGuide(); }
     });
@@ -3875,7 +3940,20 @@
       btn('.export-kf-preview', 'kf', 'preview', 'Play');
       if (!busy) { const r = q('.export-kf-run'), pl = q('.export-kf-preview'); if (r) r.disabled = nKf < 1; if (pl) pl.disabled = nKf < 2; }
       const st = q('.export-seq-status'); if (st) st.textContent = exportSeq.status || est(nSeq, exportSeq.param);
-      const ks = q('.export-kf-status'); if (ks) ks.textContent = kfState.status || (nKf > 1 ? est(nKf, 'views') : '');
+      const ks = q('.export-kf-status');
+      if (ks) ks.textContent = kfState.status || (nKf > 1
+        ? `${est(nKf, 'views')} to capture · plays ${(nKf / kfState.fps).toFixed(1)} s at ${kfState.fps} fps (set the player to ${kfState.fps})` : '');
+      const lg = q('.xp-kf-legs');
+      if (lg) lg.innerHTML = keyframes.slice(1).map((b, i) => {
+        const L = kfLeg(keyframes[i], b);
+        const what = [L.pan >= 0.01 && `pan ${L.pan.toFixed(2)} widths`, L.zoom >= 0.01 && `zoom ${L.zoom.toFixed(1)}`,
+          L.turn >= 0.5 && `turn ${Math.round(L.turn)}°`, L.tilt >= 0.5 && `tilt ${Math.round(L.tilt)}°`].filter(Boolean).join(' · ') || 'no move';
+        // Panning while zooming in is fastest at the close end — a long pan + a big zoom in one leg
+        // comes out slow overall; two legs (pan, then zoom) are shorter and smoother.
+        const tip = L.pan > 1.5 && L.zoom > 1 ? ' <span class="xp-kf-tip" title="Pan and zoom in one leg: the pan is measured at the closer zoom, so it needs many frames. Capture a view between them — pan first, then zoom — for a shorter, smoother move.">split?</span>' : '';
+        return `<div class="xp-kf-leg"><b>${i + 1}→${i + 2}</b><span title="${esc(what)}">${what}${tip}</span>` +
+          `<em>${L.between + 1} fr · ${L.secs.toFixed(1)} s</em></div>`;
+      }).join('');
     }
     // Wait for the map to finish drawing (tiles, terrain) after a change, or give up after `ms`.
     function waitMapIdle(ms = 30000) {
@@ -3897,7 +3975,7 @@
     // are put back afterwards. Stop ends it early and still saves what was captured. preview: step
     // the live map through the frames (a short pause on each) without capturing or downloading
     // anything. Shared by Sequence ('seq') and Keyframes ('kf').
-    async function runFrames({ source, preview, frames, timingKey, zipName, pause = 400 }) {
+    async function runFrames({ source, preview, frames, timingKey, zipName, pause = 400, fps = gifOpts.fps }) {
       const ui = source === 'kf' ? kfState : exportSeq;   // whose status line
       const say = (t) => { ui.status = t; updateExportSeqUi(); };
       exportSeq.running = preview ? 'preview' : 'run'; exportSeq.source = source; exportSeq.stop = false;
@@ -3982,7 +4060,7 @@
             const ctx = gif.cv.getContext('2d', { willReadFrequently: true });
             ctx.drawImage(bmp, 0, 0, w, h); bmp.close();
             const px = ctx.getImageData(0, 0, w, h).data, palette = gif.quantize(px, 256);
-            gif.enc.writeFrame(gif.applyPalette(px, palette), w, h, { palette, delay: Math.round(1000 / gifOpts.fps) });
+            gif.enc.writeFrame(gif.applyPalette(px, palette), w, h, { palette, delay: Math.round(1000 / fps) });
           }
           saved++;
         }
@@ -4067,20 +4145,45 @@
     // Every frame of the tween: each view, with `between` in-between frames after it (none after the
     // last). Each step eases on its own, so the camera settles on every captured view.
     function kfViews() {
-      const n = Math.max(0, Math.round(kfState.between) || 0), out = [];
+      const out = [];
       const ease = kfState.ease === 'smooth' ? (t) => t * t * (3 - 2 * t) : (t) => t;
       keyframes.forEach((a, i) => {
         out.push({ v: a, key: i + 1 });
         const b = keyframes[i + 1];
-        if (b) for (let k = 1; k <= n; k++) out.push({ v: lerpView(a, b, ease(k / (n + 1))) });
+        if (!b) return;
+        const n = kfLeg(a, b).between;
+        for (let k = 1; k <= n; k++) out.push({ v: lerpView(a, b, ease(k / (n + 1))) });
       });
       return out;
+    }
+    // One leg's camera move and the frames it needs. The pan is measured on screen: the Mercator
+    // distance × the world's size in px (512·2^zoom) ÷ the crop box width, at the closer of the two
+    // zooms, since that's where the pan looks fastest. The leg lasts as long as its slowest part
+    // needs at the chosen pace; smooth easing peaks at 1.5× its average speed, so it gets 1.5× the
+    // time to keep that peak at the pace. between = frames strictly between the two views.
+    function kfLeg(a, b) {
+      const A = maplibregl.MercatorCoordinate.fromLngLat(a.center), B = maplibregl.MercatorCoordinate.fromLngLat(b.center);
+      let dx = B.x - A.x; if (dx > 0.5) dx -= 1; else if (dx < -0.5) dx += 1;
+      const L = {
+        pan: Math.hypot(dx, B.y - A.y) * 512 * 2 ** Math.max(a.zoom, b.zoom) / Math.max(1, exportBox.width),
+        zoom: Math.abs(b.zoom - a.zoom),
+        turn: Math.abs(angLerp(a.bearing, b.bearing, 1) - a.bearing),
+        tilt: Math.abs(b.pitch - a.pitch)
+      };
+      if (kfState.mode === 'fixed') L.between = Math.max(0, Math.round(kfState.between) || 0);
+      else {
+        const sp = KF_PACE[kfState.pace] || KF_PACE.steady, E = kfState.ease === 'smooth' ? 1.5 : 1;
+        const secs = E * Math.max(L.pan / sp.pan, L.zoom / sp.zoom, L.turn / sp.turn, L.tilt / sp.tilt);
+        L.between = Math.max(0, Math.round(secs * kfState.fps) - 1);
+      }
+      L.secs = (L.between + 1) / kfState.fps;
+      return L;
     }
     function runKeyframes({ preview = false } = {}) {
       const views = kfViews();
       if (!views.length) { kfState.status = 'capture a view first'; updateExportSeqUi(); return; }
       const name = exportBaseName();
-      return runFrames({ source: 'kf', preview, timingKey: 'views', zipName: `${name}-keyframes.zip`, pause: 0,
+      return runFrames({ source: 'kf', preview, timingKey: 'views', zipName: `${name}-keyframes.zip`, pause: 0, fps: kfState.fps,
         frames: views.map(({ v, key }, i) => ({ file: `${name}-view-${String(i + 1).padStart(4, '0')}`,
           label: key ? `view ${key}` : `between ${i + 1}`, apply: () => applyView(v) })) });
     }
@@ -4435,8 +4538,30 @@
       admin1: { source: 'admin', sourceLayer: 'admin1' },
       admin2: { source: 'admin', sourceLayer: 'admin2' },
       water_region: { source: 'regions', sourceLayer: 'water_region' },
-      land_region: { source: 'regions', sourceLayer: 'land_region' }
+      land_region: { source: 'regions', sourceLayer: 'land_region' },
+      // US historical states/counties (Newberry Atlas of Historical County Boundaries). Not in the
+      // styles — added on demand by ensureHistSource(); uid = hist_county:<ID>_<VERSION>, one per
+      // dated version of a border.
+      hist_state: { source: 'us-hist-states', sourceLayer: 'states' },
+      hist_county: { source: 'us-hist-counties', sourceLayer: 'counties' }
     };
+    const HIST_TILES = {
+      hist_state: 'https://tiles.mbricknell.com/us_hist_states.pmtiles',
+      hist_county: 'https://tiles.mbricknell.com/us_hist_counties.pmtiles'
+    };
+    // querySourceFeatures only sees tiles some layer has asked for, so each historical source gets
+    // an invisible fill (like the highlight-* layers) to make its tiles load. Added only once a
+    // project actually references one — every version of every county is a heavy source.
+    function ensureHistSource(cat) {
+      const s = SOURCE_BY_LAYER[cat];
+      if (!HIST_TILES[cat] || map.getSource(s.source)) return;
+      map.addSource(s.source, { type: 'vector', url: 'pmtiles://' + HIST_TILES[cat] });
+      map.addLayer({ id: `${s.source}-load`, type: 'fill', source: s.source, 'source-layer': s.sourceLayer,
+        paint: { 'fill-opacity': 0 } });
+    }
+    function ensureHistSourcesFor(refUids) {
+      for (const u of refUids || []) { const cat = String(u).split(':')[0]; if (HIST_TILES[cat]) ensureHistSource(cat); }
+    }
 
     // Pulls a poly's actual geometry out of the loaded pmtiles vector data by uid, instead of
     // requiring hand-authored coordinates — e.g. refUid: ["admin0:ukr"]. Only returns data once
@@ -5672,7 +5797,10 @@
         return item.name ? `${item.name} · ${coords}` : `point ${coords}`;
       }
       if (kind === 'polys') {
-        if (item.refUid) return `refUid ${[].concat(item.refUid).join(', ')}`;
+        if (item.refUid) {
+          const uids = [].concat(item.refUid);
+          return uids.every((u) => histLabels.has(u)) ? uids.map(refLabel).join(', ') : `refUid ${uids.join(', ')}`;
+        }
         if (item.source) return `source ${item.source}`;
         if (item.geometry) {
           const g = item.geometry;
@@ -5840,24 +5968,25 @@
         `<label class="view-ctl"><span>${label}</span><input type="range" class="view-in" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${v}">` +
         `<span class="view-val" data-k="${k}">${v}${unit}</span></label>`;
       const color = (k, label, v) =>
-        `<label class="view-ctl"><span>${label}</span><input type="color" class="view-in" data-k="${k}" value="${esc(toHex(v))}"></label>`;
+        `<label class="view-ctl"><span>${label}</span><input type="color" class="view-in" data-k="${k}" value="${esc(toHex(v))}">` +
+        `<input type="text" class="view-hex" data-k="${k}" value="${esc(toHex(v).slice(1))}" maxlength="7" spellcheck="false" title="Hex colour (the # is optional)"></label>`;
       return `
           <div class="edit-row">
             <div class="edit-row-head">Terrain
               <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="terrainOn"${terrainOn ? ' checked' : ''}> on</label>
             </div>
-            <label class="view-ctl" title="Terrain height multiplier — 1 = true height, no upper limit"><span>height</span><input type="number" class="view-in" data-k="terrainExag" min="0" step="0.1" value="${terrainExag}" style="width:64px"><span class="view-val">×</span></label>
+            <label class="view-ctl" title="Terrain height multiplier — 1 = true height, no upper limit"><span>exaggeration</span><input type="number" class="view-in" data-k="terrainExag" min="0" step="0.1" value="${terrainExag}"><span class="view-unit">×</span></label>
             <div class="edit-row-hint" style="margin-top:4px">3D only shows with pitch above 0 (Camera below).</div>
           </div>
           <div class="edit-row">
             <div class="edit-row-head">Lighting
               <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="lightOn"${light.on ? ' checked' : ''}> on</label>
             </div>
-            <label class="edit-row-hint" title="Keep the light at the same angle on screen when the camera turns"><input type="checkbox" class="view-in" data-k="lightLock"${light.lock ? ' checked' : ''}> lock to camera</label>
+            <label class="edit-row-hint" title="Lock the light to the camera — keeps it at the same angle on screen when the camera turns"><input type="checkbox" class="view-in" data-k="lightLock"${light.lock ? ' checked' : ''}> lightlock</label>
             ${slider('sun', 'sun', 0, 359, 1, light.sun, '°')}
-            ${slider('shade', 'strength', 0, 1, 0.05, light.shade)}
+            ${slider('shade', 'shade', 0, 1, 0.05, light.shade)}
             ${color('shadow', 'shadow', light.shadow)}
-            ${color('highlight', 'highlight', light.highlight)}
+            ${color('highlight', 'hilite', light.highlight)}
           </div>
           <div class="edit-row">
             <div class="edit-row-head">Camera</div>
@@ -5868,6 +5997,7 @@
     function setLightCamCtl(t) {
       const k = t.dataset.k, v = t.type === 'checkbox' ? t.checked : t.type === 'range' || t.type === 'number' ? +t.value : t.value;
       if (t.type === 'number' && (t.value === '' || !Number.isFinite(v) || v < 0)) return;   // mid-typing
+      if (t.type === 'color') { const hx = panel.querySelector(`.view-hex[data-k="${k}"]`); if (hx) hx.value = t.value.slice(1); }
       const out = panel.querySelector(`.view-val[data-k="${k}"]`);
       if (out) out.textContent = v + (k === 'shade' ? '' : k === 'terrainExag' ? '×' : '°');
       if (k === 'terrainOn') window.__setTerrain(v, terrainExag);
@@ -5904,7 +6034,7 @@
             </div>
             ${selectedItem?.kind === kind ? `
             <div class="selected-item">
-              <span class="placed-label">${esc(selectedItem.uid || itemSummary(kind, pastedArrayFor(kind)[selectedItem.index]))}</span>
+              <span class="placed-label" title="${esc([].concat(selectedItem.uid || pastedArrayFor(kind)[selectedItem.index]?.refUid || []).join(', '))}">${esc(selectedItem.uid ? refLabel(selectedItem.uid) : itemSummary(kind, pastedArrayFor(kind)[selectedItem.index]))}</span>
               ${selectedItem.uid ? `<button class="clear-part-btn" title="edit all shapes in this entry instead">all</button>` : ''}
               <button class="placed-del-btn" title="delete">×</button>
             </div>` : ''}
@@ -6484,9 +6614,15 @@
     }
 
     // Tiles stream in as you pan and zoom, so a refUid entry that resolved to nothing (or to
-    // half a country) gets another chance on every idle. Cheap because it only fires when the
-    // project actually uses refUid, and the cache means each pass can only add shapes.
+    // half a country) gets another chance — but only once a tile of a source refUids read from
+    // has actually arrived. Re-resolving on every idle looped: the re-render's setData redraws,
+    // the redraw ends in another idle, and the page never stopped re-unioning the same shapes.
+    const REF_SOURCES = new Set(Object.values(SOURCE_BY_LAYER).map((s) => s.source));
+    let refTilesChanged = false;
+    map.on('sourcedata', (e) => { if (e.tile && REF_SOURCES.has(e.sourceId)) refTilesChanged = true; });
     map.on('idle', () => {
+      if (!refTilesChanged) return;
+      refTilesChanged = false;
       if (pastedArrayFor('polys').some((it) => Array.isArray(it.refUid))) rerenderPasted('polys');
     });
 
@@ -7280,6 +7416,7 @@
         if (io.dataset.act === 'export') download(`${styleSlug}-layer-settings.json`, JSON.stringify(exportSettings(), null, 2));
         else if (io.dataset.act === 'import') panel.querySelector('.import-file').click();
         else if (io.dataset.act === 'exportimg') toggleExportPanel();
+        else if (io.dataset.act === 'copylink') copyShareLink(io);
         else if (io.dataset.act === 'openmapa') {
           const bd = map.getBounds();
           const bbox = [bd.getWest(), bd.getSouth(), bd.getEast(), bd.getNorth()].map((n) => n.toFixed(4)).join(',');
@@ -7291,8 +7428,6 @@
       // Tab switch
       const tab = e.target.closest('.ptab');
       if (tab) { activeTab = tab.dataset.tab; buildPanel(); return; }
-      const linkBtn = e.target.closest('.project-link-btn');
-      if (linkBtn) { copyShareLink(linkBtn); return; }
       if (e.target.closest('.project-open-btn')) { panel.querySelector('.project-file')?.click(); return; }
       // Project tab: the whole file, ready to paste over the real one.
       const projCopy = e.target.closest('.project-copy-btn');
@@ -7527,6 +7662,16 @@
     // Live edits: color swatch -> setPaintProperty; zoom fields -> setLayerZoomRange
     panel.addEventListener('input', (e) => {
       const t = e.target;
+      if (t.classList.contains('view-hex')) {
+        // A typed hex drives its picker (3 or 6 digits, '#' optional); anything else waits for more typing.
+        const v = t.value.trim().replace(/^#/, '');
+        if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return;
+        const picker = panel.querySelector(`.view-in[data-k="${t.dataset.k}"]`);
+        if (!picker) return;
+        picker.value = '#' + (v.length === 3 ? [...v].map((c) => c + c).join('') : v).toLowerCase();
+        setLightCamCtl(picker);
+        return;
+      }
       if (t.classList.contains('view-in')) { setLightCamCtl(t); return; }
       if (t.classList.contains('img-op-in')) {
         // Live while typing, no rebuild (keeps focus) — but only for a value above 0, so the
@@ -7604,26 +7749,44 @@
     // lookups/features.json is [name, uid, category] triples built from the master_shapes CSVs
     // (those live under dev/, which is gitignored, so they can't be fetched at runtime). admin2
     // and populated_places are deliberately excluded — together they'd be ~2MB, and neither is
-    // what you reach for when coloring a country or a state.
+    // what you reach for when coloring a country or a state. Cities come from the much smaller
+    // gazetteer instead (see loadFeatIndex) and go in as points, not shapes.
     const featSearchEl = document.getElementById('featsearch');
     const featSearchIn = document.getElementById('featsearch-in');
     const featSearchList = document.getElementById('featsearch-list');
     featSearchEl.style.display = debug ? '' : 'none';
-    let featIndex = null;      // [[name, uid, cat], …]
+    let featIndex = null;      // [[name, uid, cat], …] — cities as [name, '', 'city', { country, capital, pop, lng, lat }],
+                               // historical shapes as [name, uid, 'hist_state'|'hist_county', { start, end, state }]
     let featResults = [];
     let featActive = 0;
 
-    async function loadFeatIndex() {
-      if (featIndex) return featIndex;
-      try {
-        const res = await fetch('./lookups/features.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        featIndex = await res.json();
-      } catch (err) {
-        console.warn('[search] could not load lookups/features.json:', err);
-        featIndex = [];
-      }
-      return featIndex;
+    // Shapes from lookups/features.json, plus cities from Mapa's gazetteer (mapa/files/gazetteer.json,
+    // built by scripts/gen-gazetteer.mjs). Each loads on its own, so one missing still leaves the other.
+    let featIndexP = null;
+    // Historical refUids are opaque ("hist_county:vas_fairfax_1846-01-01"); show
+    // "Fairfax, Virginia, 1846–1915" instead wherever a person reads it.
+    const histLabels = new Map();   // uid -> readable label
+    function histLabel(name, cat, h) {
+      return `${name}${cat === 'hist_county' ? `, ${h.state}` : ''}, ${String(h.start).slice(0, 4)}–${String(h.end).slice(0, 4)}`;
+    }
+    const refLabel = (uid) => histLabels.get(uid) || uid;
+    function loadFeatIndex() {
+      if (!featIndexP) featIndexP = (async () => {
+        const get = async (url) => {
+          try { const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`); return await res.json(); }
+          catch (err) { console.warn(`[search] could not load ${url}:`, err); return null; }
+        };
+        const [shapes, gaz, hist] = await Promise.all([get('./lookups/features.json'), get('./mapa/files/gazetteer.json'), get('./lookups/us_hist.json')]);
+        const cities = (gaz?.rows || []).map(([name, , country, capital, pop, lng, lat]) =>
+          [name, '', 'city', { country, capital: !!capital, pop, lng, lat }]);
+        // US historical states/counties (scripts/gen-hist-index.mjs): one row per dated version.
+        const histRows = (Array.isArray(hist) ? hist : []).map(([name, uid, cat, start, end, state]) => {
+          histLabels.set(uid, histLabel(name, cat, { start, end, state }));
+          return [name, uid, cat, { start, end, state }];
+        });
+        return (featIndex = [...(Array.isArray(shapes) ? shapes : []), ...cities, ...histRows]);
+      })();
+      return featIndexP;
     }
 
     function renderFeatResults() {
@@ -7633,7 +7796,16 @@
         featSearchList.hidden = !featSearchIn.value.trim();
         return;
       }
-      featSearchList.innerHTML = featResults.map(([name, uid, cat], i) => {
+      featSearchList.innerHTML = featResults.map(([name, uid, cat, city], i) => {
+        if (cat === 'hist_state' || cat === 'hist_county') {
+          const h = city, yr = (n) => String(n).slice(0, 4), d = (n) => String(n).replace(/(\d{4})(\d\d)(\d\d)/, '$1-$2-$3');
+          return `<div class="fs-row${i === featActive ? ' active' : ''}" data-i="${i}" title="${esc(`${d(h.start)} to ${d(h.end)}`)}">` +
+            `<span class="fs-name">${esc(name)}<span class="fs-sub">${cat === 'hist_county' ? `, ${esc(h.state)}` : ''} · ${yr(h.start)}–${yr(h.end)}</span></span>` +
+            `<span class="fs-cat">${cat === 'hist_county' ? 'hist county' : 'hist state'}</span></div>`;
+        }
+        if (cat === 'city') return `<div class="fs-row${i === featActive ? ' active' : ''}" data-i="${i}">` +
+          `<span class="fs-name">${esc(name)}<span class="fs-sub">, ${esc(city.country)}</span></span>` +
+          `<span class="fs-cat">${city.capital ? 'capital' : 'city'}</span></div>`;
         // admin1 uids are prefixed by their country's ISO ("admin1:nga_lagos"), so a country row
         // can offer every one of its states in a single click.
         // 'admin0', not 'country' — the categories come from the uid prefix in features.json.
@@ -7654,22 +7826,31 @@
     // the country before the lake and the province.
     // Keys are the uid prefixes themselves (admin0:ukr -> admin0), so the labels in the results
     // match what actually goes into the project file.
-    const FEAT_CAT_RANK = { admin0: 0, admin1: 1, admin2: 2, land_region: 3, water_region: 4 };
+    // Cities sit between states and districts: "lagos" offers the state, then the city.
+    // Historical US shapes come last, so today's searches ("virginia", "ukraine") are unchanged.
+    const FEAT_CAT_RANK = { admin0: 0, admin1: 1, city: 1.5, admin2: 2, land_region: 3, water_region: 4, hist_state: 5, hist_county: 6 };
 
     // Ranked in two passes: a name that STARTS with the query beats one that merely contains it,
     // and within each pass the category order above applies. So "ukr" gives Ukraine, then its
     // oblasts, rather than whichever happened to sort first in the file.
+    // A trailing year ("fairfax 1861") keeps only the historical versions in force that year
+    // (undated rows still show) — otherwise "washington" is all versions of one county.
     function runFeatSearch(q) {
-      const needle = q.trim().toLowerCase();
+      let needle = q.trim().toLowerCase(), year = null;
+      const ym = needle.match(/^(.*\S)\s+(\d{4})$/);
+      if (ym) { needle = ym[1]; year = +ym[2]; }
       if (!needle) { featResults = []; featActive = 0; renderFeatResults(); return; }
       const starts = [], contains = [];
       for (const row of featIndex || []) {
+        if (year && row[3]?.start && !(row[3].start <= year * 10000 + 1231 && row[3].end >= year * 10000 + 101)) continue;
         const n = row[0].toLowerCase();
         if (n.startsWith(needle)) starts.push(row);
         else if (n.includes(needle) || row[1].includes(needle)) contains.push(row);
       }
+      // Cities: biggest first, so "san" leads with San Francisco rather than San Andrés.
       const byCat = (a, b) =>
-        (FEAT_CAT_RANK[a[2]] ?? 9) - (FEAT_CAT_RANK[b[2]] ?? 9) || a[0].localeCompare(b[0]);
+        (FEAT_CAT_RANK[a[2]] ?? 9) - (FEAT_CAT_RANK[b[2]] ?? 9) || (b[3]?.pop || 0) - (a[3]?.pop || 0) || a[0].localeCompare(b[0]) ||
+        (a[3]?.start || 0) - (b[3]?.start || 0);
       featResults = starts.sort(byCat).concat(contains.sort(byCat)).slice(0, 50);
       featActive = 0;
       renderFeatResults();
@@ -7704,7 +7885,29 @@
       renderFeatResults();
     }
 
-    function addFeatureByUid(uid, name) {
+    // A city goes in as a labelled point (label side + style from the Points row, like Add point);
+    // anything else as a uid-referenced poly (historical ones load their tiles first).
+    function pickFeat([name, uid, cat, extra]) {
+      if (cat === 'city') { addCityPoint(name, extra); return; }
+      ensureHistSourcesFor([uid]);
+      addFeatureByUid(uid, name, extra?.start ? histLabel(name, cat, extra) : null);
+      // Counties tiles start at zoom 3, and like any refUid shape it fills in as its tiles load.
+      if (cat === 'hist_county' && map.getZoom() < 3) readout.textContent += ' · zoom in past 3 to load county shapes';
+    }
+    function addCityPoint(name, c) {
+      addFeature('points', { lng: c.lng, lat: c.lat, name, dir: sketchPointLabel.dir, style: { ...sketchPointStyle } });
+      rerenderPasted('points');
+      selectedItem = { kind: 'points', index: pastedArrayFor('points').length - 1 };
+      insetSelected = false;
+      activeTab = 'edit';
+      buildPanel();
+      readout.textContent = `added ${name}, ${c.country} — style it in the Points row`;
+      featSearchIn.value = '';
+      featResults = [];
+      renderFeatResults();
+    }
+    // label: what the readout shows instead of "name (uid)" — historical shapes pass a readable one.
+    function addFeatureByUid(uid, name, label = null) {
       const item = { refUid: [uid], style: sketchPolyStyle() };
       addFeature('polys', item);
       rerenderPasted('polys');
@@ -7712,7 +7915,7 @@
       insetSelected = false;
       activeTab = 'edit';
       buildPanel();
-      readout.textContent = `added ${name} (${uid}) — set its color in the Polygons row`;
+      readout.textContent = `added ${label || `${name} (${uid})`} — set its color in the Polygons row`;
       featSearchIn.value = '';
       featResults = [];
       renderFeatResults();
@@ -7729,8 +7932,7 @@
       if (e.key === 'ArrowDown') { featActive = (featActive + 1) % featResults.length; renderFeatResults(); e.preventDefault(); }
       else if (e.key === 'ArrowUp') { featActive = (featActive - 1 + featResults.length) % featResults.length; renderFeatResults(); e.preventDefault(); }
       else if (e.key === 'Enter') {
-        const [name, uid] = featResults[featActive];
-        addFeatureByUid(uid, name);
+        pickFeat(featResults[featActive]);
         e.preventDefault();
       }
     });
@@ -7743,8 +7945,7 @@
       }
       const row = e.target.closest('.fs-row');
       if (!row) return;
-      const [name, uid] = featResults[+row.dataset.i];
-      addFeatureByUid(uid, name);
+      pickFeat(featResults[+row.dataset.i]);
     });
 
     // Live zoom + bbox readout, and click-to-copy lng,lat for authoring params

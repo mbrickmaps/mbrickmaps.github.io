@@ -186,6 +186,7 @@ import "./_observablehq/client.77f16a62.js";
     #mlMenu .ml-field > span:first-child { flex: 1; }
     #mlMenu .ml-field .u { margin-left: -4px; }
     #mlMenu input[type=number] { width: 56px; background: #2b2723; color: #f4f4f2; border: 1px solid #5a544c; border-radius: 3px; padding: 1px 4px; }
+    #mlMenu .ml-hex { width: 58px; font: 11px ui-monospace, Menlo, monospace; background: #2b2723; color: #f4f4f2; border: 1px solid #5a544c; border-radius: 3px; padding: 1px 4px; }
     #mlMenu .ml-field input[type=color] { width: 56px; height: 20px; padding: 0 2px; background: #2b2723; border: 1px solid #5a544c; border-radius: 3px; }
     #mlMenu #mlLightSet { display: none; }
     #mlMenu .ml-field button { width: auto; padding: 1px 8px; border: 1px solid #5a544c; border-radius: 3px; text-align: center; }
@@ -893,9 +894,9 @@ import "./_observablehq/client.77f16a62.js";
             <label class="ml-switch" title="Live shading from the rgb height tiles (replaces the pre-made hillshade while on; this pane only)"><span>No lighting</span><input type="checkbox" id="mlLight"><span>Lighting</span></label>
             <div id="mlLightSet">
               <label class="ml-field" title="Direction the light comes from, degrees clockwise from north (315 = north-west)"><span>Sun</span><input type="number" id="mlSun" value="315" min="0" max="359" step="15"><span class="u">°</span></label>
-              <label class="ml-field" title="Shading strength, 0–1"><span>Strength</span><input type="number" id="mlShade" value="0.5" min="0" max="1" step="0.05"></label>
+              <label class="ml-field" title="Shading strength, 0–1"><span>Shade</span><input type="number" id="mlShade" value="0.5" min="0" max="1" step="0.05"></label>
               <label class="ml-field" title="Colour of slopes facing away from the light"><span>Shadow</span><input type="color" id="mlShadow" value="#000000"></label>
-              <label class="ml-field" title="Colour of slopes facing the light"><span>Highlight</span><input type="color" id="mlHighlight" value="#ffffff"></label>
+              <label class="ml-field" title="Highlight colour — slopes facing the light"><span>Hilite</span><input type="color" id="mlHighlight" value="#ffffff"></label>
             </div>
           </div>
         </div>
@@ -5038,9 +5039,9 @@ import "./_observablehq/client.77f16a62.js";
       if (b.split(',').length === 4) src += '&bbox=' + encodeURIComponent(b);
       if (navGlobe) src += '&globe'; // persist globe across pane reloads (basemap switch etc.)
       if ($('mlTerrain')?.checked) src += '&terrain&exaggeration=' + encodeURIComponent($('mlTerrainExag').value || 1.5); // same for terrain
-      if (skyCustom) src += '&sky=' + encodeURIComponent($('mlSky').value) + '&horizon=' + encodeURIComponent($('mlHorizon').value);
+      if (skyCustom) src += '&sky=' + $('mlSky').value.slice(1) + '&horizon=' + $('mlHorizon').value.slice(1);   // no '#' in params
       if ($('mlLight')?.checked) src += '&lighting&sun=' + encodeURIComponent($('mlSun').value) + '&shade=' + encodeURIComponent($('mlShade').value) +
-        '&shadow=' + encodeURIComponent($('mlShadow').value) + '&hilite=' + encodeURIComponent($('mlHighlight').value);
+        '&shadow=' + $('mlShadow').value.slice(1) + '&hilite=' + $('mlHighlight').value.slice(1);
       // Landing camera for geoSatellite: hand the pane the full pose (center/zoom/tilt/rotation)
       // so it frames itself on its own map-load — deterministic, not a postMessage race.
       if ($('proj').value === 'geoSatellite' && satelliteCam) {
@@ -5197,6 +5198,23 @@ import "./_observablehq/client.77f16a62.js";
     }
     for (const id of ['mlLight', 'mlSun', 'mlShade', 'mlShadow', 'mlHighlight']) $(id).addEventListener('input', postLighting);
     $('mlLight').addEventListener('change', postLighting);
+    // Hex code beside each colour picker (sky, horizon, shadow, highlight), shown without the '#'
+    // so it can go straight into a URL param. Typing a hex (3 or 6 digits, '#' optional) sets the picker.
+    for (const picker of document.querySelectorAll('#mlMenu .ml-field input[type=color]')) {
+      const hex = document.createElement('input');
+      Object.assign(hex, { type: 'text', className: 'ml-hex', maxLength: 7, spellcheck: false, title: 'Hex colour (the # is optional)' });
+      const show = () => { hex.value = picker.value.slice(1); };
+      show();
+      picker.addEventListener('input', show);
+      hex.addEventListener('input', () => {
+        const v = hex.value.trim().replace(/^#/, '');
+        if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return;
+        picker.value = '#' + (v.length === 3 ? [...v].map((c) => c + c).join('') : v).toLowerCase();
+        picker.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      hex.addEventListener('blur', show);
+      picker.after(hex);
+    }
     // ☰ overflow menu: open/close; close on outside-click or after an ACTION (button), but NOT when
     // toggling a switch inside it.
     { const mb = $('mlMenuBtn'), menu = $('mlMenu');

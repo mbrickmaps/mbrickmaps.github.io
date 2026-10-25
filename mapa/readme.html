@@ -486,12 +486,12 @@ node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pr
 <td>Shading strength (default 0.5).</td>
 </tr>
 <tr>
-<td><code>shadow=#hex</code> · <code>hilite=#hex</code></td>
-<td>Colours of slopes facing away from / towards the light.</td>
+<td><code>shadow=hex</code> · <code>hilite=hex</code></td>
+<td>Colours of slopes facing away from / towards the light, e.g. <code>shadow=330066</code>.</td>
 </tr>
 <tr>
-<td><code>sky=#hex</code> · <code>horizon=#hex</code></td>
-<td>Sky gradient, top to horizon.</td>
+<td><code>sky=hex</code> · <code>horizon=hex</code></td>
+<td>Sky gradient, top to horizon, e.g. <code>sky=9cc3e6</code>.</td>
 </tr>
 <tr>
 <td><code>mapa</code></td>
@@ -499,13 +499,13 @@ node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pr
 </tr>
 </tbody>
 </table>
-<p>Colours in a URL need the <code>#</code> escaped as <code>%23</code>. The lighting highlight colour is <code>hilite</code>; <code>highlight</code> is only the feature uids.</p>
+<p>Colours in a URL go without the <code>#</code> (<code>shadow=330066</code>) — a bare <code>#</code> would cut the URL off there; <code>%23330066</code> also works. The lighting highlight colour is <code>hilite</code>; <code>highlight</code> is only the feature uids.</p>
 <p><strong>Zooming past the data.</strong> Raising <code>maxzoom</code> lets you zoom past the height tiles' z8: MapLibre stretches the z8 tiles rather than asking for tiles that don't exist, so terrain and lighting keep working (softer). World-file images have no zoom limit and stay sharp.</p>
 <h3 id="view-tab-debug" tabindex="-1"><a class="observablehq-header-anchor" href="#view-tab-debug">View tab (<code>?debug</code>)</a></h3>
 <p>Live controls, applied as you drag:</p>
 <ul>
-<li><strong>Terrain</strong>: on/off and <strong>height</strong> (exaggeration, 0–5×). 3D only shows with pitch above 0.</li>
-<li><strong>Lighting</strong>: on/off, <strong>lock to camera</strong>, <strong>sun</strong> (0–359°), <strong>strength</strong> (0–1), <strong>shadow</strong> and <strong>highlight</strong> colour pickers.</li>
+<li><strong>Terrain</strong>: on/off and <strong>exaggeration</strong> (no upper limit). 3D only shows with pitch above 0.</li>
+<li><strong>Lighting</strong>: on/off, <strong>lightlock</strong>, <strong>sun</strong> (0–359°), <strong>shade</strong> (0–1), <strong>shadow</strong> and <strong>hilite</strong> colour pickers, each with its hex code beside it.</li>
 <li><strong>Camera</strong>: <strong>pitch</strong> (0–85°) and <strong>bearing</strong> (−180…180°). They follow the map if the camera is moved some other way.</li>
 </ul>
 <h2 id="cookbook" tabindex="-1"><a class="observablehq-header-anchor" href="#cookbook">Cookbook</a></h2>
@@ -517,7 +517,7 @@ node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pr
 <pre><code>sandbox.html?terrain&amp;center=74.8,34.1&amp;zoom=8&amp;pitch=60&amp;bearing=30
 </code></pre>
 <p><strong>Terrain with live lighting from the east, purple shadows</strong></p>
-<pre><code>sandbox.html?terrain&amp;lighting&amp;sun=90&amp;shade=0.8&amp;shadow=%23330066&amp;hilite=%23ffee88&amp;center=74.8,34.1&amp;zoom=8&amp;pitch=60
+<pre><code>sandbox.html?terrain&amp;lighting&amp;sun=90&amp;shade=0.8&amp;shadow=330066&amp;hilite=ffee88&amp;center=74.8,34.1&amp;zoom=8&amp;pitch=60
 </code></pre>
 <p><strong>Close-up over low-res terrain with your own images on top</strong>: zoom past z8, load world-file images from the debug panel's Edit tab (drop the image + its <code>.wld</code>/<code>.pgw</code>).</p>
 <pre><code>sandbox.html?debug&amp;maxzoom=14&amp;terrain&amp;lighting
@@ -533,7 +533,7 @@ node scripts/build-basemap.mjs --simplify=0.01   <span class="hljs-comment"># pr
 </code></pre>
 <ul>
 <li><code>sun</code> turns lighting on for the run. It only repaints the shading, so it's the fastest.</li>
-<li><code>bearing</code> with <strong>follow camera</strong> ticked (Sequence → Light; same as <strong>lock to camera</strong> in the View tab, or <code>?lightlock</code>) keeps the shading coming from the same side in every frame; without it the light stays fixed to north and swings round as the map turns.</li>
+<li><code>bearing</code> with <strong>lightlock</strong> ticked (Sequence → Light; same as <strong>lightlock</strong> in the View tab, or <code>?lightlock</code>) keeps the shading coming from the same side in every frame; without it the light stays fixed to north and swings round as the map turns.</li>
 <li><code>bearing</code> turns the map around the screen centre, not the crop box: keep the box centred or the area drifts. World files are included (with rotation) while pitch is 0.</li>
 <li><code>pitch</code> frames above 0 have no world file, and higher pitch loads more tiles, so it's slower.</li>
 <li>Bearing, pitch and sun go back to where they were afterwards. The status line lists any value that hadn't finished loading after 30 s (that frame may be patchy).</li>
