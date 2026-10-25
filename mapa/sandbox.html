@@ -3829,9 +3829,12 @@
         map.setPixelRatio(origPixelRatio * exportBox.scale);
         await new Promise((resolve) => map.once('idle', resolve));
       }
+      if (exportMeta.logo) await loadExportLogo(exportMeta.logo);
+      // Draw the current camera into the canvas right now, so the capture can't pick up the
+      // previous frame's pixels (an 'idle' can arrive before the newest camera has been drawn).
+      map.redraw();
       const canvasRect = canvas.getBoundingClientRect();
       const px = canvas.width / canvasRect.width;   // canvas device pixels per CSS pixel
-      if (exportMeta.logo) await loadExportLogo(exportMeta.logo);
       const outW = Math.round(exportBox.width * exportBox.scale);
       const mapH = Math.round(exportBox.height * exportBox.scale);
       const m = exportChromeMetrics();
@@ -4078,6 +4081,19 @@
         map.triggerRepaint();
       });
     }
+    // A small fingerprint of what the map canvas shows right now (after a synchronous redraw), to
+    // spot a frame that came out the same as the one before.
+    const sigCanvas = document.createElement('canvas');
+    sigCanvas.width = sigCanvas.height = 96;
+    function frameSig() {
+      map.redraw();
+      const ctx = sigCanvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(map.getCanvas(), 0, 0, 96, 96);
+      const d = ctx.getImageData(0, 0, 96, 96).data;
+      let h = 0;
+      for (let i = 0; i < d.length; i++) h = (h * 31 + d[i]) | 0;
+      return h;
+    }
     // The camera + light, to put back after a run.
     const cameraNow = () => ({ center: map.getCenter().toArray(), zoom: map.getZoom(), bearing: map.getBearing(),
       pitch: map.getPitch(), sun: light.sun, lightOn: light.on });
@@ -4095,8 +4111,8 @@
       exportSeq.running = preview ? 'preview' : 'run'; exportSeq.source = source; exportSeq.stop = false;
       const before = cameraNow();
       const fmt = EXPORT_FORMATS[exportBox.format];
-      const timedOut = [];
-      let saved = 0, out = null;
+      const timedOut = [], repeats = [];
+      let saved = 0, out = null, lastSig = null, lastCam = null;
       try {
         if (preview) {
           for (const [i, f] of frames.entries()) {
@@ -4163,6 +4179,17 @@
           say(`${f.label} — frame ${saved + 1}/${frames.length} · ${fmtDuration(per * (frames.length - saved))} left`);
           f.apply();
           if (!(await waitMapIdle())) timedOut.push(f.label);
+          // A frame identical to the last one means the canvas hadn't caught up with the camera:
+          // wait, redraw and look again (up to 3 tries) before saving it.
+          const cam = map.getCenter().toArray().concat(map.getZoom(), map.getBearing(), map.getPitch()).join();
+          let sig = frameSig();
+          for (let tries = 0; saved && sig === lastSig && cam !== lastCam && tries < 3; tries++) {
+            await new Promise((res) => setTimeout(res, 100));
+            await waitMapIdle(5000);
+            sig = frameSig();
+          }
+          if (saved && sig === lastSig) repeats.push(f.label + (cam === lastCam ? ' (camera held back)' : ''));
+          lastSig = sig; lastCam = cam;
           const wld = exportWorldFile();
           const blob = await renderExportBlob();
           await out.add(`${f.file}.${fmt.ext}`, blob);
@@ -4186,7 +4213,8 @@
           await out.finish();
         }
         ui.status = `${exportSeq.stop ? 'stopped — ' : ''}saved ${saved} frame${saved === 1 ? '' : 's'}${out?.where ?? ''} in ${fmtDuration((performance.now() - t0) / 1000)}` +
-          (timedOut.length ? ` · didn't finish loading at ${timedOut.join(', ')} (may be patchy)` : '');
+          (timedOut.length ? ` · didn't finish loading at ${timedOut.join(', ')} (may be patchy)` : '') +
+          (repeats.length ? ` · same picture as the frame before at ${repeats.join(', ')}` : '');
       } catch (err) {
         ui.status = `failed: ${err.message}`;
       } finally {
