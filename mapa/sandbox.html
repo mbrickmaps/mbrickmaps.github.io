@@ -108,6 +108,19 @@
       border: 1px solid rgba(255, 255, 255, .3); border-radius: 4px;
     }
     #featsearch-list[hidden] { display: none; }
+    /* Category filters: only while the search is in use, so they don't sit over the map. */
+    #featsearch .fs-filters {
+      display: none; flex-wrap: wrap; gap: 2px 10px; margin-top: 4px; padding: 3px 8px;
+      background: #14171E; color: #fff; font-size: 11px;
+      border: 1px solid rgba(255, 255, 255, .3); border-radius: 4px;
+    }
+    #featsearch:focus-within .fs-filters, #featsearch.has-q .fs-filters { display: flex; }
+    #featsearch .fs-filters label { display: flex; gap: 3px; align-items: center; cursor: pointer; }
+    #featsearch .fs-state { flex: none; width: auto; max-width: 180px; font: 11px monospace; color: inherit; background: transparent; border: 1px solid rgba(127, 127, 127, .5); border-radius: 3px; }
+    #featsearch .fs-state option { color: #000; }
+    #featsearch .fs-date { width: 82px; font: 11px monospace; color: inherit; background: transparent; border: 1px solid rgba(127, 127, 127, .5); border-radius: 3px; padding: 0 3px; }
+    #featsearch .fs-date.bad { border-color: #e66; }
+    body.light #featsearch .fs-filters { color: #111; background: rgba(255, 255, 255, .97); border-color: rgba(0, 0, 0, .25); }
     #featsearch-list .fs-row {
       display: flex; gap: 8px; align-items: baseline;
       padding: 5px 8px; cursor: pointer; font-size: 12px; color: #fff;
@@ -466,8 +479,39 @@
     }
     #panel input.inset-in[type="color"] { min-width: 0; width: 22px; height: 16px; padding: 0; flex: none; }
     #panel .inset-sel option { color: #000; }
+    #panel .inset-ed {
+      display: grid; grid-template-columns: 64px 1fr; gap: 5px 8px; align-items: center;
+      font-size: 11px; margin-top: 4px;
+    }
+    #panel .inset-ed .ig-h {
+      grid-column: 1 / -1; margin-top: 6px; padding-bottom: 2px; font-size: 10px; opacity: .55;
+      text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid rgba(255, 255, 255, .12);
+    }
+    #panel .inset-ed .ig-k { opacity: .75; white-space: nowrap; display: flex; gap: 4px; align-items: center; }
+    #panel .inset-ed .ig-c { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 0; }
+    #panel .inset-ed .inset-in[type="number"], #panel .inset-ed .inset-in[type="text"] { flex: none; width: 48px; min-width: 0; }
+    #panel .inset-ed .inset-sel { flex: none; min-width: 0; }
+    #panel .inset-ed .sketch-btn { flex: none; padding: 1px 8px; }
+    #panel .inset-lt {
+      grid-column: 1 / -1; display: grid; grid-template-columns: 14px minmax(0, 1fr) 30px 50px 50px;
+      gap: 4px 6px; align-items: center;
+    }
+    #panel .inset-lt .lt-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #panel .inset-lt .lt-wide { grid-column: 2 / 5; min-width: 0; }
+    #panel .inset-lt .lt-wide { display: flex; gap: 4px; }
+    #panel .inset-lt .lt-wide .inset-sel { flex: 1; min-width: 0; }
+    #panel .inset-lt .lt-wide .inset-sel[data-field="relief-detail"] { flex: none; }
+    #panel .inset-lt > span { min-width: 0; }
+    #panel .inset-lt .lt-h { font-size: 9px; opacity: .55; text-transform: uppercase; letter-spacing: .04em; }
+    #panel .inset-lt .inset-in[type="number"] { width: 100%; box-sizing: border-box; }
     #panel .sketch-meta-area {
       flex: 1 1 100%; min-width: 0; box-sizing: border-box;
+      color: #fff; background: rgba(255, 255, 255, .1);
+      border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px;
+      font: 10px monospace; padding: 2px 3px; resize: vertical;
+    }
+    #panel .points-csv {
+      width: 100%; box-sizing: border-box; margin-top: 4px;
       color: #fff; background: rgba(255, 255, 255, .1);
       border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px;
       font: 10px monospace; padding: 2px 3px; resize: vertical;
@@ -924,6 +968,7 @@
   <div id="camhud"></div>
   <div id="featsearch">
     <input type="text" id="featsearch-in" placeholder="search countries, states, cities, regions, seas…" autocomplete="off">
+    <div class="fs-filters"></div>
     <div id="featsearch-list" hidden></div>
   </div>
   <div id="panel"></div>
@@ -1259,6 +1304,29 @@
     };
     // A new style starts with its own (visible) hillshade layer and none of ours.
     map.on('style.load', () => { bakedHsVis = null; applyLighting(); });
+    // Natural Earth relief rasters (built by atlas/rasters/build.sh → R2), added to every style as
+    // ordinary layers directly above `hillshade`, so the Layer tab toggles them and sets their
+    // opacity. Hidden to start: each is an opaque world image, so they'd bury the hillshade and
+    // each other. ?relief=<layer id> (e.g. ?relief=ne2_hr_lc_sr_w) starts with that one on.
+    const RELIEF_TILES = 'https://tiles.mbricknell.com/';
+    const RELIEF_LAYERS = ['gray_hr_sr_ob_dr', 'ne2_hr_lc_sr_w', 'ne1_hr_lc_sr_w'];   // bottom → top
+    const reliefParam = params.get('relief');
+    // m: the main map or the inset (which picks its own via inset.relief — see applyInsetLayers).
+    // tileSize below 256 makes MapLibre fetch higher-zoom tiles for the same view — each halving
+    // is one more level of detail (the inset's inset["relief-detail"]).
+    function addReliefLayers(m = map, tileSize = 256) {
+      const layers = m.getStyle().layers;
+      const hs = layers.findIndex((l) => l.id === 'hillshade');
+      if (hs === -1) return;   // a raw-raster ?style= has no hillshade to sit on
+      const beforeId = layers[hs + 1]?.id;
+      for (const id of RELIEF_LAYERS) {
+        if (m.getLayer(id)) continue;
+        if (!m.getSource(id)) m.addSource(id, { type: 'raster', url: `pmtiles://${RELIEF_TILES}${id}.pmtiles`, tileSize });
+        m.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 1 },
+          layout: { visibility: m === map && id === reliefParam ? 'visible' : 'none' } }, beforeId);
+      }
+    }
+    map.on('style.load', () => addReliefLayers());
     if (globeParam) map.on('style.load', () => {
       map.setProjection({ type: 'globe' });
       if (map.getLayer('background')) map.setPaintProperty('background', 'background-opacity', 0);
@@ -2250,7 +2318,10 @@
       const prop = COLOR_PROP[l.type] || null;
       const color = prop ? (l.paint || {})[prop] : null;
       let paint = '';
-      if (typeof color === 'string') {
+      if (l.type === 'raster') {
+        const op = (l.paint || {})['raster-opacity'];
+        paint = `<input type="number" class="opacity-in" data-layer="${l.id}" data-prop="raster-opacity" placeholder="1" value="${typeof op === 'number' ? op : ''}" min="0" max="1" step="0.1">`;
+      } else if (typeof color === 'string') {
         const opProp = OPACITY_PROP[l.type];
         const op = (l.paint || {})[opProp];
         paint =
@@ -2996,8 +3067,53 @@
         `background:radial-gradient(circle at 50% 50%, transparent ${v.stop ?? 55}%, ${v.color ?? '#000'} 100%);`;
     }
 
+    // The inset is a simple locator: just these base layers (each one can be unticked via
+    // inset.hide), the chosen relief, and the labels unless labels:false. Everything else in the
+    // style stays hidden. Each layer's look comes from inset.style[<id>] — fill / stroke /
+    // stroke-width / opacity, the same key names as project features — independent of the main map.
+    const INSET_LAYERS = {
+      background: { fill: 'background-color', opacity: 'background-opacity' },
+      'ocean-fill': { fill: 'fill-color', opacity: 'fill-opacity' },
+      innerlines: { stroke: 'line-color', 'stroke-width': 'line-width', opacity: 'line-opacity' }
+    };
+    // inset["relief-detail"]: 0–3 extra zoom levels of relief tiles. A small inset at zoom ~0
+    // otherwise gets the blurry z0/z1 tiles; +2 loads z2/z3 for the same view.
+    const insetReliefTileSize = () => 256 / 2 ** (+projectDoc.inset?.['relief-detail'] || 0);
+    // tileSize is fixed when a source is added, so a new detail level means re-adding the sources.
+    function rebuildInsetRelief() {
+      if (!insetMap?.getStyle()) return;
+      for (const id of RELIEF_LAYERS) {
+        if (insetMap.getLayer(id)) insetMap.removeLayer(id);
+        if (insetMap.getSource(id)) insetMap.removeSource(id);
+      }
+      addReliefLayers(insetMap, insetReliefTileSize());
+      applyInsetLayers();
+    }
+    // inset.relief: one of the relief layer ids (or unset for none), inset["relief-opacity"]: 0–1.
+    function applyInsetLayers() {
+      const cfg = projectDoc.inset;
+      if (!cfg || !insetMap?.getStyle()) return;
+      for (const l of insetMap.getStyle().layers) {
+        if (l.id.startsWith('inset-')) continue;
+        let on;
+        if (RELIEF_LAYERS.includes(l.id)) {
+          on = cfg.relief === l.id;
+          insetMap.setPaintProperty(l.id, 'raster-opacity', cfg['relief-opacity'] ?? 1);
+        } else if (INSET_LAYERS[l.id]) {
+          on = !(cfg.hide || []).includes(l.id);
+          for (const [key, prop] of Object.entries(INSET_LAYERS[l.id])) {
+            const v = cfg.style?.[l.id]?.[key];
+            if (v != null && v !== '') insetMap.setPaintProperty(l.id, prop, v);
+          }
+        } else {
+          on = groupOf(l) === 'label' && cfg.labels !== false;
+        }
+        insetMap.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none');
+      }
+    }
+
     // Everything the Inset section can change without rebuilding the map: frame geometry, border,
-    // vignette, camera. Only `projection` needs a teardown, since it's a constructor-time choice.
+    // vignette, camera, layers. Only `projection` needs a teardown, since it's a constructor-time choice.
     function applyInsetLive() {
       const cfg = projectDoc.inset;
       const el = document.getElementById('inset-map');
@@ -3016,11 +3132,7 @@
         zoom: cfg.zoom ?? insetMap.getZoom()
       });
       insetFollow = cfg.follow === true;
-      if (insetMap.isStyleLoaded()) {
-        for (const l of insetMap.getStyle().layers) {
-          if (groupOf(l) === 'label') insetMap.setLayoutProperty(l.id, 'visibility', cfg.labels === false ? 'none' : 'visible');
-        }
-      }
+      if (insetMap.isStyleLoaded()) applyInsetLayers();   // also applies labels / hide
       applyInsetVignette();
       // Extent-color edits write to projectDoc.inset.bbox.style like everything else here, but
       // this is the one live-apply step that only means anything once the layer exists — a fresh
@@ -3051,7 +3163,9 @@
       const last = parts[parts.length - 1];
       if (value === '' || value == null) delete node[last];
       else node[last] = value;
-      if (path === 'projection' || path === 'show') rebuildInset(); else applyInsetLive();
+      if (path === 'projection' || path === 'show') rebuildInset();
+      else if (path === 'relief-detail') rebuildInsetRelief();
+      else applyInsetLive();
       updateProjectJson();
     }
 
@@ -4326,7 +4440,8 @@
 
     // Section-level default insertion anchor (via addLayer's beforeId) for points/polys/
     // annotations — used as the fallback for any entry that doesn't set its own insertBelow.
-    // Default is undefined (top of the whole stack, same as before insertBelow existed) — a
+    // Default is undefined (the default stack: polys under the basemap labels, then points, then
+    // annotations on top — see groupDataByAnchor) — a
     // project must set view.insertBelow explicitly to opt into a different default. Either one
     // string (applies to all three sections) or an object {points, polys, annotations} for
     // independent per-section defaults — single-project only, same rule as
@@ -4339,6 +4454,21 @@
     // Entries with no anchor (or an anchor that doesn't exist in the loaded style — addLayer
     // throws on an unknown beforeId, which would otherwise take down the whole render) land in
     // one group with beforeId undefined (top of stack).
+    // With no anchor of their own, project layers still keep a fixed order among themselves —
+    // polys under points under annotations — and polys sit under the basemap's labels. Without
+    // this a layer simply went on top when first created, so a shape added mid-session (a new
+    // style = a new layer) covered every label and arrow already on the map. '__top__' is the
+    // explicit "above the basemap labels" choice for polys; it still stays under points/annotations.
+    const PROJECT_ABOVE = { polys: ['project-points', 'project-annotation'], points: ['project-annotation'], annotations: [] };
+    function projectStackBeforeId(kind) {
+      const above = PROJECT_ABOVE[kind] || [];
+      return map.getStyle().layers.find((l) => above.some((p) => l.id.startsWith(p)))?.id;
+    }
+    function firstLabelLayerId() {
+      return map.getStyle().layers.find((l) => !l.id.startsWith('project-') && !l.id.startsWith('sandbox-')
+        && (groupOf(l) === 'label' || groupOf(l) === 'symbols'))?.id;
+    }
+
     function groupDataByAnchor(data, kind) {
       const groups = new Map(); // anchor key -> { beforeId, items: [] }
       for (const item of (data || [])) {
@@ -4346,9 +4476,11 @@
         // so authors can park a callout without deleting its markup. Omitted/true = rendered.
         if (item.show === false) continue;
         const anchor = item.insertBelow ?? projectBeforeId[kind];
-        const key = anchor || '__top__';
+        const key = anchor || '__default__';
         if (!groups.has(key)) {
-          groups.set(key, { beforeId: anchor && map.getLayer(anchor) ? anchor : undefined, items: [] });
+          const explicit = anchor && map.getLayer(anchor) ? anchor : undefined;
+          const underLabels = !anchor && kind === 'polys' ? firstLabelLayerId() : undefined;
+          groups.set(key, { beforeId: explicit ?? underLabels ?? projectStackBeforeId(kind), items: [] });
         }
         groups.get(key).items.push(item);
       }
@@ -5896,54 +6028,73 @@
       const center = cfg.center ?? [0, 20];
       const border = cfg.border === false ? {} : (cfg.border || {});
       const v = cfg.vignette === true ? {} : (cfg.vignette || {});
-      const row = (inner) => `<div class="sketch-style-row">${inner}</div>`;
       const hasFixedExtent = !!(cfg.bbox?.coords || cfg.bbox?.refUid || cfg.bbox?.geometry);
       const extentStyle = mergeProjectStyle(PROJECT_POLY_DEFAULTS, cfg.bbox?.style);
+      // Two-column form (label | controls) for Frame and View, then a table for Layers so each
+      // layer's color / width / opacity line up in columns instead of wrapping onto loose rows.
+      const kv = (label, controls) => `<span class="ig-k">${label}</span><span class="ig-c">${controls}</span>`;
+      const head = (t) => `<span class="ig-h">${t}</span>`;
+      const num = (path, value, extra) => f('number', path, value, extra);
+      const opIn = (path, value) => num(path, value, 'min="0" max="1" step="0.05"');
+      const lrow = (check, name, color, width, opacity) =>
+        `<span>${check}</span><span class="lt-name">${name}</span><span>${color}</span><span>${width}</span><span>${opacity}</span>`;
+      const layerRows = Object.entries(INSET_LAYERS).map(([id, keys]) => {
+        const st = cfg.style?.[id] || {};
+        const val = (key) => st[key] ?? (keys[key] && insetMap?.getLayer(id) ? insetMap.getPaintProperty(id, keys[key]) : undefined);
+        const colorKey = keys.fill ? 'fill' : 'stroke';
+        const c = val(colorKey), w = val('stroke-width'), o = val('opacity');
+        return lrow(
+          `<input type="checkbox" class="inset-layer-cb" data-layer="${id}"${(cfg.hide || []).includes(id) ? '' : ' checked'}>`,
+          id,
+          f('color', `style.${id}.${colorKey}`, toHex(typeof c === 'string' ? c : '#000000')),
+          keys['stroke-width'] ? num(`style.${id}.stroke-width`, typeof w === 'number' ? w : '', 'min="0" step="0.25"') : '',
+          opIn(`style.${id}.opacity`, typeof o === 'number' ? o : 1));
+      }).join('');
       return `<div class="edit-row"><div class="edit-row-head inset-head selected">Inset</div>` +
-        row(
-          `<label>extent ${hasFixedExtent ? 'fixed' : 'follows main map'}</label>` +
-          `<button class="sketch-btn" data-inset-act="draw-extent">Draw extent</button>` +
-          `<button class="sketch-btn${insetMarkerArmed ? ' armed' : ''}" data-inset-act="add-marker">${insetMarkerArmed ? 'Click the inset… (Esc to stop)' : 'Add marker'}</button>` +
-          (cfg.markers?.length ? `<button class="sketch-btn" data-inset-act="clear-markers">Clear markers</button>` : '')
-        ) +
-        (hasFixedExtent ? row(
-          `<label>extent stroke ${f('color', 'bbox.style.stroke', toHex(extentStyle.stroke === 'none' ? '#ffffff' : extentStyle.stroke))}</label>` +
-          `<label>extent stroke-width ${f('number', 'bbox.style.stroke-width', extentStyle['stroke-width'], 'min="0" step="0.5"')}</label>` +
-          `<label>extent fill ${f('color', 'bbox.style.fill', toHex(extentStyle.fill === 'none' ? '#ffffff' : extentStyle.fill))}</label>` +
-          `<label>extent fill-opacity ${f('number', 'bbox.style.fill-opacity', extentStyle['fill-opacity'], 'min="0" max="1" step="0.05"')}</label>`
-        ) : '') +
-        row(
-          `<label>position ${sel('position', cfg.position ?? 'bottom-right', ['top-left', 'top-right', 'bottom-left', 'bottom-right'])}</label>` +
-          `<label>size ${f('number', 'size', cfg.size ?? 160, 'min="60" step="10"')}</label>` +
-          `<label>radius ${f('text', 'radius', cfg.radius ?? '50%')}</label>` +
-          `<label>projection ${sel('projection', cfg.projection ?? 'globe', ['globe', 'mercator'])}</label>`
-        ) +
-        row(
-          // The control today's globe-size confusion needed: at a fixed zoom the sphere shrinks
-          // toward the equator, so a low-latitude inset has to be zoomed in to fill its frame.
-          `<label>zoom ${f('number', 'zoom', cfg.zoom ?? 0, 'step="0.05"')}</label>` +
-          `<label>lng ${f('number', 'center.0', center[0], 'step="0.1"')}</label>` +
-          `<label>lat ${f('number', 'center.1', center[1], 'step="0.1"')}</label>` +
-          `<button class="sketch-btn" data-inset-act="here">use map center</button>`
-        ) +
-        row(
-          `<label>labels ${cb('labels', cfg.labels !== false)}</label>` +
-          `<label>follow ${cb('follow', cfg.follow === true)}</label>` +
-          `<label>border ${f('color', 'border.color', toHex(border.color ?? '#ffffff'))}</label>` +
-          `<label>border w ${f('number', 'border.width', border.width ?? 1.5, 'min="0" step="0.5"')}</label>`
-        ) +
-        row(
-          `<label>vignette ${cb('vignette', !!cfg.vignette)}</label>` +
-          (cfg.vignette ? `<label>color ${f('color', 'vignette.color', toHex(v.color ?? '#000000'))}</label>` +
-            `<label>opacity ${f('number', 'vignette.opacity', v.opacity ?? 0.55, 'min="0" max="1" step="0.05"')}</label>` +
-            `<label>stop ${f('number', 'vignette.stop', v.stop ?? 55, 'min="0" max="100" step="5"')}</label>` : '')
-        ) +
+        `<div class="inset-ed">` +
+        head('Frame') +
+        kv('position', sel('position', cfg.position ?? 'bottom-right', ['top-left', 'top-right', 'bottom-left', 'bottom-right'])) +
+        kv('size', num('size', cfg.size ?? 160, 'min="60" step="10"') + `<span class="ig-k">radius</span>` + f('text', 'radius', cfg.radius ?? '50%')) +
+        kv('border', f('color', 'border.color', toHex(border.color ?? '#ffffff')) + num('border.width', border.width ?? 1.5, 'min="0" step="0.5"')) +
+        kv('vignette', cb('vignette', !!cfg.vignette) + (cfg.vignette
+          ? f('color', 'vignette.color', toHex(v.color ?? '#000000')) + opIn('vignette.opacity', v.opacity ?? 0.55) +
+            `<span class="ig-k">stop</span>` + num('vignette.stop', v.stop ?? 55, 'min="0" max="100" step="5"')
+          : '')) +
+        head('View') +
+        kv('projection', sel('projection', cfg.projection ?? 'globe', ['globe', 'mercator'])) +
+        // At a fixed zoom the sphere shrinks toward the equator, so a low-latitude inset has to be
+        // zoomed in to fill its frame.
+        kv('zoom', num('zoom', cfg.zoom ?? 0, 'step="0.05"') + `<label class="ig-k">${cb('follow', cfg.follow === true)} follow map</label>`) +
+        kv('center', num('center.0', center[0], 'step="0.1" title="lng"') + num('center.1', center[1], 'step="0.1" title="lat"') +
+          `<button class="sketch-btn" data-inset-act="here">use map</button>`) +
+        kv('extent', `<span class="ig-k">${hasFixedExtent ? 'fixed' : 'follows map'}</span>` +
+          `<button class="sketch-btn" data-inset-act="draw-extent">Draw</button>`) +
+        (hasFixedExtent ? kv('extent box',
+          f('color', 'bbox.style.stroke', toHex(extentStyle.stroke === 'none' ? '#ffffff' : extentStyle.stroke)) +
+          num('bbox.style.stroke-width', extentStyle['stroke-width'], 'min="0" step="0.5" title="stroke width"') +
+          f('color', 'bbox.style.fill', toHex(extentStyle.fill === 'none' ? '#ffffff' : extentStyle.fill)) +
+          opIn('bbox.style.fill-opacity', extentStyle['fill-opacity'])) : '') +
+        kv('markers', `<button class="sketch-btn${insetMarkerArmed ? ' armed' : ''}" data-inset-act="add-marker">${insetMarkerArmed ? 'Click the inset… (Esc)' : 'Add'}</button>` +
+          (cfg.markers?.length ? `<button class="sketch-btn" data-inset-act="clear-markers">Clear</button>` : '')) +
+        head('Layers') +
+        `<div class="inset-lt">` +
+        lrow('', '', '<span class="lt-h">color</span>', '<span class="lt-h">width</span>', '<span class="lt-h">opacity</span>') +
+        `<span></span><span class="lt-wide"><select class="inset-sel" data-field="relief"><option value="">no relief</option>` +
+          RELIEF_LAYERS.map((id) => `<option value="${id}"${cfg.relief === id ? ' selected' : ''}>${id}</option>`).join('') + `</select>` +
+          (cfg.relief ? `<select class="inset-sel" data-field="relief-detail" title="load sharper relief tiles than the inset's zoom would">` +
+            [0, 1, 2, 3].map((d) => `<option value="${d || ''}"${(+cfg['relief-detail'] || 0) === d ? ' selected' : ''}>detail +${d}</option>`).join('') + `</select>` : '') +
+          `</span>` +
+        `<span>${cfg.relief ? opIn('relief-opacity', cfg['relief-opacity'] ?? 1) : ''}</span>` +
+        layerRows +
+        lrow(cb('labels', cfg.labels !== false), 'labels', '', '', '') +
+        `</div></div>` +
         `<div class="paste-actions"><button class="sketch-btn" data-inset-act="remove">Remove inset</button></div>` +
         `</div>`;
     }
 
-    // Which style layer this section's features are drawn beneath. "(top)" means no anchor —
-    // they sit above everything. Project/sandbox layers are excluded: anchoring to one would be
+    // Which style layer this section's features are drawn beneath. No anchor means the default
+    // stack (see projectStackBeforeId): polys under the basemap labels — "(over labels)" lifts
+    // them above — and points/annotations on top. Project/sandbox layers are excluded: anchoring to one would be
     // circular, and they come and go as you edit.
     function insertBelowSelect(kind) {
       const cur = projectBeforeId[kind] || '';
@@ -5956,7 +6107,9 @@
         .map((l) => l.id)
         .filter((id) => !id.startsWith('project-') && !id.startsWith('sandbox-') && !isPatternHelper(id));
       return `<select class="section-anchor-sel" data-kind="${kind}">` +
-        `<option value=""${cur ? '' : ' selected'}>(top)</option>` +
+        (kind === 'polys'
+          ? `<option value=""${cur ? '' : ' selected'}>(under labels)</option><option value="__top__"${cur === '__top__' ? ' selected' : ''}>(over labels)</option>`
+          : `<option value=""${cur ? '' : ' selected'}>(top)</option>`) +
         ids.map((id) => `<option value="${esc(id)}"${id === cur ? ' selected' : ''}>${esc(id)}</option>`).join('') +
         `</select>`;
     }
@@ -6018,6 +6171,56 @@
       }
     });
 
+    // Points CSV box: kept in a variable so a panel rebuild doesn't wipe what's been typed.
+    let pointsCsvText = '';
+    // "name, lat, lng" per line (comma or tab). A header row naming name/lat/lng (lon, long,
+    // latitude, longitude) sets the column order; without one, the first two numbers are lat, lng
+    // (swapped if the first can't be a latitude) and the other field is the name.
+    function parsePointsCsv(text) {
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const split = (l) => l.split(l.includes('\t') ? '\t' : ',').map((f) => f.trim().replace(/^"(.*)"$/, '$1'));
+      const isNum = (f) => f !== '' && !isNaN(+f);
+      let cols = null;
+      if (lines.length && !split(lines[0]).some(isNum)) {
+        const h = split(lines.shift()).map((f) => f.toLowerCase());
+        const at = (...names) => h.findIndex((f) => names.includes(f));
+        cols = { name: at('name', 'city', 'label'), lat: at('lat', 'latitude', 'y'), lng: at('lng', 'lon', 'long', 'longitude', 'x') };
+        if (cols.lat < 0 || cols.lng < 0) cols = null;
+      }
+      const points = [], bad = [];
+      for (const line of lines) {
+        const f = split(line);
+        let name, lat, lng;
+        if (cols) {
+          name = cols.name >= 0 ? f[cols.name] : '';
+          lat = +f[cols.lat]; lng = +f[cols.lng];
+        } else {
+          const nums = f.filter(isNum);
+          if (nums.length < 2) { bad.push(line); continue; }
+          [lat, lng] = [+nums[0], +nums[1]];
+          if (Math.abs(lat) > 90) [lat, lng] = [lng, lat];
+          name = f.filter((x) => !isNum(x)).join(', ');
+        }
+        if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) { bad.push(line); continue; }
+        points.push({ name, lat, lng });
+      }
+      return { points, bad };
+    }
+    function addPointsFromCsv() {
+      const { points, bad } = parsePointsCsv(pointsCsvText);
+      for (const p of points) {
+        addFeature('points', { lng: p.lng, lat: p.lat, ...(p.name ? { name: p.name, dir: sketchPointLabel.dir } : {}), style: { ...sketchPointStyle } });
+      }
+      if (points.length) {
+        rerenderPasted('points');
+        selectLast('points');
+        pointsCsvText = bad.join('\n');   // leave only the lines that didn't go in, to fix
+      }
+      buildPanel();
+      readout.textContent = `added ${points.length} point${points.length === 1 ? '' : 's'}` +
+        (bad.length ? ` · ${bad.length} line${bad.length === 1 ? '' : 's'} skipped (left in the box)` : '');
+    }
+
     function editSectionHtml() {
       const labels = { points: 'Points', polys: 'Polygons', annotations: 'Annotations' };
       return Object.keys(labels).map((kind) => `
@@ -6032,6 +6235,9 @@
               ${SKETCH_TOOLS.filter(t => t.kind === kind).map(t =>
                 `<button class="sketch-btn" data-kind="${t.kind}" data-tool="${t.tool}">${t.label}</button>`).join('')}
             </div>
+            ${kind === 'points' ? `
+            <textarea class="points-csv" rows="3" placeholder="name, lat, lng — one per line (header row optional)">${esc(pointsCsvText)}</textarea>
+            <div class="paste-actions"><button class="sketch-btn points-csv-add">Add points from CSV</button></div>` : ''}
             ${selectedItem?.kind === kind ? `
             <div class="selected-item">
               <span class="placed-label" title="${esc([].concat(selectedItem.uid || pastedArrayFor(kind)[selectedItem.index]?.refUid || []).join(', '))}">${esc(selectedItem.uid ? refLabel(selectedItem.uid) : itemSummary(kind, pastedArrayFor(kind)[selectedItem.index]))}</span>
@@ -6446,7 +6652,11 @@
         }
       }
 
+      // Without this the inset was always flat — "globe" only ever changed the frame to a circle.
+      insetMap.on('style.load', () => insetMap.setProjection({ type: config.projection === 'mercator' ? 'mercator' : 'globe' }));
       insetMap.on('load', () => {
+        addReliefLayers(insetMap, insetReliefTileSize());
+        applyInsetLayers();
         if (config.labels === false) {
           for (const l of insetMap.getStyle().layers) {
             if (groupOf(l) === 'label') insetMap.setLayoutProperty(l.id, 'visibility', 'none');
@@ -7440,6 +7650,7 @@
       }
       const clearPart = e.target.closest('.clear-part-btn');
       if (clearPart) { delete selectedItem.uid; buildPanel(); return; }
+      if (e.target.closest('.points-csv-add')) { addPointsFromCsv(); return; }
       const styleReset = e.target.closest('.section-stylereset-btn');
       if (styleReset) { resetSketchStyle(styleReset.dataset.kind); buildPanel(); return; }
       const insetHead = e.target.closest('.inset-head');
@@ -7630,7 +7841,15 @@
         rerenderPasted(t.dataset.kind);
         return;
       }
-      if (t.classList.contains('inset-sel')) { setInsetField(t.dataset.field, t.value); buildPanel(); return; }
+      if (t.classList.contains('inset-sel')) { setInsetField(t.dataset.field, t.dataset.field === 'relief-detail' && t.value ? +t.value : t.value); buildPanel(); return; }
+      if (t.classList.contains('inset-layer-cb')) {
+        const hide = new Set(projectDoc.inset.hide || []);
+        if (t.checked) hide.delete(t.dataset.layer); else hide.add(t.dataset.layer);
+        if (hide.size) projectDoc.inset.hide = [...hide]; else delete projectDoc.inset.hide;
+        applyInsetLayers();
+        updateProjectJson();
+        return;
+      }
       if (t.classList.contains('inset-cb')) {
         // `vignette` and `labels` are booleans in the file; the rest of the checkboxes map 1:1.
         setInsetField(t.dataset.field, t.dataset.field === 'labels' ? t.checked : (t.checked || undefined));
@@ -7662,6 +7881,7 @@
     // Live edits: color swatch -> setPaintProperty; zoom fields -> setLayerZoomRange
     panel.addEventListener('input', (e) => {
       const t = e.target;
+      if (t.classList.contains('points-csv')) { pointsCsvText = t.value; return; }
       if (t.classList.contains('view-hex')) {
         // A typed hex drives its picker (3 or 6 digits, '#' optional); anything else waits for more typing.
         const v = t.value.trim().replace(/^#/, '');
@@ -7776,7 +7996,19 @@
           try { const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`); return await res.json(); }
           catch (err) { console.warn(`[search] could not load ${url}:`, err); return null; }
         };
-        const [shapes, gaz, hist] = await Promise.all([get('./lookups/features.json'), get('./mapa/files/gazetteer.json'), get('./lookups/us_hist.json')]);
+        const [shapes, gaz, hist, parents] = await Promise.all([get('./lookups/features.json'), get('./mapa/files/gazetteer.json'),
+          get('./lookups/us_hist.json'), get('./lookups/admin-parents.json')]);
+        // admin1/admin2 uids carry their country's ISO ("admin2:nga_aba_north"), so the country
+        // name comes from the matching admin0 row; an admin2's state comes from admin-parents.json
+        // (scripts/gen-admin-parents.mjs), since features.json doesn't record it.
+        const shapeRows = Array.isArray(shapes) ? shapes : [];
+        const countryName = new Map(shapeRows.filter((r) => r[2] === 'admin0').map((r) => [r[1].split(':')[1], r[0]]));
+        for (const r of shapeRows) {
+          if (r[2] !== 'admin1' && r[2] !== 'admin2') continue;
+          const country = countryName.get(r[1].split(':')[1]?.split('_')[0]);
+          const where = [r[2] === 'admin2' ? parents?.[r[1]] : null, country].filter(Boolean).join(', ');
+          if (where) r[3] = { where };
+        }
         const cities = (gaz?.rows || []).map(([name, , country, capital, pop, lng, lat]) =>
           [name, '', 'city', { country, capital: !!capital, pop, lng, lat }]);
         // US historical states/counties (scripts/gen-hist-index.mjs): one row per dated version.
@@ -7784,12 +8016,13 @@
           histLabels.set(uid, histLabel(name, cat, { start, end, state }));
           return [name, uid, cat, { start, end, state }];
         });
-        return (featIndex = [...(Array.isArray(shapes) ? shapes : []), ...cities, ...histRows]);
+        return (featIndex = [...shapeRows, ...cities, ...histRows]);
       })();
       return featIndexP;
     }
 
     function renderFeatResults() {
+      featSearchEl.classList.toggle('has-q', !!featSearchIn.value.trim());
       if (!featResults.length) {
         featSearchList.innerHTML = featSearchIn.value.trim()
           ? `<div class="fs-empty">nothing matching</div>` : '';
@@ -7814,7 +8047,7 @@
         // per-country rather than everywhere.
         const sub2Count = cat === 'admin0' ? subUidsFor(uid, 'admin2').length : 0;
         return `<div class="fs-row${i === featActive ? ' active' : ''}" data-uid="${esc(uid)}" data-i="${i}">` +
-          `<span class="fs-name">${esc(name)}</span>` +
+          `<span class="fs-name">${esc(name)}${city?.where ? `<span class="fs-sub">, ${esc(city.where)}</span>` : ''}</span>` +
           (subCount ? `<button class="fs-all" data-i="${i}" data-level="admin1" title="add all ${subCount} admin1 features">+ ${subCount} admin1</button>` : '') +
           (sub2Count ? `<button class="fs-all" data-i="${i}" data-level="admin2" title="add all ${sub2Count} admin2 features">+ ${sub2Count} admin2</button>` : '') +
           `<span class="fs-cat">${esc(cat)}</span></div>`;
@@ -7835,6 +8068,67 @@
     // oblasts, rather than whichever happened to sort first in the file.
     // A trailing year ("fairfax 1861") keeps only the historical versions in force that year
     // (undated rows still show) — otherwise "washington" is all versions of one county.
+    // Category checkboxes under the search box; unchecked groups drop out of the results.
+    // Remembered per browser (a convenience — everything still works if storage is blocked).
+    const FEAT_FILTERS = [
+      ['admin0', 'countries'], ['admin1', 'states'], ['admin2', 'counties'],
+      ['city', 'cities'], ['region', 'regions & seas'], ['hist', 'US historical']
+    ];
+    const featGroup = (cat) => cat === 'land_region' || cat === 'water_region' ? 'region'
+      : cat.startsWith('hist_') ? 'hist' : cat;
+    let featFilterOff = new Set();
+    try { featFilterOff = new Set(JSON.parse(localStorage.getItem('sandbox.featFilterOff') || '[]')); } catch (e) {}
+    const featFiltersEl = featSearchEl.querySelector('.fs-filters');
+    featFiltersEl.innerHTML = FEAT_FILTERS.map(([g, label]) =>
+      `<label><input type="checkbox" data-g="${g}"${featFilterOff.has(g) ? '' : ' checked'}> ${label}</label>`).join('') +
+      `<select class="fs-state" title="US historical: only this state's counties (and its state/territory shapes)"><option value="">any state</option></select>` +
+      `<label title="US historical: versions in force on this date (yyyy, yyyy-mm or yyyy-mm-dd); fill “to” as well for every version that overlaps the range">` +
+      `date <input class="fs-date" data-end="from" placeholder="yyyy-mm-dd"> to <input class="fs-date" data-end="to" placeholder="(optional)"></label>`;
+    // Date filter for the historical rows, as yyyymmdd bounds. Only "from" = at that date (a bare
+    // year means any time that year, like "fairfax 1861"); both = overlapping the range.
+    let featDateLo = null, featDateHi = null;
+    function parseFeatDate(v, high) {
+      const m = v.trim().match(/^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/);
+      if (!m) return null;
+      const mm = m[2] ? m[2].padStart(2, '0') : (high ? '12' : '01');
+      const dd = m[3] ? m[3].padStart(2, '0') : (high ? '31' : '01');
+      return +(m[1] + mm + dd);
+    }
+    featFiltersEl.addEventListener('input', async (e) => {
+      if (!e.target.classList.contains('fs-date')) return;
+      const [fromIn, toIn] = featFiltersEl.querySelectorAll('.fs-date');
+      const from = fromIn.value.trim(), to = toIn.value.trim();
+      featDateLo = from ? parseFeatDate(from, false) : null;
+      featDateHi = from ? parseFeatDate(to || from, true) : null;
+      fromIn.classList.toggle('bad', !!from && featDateLo == null);
+      toIn.classList.toggle('bad', !!to && parseFeatDate(to, true) == null);
+      if (featDateLo == null || featDateHi == null) featDateLo = featDateHi = null;
+      await loadFeatIndex();
+      runFeatSearch(featSearchIn.value);
+    });
+    // Filled once the index loads — the states are whatever the historical counties name.
+    let featHistState = '';
+    const featStateSel = featFiltersEl.querySelector('.fs-state');
+    featStateSel.addEventListener('change', async () => {
+      featHistState = featStateSel.value;
+      await loadFeatIndex();
+      runFeatSearch(featSearchIn.value);
+      featSearchIn.focus();
+    });
+    loadFeatIndex().then(() => {
+      const states = [...new Set((featIndex || []).filter((r) => r[2] === 'hist_county').map((r) => r[3].state))].sort();
+      featStateSel.innerHTML += states.map((st) => `<option>${esc(st)}</option>`).join('');
+    });
+    featFiltersEl.addEventListener('change', async (e) => {
+      const g = e.target.dataset.g;
+      if (!g) return;
+      if (e.target.checked) featFilterOff.delete(g); else featFilterOff.add(g);
+      try { localStorage.setItem('sandbox.featFilterOff', JSON.stringify([...featFilterOff])); } catch (err) {}
+      await loadFeatIndex();
+      runFeatSearch(featSearchIn.value);
+      featSearchIn.focus();
+    });
+
     function runFeatSearch(q) {
       let needle = q.trim().toLowerCase(), year = null;
       const ym = needle.match(/^(.*\S)\s+(\d{4})$/);
@@ -7842,6 +8136,10 @@
       if (!needle) { featResults = []; featActive = 0; renderFeatResults(); return; }
       const starts = [], contains = [];
       for (const row of featIndex || []) {
+        if (featFilterOff.has(featGroup(row[2]))) continue;
+        if (featDateLo != null && row[3]?.start && !(row[3].start <= featDateHi && row[3].end >= featDateLo)) continue;
+        if (featHistState && (row[2] === 'hist_county' ? row[3].state !== featHistState
+          : row[2] === 'hist_state' && !row[0].startsWith(featHistState))) continue;
         if (year && row[3]?.start && !(row[3].start <= year * 10000 + 1231 && row[3].end >= year * 10000 + 101)) continue;
         const n = row[0].toLowerCase();
         if (n.startsWith(needle)) starts.push(row);
