@@ -3833,6 +3833,7 @@
       // Draw the current camera into the canvas right now, so the capture can't pick up the
       // previous frame's pixels (an 'idle' can arrive before the newest camera has been drawn).
       map.redraw();
+      insetMap?.redraw();
       const canvasRect = canvas.getBoundingClientRect();
       const px = canvas.width / canvasRect.width;   // canvas device pixels per CSS pixel
       const outW = Math.round(exportBox.width * exportBox.scale);
@@ -4179,6 +4180,9 @@
           say(`${f.label} — frame ${saved + 1}/${frames.length} · ${fmtDuration(per * (frames.length - saved))} left`);
           f.apply();
           if (!(await waitMapIdle())) timedOut.push(f.label);
+          // The inset follows the main map on its own; let it finish loading this view too.
+          if (insetMap && document.getElementById('inset-map')?.style.display !== 'none' && !insetMap.loaded())
+            await new Promise((res) => { const t = setTimeout(res, 10000); insetMap.once('idle', () => { clearTimeout(t); res(); }); });
           // A frame identical to the last one means the canvas hadn't caught up with the camera:
           // wait, redraw and look again (up to 3 tries) before saving it.
           const cam = map.getCenter().toArray().concat(map.getZoom(), map.getBearing(), map.getPitch()).join();
