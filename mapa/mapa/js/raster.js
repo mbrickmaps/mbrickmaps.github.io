@@ -47,7 +47,15 @@ function drawTileLayers({ parent, layerGroup, tilesLayer, projection, width, hei
           if (tiles[t].colorRamp) slippy.colorRamp(tiles[t].colorRamp);
           slippy.projection(projection);
           slippy.margin(margin);
-          const _tp = slippy.tile(raster);
+          // A PMTiles archive stops at its header's maxZoom — asking past it returns nothing for
+          // every tile, so a big or tightly framed export (z9+ against hs.pmtiles' z8) lost the
+          // whole layer. Cap the depth there; the deepest tiles are stretched to fill instead.
+          const _tp = tiles[t].type == "pmtiles" && !zoom
+            ? pmtilesReader(url).getHeader()
+                .then((hdr) => { slippy.tileSet({ ...tileset, minDepth: hdr.minZoom, maxDepth: hdr.maxZoom }); })
+                .catch(() => {})
+                .then(() => slippy.tile(raster))
+            : slippy.tile(raster);
           if (_tp && _tp.then) tilePromises.push(_tp);
         }
       }

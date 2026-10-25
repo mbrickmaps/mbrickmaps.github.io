@@ -1963,6 +1963,9 @@
       // ?hide= last, so a URL override beats the project's own view.hide and applies even when
       // multiple ?project= files are combined (their view.* is ignored).
       applyUrlHide();
+      // A share link's layer settings go on last — they're the state the link was copied in,
+      // hidden layers included.
+      if (sharedSettings) importSettings(sharedSettings);
       // buildPanel() is also bound to map 'load', but loadProjects() is async — so that first
       // build ran against an empty projectDoc and showed no project content at all (an existing
       // inset read as "no inset"). Rebuild now the file is actually in memory.
@@ -2354,7 +2357,10 @@
         body = lightCamHtml();
       } else {
         body = `<pre class="project-json">${esc(JSON.stringify(projectDoc, null, 2))}</pre>`;
-        foot = `<div class="toolbar"><button class="project-copy-btn">Copy</button></div>`;
+        foot = `<div class="toolbar"><button class="project-copy-btn">Copy</button>` +
+          `<button class="project-copy-btn project-link-btn" title="Copy a link that reopens this map as it is now — view, project and layer settings">Copy link</button>` +
+          `<button class="project-copy-btn project-open-btn" title="Open a project JSON (or drop one anywhere on the page)">Open…</button>` +
+          `<input type="file" class="project-file" accept="application/json,.json" hidden></div>`;
       }
 
       panel.innerHTML = `<div class="phead">${head}</div><div class="pbody">${body}</div><div class="pfoot">${foot}</div>`;
@@ -2831,6 +2837,85 @@
       buildPanel();
     }
 
+    // The link: this page's URL with the live camera (and terrain/lighting) as the usual params,
+    // and the project + layer settings packed into #p= (see packState). Params the link sets are
+    // cleared first so a stale ?bbox= or ?project= can't fight it; everything else (style, debug,
+    // export, mode…) is kept as it is.
+    const SHARE_LINK_WARN = 30000;   // characters — past this, some apps cut links off
+    async function shareLinkUrl() {
+      const u = new URL(location.href);
+      for (const k of ['project', 'bbox', 'center', 'zoom', 'bearing', 'pitch', 'terrain', 'exaggeration',
+        'lighting', 'lightlock', 'sun', 'shade', 'shadow', 'hilite']) u.searchParams.delete(k);
+      const c = map.getCenter();
+      u.searchParams.set('center', `${c.lng.toFixed(5)},${c.lat.toFixed(5)}`);
+      u.searchParams.set('zoom', map.getZoom().toFixed(2));
+      if (Math.abs(map.getBearing()) > 0.01) u.searchParams.set('bearing', map.getBearing().toFixed(1));
+      if (map.getPitch() > 0.01) u.searchParams.set('pitch', map.getPitch().toFixed(1));
+      if (terrainOn) { u.searchParams.set('terrain', ''); u.searchParams.set('exaggeration', terrainExag); }
+      if (light.on) {
+        u.searchParams.set('lighting', '');
+        if (light.lock) u.searchParams.set('lightlock', '');
+        u.searchParams.set('sun', light.sun); u.searchParams.set('shade', light.shade);
+        u.searchParams.set('shadow', light.shadow); u.searchParams.set('hilite', light.highlight);
+      }
+      const state = { v: 1, project: projectDoc, settings: exportSettings() };
+      if (loadedProjectUrls.length === 1) state.base = loadedProjectUrls[0];   // so relative data paths still resolve
+      u.hash = 'p=' + await packState(state);
+      return u.href.replace(/=(&|$)/g, '$1');   // ?terrain&lighting, not ?terrain=&lighting=
+    }
+    async function copyShareLink(btn) {
+      const prev = btn.textContent;
+      const flash = (t, ms = 1200) => { btn.textContent = t; setTimeout(() => { btn.textContent = prev; }, ms); };
+      try {
+        const url = await shareLinkUrl();
+        try { await navigator.clipboard.writeText(url); }
+        catch { window.prompt('Copy this link:', url); }
+        if (url.length > SHARE_LINK_WARN) {
+          flash('✓ Copied (long)', 2500);
+          alert(`Link copied, but it's ${Math.round(url.length / 1000)} KB long — some apps (chat, email) cut long links off. ` +
+            `If it doesn't open right, send the project file instead (Copy, or the project JSON).`);
+        } else flash('✓ Copied');
+      } catch (err) {
+        flash('Failed');
+        console.error('[share] ', err);
+      }
+    }
+    // Open a JSON file (Open… button, or dropped anywhere on the page). A project file replaces the
+    // current project: it's packed into the hash and the page reloads, so it boots exactly like a
+    // share link. A layer-settings file (what Export saves) is applied in place, like Import.
+    const PROJECT_KEYS = ['points', 'polys', 'annotations', 'view', 'inset', 'legend', 'export'];
+    async function openJsonFile(file) {
+      let doc;
+      try { doc = JSON.parse(await file.text()); }
+      catch (err) { alert(`Couldn't read ${file.name}: ${err.message}`); return; }
+      if (!doc || typeof doc !== 'object' || Array.isArray(doc)) { alert(`${file.name} isn't a project file.`); return; }
+      if (!PROJECT_KEYS.some((k) => k in doc)) {
+        if (Object.keys(doc).some((id) => map.getLayer(id))) { importSettings(doc); return; }
+        alert(`${file.name} doesn't look like a project file (no ${PROJECT_KEYS.slice(0, 5).join(', ')}).`);
+        return;
+      }
+      const hasWork = ['points', 'polys', 'annotations'].some((k) => projectDoc[k]?.data?.length);
+      if (hasWork && !confirm(`Open ${file.name}? It replaces the project that's open now.`)) return;
+      const u = new URL(location.href);
+      // The file frames itself (its own view), so drop any camera params from the current URL.
+      for (const k of ['project', 'bbox', 'center', 'zoom', 'bearing', 'pitch']) u.searchParams.delete(k);
+      u.hash = 'p=' + await packState({ v: 1, project: doc });
+      history.replaceState(null, '', u.href);
+      location.reload();
+    }
+    // Drop a JSON anywhere on the page. The Images section's drop zone handles its own drops
+    // (and calls preventDefault), so those never reach here. Any other dropped file is swallowed
+    // rather than letting the browser navigate away from the page to show it.
+    document.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+    });
+    document.addEventListener('drop', (e) => {
+      if (e.defaultPrevented || !e.dataTransfer?.files?.length) return;
+      e.preventDefault();
+      const f = [...e.dataTransfer.files].find((x) => /\.json$/i.test(x.name) || x.type === 'application/json');
+      if (f) openJsonFile(f);
+    });
+
     function download(name, text) {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -2995,7 +3080,7 @@
     const EXPORT_MARGIN = 24;
     // ratio: '' means free — no aspect lock, width/height resize independently.
     let exportBox = { ratio: '3:2', inverted: false, scale: 2, innerMargin: 15, left: 0, top: 0, width: 0, height: 0, filename: '', format: 'png' };
-    // Sequence export: step one camera/light setting from → to and save a frame per value (zipped).
+    // Sequence export: step one camera/light setting from → to and save a frame per value (to a folder, or zipped).
     const EXPORT_SEQ_PARAMS = { bearing: '°', pitch: '°', sun: '°' };
     // running: false | 'run' (capturing) | 'preview' (stepping the live map, nothing captured).
     // source: which section started the run ('seq' or 'kf') — one run at a time across both.
@@ -3003,7 +3088,7 @@
     // Keyframes: captured camera views ({ center, zoom, bearing, pitch, sun? }) tweened into frames.
     let keyframes = [];
     let kfState = { between: 24, ease: 'smooth', status: '' };
-    // Sequence/Keyframes runs can also build a small looping GIF of the frames (into the same zip).
+    // Sequence/Keyframes runs can also build a small looping GIF of the frames (saved alongside them).
     let gifOpts = { on: false, width: 480, fps: 12 };
     // Seconds per frame, for the time estimate: measured on this browser per setting + scale (kept in
     // localStorage), else a rough first guess — sun only repaints; bearing/pitch load new tiles, and
@@ -3311,7 +3396,7 @@
         row('Scale', `<select class="export-scale-select">${scaleOpts}</select><span class="export-dims">${outW} × ${outH} px</span>`) +
         row('Format', `<select class="export-format-select">${fmtOpts}</select>`) +
         row('File', `<input type="text" class="export-filename-in" placeholder="${esc(styleSlug)}-export" value="${esc(exportBox.filename)}">`) +
-        row('GIF', `<label title="Sequence and Keyframes exports also add a small looping GIF to the zip"><input type="checkbox" class="xp-gif-on"${gifOpts.on ? ' checked' : ''}> with runs</label>` +
+        row('GIF', `<label title="Sequence and Keyframes exports also save a small looping GIF with the frames"><input type="checkbox" class="xp-gif-on"${gifOpts.on ? ' checked' : ''}> with runs</label>` +
           `<input type="number" class="xp-gif-in" data-k="width" min="64" step="16" value="${gifOpts.width}" title="GIF width (px)"><span class="xp-unit">px</span>` +
           `<input type="number" class="xp-gif-in" data-k="fps" min="1" max="50" value="${gifOpts.fps}" title="frames per second"><span class="xp-unit">fps</span>`) +
         `<div class="xp-btns"><button class="io-btn export-preview-btn" title="Open the image in a new tab">Preview</button>` +
@@ -3806,18 +3891,20 @@
       pitch: map.getPitch(), sun: light.sun, lightOn: light.on });
     // Runs a list of frames ({ file, label, apply }): per frame apply it, wait for the map to settle,
     // capture the crop (same scale/format/caption as Download) + its world file when the view is
-    // flat, and add both to one zip. Camera and light are put back afterwards. Stop ends it early and
-    // still saves what was captured. preview: step the live map through the frames (a short pause on
-    // each) without capturing or downloading anything. Shared by Sequence ('seq') and Keyframes ('kf').
+    // flat. Where the browser can write to a folder (Chrome/Edge) each frame is written there as it's
+    // captured, so there's nothing left to do at the end; otherwise they go into one uncompressed zip
+    // (PNG/JPEG/WEBP are already compressed — deflating them again only costs time). Camera and light
+    // are put back afterwards. Stop ends it early and still saves what was captured. preview: step
+    // the live map through the frames (a short pause on each) without capturing or downloading
+    // anything. Shared by Sequence ('seq') and Keyframes ('kf').
     async function runFrames({ source, preview, frames, timingKey, zipName, pause = 400 }) {
       const ui = source === 'kf' ? kfState : exportSeq;   // whose status line
       const say = (t) => { ui.status = t; updateExportSeqUi(); };
       exportSeq.running = preview ? 'preview' : 'run'; exportSeq.source = source; exportSeq.stop = false;
-      say(preview ? '' : 'loading zip library…');
       const before = cameraNow();
       const fmt = EXPORT_FORMATS[exportBox.format];
       const timedOut = [];
-      let saved = 0;
+      let saved = 0, out = null;
       try {
         if (preview) {
           for (const [i, f] of frames.entries()) {
@@ -3830,8 +3917,46 @@
           ui.status = exportSeq.stop ? 'preview stopped' : 'preview done';
           return;
         }
-        const { default: JSZip } = await import('https://esm.sh/jszip@3.10.1');
-        const zip = new JSZip();
+        // Ask for the folder first, while the click that started the run still counts as a user gesture.
+        let dir = null;
+        if (window.showDirectoryPicker) {
+          try {
+            const parent = await window.showDirectoryPicker({ id: 'atlas-frames', mode: 'readwrite' });
+            dir = await parent.getDirectoryHandle(zipName.replace(/\.zip$/, ''), { create: true });
+          } catch (err) {
+            if (err.name === 'AbortError') { ui.status = 'cancelled — no folder picked'; return; }
+            dir = null;   // permission refused etc. — fall back to the zip
+          }
+        }
+        if (dir) {
+          out = {
+            async add(name, data) {
+              const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+              await w.write(data); await w.close();
+            },
+            where: ` to folder ${dir.name}`,
+            async finish() {}
+          };
+        } else {
+          say('loading zip library…');
+          const { Zip, ZipPassThrough, strToU8 } = await import('https://cdn.jsdelivr.net/npm/fflate@0.8.2/esm/browser.js');
+          const parts = [];
+          const zip = new Zip((err, chunk) => { if (err) throw err; parts.push(chunk); });
+          out = {
+            where: '',
+            async add(name, data) {
+              const u8 = typeof data === 'string' ? strToU8(data) : data instanceof Uint8Array ? data : new Uint8Array(await data.arrayBuffer());
+              const f = new ZipPassThrough(name); zip.add(f); f.push(u8, true);
+            },
+            async finish() {
+              zip.end();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(new Blob(parts, { type: 'application/zip' }));
+              a.download = zipName; a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            }
+          };
+        }
         // GIF: each captured frame is shrunk to gifOpts.width, given its own 256-colour palette and
         // appended as it's made, so only the small encoded GIF is held — not every frame's pixels.
         let gif = null;
@@ -3848,8 +3973,8 @@
           if (!(await waitMapIdle())) timedOut.push(f.label);
           const wld = exportWorldFile();
           const blob = await renderExportBlob();
-          zip.file(`${f.file}.${fmt.ext}`, blob);
-          if (wld) zip.file(`${f.file}.${fmt.wld}`, wld);
+          await out.add(`${f.file}.${fmt.ext}`, blob);
+          if (wld) await out.add(`${f.file}.${fmt.wld}`, wld);
           if (gif) {
             const bmp = await createImageBitmap(blob);
             const w = Math.min(gifOpts.width, bmp.width), h = Math.max(1, Math.round(bmp.height * w / bmp.width));
@@ -3865,14 +3990,10 @@
           // Remember the real pace for next time's estimate (this kind of run at this scale).
           seqTiming[`${timingKey}@${exportBox.scale}`] = +((performance.now() - t0) / 1000 / saved).toFixed(2);
           try { localStorage.setItem(SEQ_TIMING_KEY, JSON.stringify(seqTiming)); } catch { /* estimate just stays a guess */ }
-          if (gif) { gif.enc.finish(); zip.file(zipName.replace(/\.zip$/, '.gif'), gif.enc.bytes()); }
-          say(`zipping ${saved} frames…`);
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(await zip.generateAsync({ type: 'blob' }));
-          a.download = zipName; a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          if (gif) { gif.enc.finish(); await out.add(zipName.replace(/\.zip$/, '.gif'), gif.enc.bytes()); }
+          await out.finish();
         }
-        ui.status = `${exportSeq.stop ? 'stopped — ' : ''}saved ${saved} frame${saved === 1 ? '' : 's'} in ${fmtDuration((performance.now() - t0) / 1000)}` +
+        ui.status = `${exportSeq.stop ? 'stopped — ' : ''}saved ${saved} frame${saved === 1 ? '' : 's'}${out?.where ?? ''} in ${fmtDuration((performance.now() - t0) / 1000)}` +
           (timedOut.length ? ` · didn't finish loading at ${timedOut.join(', ')} (may be patchy)` : '');
       } catch (err) {
         ui.status = `failed: ${err.message}`;
@@ -5725,7 +5846,7 @@
             <div class="edit-row-head">Terrain
               <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="terrainOn"${terrainOn ? ' checked' : ''}> on</label>
             </div>
-            ${slider('terrainExag', 'height', 0, 5, 0.1, terrainExag, '×')}
+            <label class="view-ctl" title="Terrain height multiplier — 1 = true height, no upper limit"><span>height</span><input type="number" class="view-in" data-k="terrainExag" min="0" step="0.1" value="${terrainExag}" style="width:64px"><span class="view-val">×</span></label>
             <div class="edit-row-hint" style="margin-top:4px">3D only shows with pitch above 0 (Camera below).</div>
           </div>
           <div class="edit-row">
@@ -5745,7 +5866,8 @@
           </div>`;
     }
     function setLightCamCtl(t) {
-      const k = t.dataset.k, v = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value;
+      const k = t.dataset.k, v = t.type === 'checkbox' ? t.checked : t.type === 'range' || t.type === 'number' ? +t.value : t.value;
+      if (t.type === 'number' && (t.value === '' || !Number.isFinite(v) || v < 0)) return;   // mid-typing
       const out = panel.querySelector(`.view-val[data-k="${k}"]`);
       if (out) out.textContent = v + (k === 'shade' ? '' : k === 'terrainExag' ? '×' : '°');
       if (k === 'terrainOn') window.__setTerrain(v, terrainExag);
@@ -6477,10 +6599,38 @@
       }
     }
     const loadedProjectUrls = [];   // the URL each loaded project actually came from (relative data paths)
+    // Share links: the whole project (plus the layer settings) rides in the URL hash as
+    // #p=<deflate-raw JSON, base64url>, so a copied link reopens this exact state with nothing
+    // saved on the site. A dropped/opened project file goes the same way (then a reload), so it
+    // boots through exactly the same path as a ?project= file. The hash wins over ?project=.
+    async function packState(obj) {
+      const z = new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const buf = new Uint8Array(await new Response(z).arrayBuffer());
+      let bin = '';
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    async function unpackState(str) {
+      const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+      const buf = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      const z = new Blob([buf]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return JSON.parse(await new Response(z).text());
+    }
+    const hashState = new URLSearchParams(location.hash.slice(1)).get('p');
+    let sharedSettings = null;   // layer settings from a share link, applied once the project is in
     async function loadProjects() {
-      if (!projectUrlSets.length) return;
       const loaded = [];
-      for (const candidates of projectUrlSets) {
+      let shared = null;
+      if (hashState) {
+        try { shared = await unpackState(hashState); }
+        catch (err) { console.warn("[share] couldn't read the project in this link", err); }
+      }
+      if (shared?.project) {
+        loaded.push(shared.project);
+        if (shared.base) loadedProjectUrls.push(shared.base);
+        sharedSettings = shared.settings || null;
+      }
+      for (const candidates of shared?.project ? [] : projectUrlSets) {
         let ok = false;
         for (const url of candidates) {
           try {
@@ -7141,6 +7291,9 @@
       // Tab switch
       const tab = e.target.closest('.ptab');
       if (tab) { activeTab = tab.dataset.tab; buildPanel(); return; }
+      const linkBtn = e.target.closest('.project-link-btn');
+      if (linkBtn) { copyShareLink(linkBtn); return; }
+      if (e.target.closest('.project-open-btn')) { panel.querySelector('.project-file')?.click(); return; }
       // Project tab: the whole file, ready to paste over the real one.
       const projCopy = e.target.closest('.project-copy-btn');
       if (projCopy) {
@@ -7245,6 +7398,11 @@
     });
 
     panel.addEventListener('change', (e) => {
+      if (e.target.classList.contains('project-file')) {
+        const f = e.target.files[0]; e.target.value = '';
+        if (f) openJsonFile(f);
+        return;
+      }
       const t = e.target;
       if (t.classList.contains('img-file-in')) { if (t.files.length) takeImageFiles([...t.files]); t.value = ''; return; }
       if (t.classList.contains('img-op-in')) {
