@@ -126,7 +126,7 @@
   <hr class="divider">
   <div class="section-label">Export</div>
   <div class="row"><span class="lab">Format</span>
-    <select id="format"><option value="mp4">MP4 video (Instagram, slides)</option><option value="gif">GIF (256 colours)</option><option value="png">PNG frames (zip, keeps transparency)</option></select>
+    <select id="format"><option value="mp4">MP4 video (Instagram, slides)</option><option value="webm">WebM video (VP9 — full size, browsers / VLC)</option><option value="gif">GIF (256 colours)</option><option value="png">PNG frames (zip, keeps transparency)</option></select>
   </div>
   <div class="row"><span class="lab">Size</span>
     <select id="size">
@@ -425,19 +425,44 @@ function drawFrame(ctx, bitmaps, layers, w, h, forceOpaque = false) {
 }
 
 // ---- playback --------------------------------------------------------------------------------
-async function previewBitmap(ci, i) {
+// Each preview frame is decoded once: a request for a frame that's still decoding shares that
+// decode (two decodes of one frame used to leave the first bitmap unclosed — ~6 MB a frame, until
+// the tab froze). The oldest frames are dropped past CACHE_MAX, except the one on screen and the
+// ones being read ahead (`keep`), which are about to be drawn.
+const pending = new Map();  // key → Promise<ImageBitmap> while decoding
+let keep = new Set();
+const AHEAD = 8, DECODES = 3;   // frames read ahead while playing; decodes at once
+const frameKey = (L) => `${clips[L.c].id}:${L.i}`;
+function previewBitmap(ci, i) {
   const c = clips[ci], key = `${c.id}:${i}`;
-  if (cache.has(key)) { const b = cache.get(key); cache.delete(key); cache.set(key, b); return b; }
+  if (cache.has(key)) { const b = cache.get(key); cache.delete(key); cache.set(key, b); return Promise.resolve(b); }
+  if (pending.has(key)) return pending.get(key);
   const w = Math.min(PREVIEW_MAX, c.w);
-  const b = await createImageBitmap(c.frames[i].blob, { resizeWidth: w, resizeHeight: Math.max(1, Math.round(c.h * w / c.w)), resizeQuality: 'medium' });
-  cache.set(key, b);
-  while (cache.size > CACHE_MAX) { const [k, old] = cache.entries().next().value; cache.delete(k); old.close(); }
-  return b;
+  const p = createImageBitmap(c.frames[i].blob, { resizeWidth: w, resizeHeight: Math.max(1, Math.round(c.h * w / c.w)), resizeQuality: 'medium' })
+    .then((b) => { pending.delete(key); cache.set(key, b); trimCache(); return b; }, (err) => { pending.delete(key); throw err; });
+  pending.set(key, p);
+  return p;
+}
+function trimCache() {
+  for (const [k, b] of cache) {
+    if (cache.size <= CACHE_MAX) break;
+    if (!keep.has(k)) { cache.delete(k); b.close(); }
+  }
+}
+// Start decoding the next few frames (a few at a time), so playback doesn't wait on each one.
+function readAhead(p) {
+  const n = Math.min(AHEAD, timeline.length - 1);
+  keep = new Set(timeline[p].layers.map(frameKey));
+  for (let d = 1; d <= n; d++) for (const L of timeline[(p + d) % timeline.length].layers) keep.add(frameKey(L));
+  for (let d = 1; d <= n && pending.size < DECODES; d++)
+    for (const L of timeline[(p + d) % timeline.length].layers)
+      if (pending.size < DECODES) previewBitmap(L.c, L.i).catch(() => {});
 }
 async function show(p) {
   pos = p;
   const f = timeline[p];
   if (!f) return;
+  keep = new Set([...keep, ...f.layers.map(frameKey)]);
   const bmps = await Promise.all(f.layers.map((L) => previewBitmap(L.c, L.i)));
   if (pos !== p) return;   // a newer frame was asked for meanwhile
   const out = outSize(), k = Math.min(1, PREVIEW_MAX / Math.max(out.w, out.h));
@@ -447,13 +472,34 @@ async function show(p) {
   $('scrub').value = p;
   $('frameLabel').textContent = `${p + 1} / ${timeline.length} · ${f.label}`;
   if (f.clip !== active) { active = f.clip; document.querySelectorAll('.clip').forEach((el) => el.classList.toggle('active', +el.dataset.ci === active)); }
-  const nx = timeline[(p + 1) % timeline.length];
-  nx.layers.forEach((L) => previewBitmap(L.c, L.i).catch(() => {}));   // decode ahead
+  readAhead(p);
 }
 function step(d) { if (timeline.length) show((pos + d + timeline.length) % timeline.length); }
-function tick() { step(1); timer = setTimeout(tick, 1000 / fpsNow()); }
-function play() { if (!timeline.length) return; playing = true; $('play').textContent = 'Pause'; tick(); }
-function stop() { playing = false; clearTimeout(timer); $('play').textContent = 'Play'; }
+// Plays every frame (none skipped, so the preview shows the motion as it'll be exported), each
+// waiting for its decode; when decoding can't keep up with the fps, says what rate it's managing.
+let playRun = 0;
+async function playLoop(run) {
+  const sleep = (ms) => new Promise((r) => { timer = setTimeout(r, ms); });
+  let due = performance.now(), t0 = due, shown = 0;
+  while (playing && run === playRun) {
+    try { await show((pos + 1) % timeline.length); }
+    catch (err) { stop(); setStatus(`playback stopped: ${err.message}`, true); return; }
+    if (!playing || run !== playRun) return;
+    const now = performance.now(), fps = fpsNow();
+    if (++shown >= fps) {   // about once a second
+      const real = shown / ((now - t0) / 1000);
+      setStatus(real < fps * 0.9 ? `playing at ${real.toFixed(0)} fps — frames this size decode slower than ${fps} fps (the export isn't affected)` : '');
+      t0 = now; shown = 0;
+    }
+    due = Math.max(due + 1000 / fps, now);   // running late: carry on from now, don't rush to catch up
+    await sleep(due - now);
+  }
+}
+function play() { if (!timeline.length) return; playing = true; $('play').textContent = 'Pause'; playLoop(++playRun); }
+function stop() {
+  playing = false; playRun++; clearTimeout(timer); $('play').textContent = 'Play';
+  if ($('status').textContent.startsWith('playing at')) setStatus('');
+}
 
 // ---- export ----------------------------------------------------------------------------------
 function updateOutInfo() {
@@ -470,7 +516,7 @@ function updateOutInfo() {
   if ($('format').value === 'gif' && o.w * o.h > 1100 * 1100) t += ' — large for a GIF (slow, big file)';
   if (clips.some((c) => Math.abs(c.w / c.h - clips[0].w / clips[0].h) > 0.01)) t += ' · clips differ in shape — Fit decides bars or crop';
   if (bm === 'none') {
-    if ($('format').value === 'mp4') t += ' · MP4 has no transparency — the background will be black';
+    if (/mp4|webm/.test($('format').value)) t += ` · ${$('format').value.toUpperCase()} export has no transparency — the background will be black`;
     else if ($('format').value === 'gif') t += ' · GIF transparency is on/off (soft edges get hard)';
   }
   $('outInfo').textContent = t;
@@ -499,25 +545,67 @@ function exportFrames() {
     done() { bmps.forEach((b) => b.close()); keys = []; bmps = []; },
   };
 }
-async function pickAvcCodec(w, h, fps, bitrate) {
-  if (!('VideoEncoder' in window)) return null;
-  for (const codec of ['avc1.640033', 'avc1.4d0033', 'avc1.42003e', 'avc1.42001f']) {
-    try {
-      const { supported } = await VideoEncoder.isConfigSupported({ codec, width: w, height: h, bitrate, framerate: fps });
-      if (supported) return codec;
-    } catch { /* try the next profile */ }
-  }
-  return null;
+// H.264 levels as [level_idc, max 16×16 macroblocks per frame, per second]. The level in the codec
+// string has to cover the frame size and rate: Windows encoders refuse one that doesn't (5.1 tops
+// out around 4096 × 2304), where the Mac's lets it pass.
+const AVC_LEVELS = [[0x1f, 3600, 108000], [0x20, 5120, 216000], [0x28, 8192, 245760], [0x2a, 8704, 522240],
+  [0x32, 22080, 589824], [0x33, 36864, 983040], [0x34, 36864, 2073600], [0x3c, 139264, 4177920],
+  [0x3d, 139264, 8355840], [0x3e, 139264, 16711680]];
+// The first encoder config this browser takes: High, then Main, then Baseline profile, each at the
+// lowest level that fits (or higher), via whatever encoder it prefers, then its software one.
+async function pickAvcConfig(w, h, fps, bitrate) {
+  if (!('VideoEncoder' in window)) return { tried: [] };
+  const mbs = Math.ceil(w / 16) * Math.ceil(h / 16), fits = AVC_LEVELS.filter(([, fs, ps]) => mbs <= fs && mbs * fps <= ps);
+  const tried = [];
+  for (const accel of ['no-preference', 'prefer-software'])
+    for (const profile of ['64', '4d', '42'])
+      for (const [lvl] of fits) {
+        const config = { codec: `avc1.${profile}00${lvl.toString(16).padStart(2, '0')}`, width: w, height: h, bitrate,
+          framerate: fps, hardwareAcceleration: accel, avc: { format: 'avc' } };
+        try { if ((await VideoEncoder.isConfigSupported(config)).supported) return { config, tried }; } catch { /* next */ }
+        tried.push(`${config.codec}${accel === 'prefer-software' ? ' (software)' : ''}`);
+      }
+  return { tried, tooBig: !fits.length };
 }
-async function exportMp4(w, h, fps, cv, ctx, src, progress) {
-  const bitrate = Math.round(Math.min(20e6, Math.max(2e6, w * h * fps * 0.15)));
-  const codec = await pickAvcCodec(w, h, fps, bitrate);
-  if (!codec) throw new Error('this browser can\'t encode H.264 video — use Chrome, Edge or Safari, or export a GIF');
+const mp4Bitrate = (w, h, fps) => Math.round(Math.min(20e6, Math.max(2e6, w * h * fps * 0.15)));
+// The MP4's size and encoder config: the asked-for size if the encoder takes it, else the largest
+// same-shape size it does. Browser encoders stop at about 4096 × 2304 worth of pixels (Chrome on
+// Mac and Windows alike), so 'original' on big sandbox frames gets shrunk to fit.
+async function mp4Plan(w, h, fps) {
+  if (!('VideoEncoder' in window)) throw new Error('this browser can\'t encode video — use Chrome, Edge or Safari, or export a GIF');
+  const first = await pickAvcConfig(w, h, fps, mp4Bitrate(w, h, fps));
+  if (first.config) return { w, h, config: first.config };
+  const even = (n) => Math.max(2, Math.floor(n / 2) * 2);
+  for (let k = Math.min(0.99, Math.sqrt(4096 * 2304 / (w * h))); k >= 0.25; k *= 0.95) {
+    const W = even(w * k), H = even(h * k), r = await pickAvcConfig(W, H, fps, mp4Bitrate(W, H, fps));
+    if (r.config) return { w: W, h: H, config: r.config, shrunk: true };
+  }
+  const { tried } = first;
+  throw new Error(`no H.264 encoder here takes ${w} × ${h} at ${fps} fps, or any smaller size of that shape (tried ${tried[0]} … ${tried[tried.length - 1]}, ${tried.length} configs) — export a GIF or PNG frames instead`);
+}
+async function exportMp4(w, h, fps, cv, ctx, src, progress, { config }) {
   const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.mjs');
   const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: w, height: h, frameRate: fps }, fastStart: 'in-memory' });
+  return encodeVideo(muxer, config, w, h, fps, cv, ctx, src, progress, 'video/mp4');
+}
+// WebM (VP9): Chrome's software VP9 encoder takes far bigger frames than H.264 (8192 × 4320 and
+// up), so this one is never shrunk; slower to encode, and plays in browsers and VLC, not QuickTime.
+async function exportWebm(w, h, fps, cv, ctx, src, progress) {
+  if (!('VideoEncoder' in window)) throw new Error('this browser can\'t encode video — use Chrome or Edge, or export PNG frames');
+  const config = { codec: 'vp09.00.62.08', width: w, height: h, framerate: fps,
+    bitrate: Math.round(Math.min(60e6, Math.max(2e6, w * h * fps * 0.12))) };
+  let ok = false;
+  try { ok = (await VideoEncoder.isConfigSupported(config)).supported; } catch { /* stays false */ }
+  if (!ok) throw new Error(`this browser can't encode VP9 at ${w} × ${h} — use Chrome or Edge, or export PNG frames`);
+  const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs');
+  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'V_VP9', width: w, height: h, frameRate: fps } });
+  return encodeVideo(muxer, config, w, h, fps, cv, ctx, src, progress, 'video/webm');
+}
+// Encode the timeline through WebCodecs into an mp4-muxer / webm-muxer (same API), keyframe every 2 s.
+async function encodeVideo(muxer, config, w, h, fps, cv, ctx, src, progress, type) {
   let failure = null;
   const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => { failure = e; } });
-  enc.configure({ codec, width: w, height: h, bitrate, framerate: fps, avc: { format: 'avc' } });
+  enc.configure(config);
   const us = 1e6 / fps;
   for (const [k, f] of timeline.entries()) {
     if (failure) throw failure;
@@ -531,7 +619,7 @@ async function exportMp4(w, h, fps, cv, ctx, src, progress) {
   await enc.flush();
   if (failure) throw failure;
   muxer.finalize();
-  return new Blob([muxer.target.buffer], { type: 'video/mp4' });
+  return new Blob([muxer.target.buffer], { type });
 }
 async function exportGif(w, h, fps, cv, ctx, src, progress) {
   const { GIFEncoder, quantize, applyPalette } = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js');
@@ -566,19 +654,23 @@ async function exportPngZip(w, h, fps, cv, ctx, src, progress) {
   return zip.generateAsync({ type: 'blob' });
 }
 async function runExport() {
-  const fmt = $('format').value, { w, h } = outSize(), fps = fpsNow();
+  const fmt = $('format').value, asked = outSize(), fps = fpsNow();
+  let { w, h } = asked;
   stop();
   $('export').disabled = true; $('progress').hidden = false; $('progress').max = timeline.length; $('progress').value = 0;
   const t0 = performance.now(), src = exportFrames();
   const progress = (k) => { $('progress').value = k; setStatus(`encoding frame ${k} / ${timeline.length}…`); };
   try {
+    const plan = fmt === 'mp4' ? await mp4Plan(w, h, fps) : {};
+    if (plan.w) ({ w, h } = plan);
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d', { willReadFrequently: fmt === 'gif', alpha: true });
-    const blob = await ({ mp4: exportMp4, gif: exportGif, png: exportPngZip })[fmt](w, h, fps, cv, ctx, src, progress);
+    const blob = await ({ mp4: exportMp4, webm: exportWebm, gif: exportGif, png: exportPngZip })[fmt](w, h, fps, cv, ctx, src, progress, plan);
     const base = clips.length === 1 ? clips[0].name : 'sequence';
     const name = `${base}-${w}x${h}.${fmt === 'png' ? 'zip' : fmt}`;
     save(blob, name);
-    setStatus(`saved ${name} · ${(blob.size / 1048576).toFixed(1)} MB · ${((performance.now() - t0) / 1000).toFixed(1)} s to encode`);
+    setStatus(`saved ${name} · ${(blob.size / 1048576).toFixed(1)} MB · ${((performance.now() - t0) / 1000).toFixed(1)} s to encode` +
+      (plan.shrunk ? ` · shrunk from ${asked.w} × ${asked.h}, the largest this browser's H.264 encoder takes` : ''));
   } catch (err) {
     setStatus(`export failed: ${err.message}`, true);
   } finally {
