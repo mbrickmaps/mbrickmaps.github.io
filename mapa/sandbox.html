@@ -472,13 +472,13 @@
       font: 11px monospace; padding: 2px 4px;
     }
     #panel .section-anchor-sel option { color: #000; }
-    #panel .inset-in, #panel .inset-sel {
+    #panel .inset-in, #panel .inset-sel, #panel .view-ctl select {
       flex: 1; min-width: 48px; color: #fff; background: rgba(255, 255, 255, .1);
       border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px;
       font: 10px monospace; padding: 1px 3px;
     }
     #panel input.inset-in[type="color"] { min-width: 0; width: 22px; height: 16px; padding: 0; flex: none; }
-    #panel .inset-sel option { color: #000; }
+    #panel .inset-sel option, #panel .view-ctl select option { color: #000; }
     #panel .inset-ed {
       display: grid; grid-template-columns: 64px 1fr; gap: 5px 8px; align-items: center;
       font-size: 11px; margin-top: 4px;
@@ -711,12 +711,8 @@
     #export-panel .xp-kf-txt { flex: 1; min-width: 0; color: #ccc; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #export-panel .xp-kf-btn { flex: none; padding: 2px 6px; font-size: 11px; }
     #export-panel .xp-ctl input.xp-kf-in { width: 56px; }
-    #export-panel .xp-kf-legs { margin: 4px 0 0; font-size: 11px; color: #aaa; }
-    #export-panel .xp-kf-leg { display: flex; gap: 6px; padding: 2px 0; }
-    #export-panel .xp-kf-leg b { flex: none; width: 34px; color: #ff8c42; font-weight: 600; }
-    #export-panel .xp-kf-leg span { flex: 1; min-width: 0; }
-    #export-panel .xp-kf-leg em { flex: none; font-style: normal; color: #ddd; }
-    #export-panel .xp-kf-tip { color: #e0b060; }
+    #export-panel .xp-kf-leg { display: flex; align-items: center; gap: 6px; padding: 3px 0 3px 22px; font-size: 11px; color: #aaa; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+    #export-panel .xp-kf-leg input { width: 56px; }
     #export-panel .xp-ctl input.xp-gif-in { width: 52px; }
     #export-panel .xp-ctl input::placeholder { color: rgba(255, 255, 255, .4); }
     /* Live caption preview drawn around/on the crop box, mirroring what renderExportBlob()
@@ -1266,8 +1262,8 @@
     map.on('style.load', applyTerrain);
 
     // Lighting: live hillshade computed from the same rgb height tiles (its own raster-dem source —
-    // MapLibre advises not sharing one between terrain and hillshade). While on, it takes the place
-    // of the style's pre-made `hillshade` raster (hs.pmtiles), which is hidden and restored after.
+    // MapLibre advises not sharing one between terrain and hillshade). It's added just under the
+    // style's pre-made `hillshade` raster (hs.pmtiles), which stays as it is.
     // ?lighting at load (+ sun, shade, shadow, hilite — not `highlight`, which is the feature uids); the parent changes it live ('mapaLighting').
     const LIGHT_SRC = 'rgb-dem-light', LIGHT_LAYER = 'live-hillshade';
     const pnum = (k, d) => Number.isFinite(parseFloat(params.get(k))) ? parseFloat(params.get(k)) : d;
@@ -1275,7 +1271,10 @@
     // light coming from the same side of the image (sun 315 = always top-left).
     const light = { on: params.has('lighting'), lock: params.has('lightlock'), sun: pnum('sun', 315), shade: pnum('shade', 0.5),
       shadow: colorParam('shadow', '#000000'), highlight: colorParam('hilite', '#ffffff') };
-    let bakedHsVis = null;   // the pre-made hillshade's visibility before lighting hid it
+    // The panel shows the sun as degrees clockwise from the upper left (0 = upper left, 90 = upper
+    // right); light.sun, ?sun and saved views stay in MapLibre's terms (0 = top, so upper left = 315).
+    const sunShown = (d) => Math.round(((d - 315) % 360 + 360) % 360);
+    const sunStored = (shown) => (shown + 315) % 360;
     function applyLighting() {
       try {
         const paint = { 'hillshade-illumination-direction': light.sun, 'hillshade-illumination-anchor': light.lock ? 'viewport' : 'map',
@@ -1287,23 +1286,15 @@
           // a -transition, which MapLibre rejects for direction/anchor (not animatable).
           if (!map.getLayer(LIGHT_LAYER)) map.addLayer({ id: LIGHT_LAYER, type: 'hillshade', source: LIGHT_SRC }, map.getLayer('hillshade') ? 'hillshade' : undefined);
           for (const [k, v] of Object.entries(paint)) map.setPaintProperty(LIGHT_LAYER, k, v);
-          if (map.getLayer('hillshade')) {
-            if (bakedHsVis === null) bakedHsVis = map.getLayoutProperty('hillshade', 'visibility') || 'visible';
-            map.setLayoutProperty('hillshade', 'visibility', 'none');
-          }
-        } else {
-          if (map.getLayer(LIGHT_LAYER)) map.removeLayer(LIGHT_LAYER);
-          if (bakedHsVis !== null && map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', bakedHsVis);
-          bakedHsVis = null;
-        }
+        } else if (map.getLayer(LIGHT_LAYER)) map.removeLayer(LIGHT_LAYER);
       } catch (e) { console.warn('[lighting]', e.message); }
     }
     window.__setLighting = (o) => {
       Object.assign(light, Object.fromEntries(Object.entries(o || {}).filter(([, v]) => v !== undefined && !(typeof v === 'number' && !Number.isFinite(v)))));
       if (styleReady()) applyLighting(); else map.once('style.load', applyLighting);
     };
-    // A new style starts with its own (visible) hillshade layer and none of ours.
-    map.on('style.load', () => { bakedHsVis = null; applyLighting(); });
+    // A new style starts with none of ours.
+    map.on('style.load', applyLighting);
     // Natural Earth relief rasters (built by atlas/rasters/build.sh → R2), added to every style as
     // ordinary layers directly above `hillshade`, so the Layer tab toggles them and sets their
     // opacity. Hidden to start: each is an opaque world image, so they'd bury the hillshade and
@@ -1326,7 +1317,31 @@
           layout: { visibility: m === map && id === reliefParam ? 'visible' : 'none' } }, beforeId);
       }
     }
-    map.on('style.load', () => addReliefLayers());
+    // Natural Earth detail on the main map: 0–2 extra zoom levels of tiles for the same view
+    // (?reliefdetail=N). The archives stop at z7, so past map zoom ~7 it can't get sharper.
+    let reliefDetail = Math.min(2, Math.max(0, Math.round(+params.get('reliefdetail') || 0)));
+    const mainReliefTileSize = () => 256 / 2 ** reliefDetail;
+    map.on('style.load', () => addReliefLayers(map, mainReliefTileSize()));
+    // tileSize is fixed when a source is added, so re-add the sources, keeping each layer's
+    // visibility, opacity and zoom range.
+    function setReliefDetail(d) {
+      reliefDetail = d;
+      if (!map.getStyle()) return;
+      const keep = {};
+      for (const id of RELIEF_LAYERS) {
+        const l = map.getStyle().layers.find((x) => x.id === id);
+        if (l) keep[id] = { vis: l.layout?.visibility ?? 'none', op: l.paint?.['raster-opacity'] ?? 1, min: l.minzoom, max: l.maxzoom };
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
+      }
+      addReliefLayers(map, mainReliefTileSize());
+      for (const [id, k] of Object.entries(keep)) {
+        if (!map.getLayer(id)) continue;
+        map.setLayoutProperty(id, 'visibility', k.vis);
+        map.setPaintProperty(id, 'raster-opacity', k.op);
+        map.setLayerZoomRange(id, k.min ?? 0, k.max ?? 24);
+      }
+    }
     if (globeParam) map.on('style.load', () => {
       map.setProjection({ type: 'globe' });
       if (map.getLayer('background')) map.setPaintProperty('background', 'background-opacity', 0);
@@ -2954,7 +2969,8 @@
     async function shareLinkUrl() {
       const u = new URL(location.href);
       for (const k of ['project', 'bbox', 'center', 'zoom', 'bearing', 'pitch', 'terrain', 'exaggeration',
-        'lighting', 'lightlock', 'sun', 'shade', 'shadow', 'hilite']) u.searchParams.delete(k);
+        'lighting', 'lightlock', 'sun', 'shade', 'shadow', 'hilite', 'reliefdetail']) u.searchParams.delete(k);
+      if (reliefDetail) u.searchParams.set('reliefdetail', reliefDetail);
       const c = map.getCenter();
       u.searchParams.set('center', `${c.lng.toFixed(5)},${c.lat.toFixed(5)}`);
       u.searchParams.set('zoom', map.getZoom().toFixed(2));
@@ -3040,6 +3056,15 @@
     // setExportMode can run at page-init time via ?export, before that code executes.
     let insetPosConfig = null;
     const INSET_MARGIN = 12;
+    // The inset map itself and its live-tracking state (see ensureInsetMap) — up here for the same
+    // reason: the crop box re-syncs the inset's extent (refreshInsetExtent) as soon as it's laid out.
+    let insetMap = null;
+    let insetLiveBbox = false;
+    let insetFollow = false;
+    let insetBboxPending = false;
+    // The extent box's look when the project gives none — PROJECT_POLY_DEFAULTS has no fill and no
+    // stroke, so an unstyled extent was invisible.
+    const INSET_EXTENT_STYLE = { stroke: '#ffffff', 'stroke-width': 1.5 };
 
     // While exportMode is on, re-anchors the inset to the export box's own corner (so it lands in
     // the right place inside the exported crop, matching project.inset.position); otherwise
@@ -3138,7 +3163,7 @@
       // this is the one live-apply step that only means anything once the layer exists — a fresh
       // inset's 'load' handler hasn't run yet the first time applyInsetLive() fires after Add.
       if (insetMap.getLayer('inset-bbox-fill')) {
-        setInsetRectStyle('inset-bbox-fill', 'inset-bbox-outline', cfg.bbox?.style);
+        setInsetRectStyle('inset-bbox-fill', 'inset-bbox-outline', cfg.bbox?.style ?? INSET_EXTENT_STYLE);
       }
     }
 
@@ -3154,6 +3179,9 @@
     // off a control's data-field without a branch per key.
     function setInsetField(path, value) {
       if (!projectDoc.inset) projectDoc.inset = {};
+      // First edit to an unstyled extent starts from the default look, not from invisible.
+      if (path.startsWith('bbox.style.') && !projectDoc.inset.bbox?.style)
+        projectDoc.inset.bbox = { ...(projectDoc.inset.bbox || {}), style: { ...INSET_EXTENT_STYLE } };
       const parts = path.split('.');
       let node = projectDoc.inset;
       for (const k of parts.slice(0, -1)) {
@@ -3239,16 +3267,43 @@
     let exportSeq = { param: 'bearing', from: 0, to: 345, step: 15, running: false, source: null, stop: false, status: '' };
     // Keyframes: captured camera views ({ center, zoom, bearing, pitch, sun? }) tweened into frames.
     let keyframes = [];
-    // mode 'auto': each leg gets its own frame count from how far the camera moves (kfLeg);
-    // 'fixed': every leg gets `between` frames. fps is the playback rate the film is planned for.
-    let kfState = { mode: 'auto', pace: 'steady', fps: 24, between: 24, ease: 'smooth', status: '' };
-    // Smooth-camera speeds, per second: pan in frame-widths, zoom in levels, turn (bearing) and tilt
-    // (pitch) in degrees. Faster than ~0.5 widths/s or 1 zoom level/s starts to read as a jump.
-    const KF_PACE = {
-      gentle: { pan: 0.25, zoom: 0.5, turn: 15, tilt: 10 },
-      steady: { pan: 0.35, zoom: 0.75, turn: 22, tilt: 15 },
-      brisk: { pan: 0.5, zoom: 1, turn: 30, tilt: 20 }
-    };
+    // fps: the rate the film is planned for. Each view's `frames` is how many frames the move from it
+    // to the next view takes (the last view's is unused).
+    let kfState = { fps: 24, ease: 'smooth', status: '' };
+    const KF_FRAMES = 24;   // a new leg's frame count
+    // Easing per leg, t 0→1: linear plus the standard set (easings.net) — each family as in / out /
+    // in-out. 'smooth' is the older stored name for a smoothstep in-out, kept so saved files load.
+    const KF_EASES = (() => {
+      const { PI, sin, cos, sqrt, pow } = Math, c1 = 1.70158, c2 = c1 * 1.525, c3 = c1 + 1, c4 = 2 * PI / 3, c5 = 2 * PI / 4.5;
+      const bounceOut = (t) => { const n = 7.5625, d = 2.75;
+        if (t < 1 / d) return n * t * t;
+        if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
+        if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+        return n * (t -= 2.625 / d) * t + 0.984375; };
+      const fam = {
+        sine: [(t) => 1 - cos(t * PI / 2), (t) => sin(t * PI / 2), (t) => -(cos(PI * t) - 1) / 2],
+        quad: [(t) => t * t, (t) => 1 - (1 - t) ** 2, (t) => t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2],
+        cubic: [(t) => t ** 3, (t) => 1 - (1 - t) ** 3, (t) => t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2],
+        quart: [(t) => t ** 4, (t) => 1 - (1 - t) ** 4, (t) => t < 0.5 ? 8 * t ** 4 : 1 - (-2 * t + 2) ** 4 / 2],
+        quint: [(t) => t ** 5, (t) => 1 - (1 - t) ** 5, (t) => t < 0.5 ? 16 * t ** 5 : 1 - (-2 * t + 2) ** 5 / 2],
+        expo: [(t) => t === 0 ? 0 : pow(2, 10 * t - 10), (t) => t === 1 ? 1 : 1 - pow(2, -10 * t),
+          (t) => t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? pow(2, 20 * t - 10) / 2 : (2 - pow(2, -20 * t + 10)) / 2],
+        circ: [(t) => 1 - sqrt(1 - t * t), (t) => sqrt(1 - (t - 1) ** 2),
+          (t) => t < 0.5 ? (1 - sqrt(1 - (2 * t) ** 2)) / 2 : (sqrt(1 - (-2 * t + 2) ** 2) + 1) / 2],
+        back: [(t) => c3 * t ** 3 - c1 * t * t, (t) => 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2,
+          (t) => t < 0.5 ? ((2 * t) ** 2 * ((c2 + 1) * 2 * t - c2)) / 2 : ((2 * t - 2) ** 2 * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2],
+        elastic: [(t) => t === 0 ? 0 : t === 1 ? 1 : -pow(2, 10 * t - 10) * sin((t * 10 - 10.75) * c4),
+          (t) => t === 0 ? 0 : t === 1 ? 1 : pow(2, -10 * t) * sin((t * 10 - 0.75) * c4) + 1,
+          (t) => t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? -(pow(2, 20 * t - 10) * sin((20 * t - 11.125) * c5)) / 2
+            : (pow(2, -20 * t + 10) * sin((20 * t - 11.125) * c5)) / 2 + 1],
+        bounce: [(t) => 1 - bounceOut(1 - t), bounceOut, (t) => t < 0.5 ? (1 - bounceOut(1 - 2 * t)) / 2 : (1 + bounceOut(2 * t - 1)) / 2]
+      };
+      const out = { linear: ['linear', (t) => t], smooth: ['smoothstep in-out', (t) => t * t * (3 - 2 * t)] };
+      for (const [name, [i, o, io]] of Object.entries(fam)) {
+        out[`${name}-in`] = [`${name} in`, i]; out[`${name}-out`] = [`${name} out`, o]; out[`${name}-in-out`] = [`${name} in-out`, io];
+      }
+      return out;
+    })();
     // Sequence/Keyframes runs can also build a small looping GIF of the frames (saved alongside them).
     let gifOpts = { on: false, width: 480, fps: 12 };
     // Seconds per frame, for the time estimate: measured on this browser per setting + scale (kept in
@@ -3321,6 +3376,7 @@
       exportBoxEl.style.width = exportBox.width + 'px';
       exportBoxEl.style.height = exportBox.height + 'px';
       repositionInsetForExport();
+      refreshInsetExtent();
       repositionFrameOverlaysForExport();
       updateExportDimsReadout();
       updateExportCaptionPreview();
@@ -3362,7 +3418,6 @@
       const h = Math.round(exportBox.height * exportBox.scale + cm.header + cm.footer);
       el.textContent = `${w} × ${h} px`;
       updateExportBboxReadout();
-      if (keyframes.length > 1 && kfState.mode === 'auto') updateExportSeqUi();   // leg pans are in box widths
     }
     // The export box's geographic bounds [W,S,E,N]: unproject its screen corners (box coords are
     // CSS px within #map, same space map.unproject expects). Null until the box has a size.
@@ -3495,6 +3550,7 @@
         updateExportGuide();
       } else {
         repositionInsetForExport();
+        refreshInsetExtent();
         repositionFrameOverlaysForExport(); // clears the crop-box offsets, back to map corners
       }
     }
@@ -3555,27 +3611,15 @@
         row('Title', `<input type="text" class="export-meta-in" data-field="title" placeholder="title" value="${esc(exportMeta.title)}">`) +
         row('Subtitle', `<input type="text" class="export-meta-in" data-field="subtitle" placeholder="subtitle" value="${esc(exportMeta.subtitle)}">`) +
         row('Notes', `<input type="text" class="export-meta-in" data-field="notes" placeholder="notes / source" value="${esc(exportMeta.notes)}">`) +
-        `<div class="xp-sec">Image</div>` +
+        `<div class="xp-sec">Image Export</div>` +
         row('Scale', `<select class="export-scale-select">${scaleOpts}</select><span class="export-dims">${outW} × ${outH} px</span>`) +
         row('Format', `<select class="export-format-select">${fmtOpts}</select>`) +
         row('File', `<input type="text" class="export-filename-in" placeholder="${esc(styleSlug)}-export" value="${esc(exportBox.filename)}">`) +
-        row('GIF', `<label title="Sequence and Keyframes exports also save a small looping GIF with the frames"><input type="checkbox" class="xp-gif-on"${gifOpts.on ? ' checked' : ''}> with runs</label>` +
-          `<input type="number" class="xp-gif-in" data-k="width" min="64" step="16" value="${gifOpts.width}" title="GIF width (px)"><span class="xp-unit">px</span>` +
-          `<input type="number" class="xp-gif-in" data-k="fps" min="1" max="50" value="${gifOpts.fps}" title="frames per second"><span class="xp-unit">fps</span>`) +
         `<div class="xp-btns"><button class="io-btn export-preview-btn" title="Open the image in a new tab">Preview</button>` +
         `<button class="io-btn xp-primary export-download-btn">Download ${EXPORT_FORMATS[exportBox.format].label}</button></div>` +
-        `<div class="xp-sec">Sequence</div>` +
-        row('Vary', `<select class="export-seq-param">${seqOpts}</select>`) +
-        row('Light', `<label title="Lock the light to the camera — keeps it at the same angle on screen as the camera turns (needs lighting on)"><input type="checkbox" class="export-lightlock"${light.lock ? ' checked' : ''}> lightlock</label>`) +
-        row('Range', `<input type="number" class="export-seq-in" data-k="from" value="${exportSeq.from}" title="from">` +
-          `<span class="xp-unit">to</span><input type="number" class="export-seq-in" data-k="to" value="${exportSeq.to}" title="to">` +
-          `<span class="xp-unit">step</span><input type="number" class="export-seq-in" data-k="step" value="${exportSeq.step}" title="step">`) +
-        `<div class="xp-btns"><button class="io-btn export-seq-preview" title="Step the live map through the values — nothing is saved">${exportSeq.running === 'preview' ? 'Stop' : 'Play'}</button>` +
-        `<button class="io-btn xp-primary export-seq-run">${exportSeq.running === 'run' ? 'Stop' : `Export ${exportSeqValues().length} frames`}</button></div>` +
-        `<div class="export-seq-status"></div>` +
         `<div class="xp-sec">Keyframes</div>` +
         `<div class="xp-btns xp-kf-tools"><button class="io-btn xp-primary xp-kf-capture" title="Add the current camera (centre, zoom, bearing, pitch, sun) as the next view">+ Capture view</button>` +
-        `<button class="io-btn xp-kf-save" title="Download the views (+ between / easing) as a .json file">Save</button>` +
+        `<button class="io-btn xp-kf-save" title="Download the views, frame counts, rate and easing as a .json file">Save</button>` +
         `<button class="io-btn xp-kf-load" title="Load views from a .json file (replaces the list)">Load</button>` +
         `<input type="file" class="xp-kf-file" accept="application/json,.json" hidden>` +
         `<button class="io-btn xp-kf-clear" title="Remove all views">Clear</button></div>` +
@@ -3584,19 +3628,17 @@
           `<button class="io-btn xp-kf-btn" data-kf="go" data-i="${i}" title="Jump to this view">Go</button>` +
           `<button class="io-btn xp-kf-btn" data-kf="set" data-i="${i}" title="Replace with the current view">⟳</button>` +
           `<button class="io-btn xp-kf-btn" data-kf="up" data-i="${i}" title="Move up"${i ? '' : ' disabled'}>↑</button>` +
-          `<button class="io-btn xp-kf-btn" data-kf="del" data-i="${i}" title="Remove">✕</button></div>`).join('') ||
+          `<button class="io-btn xp-kf-btn" data-kf="del" data-i="${i}" title="Remove">✕</button></div>` +
+          (i < keyframes.length - 1 ? `<div class="xp-kf-leg">${i + 1} → ${i + 2}<input type="number" class="xp-kf-frames" data-i="${i}" min="1" step="1" value="${kfFrames(v)}">` +
+            `<span class="xp-unit">frames</span><span class="xp-kf-secs" data-i="${i}">${(kfFrames(v) / kfState.fps).toFixed(1)} s</span></div>` : '')).join('') ||
           `<div class="xp-hint">No views yet — frame the map, then Capture view. Add two or more to tween between them.</div>`}</div>` +
-        row('Frames', `<select class="xp-kf-mode" title="auto: each leg gets as many frames as its camera move needs to look smooth · fixed: the same number for every leg">` +
-          [['auto', 'auto (by distance)'], ['fixed', 'fixed per leg']].map(([k, l]) => `<option value="${k}"${kfState.mode === k ? ' selected' : ''}>${l}</option>`).join('') + `</select>`) +
-        (kfState.mode === 'auto'
-          ? row('Pace', `<select class="xp-kf-pace" title="How fast the camera may move — ${Object.entries(KF_PACE).map(([k, v]) => `${k}: ${v.pan} frame-widths/s, ${v.zoom} zoom/s, ${v.turn}°/s turn, ${v.tilt}°/s tilt`).join(' · ')}">` +
-              Object.keys(KF_PACE).map((k) => `<option${kfState.pace === k ? ' selected' : ''}>${k}</option>`).join('') + `</select>`)
-          : row('Between', `<input type="number" class="xp-kf-in" min="0" value="${kfState.between}"><span class="xp-unit">frames per leg</span>`)) +
         row('Rate', `<input type="number" class="xp-kf-fps xp-kf-in" min="1" max="60" value="${kfState.fps}" title="The rate the film will play at — set the sequence player to the same"><span class="xp-unit">fps</span>`) +
-        row('Easing', `<select class="xp-kf-ease">${['smooth', 'linear'].map((k) => `<option${kfState.ease === k ? ' selected' : ''}>${k}</option>`).join('')}</select>`) +
+        row('Easing', `<select class="xp-kf-ease">${Object.entries(KF_EASES).map(([k, [l]]) => `<option value="${k}"${kfState.ease === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`) +
+        row('GIF', `<label title="Keyframe export also saves a looping GIF of the frames"><input type="checkbox" class="xp-gif-on"${gifOpts.on ? ' checked' : ''}> also</label>` +
+          `<input type="number" class="xp-gif-in" data-k="width" min="64" step="16" value="${gifOpts.width}" title="GIF width (px)"><span class="xp-unit">px</span>` +
+          `<input type="number" class="xp-gif-in" data-k="fps" min="1" max="50" value="${gifOpts.fps}" title="frames per second"><span class="xp-unit">fps</span>`) +
         `<div class="xp-btns"><button class="io-btn export-kf-preview" title="Fly the live map through the tween — nothing is saved">Play</button>` +
         `<button class="io-btn xp-primary export-kf-run"></button></div>` +
-        `<div class="xp-kf-legs"></div>` +
         `<div class="export-kf-status"></div>` +
         `<div class="xp-hint" style="margin-top:6px"><a href="${TOOL_LINKS[0][0]}" target="_blank" rel="noopener">Open the Sequence player ↗</a> to turn the frames into a video</div>`;
     }
@@ -3620,7 +3662,7 @@
       if (e.target.closest('.xp-kf-clear')) { if (keyframes.length && confirm(`Remove all ${keyframes.length} views?`)) { keyframes = []; kfState.status = ''; buildExportPanel(); } return; }
       if (e.target.closest('.xp-kf-save')) {
         if (!keyframes.length) { kfState.status = 'nothing to save — capture a view first'; updateExportSeqUi(); return; }
-        const file = { views: keyframes, mode: kfState.mode, pace: kfState.pace, fps: kfState.fps, between: kfState.between, ease: kfState.ease };
+        const file = { views: keyframes, fps: kfState.fps, ease: kfState.ease };
         download(`${exportBaseName()}-views.json`, JSON.stringify(file, null, 2));
         kfState.status = `saved ${keyframes.length} view${keyframes.length === 1 ? '' : 's'}`; updateExportSeqUi();
         return;
@@ -3630,7 +3672,7 @@
       if (kfBtn && !exportSeq.running) {
         const i = +kfBtn.dataset.i, act = kfBtn.dataset.kf;
         if (act === 'go') { applyView(keyframes[i]); return; }
-        if (act === 'set') keyframes[i] = captureView();
+        if (act === 'set') keyframes[i] = { ...captureView(), frames: keyframes[i].frames };
         else if (act === 'up' && i > 0) [keyframes[i - 1], keyframes[i]] = [keyframes[i], keyframes[i - 1]];
         else if (act === 'del') keyframes.splice(i, 1);
         kfState.status = ''; buildExportPanel();
@@ -3666,8 +3708,6 @@
       else if (e.target.classList.contains('export-scale-select')) { exportBox.scale = +e.target.value; updateExportDimsReadout(); clearSeqStatus(); }
       else if (e.target.classList.contains('export-seq-param')) { exportSeq.param = e.target.value; clearSeqStatus(); }
       else if (e.target.classList.contains('xp-kf-ease')) { kfState.ease = e.target.value; clearSeqStatus(); }
-      else if (e.target.classList.contains('xp-kf-mode')) { kfState.mode = e.target.value; kfState.status = ''; buildExportPanel(); }
-      else if (e.target.classList.contains('xp-kf-pace')) { kfState.pace = e.target.value; clearSeqStatus(); }
       else if (e.target.classList.contains('xp-gif-on')) gifOpts.on = e.target.checked;
       else if (e.target.classList.contains('xp-kf-file')) {
         const f = e.target.files[0]; e.target.value = '';
@@ -3676,17 +3716,14 @@
           const data = JSON.parse(txt), arr = Array.isArray(data) ? data : data?.views;
           keyframes = parseKeyframes(arr);
           if (!Array.isArray(data)) {
-            if (Number.isFinite(+data.between)) kfState.between = Math.max(0, Math.round(+data.between));
-            if (data.ease === 'smooth' || data.ease === 'linear') kfState.ease = data.ease;
-            if (data.mode === 'auto' || data.mode === 'fixed') kfState.mode = data.mode;
-            else if (Number.isFinite(+data.between)) kfState.mode = 'fixed';   // older files: keep their frame count
-            if (KF_PACE[data.pace]) kfState.pace = data.pace;
+            if (KF_EASES[data.ease]) kfState.ease = data.ease;
+            // Older files: one `between` for every leg → that many + 1 frames per leg.
+            if (Number.isFinite(+data.between)) for (const v of keyframes) if (v.frames == null) v.frames = Math.max(1, Math.round(+data.between) + 1);
             if (+data.fps >= 1 && +data.fps <= 60) kfState.fps = Math.round(+data.fps);
           }
           kfState.status = `loaded ${keyframes.length} view${keyframes.length === 1 ? '' : 's'} from ${f.name}`;
         }).catch((err) => { kfState.status = `couldn't load ${f.name}: ${err.message}`; }).finally(buildExportPanel);
       }
-      else if (e.target.classList.contains('export-lightlock')) { window.__setLighting({ lock: e.target.checked }); syncLightLockUi(); }
       else if (e.target.classList.contains('export-format-select')) {
         exportBox.format = e.target.value;
         exportPanelEl.querySelector('.export-download-btn').textContent = `Download ${EXPORT_FORMATS[exportBox.format].label}`;
@@ -3697,7 +3734,10 @@
       else if (e.target.classList.contains('export-seq-in')) { exportSeq[e.target.dataset.k] = +e.target.value; clearSeqStatus(); }
       else if (e.target.classList.contains('xp-gif-in')) { const v = Math.round(+e.target.value); if (v > 0) gifOpts[e.target.dataset.k] = v; }
       else if (e.target.classList.contains('xp-kf-fps')) { const v = Math.round(+e.target.value); if (v >= 1 && v <= 60) { kfState.fps = v; clearSeqStatus(); } }
-      else if (e.target.classList.contains('xp-kf-in')) { kfState.between = Math.max(0, Math.round(+e.target.value || 0)); clearSeqStatus(); }
+      else if (e.target.classList.contains('xp-kf-frames')) {
+        const v = Math.round(+e.target.value), i = +e.target.dataset.i;
+        if (v >= 1 && keyframes[i]) { keyframes[i].frames = v; clearSeqStatus(); }
+      }
       else if (e.target.classList.contains('export-margin-in')) { exportBox.innerMargin = e.target.value === '' ? 0 : +e.target.value; updateExportGuide(); }
     });
     // bbox field: reframe the map on commit (Enter / blur), not on every keystroke.
@@ -4037,9 +4077,9 @@
       const dir = to >= from ? 1 : -1, n = Math.floor(Math.abs(to - from) / step + 1e-9) + 1;
       return Array.from({ length: n }, (_, i) => +(from + dir * i * step).toFixed(6));
     }
-    // The light-lock checkbox lives in both the View tab and the export panel — keep them agreeing.
+    // Keep the View tab's "lock angle to camera" in step when the lock changes from elsewhere (URL, Mapa).
     function syncLightLockUi() {
-      document.querySelectorAll('.export-lightlock, .view-in[data-k="lightLock"]').forEach((el) => { el.checked = light.lock; });
+      document.querySelectorAll('.view-in[data-k="lightLock"]').forEach((el) => { el.checked = light.lock; });
     }
     // A finished run's message gives way to the new estimate once the inputs change.
     function clearSeqStatus() { if (!exportSeq.running) { exportSeq.status = ''; kfState.status = ''; } updateExportSeqUi(); }
@@ -4056,22 +4096,14 @@
       btn('.export-seq-preview', 'seq', 'preview', 'Play');
       btn('.export-kf-run', 'kf', 'run', `Export ${nKf} frames`);
       btn('.export-kf-preview', 'kf', 'preview', 'Play');
-      if (!busy) { const r = q('.export-kf-run'), pl = q('.export-kf-preview'); if (r) r.disabled = nKf < 1; if (pl) pl.disabled = nKf < 2; }
+      const kfBtns = q('.export-kf-run')?.parentElement; if (kfBtns) kfBtns.style.display = keyframes.length < 2 ? 'none' : '';
       const st = q('.export-seq-status'); if (st) st.textContent = exportSeq.status || est(nSeq, exportSeq.param);
       const ks = q('.export-kf-status');
       if (ks) ks.textContent = kfState.status || (nKf > 1
-        ? `${est(nKf, 'views')} to capture · plays ${(nKf / kfState.fps).toFixed(1)} s at ${kfState.fps} fps (set the player to ${kfState.fps})` : '');
-      const lg = q('.xp-kf-legs');
-      if (lg) lg.innerHTML = keyframes.slice(1).map((b, i) => {
-        const L = kfLeg(keyframes[i], b);
-        const what = [L.pan >= 0.01 && `pan ${L.pan.toFixed(2)} widths`, L.zoom >= 0.01 && `zoom ${L.zoom.toFixed(1)}`,
-          L.turn >= 0.5 && `turn ${Math.round(L.turn)}°`, L.tilt >= 0.5 && `tilt ${Math.round(L.tilt)}°`].filter(Boolean).join(' · ') || 'no move';
-        // Panning while zooming in is fastest at the close end — a long pan + a big zoom in one leg
-        // comes out slow overall; two legs (pan, then zoom) are shorter and smoother.
-        const tip = L.pan > 1.5 && L.zoom > 1 ? ' <span class="xp-kf-tip" title="Pan and zoom in one leg: the pan is measured at the closer zoom, so it needs many frames. Capture a view between them — pan first, then zoom — for a shorter, smoother move.">split?</span>' : '';
-        return `<div class="xp-kf-leg"><b>${i + 1}→${i + 2}</b><span title="${esc(what)}">${what}${tip}</span>` +
-          `<em>${L.between + 1} fr · ${L.secs.toFixed(1)} s</em></div>`;
-      }).join('');
+        ? `${nKf} frames · ${(nKf / kfState.fps).toFixed(1)} s at ${kfState.fps} fps · about ${fmtDuration(nKf * seqSecondsPerFrame('views'))} to export` : '');
+      exportPanelEl.querySelectorAll('.xp-kf-secs').forEach((el) => {
+        const v = keyframes[+el.dataset.i]; if (v) el.textContent = `${(kfFrames(v) / kfState.fps).toFixed(1)} s`;
+      });
     }
     // Wait for the map to finish drawing (tiles, terrain) after a change, or give up after `ms`.
     function waitMapIdle(ms = 30000) {
@@ -4181,7 +4213,7 @@
           f.apply();
           if (!(await waitMapIdle())) timedOut.push(f.label);
           // The inset follows the main map on its own; let it finish loading this view too.
-          if (insetMap && document.getElementById('inset-map')?.style.display !== 'none' && !insetMap.loaded())
+          if (insetMap && document.getElementById('inset-map')?.style.display !== 'none' && (!insetMap.loaded() || insetBboxPending))
             await new Promise((res) => { const t = setTimeout(res, 10000); insetMap.once('idle', () => { clearTimeout(t); res(); }); });
           // A frame identical to the last one means the canvas hadn't caught up with the camera:
           // wait, redraw and look again (up to 3 tries) before saving it.
@@ -4255,7 +4287,7 @@
     // Hoisted (not a const) — the panel markup calls it, and the panel can be built before this line runs.
     function kfSummary(v) {
       return `${v.center[0].toFixed(2)}, ${v.center[1].toFixed(2)} · z${v.zoom.toFixed(1)} · ` +
-        `b${Math.round(v.bearing)}° p${Math.round(v.pitch)}°${v.sun != null ? ` · sun ${Math.round(v.sun)}°` : ''}`;
+        `b${Math.round(v.bearing)}° p${Math.round(v.pitch)}°${v.sun != null ? ` · sun ${sunShown(v.sun)}°` : ''}`;
     }
     // A pasted array → clean views (center + zoom required; bearing/pitch default 0; sun optional).
     function parseKeyframes(arr) {
@@ -4266,6 +4298,7 @@
           throw new Error(`view ${i + 1} needs "center": [lng, lat] and "zoom"`);
         const out = { center: v.center.map(Number), zoom: +v.zoom, bearing: ok(v.bearing) ? +v.bearing : 0, pitch: ok(v.pitch) ? +v.pitch : 0 };
         if (ok(v.sun)) out.sun = +v.sun;
+        if (+v.frames >= 1) out.frames = Math.round(+v.frames);
         return out;
       });
     }
@@ -4288,43 +4321,23 @@
       else if (a.sun != null || b.sun != null) v.sun = a.sun ?? b.sun;
       return v;
     }
-    // Every frame of the tween: each view, with `between` in-between frames after it (none after the
+    // Every frame of the tween: each view, then its leg's frames - 1 in-between frames (none after the
     // last). Each step eases on its own, so the camera settles on every captured view.
     function kfViews() {
       const out = [];
-      const ease = kfState.ease === 'smooth' ? (t) => t * t * (3 - 2 * t) : (t) => t;
+      const ease = (KF_EASES[kfState.ease] || KF_EASES.smooth)[1];
       keyframes.forEach((a, i) => {
         out.push({ v: a, key: i + 1 });
         const b = keyframes[i + 1];
         if (!b) return;
-        const n = kfLeg(a, b).between;
+        const n = kfFrames(a) - 1;
         for (let k = 1; k <= n; k++) out.push({ v: lerpView(a, b, ease(k / (n + 1))) });
       });
       return out;
     }
-    // One leg's camera move and the frames it needs. The pan is measured on screen: the Mercator
-    // distance × the world's size in px (512·2^zoom) ÷ the crop box width, at the closer of the two
-    // zooms, since that's where the pan looks fastest. The leg lasts as long as its slowest part
-    // needs at the chosen pace; smooth easing peaks at 1.5× its average speed, so it gets 1.5× the
-    // time to keep that peak at the pace. between = frames strictly between the two views.
-    function kfLeg(a, b) {
-      const A = maplibregl.MercatorCoordinate.fromLngLat(a.center), B = maplibregl.MercatorCoordinate.fromLngLat(b.center);
-      let dx = B.x - A.x; if (dx > 0.5) dx -= 1; else if (dx < -0.5) dx += 1;
-      const L = {
-        pan: Math.hypot(dx, B.y - A.y) * 512 * 2 ** Math.max(a.zoom, b.zoom) / Math.max(1, exportBox.width),
-        zoom: Math.abs(b.zoom - a.zoom),
-        turn: Math.abs(angLerp(a.bearing, b.bearing, 1) - a.bearing),
-        tilt: Math.abs(b.pitch - a.pitch)
-      };
-      if (kfState.mode === 'fixed') L.between = Math.max(0, Math.round(kfState.between) || 0);
-      else {
-        const sp = KF_PACE[kfState.pace] || KF_PACE.steady, E = kfState.ease === 'smooth' ? 1.5 : 1;
-        const secs = E * Math.max(L.pan / sp.pan, L.zoom / sp.zoom, L.turn / sp.turn, L.tilt / sp.tilt);
-        L.between = Math.max(0, Math.round(secs * kfState.fps) - 1);
-      }
-      L.secs = (L.between + 1) / kfState.fps;
-      return L;
-    }
+    // Frames for the move from view v to the next one, as typed (default KF_FRAMES).
+    // Hoisted — the panel markup calls it.
+    function kfFrames(v) { return Math.max(1, Math.round(+v.frames) || KF_FRAMES); }
     function runKeyframes({ preview = false } = {}) {
       const views = kfViews();
       if (!views.length) { kfState.status = 'capture a view first'; updateExportSeqUi(); return; }
@@ -6061,7 +6074,7 @@
       const border = cfg.border === false ? {} : (cfg.border || {});
       const v = cfg.vignette === true ? {} : (cfg.vignette || {});
       const hasFixedExtent = !!(cfg.bbox?.coords || cfg.bbox?.refUid || cfg.bbox?.geometry);
-      const extentStyle = mergeProjectStyle(PROJECT_POLY_DEFAULTS, cfg.bbox?.style);
+      const extentStyle = mergeProjectStyle(PROJECT_POLY_DEFAULTS, cfg.bbox?.style ?? INSET_EXTENT_STYLE);
       // Two-column form (label | controls) for Frame and View, then a table for Layers so each
       // layer's color / width / opacity line up in columns instead of wrapping onto loose rows.
       const kv = (label, controls) => `<span class="ig-k">${label}</span><span class="ig-c">${controls}</span>`;
@@ -6099,13 +6112,13 @@
         kv('zoom', num('zoom', cfg.zoom ?? 0, 'step="0.05"') + `<label class="ig-k">${cb('follow', cfg.follow === true)} follow map</label>`) +
         kv('center', num('center.0', center[0], 'step="0.1" title="lng"') + num('center.1', center[1], 'step="0.1" title="lat"') +
           `<button class="sketch-btn" data-inset-act="here">use map</button>`) +
-        kv('extent', `<span class="ig-k">${hasFixedExtent ? 'fixed' : 'follows map'}</span>` +
-          `<button class="sketch-btn" data-inset-act="draw-extent">Draw</button>`) +
-        (hasFixedExtent ? kv('extent box',
+        kv('extent', `<button class="sketch-btn${hasFixedExtent ? '' : ' armed'}" data-inset-act="live-extent" title="Outline what the crop box shows (the whole view when the crop box is off); moves with the camera">crop box</button>` +
+          `<button class="sketch-btn${hasFixedExtent ? ' armed' : ''}" data-inset-act="draw-extent" title="Draw a fixed rectangle on the map">${hasFixedExtent ? 'fixed — redraw' : 'fixed — draw'}</button>`) +
+        kv('extent box',
           f('color', 'bbox.style.stroke', toHex(extentStyle.stroke === 'none' ? '#ffffff' : extentStyle.stroke)) +
           num('bbox.style.stroke-width', extentStyle['stroke-width'], 'min="0" step="0.5" title="stroke width"') +
           f('color', 'bbox.style.fill', toHex(extentStyle.fill === 'none' ? '#ffffff' : extentStyle.fill)) +
-          opIn('bbox.style.fill-opacity', extentStyle['fill-opacity'])) : '') +
+          opIn('bbox.style.fill-opacity', extentStyle['fill-opacity'])) +
         kv('markers', `<button class="sketch-btn${insetMarkerArmed ? ' armed' : ''}" data-inset-act="add-marker">${insetMarkerArmed ? 'Click the inset… (Esc)' : 'Add'}</button>` +
           (cfg.markers?.length ? `<button class="sketch-btn" data-inset-act="clear-markers">Clear</button>` : '')) +
         head('Layers') +
@@ -6164,14 +6177,19 @@
             <div class="edit-row-hint" style="margin-top:4px">3D only shows with pitch above 0 (Camera below).</div>
           </div>
           <div class="edit-row">
-            <div class="edit-row-head">Lighting
+            <div class="edit-row-head">Dynamic lighting
               <label class="edit-row-hint"><input type="checkbox" class="view-in" data-k="lightOn"${light.on ? ' checked' : ''}> on</label>
             </div>
-            <label class="edit-row-hint" title="Lock the light to the camera — keeps it at the same angle on screen when the camera turns"><input type="checkbox" class="view-in" data-k="lightLock"${light.lock ? ' checked' : ''}> lightlock</label>
-            ${slider('sun', 'sun', 0, 359, 1, light.sun, '°')}
+            ${slider('sun', 'sun', 0, 359, 1, sunShown(light.sun), '°')}
+            <label class="edit-row-hint" title="On: the sun angle stays fixed to the camera, so turning the camera re-lights the terrain"><input type="checkbox" class="view-in" data-k="lightLock"${light.lock ? ' checked' : ''}> lock angle to camera</label>
             ${slider('shade', 'shade', 0, 1, 0.05, light.shade)}
             ${color('shadow', 'shadow', light.shadow)}
             ${color('highlight', 'hilite', light.highlight)}
+          </div>
+          <div class="edit-row">
+            <div class="edit-row-head">Natural Earth relief</div>
+            <label class="view-ctl" title="Load tiles this many zoom levels sharper than the map's zoom (the tiles stop at zoom 7)"><span>detail</span><select class="view-in" data-k="reliefDetail">` +
+              [0, 1, 2].map((d) => `<option value="${d}"${reliefDetail === d ? ' selected' : ''}>+${d} zoom</option>`).join('') + `</select></label>
           </div>
           <div class="edit-row">
             <div class="edit-row-head">Camera</div>
@@ -6189,6 +6207,8 @@
       else if (k === 'terrainExag') window.__setTerrain(terrainOn, v);
       else if (k === 'lightOn') window.__setLighting({ on: v });
       else if (k === 'lightLock') { window.__setLighting({ lock: v }); syncLightLockUi(); }
+      else if (k === 'sun') window.__setLighting({ sun: sunStored(v) });
+      else if (k === 'reliefDetail') setReliefDetail(+v);
       else if (k === 'pitch') { if (v > map.getMaxPitch()) map.setMaxPitch(85); map.setPitch(v); }
       else if (k === 'bearing') map.setBearing(v);
       else window.__setLighting({ [k]: v });
@@ -6559,9 +6579,7 @@
     // Locator globe pinned to a corner of the viewport (project.inset) — a genuinely separate
     // maplibregl.Map() instance (own WebGL context), created only when that section is present.
     // See dev/specs/2026-08-04-sandbox-reference-maps-design.md's `inset` section.
-    let insetMap = null;
-    let insetLiveBbox = false;
-    let insetFollow = false;
+    // (insetMap, insetLiveBbox, insetFollow, insetBboxPending are declared up by insetPosConfig.)
 
     // Walks any GeoJSON geometry (any nesting depth of Polygon/MultiPolygon/etc coordinates) and
     // returns its [west, south, east, north] bbox — used to turn a refUid/geometry into the same
@@ -6607,10 +6625,57 @@
 
     function updateInsetBbox(coords) {
       if (!insetMap?.getSource('inset-bbox')) return;
-      const ring = densifyBbox(coords);
+      setInsetBboxRing(densifyBbox(coords));
+    }
+    // True from a setData on the extent until the inset has drawn it — frame capture waits on it, so
+    // an exported frame never shows the previous frame's extent (setData is applied in a worker).
+    function setInsetBboxRing(ring) {
       insetMap.getSource('inset-bbox').setData({
         type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {}
       });
+      insetBboxPending = true;
+      insetMap.once('idle', () => { insetBboxPending = false; });
+    }
+    // The live extent's outline: with the crop box up, the box's own footprint — `steps` points along
+    // each edge unprojected onto the map, so it turns and tilts with the camera rather than staying a
+    // lat/lng rectangle; otherwise the whole viewport. Points that miss the map (above the horizon at a
+    // steep pitch, off the globe) are dropped, and longitudes are unwrapped point to point so a box
+    // over the antimeridian doesn't wrap the long way round.
+    function liveExtentRing(steps = 16) {
+      const box = exportMode && exportBox.width ? exportBox : null;
+      if (!box) {
+        const b = map.getBounds();
+        return densifyBbox([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], steps);
+      }
+      const { left: x0, top: y0, width: w, height: h } = box;
+      const edges = [[[x0, y0], [x0 + w, y0]], [[x0 + w, y0], [x0 + w, y0 + h]], [[x0 + w, y0 + h], [x0, y0 + h]], [[x0, y0 + h], [x0, y0]]];
+      const ring = [];
+      for (const [[ax, ay], [bx, by]] of edges) {
+        for (let i = 0; i < steps; i++) {
+          const px = [ax + (bx - ax) * i / steps, ay + (by - ay) * i / steps];
+          const ll = map.unproject(px), back = map.project(ll);
+          if (!Number.isFinite(ll.lng) || Math.hypot(back.x - px[0], back.y - px[1]) > 2) continue;
+          let lng = ll.lng;
+          if (ring.length) { const prev = ring[ring.length - 1][0]; lng += 360 * Math.round((prev - lng) / 360); }
+          ring.push([lng, ll.lat]);
+        }
+      }
+      if (ring.length < 3) return null;
+      ring.push(ring[0]);
+      return ring;
+    }
+    // The point the inset centres on with follow on: the crop box's centre, else the map's.
+    function liveExtentCenter() {
+      if (!(exportMode && exportBox.width)) return map.getCenter();
+      return map.unproject([exportBox.left + exportBox.width / 2, exportBox.top + exportBox.height / 2]);
+    }
+    // Re-sync the inset's follow camera and live extent with the main map / crop box.
+    function refreshInsetExtent() {
+      if (!insetMap) return;
+      if (insetFollow) insetMap.jumpTo({ center: liveExtentCenter() });
+      if (!insetLiveBbox || !insetMap.getSource('inset-bbox')) return;
+      const ring = liveExtentRing();
+      if (ring) setInsetBboxRing(ring);
     }
 
     function ensureInsetMap(config) {
@@ -6702,7 +6767,7 @@
         insetMap.addSource('inset-bbox', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         insetMap.addLayer({ id: 'inset-bbox-fill', type: 'fill', source: 'inset-bbox', paint: {} });
         insetMap.addLayer({ id: 'inset-bbox-outline', type: 'line', source: 'inset-bbox', paint: {} });
-        setInsetRectStyle('inset-bbox-fill', 'inset-bbox-outline', config.bbox?.style);
+        setInsetRectStyle('inset-bbox-fill', 'inset-bbox-outline', config.bbox?.style ?? INSET_EXTENT_STYLE);
 
         // bbox source, in priority order: explicit coords > a feature's own extent (geometry or
         // refUid, e.g. mark "the extent of Ukraine" rather than a hand-typed rectangle) > live
@@ -6728,7 +6793,7 @@
           }
         } else {
           insetLiveBbox = true;
-          updateInsetBbox([map.getBounds().getWest(), map.getBounds().getSouth(), map.getBounds().getEast(), map.getBounds().getNorth()]);
+          refreshInsetExtent();
         }
 
         if (config.highlight?.refUid) {
@@ -6783,7 +6848,7 @@
         return;
       }
       const style = mergeProjectStyle(PROJECT_POINT_DEFAULTS, cfg.style);
-      const c = map.getCenter();
+      const c = liveExtentCenter();
       const data = {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
@@ -6872,11 +6937,8 @@
     // actually been created (and, for the bbox case, finished loading its own sources).
     map.on('move', () => {
       if (exportParam) updateExportBboxReadout();  // keep the export bbox field live while panning/zooming
-      if (insetFollow && insetMap) insetMap.jumpTo({ center: map.getCenter() });
       if (insetMap?.getSource('inset-center')) refreshInsetCenterDot();
-      if (!insetLiveBbox || !insetMap?.getSource('inset-bbox')) return;
-      const b = map.getBounds();
-      updateInsetBbox([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+      refreshInsetExtent();
     });
 
     // Loads every ?project= file and concatenates their points/polys/annotations data, in listed
@@ -7710,6 +7772,11 @@
         } else if (act === 'clear-markers') {
           delete projectDoc.inset.markers;
           refreshInsetMarkers();
+        } else if (act === 'live-extent') {
+          if (projectDoc.inset.bbox) for (const k of ['coords', 'refUid', 'geometry']) delete projectDoc.inset.bbox[k];
+          insetLiveBbox = true;
+          if (insetMap?.getLayer('inset-bbox-fill')) setInsetRectStyle('inset-bbox-fill', 'inset-bbox-outline', projectDoc.inset.bbox?.style ?? INSET_EXTENT_STYLE);
+          refreshInsetExtent();
         } else if (act === 'draw-extent') {
           armSketch('inset', 'extent', insetAct);
           return;   // armSketch already calls buildPanel(); don't fall through to the one below

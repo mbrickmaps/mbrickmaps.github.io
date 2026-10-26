@@ -44,6 +44,8 @@
   .clip-opts { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #555; }
   .clip-opts select, .clip-opts input { padding: 3px 4px; font-size: 11px; }
   .clip-opts input[type="number"] { width: 46px; }
+  .clip-opts select:disabled, .clip-opts input:disabled { opacity: .45; }
+  .clip.mask { border-style: dashed; }
 
   /* Preview */
   #stage { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -82,39 +84,35 @@
 </head>
 <body>
 <div id="controls">
-  <div class="section-label">Clips</div>
+  <div class="section-label">Layers</div>
   <div class="btns">
-    <button id="openFiles" title="Add a clip from image files (PNG, JPEG, WebP)">+ Images…</button>
-    <button id="openFolder" title="Add a clip from a folder of images">+ Folder…</button>
-    <button id="openZip" title="Add clips from sandbox export zips (one clip per zip)">+ Zip…</button>
+    <button id="openFiles" title="Add a layer from image files (PNG, JPEG, WebP)">+ Images…</button>
+    <button id="openFolder" title="Add a layer from a folder of images">+ Folder…</button>
+    <button id="openZip" title="Add layers from sandbox export zips (one layer per zip)">+ Zip…</button>
   </div>
   <input type="file" id="fileIn" accept="image/png,image/jpeg,image/webp,image/avif" multiple hidden>
   <input type="file" id="folderIn" webkitdirectory hidden>
   <input type="file" id="zipIn" accept=".zip,application/zip" multiple hidden>
   <div id="clips"></div>
-  <div class="note" id="clipNote">Each load adds a clip; they play in list order (tick “over previous” on a clip to blend it on top of the one above instead). Drop images, folders or zips on the preview too.</div>
+  <div class="note" id="clipNote">Each load adds a layer on top. Top of the list draws on top; all layers play at once from their start frame. Drop images, folders or zips on the preview too.</div>
 
   <hr class="divider">
   <div class="section-label">Timeline</div>
-  <div class="row"><span class="lab">Speed</span><input type="number" id="fps" min="1" max="60" value="12"><span class="unit">fps</span></div>
-  <div class="row"><span class="lab">Between</span>
-    <select id="trans"><option value="cut">cut</option><option value="fade">crossfade</option></select>
-    <input type="number" id="fadeN" min="1" max="120" value="6" title="crossfade length"><span class="unit">frames</span>
-  </div>
-  <div class="row"><span class="lab">Repeat</span><input type="number" id="repeat" min="1" max="100" value="1"><span class="unit">× whole timeline</span></div>
+  <div class="row"><span class="lab">Rate</span><input type="number" id="fps" min="1" max="60" value="12"><span class="unit">fps</span></div>
+  <div class="row"><span class="lab">Repeat</span><input type="number" id="repeat" min="1" max="100" value="1"><span class="unit">×</span></div>
 
   <hr class="divider">
   <div class="section-label">Look</div>
   <div class="row"><span class="lab">Background</span>
-    <select id="bgMode" title="Behind the frames — shows through bars and any transparent parts">
+    <select id="bgMode" title="Drawn under all layers">
       <option value="none">transparent</option><option value="solid">colour</option><option value="gradient">gradient</option>
     </select>
     <input type="color" id="bg" value="#000000" title="Background colour">
   </div>
   <div id="bgGrad" class="grad-ed"></div>
   <div class="row"><span class="lab">Vignette</span>
-    <label style="font-size:12px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="vigOn"> on top</label>
-    <select id="vigBlend" title="How the vignette mixes with the frames under it">
+    <label style="font-size:12px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="vigOn"> on</label>
+    <select id="vigBlend" title="Vignette blend mode">
       <option value="source-over">normal</option><option>multiply</option><option>screen</option><option>overlay</option>
       <option>darken</option><option>lighten</option><option>color-dodge</option><option>color-burn</option>
       <option>hard-light</option><option>soft-light</option><option>difference</option><option>exclusion</option>
@@ -126,20 +124,21 @@
   <hr class="divider">
   <div class="section-label">Export</div>
   <div class="row"><span class="lab">Format</span>
-    <select id="format"><option value="mp4">MP4 video (Instagram, slides)</option><option value="webm">WebM video (VP9 — full size, browsers / VLC)</option><option value="gif">GIF (256 colours)</option><option value="png">PNG frames (zip, keeps transparency)</option></select>
+    <select id="format"><option value="mp4">MP4 (H.264)</option><option value="webm">WebM (VP9)</option><option value="gif">GIF (256 colours)</option><option value="png">PNG frames (zip)</option></select>
   </div>
   <div class="row"><span class="lab">Size</span>
-    <select id="size">
-      <option value="orig">original (first clip)</option>
-      <option value="half">original ½</option>
-      <option value="1080x1080">1080 × 1080 — square</option>
-      <option value="1080x1350">1080 × 1350 — Instagram post</option>
-      <option value="1080x1920">1080 × 1920 — Reel / Story</option>
-      <option value="1920x1080">1920 × 1080 — HD</option>
+    <select id="size" title="Output size: the bottom layer's size, half of it, or the W × H typed here">
+      <option value="orig">bottom layer</option>
+      <option value="half">bottom layer ½</option>
+      <option value="custom">custom</option>
     </select>
   </div>
+  <div class="row"><span class="lab"></span>
+    <input type="number" id="outW" min="2" step="2" value="1080" title="width, px"><span class="unit">×</span>
+    <input type="number" id="outH" min="2" step="2" value="1080" title="height, px"><span class="unit">px</span>
+  </div>
   <div class="row"><span class="lab">Fit</span>
-    <select id="fit"><option value="contain">whole frame, add bars</option><option value="cover">fill, crop edges</option></select>
+    <select id="fit" title="contain: whole layer fits, empty edges show the background · cover: layer fills the output, edges cropped"><option value="contain">contain</option><option value="cover">cover</option></select>
   </div>
   <div class="note" id="outInfo"></div>
   <button id="export" class="primary" disabled>Export</button>
@@ -149,7 +148,7 @@
 
 <div id="stage">
   <div id="view">
-    <div id="empty"><b>Drop image sequences here</b><br>PNG / JPEG / WebP files, folders, or sandbox export zips — each becomes a clip</div>
+    <div id="empty"><b>Drop image sequences here</b><br>PNG / JPEG / WebP files, folders, or sandbox export zips — each becomes a layer</div>
     <canvas id="canvas" hidden></canvas>
   </div>
   <div id="transport">
@@ -162,9 +161,9 @@
 </div>
 
 <script type="module">
-// Sequence player: load image sequences as clips (files, a folder, or sandbox export zips), chain them
-// into one timeline (per-clip once/ping-pong, repeat, hold; cut or crossfade between), play it back,
-// and export the whole timeline as an MP4 (WebCodecs H.264 — what Instagram takes) or a GIF.
+// Sequence player: load image sequences as layers (files, a folder, or sandbox export zips), stack
+// them top-down (each with a blend mode, opacity, start frame, or used as a mask on the layer below;
+// per-layer once/yo-yo, repeat, hold), play it back, and export as MP4, WebM, GIF or PNG frames.
 const $ = (id) => document.getElementById(id);
 const IMG_RE = /\.(png|jpe?g|webp|avif)$/i;
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', avif: 'image/avif' };
@@ -172,9 +171,10 @@ const PREVIEW_MAX = 1280;   // preview frames are decoded at most this wide
 const CACHE_MAX = 64;       // decoded preview frames kept (oldest dropped)
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let clips = [];             // [{ name, frames: [{ name, blob }], w, h, mode: 'once'|'pingpong', repeat, hold, over, blend, opacity, offset }]
-let timeline = [];          // [{ layers: [{ c, i, a, op }], label, clip }] — one entry per output frame
-let pos = 0, playing = false, timer = null, active = 0;
+// Layers, top of the stack first (clips[0] draws last, on top).
+let clips = [];             // [{ name, frames: [{ name, blob }], w, h, mode: 'once'|'yoyo', repeat, hold, px, py, blend, opacity, start, mask }]
+let timeline = [];          // [{ layers: [{ c, i }], label }] — one entry per output frame; layers bottom → top
+let pos = 0, playing = false, timer = null, active = 0;   // active: the selected layer (drag moves it)
 const cache = new Map();    // `${clip.id}:${i}` → ImageBitmap (preview size); insertion order = age
 let nextId = 1;
 
@@ -193,11 +193,13 @@ async function framesFromZip(file) {
 async function addClip(name, frames) {
   if (!frames.length) return false;
   const bmp = await createImageBitmap(frames[0].blob);
-  clips.push({ id: nextId++, name, frames, w: bmp.width, h: bmp.height, mode: 'once', repeat: 1, hold: 0, px: 50, py: 50, over: false, blend: 'screen', opacity: 100, offset: 0 });
+  // mask: 'off' | 'alpha' | 'luma' — a mask layer isn't drawn; it cuts the layer below to its alpha
+  // (or brightness × alpha). New layers go on top.
+  clips.unshift({ id: nextId++, name, frames, w: bmp.width, h: bmp.height, mode: 'once', repeat: 1, hold: 0, px: 50, py: 50, blend: 'source-over', opacity: 100, start: 0, mask: 'off' });
   bmp.close();
   return true;
 }
-// Zips → one clip each (in name order); loose images → one clip; a folder's images → one clip.
+// Zips → one layer each (in name order); loose images → one layer; a folder's images → one layer.
 async function load(fileList, label) {
   const files = [...fileList];
   if (!files.length) return;
@@ -209,7 +211,8 @@ async function load(fileList, label) {
     const imgs = files.filter((f) => IMG_RE.test(f.name) && !/(^|\/)\./.test(f.name)).map((f) => ({ name: f.name, blob: f })).sort(byName);
     if (imgs.length && await addClip(label || imgs[0].name.replace(/[-_ ]?\d+\.[a-z]+$/i, '') || 'images', imgs)) added++;
     setStatus(added ? '' : 'no PNG / JPEG / WebP images found', !added);
-    rebuild({ jumpTo: added ? clips.length - added : null });
+    if (added) active = 0;
+    rebuild({ jumpTo: added ? 0 : null });
   } catch (err) { setStatus(`couldn't load: ${err.message}`, true); }
 }
 
@@ -217,57 +220,32 @@ async function load(fileList, label) {
 // One clip's frame order: once or there-and-back, × repeat, then the last frame held `hold` seconds.
 function clipOrder(c, fps) {
   const n = c.frames.length, pass = [...Array(n).keys()];
-  if (c.mode === 'pingpong' && n > 2) pass.push(...pass.slice(1, -1).reverse());
+  if (c.mode === 'yoyo' && n > 2) pass.push(...pass.slice(1, -1).reverse());
   const out = Array.from({ length: Math.max(1, c.repeat) }, () => pass).flat();
   for (let k = Math.round(c.hold * fps); k > 0; k--) out.push(out[out.length - 1]);
   return out;
 }
-// Clips marked "over previous" play on top of the clip above them, frame for frame, in their blend
-// mode — so they form groups: a base clip plus its overlays. A group lasts as long as its longest
-// member; a shorter one holds its last frame, and an overlay with a positive offset starts later.
-function clipGroups(fps) {
-  const groups = [];
-  clips.forEach((c, ci) => {
-    const m = { ci, order: clipOrder(c, fps), off: c.over && groups.length ? Math.round(c.offset) : 0 };
-    if (c.over && groups.length) groups[groups.length - 1].push(m); else groups.push([m]);
-  });
-  return groups;
-}
-const groupLen = (g) => Math.max(...g.map((m) => m.order.length + Math.max(0, m.off)));
-function groupLayers(g, j, a = 1) {
-  const out = [];
-  g.forEach((m, k) => {
-    const n = j - m.off;
-    if (n < 0) return;
-    const c = clips[m.ci];
-    out.push({ c: m.ci, i: m.order[Math.min(n, m.order.length - 1)], a: k ? a * c.opacity / 100 : a, op: k ? c.blend : 'source-over' });
-  });
-  return out;
-}
-// The whole film: each clip group's frames, with a crossfade (last frame of one dissolving into the
-// first of the next) between groups when chosen, all × the timeline repeat.
+// One layer's frames on the output timeline: it starts at `start` (negative skips its first frames),
+// holds its last frame once it runs out, and the film lasts as long as the longest layer.
+const layerOrders = (fps) => clips.map((c) => clipOrder(c, fps));
+const layerLen = (c, order) => Math.max(1, order.length + Math.round(c.start));
 function buildTimeline() {
-  const fps = fpsNow(), fade = $('trans').value === 'fade' ? Math.max(1, Math.round(+$('fadeN').value || 6)) : 0;
-  const one = [], groups = clipGroups(fps);
-  groups.forEach((g, gi) => {
-    const ci = g[0].ci, len = groupLen(g), name = g.map((m) => clips[m.ci].name).join(' + ');
-    for (let j = 0; j < len; j++) {
-      const layers = groupLayers(g, j);
-      one.push({ layers, clip: ci, label: `${name} · ${clips[ci].frames[layers[0].i].name}` });
+  const orders = layerOrders(fpsNow());
+  const len = clips.length ? Math.max(...clips.map((c, ci) => layerLen(c, orders[ci]))) : 0, one = [];
+  for (let j = 0; j < len; j++) {
+    const layers = [];
+    for (let ci = clips.length - 1; ci >= 0; ci--) {   // bottom → top
+      const c = clips[ci], o = orders[ci], n = j - Math.round(c.start);
+      if (n < 0) continue;
+      layers.push({ c: ci, i: o[Math.min(n, o.length - 1)] });
     }
-    const nx = groups[gi + 1];
-    if (fade && nx) {
-      for (let k = 1; k <= fade; k++) {
-        const t = k / (fade + 1);
-        one.push({ layers: [...groupLayers(g, len - 1), ...groupLayers(nx, 0, t).map((L, n) => n ? L : { ...L, op: 'source-over' })], clip: ci, label: `crossfade ${name} → ${nx.map((m) => clips[m.ci].name).join(' + ')}` });
-      }
-    }
-  });
+    if (layers.length) one.push({ layers, label: `frame ${j + 1}` });
+  }
   const reps = Math.max(1, Math.round(+$('repeat').value || 1));
   return Array.from({ length: reps }, () => one).flat();
 }
 const fpsNow = () => Math.max(1, Math.round(+$('fps').value || 12));
-const clipStart = (ci) => Math.max(0, timeline.findIndex((f) => f.clip === ci || f.layers.some((L) => L.c === ci)));
+const clipStart = (ci) => Math.max(0, timeline.findIndex((f) => f.layers.some((L) => L.c === ci)));
 function rebuild({ jumpTo = null } = {}) {
   timeline = buildTimeline();
   const has = timeline.length > 0;
@@ -281,45 +259,52 @@ function rebuild({ jumpTo = null } = {}) {
 }
 const BLENDS = [['source-over', 'normal'], ...['multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn',
   'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'].map((m) => [m, m]), ['lighter', 'add']];
+const opts = (list, cur) => list.map(([v, t]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${t}</option>`).join('');
 function renderClips() {
-  $('clips').innerHTML = clips.map((c, ci) => `
-    <div class="clip${ci === active ? ' active' : ''}" data-ci="${ci}">
+  const last = clips.length - 1;
+  $('clips').innerHTML = clips.map((c, ci) => {
+    const isMask = c.mask !== 'off';
+    return `
+    <div class="clip${ci === active ? ' active' : ''}${isMask ? ' mask' : ''}" data-ci="${ci}">
       <div class="clip-head">
         <span class="clip-n">${ci + 1}</span>
-        <span class="clip-name" data-act="jump" title="${esc(c.name)} — click to jump here">${esc(c.name)}</span>
+        <span class="clip-name" data-act="jump" title="${esc(c.name)} — click to select">${esc(c.name)}</span>
         <span class="clip-meta">${c.frames.length} fr · ${c.w}×${c.h}</span>
-        <button data-act="up" title="Move earlier"${ci ? '' : ' disabled'}>↑</button>
-        <button data-act="del" title="Remove clip">✕</button>
+        <button data-act="up" title="Move up"${ci ? '' : ' disabled'}>↑</button>
+        <button data-act="down" title="Move down"${ci < last ? '' : ' disabled'}>↓</button>
+        <button data-act="del" title="Remove layer">✕</button>
       </div>
       <div class="clip-opts">
-        <select data-k="mode" title="Play the clip once, or there and back"><option value="once"${c.mode === 'once' ? ' selected' : ''}>once</option><option value="pingpong"${c.mode === 'pingpong' ? ' selected' : ''}>ping-pong</option></select>
-        × <input type="number" data-k="repeat" min="1" max="100" value="${c.repeat}" title="Times through">
-        hold <input type="number" data-k="hold" min="0" step="0.5" value="${c.hold}" title="Seconds to hold the last frame"> s
+        blend <select data-k="blend"${isMask ? ' disabled' : ''}>${opts(BLENDS, c.blend)}</select>
+        <input type="number" data-k="opacity" min="0" max="100" value="${c.opacity}" title="opacity"${isMask ? ' disabled' : ''}> %
       </div>
-      <div class="clip-opts" title="Where the clip sits in the frame when its shape differs from the output — or drag the preview (double-click resets)">
-        position x <input type="number" data-k="px" min="0" max="100" value="${c.px}"> y <input type="number" data-k="py" min="0" max="100" value="${c.py}"> %
-      </div>${ci ? `
-      <div class="clip-opts" title="Play this clip on top of the clip above, frame for frame, mixed in a blend mode">
-        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" data-k="over"${c.over ? ' checked' : ''}> over previous</label>
-        <select data-k="blend"${c.over ? '' : ' disabled'}>${BLENDS.map(([v, t]) => `<option value="${v}"${c.blend === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
+      <div class="clip-opts">
+        mask <select data-k="mask" title="Use this layer as a mask on the layer below (not drawn itself)"${ci < last ? '' : ' disabled'}>${opts([['off', 'off'], ['alpha', 'alpha'], ['luma', 'luminance']], c.mask)}</select>
+        start <input type="number" data-k="start" step="1" value="${c.start}" title="Start frame (negative skips its first frames)"> fr
       </div>
-      <div class="clip-opts"${c.over ? '' : ' hidden'}>
-        opacity <input type="number" data-k="opacity" min="0" max="100" value="${c.opacity}" title="How strongly this clip shows, %"> %
-        offset <input type="number" data-k="offset" step="1" value="${c.offset}" title="Frames to shift this clip: positive starts it later, negative skips its first frames"> fr
-      </div>` : ''}
-    </div>`).join('');
+      <div class="clip-opts">
+        <select data-k="mode" title="Frame order">${opts([['once', 'once'], ['yoyo', 'yo-yo']], c.mode)}</select>
+        × <input type="number" data-k="repeat" min="1" max="100" value="${c.repeat}" title="repeat">
+        hold <input type="number" data-k="hold" min="0" step="0.5" value="${c.hold}" title="Hold the last frame, s"> s
+      </div>
+      <div class="clip-opts" title="Position when the layer's shape differs from the output (or drag the preview; double-click resets)">
+        x <input type="number" data-k="px" min="0" max="100" value="${c.px}"> y <input type="number" data-k="py" min="0" max="100" value="${c.py}"> %
+      </div>
+    </div>`;
+  }).join('');
   $('clipNote').hidden = clips.length > 0;
 }
 
 // ---- drawing (shared by preview and export) --------------------------------------------------
+const base = () => clips[clips.length - 1];   // the bottom layer
+// Output size: the bottom layer's, half of it, or the typed W × H. The W × H fields show the
+// result either way, and are only editable for 'custom'.
 function outSize() {
-  const v = $('size').value, c0 = clips[0];
-  if (!c0) return { w: 0, h: 0 };
+  const v = $('size').value, b = base();
   const even = (n) => Math.max(2, Math.floor(n / 2) * 2);   // H.264 needs even dimensions
-  if (v === 'orig') return { w: even(c0.w), h: even(c0.h) };
-  if (v === 'half') return { w: even(c0.w / 2), h: even(c0.h / 2) };
-  const [w, h] = v.split('x').map(Number);
-  return { w, h };
+  if (v === 'custom') return { w: even(+$('outW').value || 2), h: even(+$('outH').value || 2) };
+  if (!b) return { w: 0, h: 0 };
+  return v === 'half' ? { w: even(b.w / 2), h: even(b.h / 2) } : { w: even(b.w), h: even(b.h) };
 }
 // ---- gradients (background + vignette) -----------------------------------------------------
 // A gradient: shape (linear at an angle; circle; ellipse, which stretches with the frame; box, whose
@@ -428,9 +413,8 @@ function paintBackground(ctx, w, h, forceOpaque = false) {
   if (forceOpaque || mode === 'solid') { ctx.fillStyle = mode === 'solid' ? $('bg').value : '#000'; ctx.fillRect(0, 0, w, h); }
   if (mode === 'gradient') ctx.drawImage(gradCanvas(bgSpec, w, h), 0, 0);
 }
-// Draw one timeline frame into a w×h context: background, then each layer fitted ('contain'
-// letterboxes, 'cover' crops to fill) at its opacity. Placement is snapped to whole pixels, and a
-// side within a pixel of the frame is stretched to it — else rounding leaves a 1px background line.
+// Placement is snapped to whole pixels, and a side within a pixel of the frame is stretched to it —
+// else rounding leaves a 1px background line.
 // Where a clip's frame goes in a w×h output: fitted ('contain' letterboxes, 'cover' crops to fill),
 // then placed by the clip's position (px/py %: 50 = centred, 0 = left/top, 100 = right/bottom).
 function placement(c, w, h) {
@@ -441,15 +425,62 @@ function placement(c, w, h) {
   if (Math.abs(dh - h) <= 1) dh = h;
   return { dw, dh, dx: Math.round((w - dw) * c.px / 100), dy: Math.round((h - dh) * c.py / 100) };
 }
+// Scratch canvases for masked layers (reused; resized to the output when it changes), and luminance
+// masks already converted to alpha (a per-pixel pass, so the last few are kept).
+const scratch = [document.createElement('canvas'), document.createElement('canvas')];
+const lumaCache = new Map();
+function scratchCtx(k, w, h) {
+  const cv = scratch[k];
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext('2d', { willReadFrequently: k === 1 });
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, w, h);
+  return ctx;
+}
+function lumaMask(L, bmp, w, h) {
+  const c = clips[L.c], p = placement(c, w, h), key = `${c.id}:${L.i}:${w}x${h}:${p.dx},${p.dy},${p.dw},${p.dh}`;
+  if (lumaCache.has(key)) return lumaCache.get(key);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, p.dx, p.dy, p.dw, p.dh);
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  for (let o = 0; o < d.length; o += 4) {
+    d[o + 3] = (0.2126 * d[o] + 0.7152 * d[o + 1] + 0.0722 * d[o + 2]) * d[o + 3] / 255;
+    d[o] = d[o + 1] = d[o + 2] = 0;
+  }
+  ctx.putImageData(img, 0, 0);
+  if (lumaCache.size >= 4) lumaCache.delete(lumaCache.keys().next().value);
+  lumaCache.set(key, cv);
+  return cv;
+}
+// Draw one timeline frame into a w×h context: background, then the layers bottom → top, each in its
+// blend mode and opacity. A mask layer isn't drawn: it cuts the nearest drawn layer below it (several
+// masks in a row all cut it), which is drawn on a scratch canvas first and then composited.
 function drawFrame(ctx, bitmaps, layers, w, h, forceOpaque = false) {
   ctx.globalAlpha = 1;
   paintBackground(ctx, w, h, forceOpaque);
   ctx.imageSmoothingQuality = 'high';
   layers.forEach((L, k) => {
-    const { dw, dh, dx, dy } = placement(clips[L.c], w, h);
-    ctx.globalAlpha = L.a;
-    ctx.globalCompositeOperation = L.op || 'source-over';
-    ctx.drawImage(bitmaps[k], dx, dy, dw, dh);
+    const c = clips[L.c];
+    if (c.mask !== 'off') return;
+    const masks = [];
+    for (let m = k + 1; m < layers.length && clips[layers[m].c].mask !== 'off'; m++) masks.push(m);
+    const { dw, dh, dx, dy } = placement(c, w, h);
+    let src = bitmaps[k], sx = dx, sy = dy, sw = dw, sh = dh;
+    if (masks.length) {
+      const s = scratchCtx(0, w, h);
+      s.imageSmoothingQuality = 'high';
+      s.drawImage(bitmaps[k], dx, dy, dw, dh);
+      s.globalCompositeOperation = 'destination-in';
+      for (const m of masks) {
+        const M = layers[m], mc = clips[M.c];
+        if (mc.mask === 'luma') s.drawImage(lumaMask(M, bitmaps[m], w, h), 0, 0);
+        else { const p = placement(mc, w, h); s.drawImage(bitmaps[m], p.dx, p.dy, p.dw, p.dh); }
+      }
+      src = scratch[0]; sx = 0; sy = 0; sw = w; sh = h;
+    }
+    ctx.globalAlpha = c.opacity / 100;
+    ctx.globalCompositeOperation = c.blend || 'source-over';
+    ctx.drawImage(src, sx, sy, sw, sh);
   });
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
@@ -506,8 +537,7 @@ async function show(p) {
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   drawFrame(cv.getContext('2d'), bmps, f.layers, w, h);
   $('scrub').value = p;
-  $('frameLabel').textContent = `${p + 1} / ${timeline.length} · ${f.label}`;
-  if (f.clip !== active) { active = f.clip; document.querySelectorAll('.clip').forEach((el) => el.classList.toggle('active', +el.dataset.ci === active)); }
+  $('frameLabel').textContent = `${p + 1} / ${timeline.length}`;
   readAhead(p);
 }
 function step(d) { if (timeline.length) show((pos + d + timeline.length) % timeline.length); }
@@ -539,7 +569,9 @@ function stop() {
 
 // ---- export ----------------------------------------------------------------------------------
 function updateOutInfo() {
-  $('fadeN').disabled = $('trans').value !== 'fade';
+  const custom = $('size').value === 'custom';
+  $('outW').disabled = $('outH').disabled = !custom;
+  if (!custom && clips.length) { const o = outSize(); $('outW').value = o.w; $('outH').value = o.h; }
   const bm = $('bgMode').value;
   $('bg').style.display = bm === 'solid' ? '' : 'none';
   $('bgGrad').hidden = bm !== 'gradient';
@@ -547,13 +579,10 @@ function updateOutInfo() {
   $('vigBlend').disabled = !$('vigOn').checked;
   if (!timeline.length) { $('outInfo').textContent = ''; return; }
   const o = outSize(), fps = fpsNow(), n = timeline.length, secs = n / fps;
-  let t = `${o.w} × ${o.h} px · ${clips.length} clip${clips.length === 1 ? '' : 's'} · ${n} frames · ${secs.toFixed(1)} s at ${fps} fps`;
-  if ($('format').value === 'mp4' && secs < 3) t += ' — Instagram Reels need 3 s or more: raise a Repeat or Hold, or lower fps';
-  if ($('format').value === 'gif' && o.w * o.h > 1100 * 1100) t += ' — large for a GIF (slow, big file)';
-  if (clips.some((c) => Math.abs(c.w / c.h - clips[0].w / clips[0].h) > 0.01)) t += ' · clips differ in shape — Fit decides bars or crop';
+  let t = `${o.w} × ${o.h} px · ${clips.length} layer${clips.length === 1 ? '' : 's'} · ${n} frames · ${secs.toFixed(1)} s at ${fps} fps`;
   if (bm === 'none') {
-    if (/mp4|webm/.test($('format').value)) t += ` · ${$('format').value.toUpperCase()} export has no transparency — the background will be black`;
-    else if ($('format').value === 'gif') t += ' · GIF transparency is on/off (soft edges get hard)';
+    if (/mp4|webm/.test($('format').value)) t += ` · ${$('format').value.toUpperCase()} has no alpha: transparent areas export black`;
+    else if ($('format').value === 'gif') t += ' · GIF alpha is 1-bit';
   }
   $('outInfo').textContent = t;
 }
@@ -702,8 +731,8 @@ async function runExport() {
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d', { willReadFrequently: fmt === 'gif', alpha: true });
     const blob = await ({ mp4: exportMp4, webm: exportWebm, gif: exportGif, png: exportPngZip })[fmt](w, h, fps, cv, ctx, src, progress, plan);
-    const base = clips.length === 1 ? clips[0].name : 'sequence';
-    const name = `${base}-${w}x${h}.${fmt === 'png' ? 'zip' : fmt}`;
+    const stem = clips.length === 1 ? clips[0].name : 'sequence';
+    const name = `${stem}-${w}x${h}.${fmt === 'png' ? 'zip' : fmt}`;
     save(blob, name);
     setStatus(`saved ${name} · ${(blob.size / 1048576).toFixed(1)} MB · ${((performance.now() - t0) / 1000).toFixed(1)} s to encode` +
       (plan.shrunk ? ` · shrunk from ${asked.w} × ${asked.h}, the largest this browser's H.264 encoder takes` : ''));
@@ -732,20 +761,34 @@ $('next').onclick = () => { stop(); step(1); };
 $('scrub').oninput = (e) => { stop(); show(+e.target.value); };
 $('export').onclick = runExport;
 // Timeline-shaping inputs rebuild it; look-only inputs just redraw.
-for (const id of ['fps', 'trans', 'fadeN', 'repeat']) $(id).addEventListener('input', () => rebuild());
+for (const id of ['fps', 'repeat']) $(id).addEventListener('input', () => rebuild());
 const redraw = () => { updateOutInfo(); if (timeline.length && !playing) show(pos); };
-for (const id of ['format', 'size', 'fit', 'bg', 'bgMode', 'vigOn', 'vigBlend']) $(id).addEventListener('input', redraw);
+for (const id of ['format', 'size', 'outW', 'outH', 'fit', 'bg', 'bgMode', 'vigOn', 'vigBlend']) $(id).addEventListener('input', redraw);
 gradEditor($('bgGrad'), bgSpec, redraw);
 gradEditor($('vigGrad'), vigSpec, redraw);
 $('clips').addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]'), row = e.target.closest('.clip');
   if (!el || !row) return;
   const ci = +row.dataset.ci;
-  if (el.dataset.act === 'jump') { stop(); show(clipStart(ci)); return; }
-  if (el.dataset.act === 'up' && ci > 0) [clips[ci - 1], clips[ci]] = [clips[ci], clips[ci - 1]];
-  if (el.dataset.act === 'del') clips.splice(ci, 1);
+  const act = el.dataset.act;
+  if (act === 'jump') {
+    active = ci;
+    document.querySelectorAll('.clip').forEach((r) => r.classList.toggle('active', +r.dataset.ci === active));
+    stop(); show(clipStart(ci)); return;
+  }
+  const to = act === 'up' ? ci - 1 : act === 'down' ? ci + 1 : -1;
+  if (to >= 0 && to < clips.length) {
+    [clips[to], clips[ci]] = [clips[ci], clips[to]];
+    if (active === ci) active = to; else if (active === to) active = ci;
+    if (clips[clips.length - 1].mask !== 'off') clips[clips.length - 1].mask = 'off';   // nothing below the bottom layer to mask
+  }
+  if (act === 'del') {
+    clips.splice(ci, 1);
+    if (active > ci) active--;
+    if (clips.length && clips[clips.length - 1].mask !== 'off') clips[clips.length - 1].mask = 'off';
+  }
   active = Math.min(active, Math.max(0, clips.length - 1));
-  rebuild({ jumpTo: el.dataset.act === 'up' ? ci - 1 : null });
+  rebuild();
 });
 $('clips').addEventListener('input', (e) => {
   const row = e.target.closest('.clip'), k = e.target.dataset.k;
@@ -754,14 +797,15 @@ $('clips').addEventListener('input', (e) => {
   if (k === 'mode') c.mode = e.target.value;
   else if (k === 'repeat') c.repeat = Math.max(1, Math.round(+e.target.value || 1));
   else if (k === 'hold') c.hold = Math.max(0, +e.target.value || 0);
-  else if (k === 'over') { c.over = e.target.checked; stop(); rebuild(); return; }
+  else if (k === 'mask') { c.mask = e.target.value; renderClips(); if (!playing) show(pos); return; }
   else if (k === 'blend' || k === 'opacity') {
     c[k] = k === 'blend' ? e.target.value : Math.min(100, Math.max(0, +e.target.value || 0));
-    timeline = buildTimeline(); if (!playing) show(pos); return;
+    if (!playing) show(pos); return;
   }
-  else if (k === 'offset') c.offset = Math.round(+e.target.value || 0);
+  else if (k === 'start') c.start = Math.round(+e.target.value || 0);
   else if (k === 'px' || k === 'py') { c[k] = Math.min(100, Math.max(0, +e.target.value || 0)); if (!playing) show(pos); return; }
   timeline = buildTimeline(); $('scrub').max = Math.max(0, timeline.length - 1); updateOutInfo();   // no list re-render: keeps focus
+  if (timeline.length && !playing) show(Math.min(pos, timeline.length - 1));
 });
 document.addEventListener('keydown', (e) => {
   if (!timeline.length || e.target.matches('input, select')) return;
@@ -769,12 +813,12 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') { stop(); step(1); }
   else if (e.key === 'ArrowLeft') { stop(); step(-1); }
 });
-// Drag the preview to move the current clip within the frame (only along an axis where it doesn't
+// Drag the preview to move the selected layer within the frame (only along an axis where it doesn't
 // exactly fit); double-click puts it back in the centre.
 {
   const cv = $('canvas');
   let drag = null;
-  const target = () => { const f = timeline[pos]; return f && clips[f.layers[f.layers.length - 1].c]; };
+  const target = () => clips[active];
   const free = (c) => { const o = outSize(), p = placement(c, o.w, o.h); return { fx: o.w - p.dw, fy: o.h - p.dh, o }; };
   cv.addEventListener('pointerdown', (e) => {
     const c = target(); if (!c) return;
