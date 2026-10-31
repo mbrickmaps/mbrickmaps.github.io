@@ -1,0 +1,1 @@
+import{bbox as i}from"../bbox@7.4.0/index.19fd36ca.js";import{point as a}from"../helpers@7.4.0/index.0c2a8294.js";function r(e,o={}){const t=i(e),n=(t[0]+t[2])/2,p=(t[1]+t[3])/2;return a([n,p],o.properties,o)}var c=r;export{r as center,c as default};

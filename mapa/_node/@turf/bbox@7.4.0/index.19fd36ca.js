@@ -1,0 +1,1 @@
+import{coordEach as u}from"../meta@7.4.0/index.52a1a76f.js";function e(b,n={}){if(b.bbox!=null&&n.recompute!==!0)return b.bbox;const o=[1/0,1/0,-1/0,-1/0];return u(b,r=>{o[0]>r[0]&&(o[0]=r[0]),o[1]>r[1]&&(o[1]=r[1]),o[2]<r[0]&&(o[2]=r[0]),o[3]<r[1]&&(o[3]=r[1])}),o}var a=e;export{e as bbox,a as default};

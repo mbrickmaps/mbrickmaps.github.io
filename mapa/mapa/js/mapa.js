@@ -2806,8 +2806,8 @@ export async function loadBasemapData(baseURL = "./files/", bbox = null, forceFg
   let fgbDeserialize = null;
   if (useFgb) {
     try {
-      const fgb = await import("https://esm.sh/flatgeobuf@3");
-      fgbDeserialize = fgb.geojson.deserialize;
+      const fgb = await import("flatgeobuf/lib/mjs/geojson.js");
+      fgbDeserialize = fgb.deserialize;
     } catch (e) {
       console.warn("loadBasemapData: flatgeobuf load failed, falling back to JSON — " + e.message);
     }

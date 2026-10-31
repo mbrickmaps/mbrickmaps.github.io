@@ -1,0 +1,1 @@
+import{booleanDisjoint as r}from"../boolean-disjoint@7.4.0/index.4e7b57dd.js";function e(n,o,{ignoreSelfIntersections:t=!0}={}){return!r(n,o,{ignoreSelfIntersections:t})}var s=e;export{e as booleanIntersects,s as default};
